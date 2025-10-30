@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:alpine
+    container_name: redis-service
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:
+    driver: local

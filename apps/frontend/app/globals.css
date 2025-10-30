@@ -1,0 +1,237 @@
+@plugin "@tailwindcss/typography";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9216%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9216%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9216%;
+    --primary: 0 0% 45.098%;
+    --primary-foreground: 0 0% 98.0392%;
+    --secondary: 0 0% 96.0784%;
+    --secondary-foreground: 0 0% 9.0196%;
+    --muted: 0 0% 96.0784%;
+    --muted-foreground: 0 0% 44.3137%;
+    --accent: 0 0% 96.0784%;
+    --accent-foreground: 0 0% 9.0196%;
+    --destructive: 357.1429 100% 45.2941%;
+    --destructive-foreground: 0 0% 96.0784%;
+    --border: 0 0% 89.8039%;
+    --input: 0 0% 89.8039%;
+    --ring: 0 0% 63.1373%;
+    --chart-1: 0 0% 45.098%;
+    --chart-2: 0 0% 45.098%;
+    --chart-3: 0 0% 45.098%;
+    --chart-4: 0 0% 45.098%;
+    --chart-5: 0 0% 45.098%;
+    --sidebar: 0 0% 98.0392%;
+    --sidebar-foreground: 0 0% 3.9216%;
+    --sidebar-primary: 0 0% 9.0196%;
+    --sidebar-primary-foreground: 0 0% 98.0392%;
+    --sidebar-accent: 0 0% 96.0784%;
+    --sidebar-accent-foreground: 0 0% 9.0196%;
+    --sidebar-border: 0 0% 89.8039%;
+    --sidebar-ring: 0 0% 63.1373%;
+    --font-sans: Poppins, sans-serif;
+    --font-serif: Poppins, sans-serif;
+    --font-mono: Poppins, sans-serif;
+    --radius: 0rem;
+    --shadow-2xs: 0px 1px 0px 0px hsl(0 0% 0% / 0);
+    --shadow-xs: 0px 1px 0px 0px hsl(0 0% 0% / 0);
+    --shadow-sm: 0px 1px 0px 0px hsl(0 0% 0% / 0),
+      0px 1px 2px -1px hsl(0 0% 0% / 0);
+    --shadow: 0px 1px 0px 0px hsl(0 0% 0% / 0),
+      0px 1px 2px -1px hsl(0 0% 0% / 0);
+    --shadow-md: 0px 1px 0px 0px hsl(0 0% 0% / 0),
+      0px 2px 4px -1px hsl(0 0% 0% / 0);
+    --shadow-lg: 0px 1px 0px 0px hsl(0 0% 0% / 0),
+      0px 4px 6px -1px hsl(0 0% 0% / 0);
+    --shadow-xl: 0px 1px 0px 0px hsl(0 0% 0% / 0),
+      0px 8px 10px -1px hsl(0 0% 0% / 0);
+    --shadow-2xl: 0px 1px 0px 0px hsl(0 0% 0% / 0);
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
+  }
+
+  .dark {
+    --background: 0 0% 3.9216%;
+    --foreground: 0 0% 98.0392%;
+    --card: 0 0% 9.8039%;
+    --card-foreground: 0 0% 98.0392%;
+    --popover: 0 0% 14.902%;
+    --popover-foreground: 0 0% 98.0392%;
+    --primary: 0 0% 45.098%;
+    --primary-foreground: 0 0% 98.0392%;
+    --secondary: 0 0% 14.902%;
+    --secondary-foreground: 0 0% 98.0392%;
+    --muted: 0 0% 14.902%;
+    --muted-foreground: 0 0% 63.1373%;
+    --accent: 0 0% 25.098%;
+    --accent-foreground: 0 0% 98.0392%;
+    --destructive: 358.8387 100% 69.6078%;
+    --destructive-foreground: 0 0% 14.902%;
+    --border: 0 0% 21.9608%;
+    --input: 0 0% 32.1569%;
+    --ring: 0 0% 45.098%;
+    --chart-1: 0 0% 45.098%;
+    --chart-2: 0 0% 45.098%;
+    --chart-3: 0 0% 45.098%;
+    --chart-4: 0 0% 45.098%;
+    --chart-5: 0 0% 45.098%;
+    --sidebar: 0 0% 9.0196%;
+    --sidebar-foreground: 0 0% 98.0392%;
+    --sidebar-primary: 0 0% 98.0392%;
+    --sidebar-primary-foreground: 0 0% 9.0196%;
+    --sidebar-accent: 0 0% 14.902%;
+    --sidebar-accent-foreground: 0 0% 98.0392%;
+    --sidebar-border: 0 0% 100%;
+    --sidebar-ring: 0 0% 32.1569%;
+    --font-sans: Geist Mono, monospace;
+    --font-serif: Geist Mono, monospace;
+    --font-mono: Geist Mono, monospace;
+    --radius: 0rem;
+    --shadow-2xs: 0px 1px 0px 0px hsl(0 0% 0% / 0);
+    --shadow-xs: 0px 1px 0px 0px hsl(0 0% 0% / 0);
+    --shadow-sm: 0px 1px 0px 0px hsl(0 0% 0% / 0),
+      0px 1px 2px -1px hsl(0 0% 0% / 0);
+    --shadow: 0px 1px 0px 0px hsl(0 0% 0% / 0),
+      0px 1px 2px -1px hsl(0 0% 0% / 0);
+    --shadow-md: 0px 1px 0px 0px hsl(0 0% 0% / 0),
+      0px 2px 4px -1px hsl(0 0% 0% / 0);
+    --shadow-lg: 0px 1px 0px 0px hsl(0 0% 0% / 0),
+      0px 4px 6px -1px hsl(0 0% 0% / 0);
+    --shadow-xl: 0px 1px 0px 0px hsl(0 0% 0% / 0),
+      0px 8px 10px -1px hsl(0 0% 0% / 0);
+    --shadow-2xl: 0px 1px 0px 0px hsl(0 0% 0% / 0);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1 {
+    @apply scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl;
+  }
+
+  h2 {
+    @apply scroll-m-20 text-3xl font-semibold tracking-tight first:mt-0;
+  }
+
+  h3 {
+    @apply scroll-m-20 text-2xl font-semibold tracking-tight;
+  }
+
+  h4 {
+    @apply scroll-m-20 text-xl font-semibold tracking-tight;
+  }
+
+  p {
+    @apply leading-7;
+  }
+
+  .lead {
+    @apply text-xl text-muted-foreground;
+  }
+}
+
+.bg-gradient-radial-sunset {
+  background-image: linear-gradient(to bottom, #ac0003 -2.94%, #ea2123 97.06%);
+}
+
+.border-radial-gradient {
+  border-width: 1.2px;
+  border-style: solid;
+
+  /* Layer 1: Inner white border with opacity */
+  border-color: rgba(255, 255, 255, 0.2);
+
+  /* Layer 2: Transparent outer border to create the gradient effect */
+  box-shadow: inset 0 0 0 1.2px rgba(255, 255, 255, 0);
+}
+
+.bg-custom-gradient {
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    #5d5fef 0%,
+    rgba(93, 95, 239, 0) 100%
+  );
+}
+
+.parent-container {
+  display: grid;
+  min-height: 100dvh;
+  grid-template-rows: auto 1fr auto;
+}
+
+.big-container {
+  margin-inline: auto;
+  width: min(90%, 70.5rem);
+}
+
+.narrow-container {
+  margin-inline: auto;
+  width: min(90%, 42.5rem);
+}
+
+.block-space {
+  padding-block: min(12vh, 17rem);
+}
+
+.block-space-large {
+  padding-block: min(14vh, 20rem);
+}
+
+.block-space-mini {
+  padding-block: min(3vh, 6rem);
+}
+
+.blog-index {
+  display: columns;
+  columns: 3;
+}
+
+.blog-index > * {
+  break-inside: avoid;
+  margin-bottom: 1.5em;
+}
+
+* {
+  font-family: var(--font-raleway);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-bitter);
+}
+
+@media screen and (max-width: 1024px) {
+  .blog-index {
+    columns: 3;
+  }
+}
+@media screen and (max-width: 768px) {
+  .blog-index {
+    columns: 2;
+  }
+}
+
+@media screen and (max-width: 458px) {
+  .blog-index {
+    columns: 1;
+  }
+}
