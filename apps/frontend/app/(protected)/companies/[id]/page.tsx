@@ -14,11 +14,10 @@ import {
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import prismaDB from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
 import CompanyActions from "@/components/company-actions";
 import { BulkFileUploadDialog } from "@/components/Dialogs/bulk-file-upload-dialog";
-import { getCompanyById } from "@/lib/queries";
+import { getCompanyById } from "db/queries";
 import { auth } from "@/auth";
 
 interface CompanyDetailPageProps {
@@ -32,16 +31,10 @@ export async function generateMetadata({
 }: CompanyDetailPageProps): Promise<Metadata> {
   const { id } = await params;
 
-  const company = await prismaDB.company.findUnique({
-    where: { id },
-    select: { name: true },
-  });
+  const company = await getCompanyById(id);
 
   if (!company) {
-    return {
-      title: "Company Not Found",
-      description: "The company you are looking for does not exist",
-    };
+    notFound();
   }
 
   return {

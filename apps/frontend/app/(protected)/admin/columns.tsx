@@ -13,13 +13,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { User } from "@prisma/client";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import blockAccount from "@/app/actions/block-account";
-import unblockAccount from "@/app/actions/unblock-account";
 
-export const columns: ColumnDef<User>[] = [
+import { Badge } from "@/components/ui/badge";
+import { AdminUser } from "db/types";
+
+export const columns: ColumnDef<AdminUser>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -98,46 +96,6 @@ export const columns: ColumnDef<User>[] = [
               Copy Account ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={async () => {
-                const userId = user.id;
-
-                try {
-                  await blockAccount(userId);
-                  alert("Account blocked successfully");
-                } catch (error) {
-                  alert("an error occurred");
-
-                  // toast({
-                  //   title: "Error while trying to block account",
-                  //   description: "Server Side Error Occurred",
-                  //   variant: "destructive", //
-                  // });
-                }
-              }}
-            >
-              Block Account
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={async () => {
-                const userId = user.id;
-
-                try {
-                  await unblockAccount(userId);
-                  alert("Account was given access");
-                } catch (error) {
-                  alert("an error occurred!!!");
-
-                  // toast({
-                  //   title: "Error while trying to block account",
-                  //   description: "Server Side Error Occurred",
-                  //   variant: "destructive", //
-                  // });
-                }
-              }}
-            >
-              Give Account Access
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );

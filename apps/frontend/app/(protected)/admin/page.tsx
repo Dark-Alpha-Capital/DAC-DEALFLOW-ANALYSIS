@@ -1,9 +1,8 @@
 import getCurrentUserRole from "@/lib/data/current-user-role";
 import { redirect } from "next/navigation";
-import React from "react";
 import { DataTable } from "./data-table";
 import { columns } from "./columns";
-import prismaDB from "@/lib/prisma";
+import { getUsersForAdminTable } from "db/queries";
 
 export const metadata = {
   title: "Admin Dashboard",
@@ -17,7 +16,7 @@ const AdminPage = async () => {
     redirect("/");
   }
 
-  const data = await prismaDB.user.findMany();
+  const data = await getUsersForAdminTable();
 
   return (
     <>

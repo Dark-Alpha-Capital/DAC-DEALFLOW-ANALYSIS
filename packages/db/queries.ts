@@ -1,6 +1,7 @@
 import db from ".";
 import type { DealStatus, DealType } from "@prisma/client";
 import type { Deal } from "@prisma/client";
+import type { AdminUser, CompanyWithRelationsForList } from "./types";
 
 interface GetDealsResult {
   data: Deal[];
@@ -377,5 +378,109 @@ export async function getCompanyById(id: string) {
   } catch (error) {
     console.error("Error fetching company by id", error);
     return null;
+  }
+}
+
+/**
+ * Minimal user list for Admin table
+ * Selects only the fields required by the UI.
+ */
+
+export async function getUsersForAdminTable(): Promise<AdminUser[]> {
+  try {
+    const users = await db.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isBlocked: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return users.map((user) => ({
+      id: user.id,
+      name: user.name ?? "",
+      email: user.email,
+      role: user.role,
+      isBlocked: user.isBlocked,
+    }));
+  } catch (error) {
+    console.error("Error fetching users for admin table", error);
+    return [];
+  }
+}
+
+interface GetCompaniesResult {
+  companies: CompanyWithRelationsForList[];
+  totalCount: number;
+  totalPages: number;
+}
+
+export default async function GetCompanies({
+  search,
+  offset = 0,
+  limit = 20,
+}: {
+  search?: string | undefined;
+  offset?: number;
+  limit?: number;
+}): Promise<GetCompaniesResult> {
+  try {
+    const whereClause = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { sector: { contains: search, mode: "insensitive" as const } },
+            {
+              headquarters: { contains: search, mode: "insensitive" as const },
+            },
+          ],
+        }
+      : {};
+
+    const [companies, totalCount] = await Promise.all([
+      db.company.findMany({
+        where: whereClause,
+        include: {
+          founders: true,
+          files: {
+            take: 3,
+            orderBy: { createdAt: "desc" },
+          },
+          sections: {
+            take: 3,
+            orderBy: { createdAt: "desc" },
+          },
+          _count: {
+            select: {
+              files: true,
+              sections: true,
+              reviews: true,
+              tasks: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: offset,
+        take: limit,
+      }),
+      db.company.count({ where: whereClause }),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return {
+      companies,
+      totalCount,
+      totalPages,
+    };
+  } catch (error) {
+    console.error("Error fetching companies:", error);
+    return {
+      companies: [],
+      totalCount: 0,
+      totalPages: 0,
+    };
   }
 }

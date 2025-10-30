@@ -1,9 +1,8 @@
 "use server";
 
-import prismaDB from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { DeleteCompanyById } from "db/mutations";
 
 interface DeleteCompanyResult {
   type: "success" | "error";
@@ -21,24 +20,15 @@ const DeleteCompany = async (
     };
   }
 
+  if (!companyId) {
+    return {
+      type: "error",
+      message: "Company id is not defined",
+    };
+  }
+
   try {
-    // Check if company exists
-    const company = await prismaDB.company.findUnique({
-      where: { id: companyId },
-      select: { id: true, name: true },
-    });
-
-    if (!company) {
-      return {
-        type: "error",
-        message: "Company not found",
-      };
-    }
-
-    // Delete the company (this will cascade delete related records)
-    await prismaDB.company.delete({
-      where: { id: companyId },
-    });
+    await DeleteCompanyById(companyId);
 
     // Revalidate relevant paths
     revalidatePath("/companies");
@@ -46,7 +36,7 @@ const DeleteCompany = async (
 
     return {
       type: "success",
-      message: `Company "${company.name}" deleted successfully`,
+      message: `Company deleted successfully`,
     };
   } catch (error) {
     console.error("Error deleting company:", error);

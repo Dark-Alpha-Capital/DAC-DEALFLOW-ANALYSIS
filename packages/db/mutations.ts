@@ -37,3 +37,23 @@ export const BulkDeleteDeals = async (
     };
   }
 };
+
+/**
+ * Delete a company by id
+ * @param companyId - the id of the company to delete
+ * @returns { type: "success" | "error"; message: string; code?: string }
+ */
+export const DeleteCompanyById = async (companyId: string) => {
+  try {
+    await db.company.delete({
+      where: { id: companyId },
+    });
+    return {
+      type: "success",
+      message: "Company deleted successfully",
+    };
+  } catch (error) {
+    console.error("Error deleting company:", error);
+    throw error;
+  }
+};

@@ -16,7 +16,9 @@
  "exports": {
   ".": "./index.ts",
   "./queries": "./queries.ts",
-  "./mutations": "./mutations.ts"
+  "./mutations": "./mutations.ts",
+  "./types": "./types.ts"
+  
  }
   
 }

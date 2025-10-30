@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
-import GetCompanies from "@/app/actions/get-companies";
+import GetCompanies from "db/queries";
 import CompanyList from "@/components/company-list";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";

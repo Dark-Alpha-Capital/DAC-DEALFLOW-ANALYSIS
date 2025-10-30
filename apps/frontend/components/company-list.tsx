@@ -26,60 +26,16 @@ import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import DeleteCompanyDialog from "@/components/Dialogs/delete-company-dialog";
 import DeleteCompany from "@/app/actions/delete-company";
-
-interface Company {
-  id: string;
-  name: string;
-  website?: string;
-  sector?: string;
-  stage?: string;
-  headquarters?: string;
-  description?: string;
-  revenue?: number;
-  ebitda?: number;
-  growthRate?: number;
-  employees?: number;
-  createdAt: string;
-  founders: any[];
-  files: any[];
-  sections: any[];
-  _count: {
-    files: number;
-    sections: number;
-    reviews: number;
-    tasks: number;
-  };
-}
+import { CompanyWithRelationsForList } from "db/types";
 
 interface CompanyCardProps {
-  company: Company;
+  company: CompanyWithRelationsForList;
 }
 
 function CompanyCard({ company }: CompanyCardProps) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
-
-  const formatStage = (stage?: string) => {
-    if (!stage) return null;
-    const stageColors = {
-      STARTUP: "bg-blue-100 text-blue-800",
-      GROWTH: "bg-green-100 text-green-800",
-      MATURE: "bg-gray-100 text-gray-800",
-      TURNAROUND: "bg-yellow-100 text-yellow-800",
-      DISTRESSED: "bg-red-100 text-red-800",
-    };
-    return (
-      <Badge
-        className={
-          stageColors[stage as keyof typeof stageColors] ||
-          "bg-gray-100 text-gray-800"
-        }
-      >
-        {stage.replace("_", " ")}
-      </Badge>
-    );
-  };
 
   const handleDelete = () => {
     startTransition(async () => {
@@ -128,7 +84,6 @@ function CompanyCard({ company }: CompanyCardProps) {
               <CardDescription>{company.sector}</CardDescription>
             )}
           </div>
-          {formatStage(company.stage)}
         </div>
       </CardHeader>
 
@@ -228,7 +183,7 @@ function CompanyCard({ company }: CompanyCardProps) {
 }
 
 interface CompanyListProps {
-  companies: Company[];
+  companies: CompanyWithRelationsForList[];
   totalCount: number;
   totalPages: number;
   currentPage?: number;
