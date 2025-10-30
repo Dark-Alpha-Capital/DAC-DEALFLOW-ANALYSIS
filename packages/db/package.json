@@ -15,7 +15,8 @@
   },
  "exports": {
   ".": "./index.ts",
-  "./queries": "./queries.ts"
+  "./queries": "./queries.ts",
+  "./mutations": "./mutations.ts"
  }
   
 }
