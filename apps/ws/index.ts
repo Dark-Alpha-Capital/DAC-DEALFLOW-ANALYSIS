@@ -1,8 +1,6 @@
 // WebSocket server for real-time job updates
 import type { ServerWebSocket } from "bun";
-import Redis from "ioredis";
-
-const redis = new Redis(process.env.REDIS_URL!);
+import { redis } from "services";
 
 type WS = ServerWebSocket<unknown>;
 
@@ -15,11 +13,10 @@ const clientJobs = new Map<WS, Set<string>>();
 // Map: jobId → WebSocket
 const jobSubscriptions = new Map<string, WS>();
 
-redis.subscribe("job-updates");
-redis.on("message", (_channel, msg) => {
+redis.subscribe("job-updates", (channel, msg) => {
   try {
-    const update = JSON.parse(msg);
-    console.log("📨 Redis message received:", update);
+    const update = JSON.parse(msg.toString());
+    console.log("📨 Redis message received:", channel, update);
 
     const ws = jobSubscriptions.get(update.jobId);
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -36,7 +33,7 @@ redis.on("message", (_channel, msg) => {
       console.log(`📊 Connected clients: ${clientIds.size}`);
     }
   } catch (error) {
-    console.error("❌ Error processing Redis message:", error);
+    console.error("❌ Error processing Redis message:", channel, error);
   }
 });
 

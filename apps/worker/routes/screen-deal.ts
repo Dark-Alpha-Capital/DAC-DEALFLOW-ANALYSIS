@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import { screenDealPayloadSchema } from "../lib/schemas/screen-deal-payload-schema";
-import redis from "../lib/redis";
+import { redis } from "services";
 import { evaluateDealAndSaveResult } from "../lib/actions/evaluate-deal";
 
 const router = Router();
@@ -10,12 +10,6 @@ router.post("/screen-deal", async (req: Request, res: Response) => {
   if (!redis) {
     console.error("Redis not configured");
     return res.status(503).json({ error: "Redis not configured" });
-  }
-
-  // Check Redis connection status
-  if (redis.status !== "ready") {
-    console.error("Redis not ready, status:", redis.status);
-    return res.status(503).json({ error: "Redis not ready" });
   }
 
   let jobId: string | null = null;
@@ -56,27 +50,26 @@ router.post("/screen-deal", async (req: Request, res: Response) => {
 
     // If either the message or job has already been processed, skip
     const [hasMessage, hasJob] = await Promise.all([
-      dedupKey ? redis.exists(dedupKey) : Promise.resolve(0),
+      dedupKey ? redis.exists(dedupKey) : Promise.resolve(false),
       redis.exists(jobKey),
     ]);
 
-    if ((dedupKey && hasMessage === 1) || hasJob === 1) {
+    if ((dedupKey && hasMessage) || hasJob) {
       console.log(
-        `⚠️ Duplicate detected for job ${jobId}${
-          messageId ? ` or message ${messageId}` : ""
-        }`
+        `⚠️ Duplicate detected for job ${jobId}${messageId ? ` or message ${messageId}` : ""}`
       );
       return res.status(204).send();
     }
 
-    // Atomically set dedup markers with expirations
-    const multi = redis.multi();
-    if (dedupKey) multi.set(dedupKey, "1", "EX", 3600); // 1 hour for message id
-    multi.set(jobKey, "1", "EX", 86400); // 24 hours for job id
-    await multi.exec();
+    if (dedupKey) {
+      await redis.set(dedupKey, "1");
+      await redis.expire(dedupKey, 3600); // 1 hour for message id
+    }
+    await redis.set(jobKey, "1");
+    await redis.expire(jobKey, 86400); // 24 hours for job id
 
     // Update status to processing
-    await redis.hset(`job:${jobId}`, "status", "processing");
+    await redis.hmset(`job:${jobId}`, ["status", "processing"]);
     console.log(`📝 Updated job ${jobId} status to processing in Redis`);
 
     // Publish processing status
@@ -98,7 +91,7 @@ router.post("/screen-deal", async (req: Request, res: Response) => {
         evaluationResult.message
       );
       // Mark job as failed and publish update
-      await redis.hset(`job:${jobId}`, "status", "failed");
+      await redis.hmset(`job:${jobId}`, ["status", "failed"]);
       await redis.publish(
         "job-updates",
         JSON.stringify({
@@ -114,7 +107,7 @@ router.post("/screen-deal", async (req: Request, res: Response) => {
     }
     console.log(`⏱️ Processing job ${jobId}...`);
     // Update status to done
-    await redis.hset(`job:${jobId}`, "status", "done");
+    await redis.hmset(`job:${jobId}`, ["status", "done"]);
     console.log(`📝 Updated job ${jobId} status to done in Redis`);
 
     // Publish completion status
@@ -130,7 +123,7 @@ router.post("/screen-deal", async (req: Request, res: Response) => {
     // Try to publish error status if we have jobId
     try {
       if (jobId) {
-        await redis.hset(`job:${jobId}`, "status", "failed");
+        await redis.hmset(`job:${jobId}`, ["status", "failed"]);
         await redis.publish(
           "job-updates",
           JSON.stringify({ jobId, status: "failed" })
