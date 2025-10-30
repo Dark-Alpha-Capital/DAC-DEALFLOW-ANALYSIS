@@ -49,3 +49,55 @@ export const DeleteDealById = async (dealId: string) => {
     throw error;
   }
 };
+
+export const DeletePOCById = async (pocId: string) => {
+  try {
+    await db.pOC.delete({
+      where: { id: pocId },
+    });
+  } catch (error) {
+    console.error("Error deleting poc:", error);
+    throw error;
+  }
+};
+
+export const DeleteScreenerById = async (screenerId: string) => {
+  try {
+    await db.screener.delete({
+      where: { id: screenerId },
+    });
+  } catch (error) {
+    console.error("Error deleting screener:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a reasoning by id
+ * @param reasoningId - the id of the reasoning to delete
+ */
+export const DeleteReasoningById = async (reasoningId: string) => {
+  try {
+    await db.aiScreening.delete({
+      where: { id: reasoningId },
+    });
+  } catch (error) {
+    console.error("Error deleting reasoning:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a baseline by id
+ * @param questionnaireId - the id of the questionnaire to delete
+ */
+export const DeleteQuestionnaireById = async (questionnaireId: string) => {
+  try {
+    await db.questionnaire.delete({
+      where: { id: questionnaireId },
+    });
+  } catch (error) {
+    console.error("Error deleting questionnaire:", error);
+    throw error;
+  }
+};

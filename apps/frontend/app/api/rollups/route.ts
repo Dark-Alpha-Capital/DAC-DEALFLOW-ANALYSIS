@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
+import db from "db";
 
 interface SaveRollupRequestBody {
   name: string;
@@ -23,11 +23,11 @@ export async function POST(request: Request) {
     if (!name || !dealIds?.length) {
       return NextResponse.json(
         { error: "Rollup name and at least one deal are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const rollup = await prisma.rollup.create({
+    const rollup = await db.rollup.create({
       data: {
         name,
         description,
@@ -43,14 +43,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ rollup });
   } catch (error) {
     console.error("Error saving rollup:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }
 
 // GET all rollups
 export async function GET() {
   try {
-    const rollups = await prisma.rollup.findMany({
+    const rollups = await db.rollup.findMany({
       include: { users: true, deals: true },
       orderBy: { createdAt: "desc" },
     });
@@ -58,6 +61,9 @@ export async function GET() {
     return NextResponse.json({ rollups });
   } catch (error) {
     console.error("Error fetching rollups:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }

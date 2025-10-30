@@ -1,29 +1,14 @@
 "use server";
-import db from "db";
+import { DeleteReasoningById } from "db/mutations";
 import { DealType } from "@prisma/client";
 
 import { revalidatePath } from "next/cache";
 
-const DeleteAIScreeningFromDB = async (
-  screeningId: string,
-  dealType: DealType,
-  dealId: string,
-) => {
+const DeleteAIScreeningFromDB = async (screeningId: string, dealId: string) => {
   try {
-    await db.aiScreening.delete({
-      where: {
-        id: screeningId,
-      },
-    });
+    await DeleteReasoningById(screeningId);
 
-    switch (dealType) {
-      case "MANUAL":
-        revalidatePath(`/manual-deals/${dealId}`);
-      case "SCRAPED":
-        revalidatePath(`/raw-deals/${dealId}`);
-      case "AI_INFERRED":
-        revalidatePath(`/inferred-deals/${dealId}`);
-    }
+    revalidatePath(`/raw-deals/${dealId}`);
 
     return {
       type: "success",

@@ -1,25 +1,15 @@
-import { DealType } from "@prisma/client";
-import React from "react";
-import { getDealPOC } from "@/lib/queries";
-import { Plus, Trash } from "lucide-react";
-import { Button } from "./ui/button";
+import { getDealPOC } from "db/queries";
 import AddPocDialog from "./Dialogs/add-poc-dialog";
 import DeletePocButton from "./Buttons/delete-poc-button";
 
-const FetchDealPOC = async ({
-  dealId,
-  dealType,
-}: {
-  dealId: string;
-  dealType: DealType;
-}) => {
+const FetchDealPOC = async ({ dealId }: { dealId: string }) => {
   const pocs = await getDealPOC(dealId);
   return (
     <div className="space-y-4">
       <AddPocDialog dealId={dealId} />
 
       {pocs.length > 0 ? (
-         <ul className="space-y-3 p-4">
+        <ul className="space-y-3 p-4">
           {pocs.map((poc) => (
             <li
               key={poc.id}

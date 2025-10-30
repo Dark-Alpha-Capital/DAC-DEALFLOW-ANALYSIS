@@ -500,3 +500,29 @@ export default async function GetCompanies({
     };
   }
 }
+
+export const getFirstThreeDealAIScreenings = async (dealId: string) => {
+  try {
+    return await db.aiScreening.findMany({
+      where: { dealId },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 3,
+    });
+  } catch (error) {
+    console.error("Error fetching deal ai screenings", error);
+    throw error;
+  }
+};
+
+export const getDealDocuments = async (dealId: string) => {
+  try {
+    return await db.dealDocument.findMany({
+      where: { dealId },
+    });
+  } catch (error) {
+    console.error("Error fetching deal documents", error);
+    throw error;
+  }
+};

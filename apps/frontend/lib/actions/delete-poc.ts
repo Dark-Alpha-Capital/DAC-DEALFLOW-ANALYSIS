@@ -1,32 +1,49 @@
 "use server";
 
-import { withAuthServerAction } from "@/lib/withAuth";
-import db from "db";
-import { User } from "@prisma/client";
+import { DeletePOCById } from "db/mutations";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
 
-const deletePoc = withAuthServerAction(
-  async (user: User, pocId: string, dealId: string) => {
-    try {
-      const poc = await db.pOC.delete({
-        where: { id: pocId },
-      });
+const deletePoc = async (pocId: string, dealId: string) => {
+  const session = await auth();
+  if (!session) {
+    return {
+      type: "error",
+      message: "Unauthorized",
+    };
+  }
 
-      revalidatePath(`/raw-deals/${dealId}`);
-      revalidatePath(`/manual-deals/${dealId}`);
+  if (!pocId) {
+    return {
+      type: "error",
+      message: "POC ID is required",
+    };
+  }
 
-      return {
-        type: "success",
-        message: "POC deleted successfully.",
-      };
-    } catch (error) {
-      console.error("Error deleting POC:", error);
-      return {
-        type: "error",
-        message: "Failed to delete POC. Please try again.",
-      };
-    }
-  },
-);
+  if (!dealId) {
+    return {
+      type: "error",
+      message: "Deal ID is required",
+    };
+  }
+
+  try {
+    const poc = await DeletePOCById(pocId);
+
+    revalidatePath(`/raw-deals/${dealId}`);
+    revalidatePath(`/manual-deals/${dealId}`);
+
+    return {
+      type: "success",
+      message: "POC deleted successfully.",
+    };
+  } catch (error) {
+    console.error("Error deleting POC:", error);
+    return {
+      type: "error",
+      message: "Failed to delete POC. Please try again.",
+    };
+  }
+};
 
 export default deletePoc;

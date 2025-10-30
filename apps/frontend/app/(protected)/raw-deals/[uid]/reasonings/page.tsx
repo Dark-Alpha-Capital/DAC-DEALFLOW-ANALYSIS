@@ -1,5 +1,5 @@
-import { getAllDealReasoningsWithScreenerName } from "@/lib/queries";
-import React, { Suspense } from "react";
+import { getAllDealReasoningsWithScreenerName } from "db/queries";
+import { Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -84,16 +84,6 @@ function ReasoningCard({
   index: number;
   dealId: string;
 }) {
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(date));
-  };
-
   return (
     <Card className="group transition-all duration-200 hover:shadow-md">
       <CardHeader className="space-y-3">
@@ -109,7 +99,7 @@ function ReasoningCard({
               </div> */}
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                <span>{formatDate(reasoning.createdAt)}</span>
+                <span>{reasoning.createdAt.toLocaleDateString()}</span>
               </div>
 
               <div>
@@ -190,7 +180,7 @@ function ReasoningCard({
         {reasoning.updatedAt && reasoning.updatedAt !== reasoning.createdAt && (
           <div className="flex items-center gap-1 border-t pt-2 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
-            <span>Updated: {formatDate(reasoning.updatedAt)}</span>
+            <span>Updated: {reasoning.updatedAt.toLocaleDateString()}</span>
           </div>
         )}
       </CardContent>

@@ -1,21 +1,20 @@
-import prismaDB from "@/lib/prisma";
 import React from "react";
 import { AlertTriangle } from "lucide-react";
-import { DealType } from "@prisma/client";
+import { getDealDocuments } from "db/queries";
 import DealDocumentItem from "./DealDocumentItem";
 
-const FetchDealDocuments = async ({
-  dealId,
-  dealType,
-}: {
-  dealId: string;
-  dealType: DealType;
-}) => {
-  const dealDocuments = await prismaDB.dealDocument.findMany({
-    where: {
-      dealId: dealId,
-    },
-  });
+const FetchDealDocuments = async ({ dealId }: { dealId: string }) => {
+  let dealDocuments = null;
+  try {
+    dealDocuments = await getDealDocuments(dealId);
+  } catch (error) {
+    console.error("Error fetching deal documents", error);
+    dealDocuments = null;
+  }
+
+  if (!dealDocuments) {
+    return <div>Error fetching deal documents</div>;
+  }
 
   return (
     <div>
@@ -26,9 +25,6 @@ const FetchDealDocuments = async ({
             title={dealDocument.title}
             description={dealDocument.description || ""}
             category={dealDocument.category}
-            documentId={dealDocument.id}
-            dealId={dealId}
-            dealType={dealType}
             fileUrl={dealDocument.documentUrl}
           />
         ))

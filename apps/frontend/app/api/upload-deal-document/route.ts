@@ -1,9 +1,9 @@
 import { auth } from "@/auth";
 import { dealDocumentFormSchema } from "@/lib/schemas";
-import prismaDB from "@/lib/prisma";
 import { put } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import db from "db";
 
 export async function POST(request: NextRequest) {
   const userSession = await auth();
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
   // Save CIM metadata to database
 
   try {
-    const dealDocument = await prismaDB.dealDocument.create({
+    const dealDocument = await db.dealDocument.create({
       data: {
         title: validatedData.data.title,
         description: validatedData.data.description,

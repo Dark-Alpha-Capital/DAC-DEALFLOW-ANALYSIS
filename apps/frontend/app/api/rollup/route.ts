@@ -1,7 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { searchRollupCandidates } from '@/lib/rollup/assist-rollup';
-// import { summarizeRollup } from '@/lib/rollup/summarize-rollup';
-
+import { NextRequest, NextResponse } from "next/server";
+import { searchRollupCandidates } from "@/lib/rollup/assist-rollup";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +13,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ candidates });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }

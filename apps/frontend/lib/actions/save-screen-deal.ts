@@ -41,14 +41,7 @@ const SaveScreeningResultToDB = async (
       },
     });
 
-    switch (dealType) {
-      case "MANUAL":
-        revalidatePath(`/manual-deals/${dealId}`);
-      case "SCRAPED":
-        revalidatePath(`/raw-deals/${dealId}`);
-      case "AI_INFERRED":
-        revalidatePath(`/inferred-deals/${dealId}`);
-    }
+    revalidatePath(`/raw-deals/${dealId}`);
 
     return {
       type: "success",

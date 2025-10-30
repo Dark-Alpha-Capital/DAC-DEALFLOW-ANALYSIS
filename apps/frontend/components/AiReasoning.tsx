@@ -62,7 +62,6 @@ export default function AIReasoning({
             startTransition(async () => {
               const response = await DeleteAIScreeningFromDB(
                 screeningId,
-                dealType,
                 dealId,
               );
               if (response.type === "success") {

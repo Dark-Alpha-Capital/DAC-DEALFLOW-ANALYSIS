@@ -1,18 +1,15 @@
 "use server";
 
 import { auth } from "@/auth";
-import db from "db";
+import { DeleteReasoningById } from "db/mutations";
 import { revalidatePath } from "next/cache";
 
 export async function deleteReasoning(reasoningId: string, dealId: string) {
-  const userSession = await auth();
-
-  if (!userSession?.user?.id) {
-    console.log("user session not found");
-
+  const session = await auth();
+  if (!session) {
     return {
       success: false,
-      message: "User not found",
+      message: "Unauthorized",
     };
   }
 
@@ -26,11 +23,7 @@ export async function deleteReasoning(reasoningId: string, dealId: string) {
   }
 
   try {
-    await db.aiScreening.delete({
-      where: {
-        id: reasoningId,
-      },
-    });
+    await DeleteReasoningById(reasoningId);
 
     revalidatePath(`/raw-deals/${dealId}/reasonings`);
 

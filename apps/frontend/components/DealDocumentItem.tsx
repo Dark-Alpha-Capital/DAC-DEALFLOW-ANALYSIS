@@ -1,28 +1,21 @@
 "use client";
 
-import { DealDocumentCategory, DealType } from "@prisma/client";
-import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, FileIcon, Download, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { ExternalLink, FileIcon, Download } from "lucide-react";
+import { DealDocumentCategory } from "db";
 
 const DealDocumentItem = ({
   title,
   description,
   category,
-  documentId,
-  dealId,
-  dealType,
+
   fileUrl,
 }: {
   title: string;
   description: string;
   category: DealDocumentCategory;
-  documentId: string;
-  dealId: string;
-  dealType: DealType;
   fileUrl: string;
 }) => {
   return (

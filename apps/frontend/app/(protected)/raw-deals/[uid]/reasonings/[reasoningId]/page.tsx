@@ -1,5 +1,4 @@
-import { getCompleteAiReasoningById } from "@/lib/queries";
-import React from "react";
+import { getCompleteAiReasoningById } from "db/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -53,7 +52,6 @@ const page = async ({
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="mx-auto max-w-4xl space-y-6">
-        {/* Navigation */}
         <div className="flex items-center justify-between">
           <PreviousPageButton />
           <Button asChild variant="outline">
@@ -82,13 +80,17 @@ const page = async ({
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  <span>Created {formatDate(reasoning.createdAt)}</span>
+                  <span>
+                    Created {reasoning.createdAt.toLocaleDateString()}
+                  </span>
                 </div>
                 {reasoning.updatedAt &&
                   reasoning.updatedAt !== reasoning.createdAt && (
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
-                      <span>Updated {formatDate(reasoning.updatedAt)}</span>
+                      <span>
+                        Updated {reasoning.updatedAt.toLocaleDateString()}
+                      </span>
                     </div>
                   )}
               </div>
@@ -181,15 +183,5 @@ const page = async ({
     </div>
   );
 };
-
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(date));
-}
 
 export default page;

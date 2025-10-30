@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { auth } from "@/auth";
+import db from "db";
 
 interface UpdateDealPayload {
   id: string;
@@ -23,7 +22,7 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const rollup = await prisma.rollup.findUnique({
+    const rollup = await db.rollup.findUnique({
       where: { id },
       include: {
         users: true,
@@ -63,7 +62,7 @@ export async function PATCH(
     const { name, description, summary, deals } = body;
 
     // Update the rollup itself
-    await prisma.rollup.update({
+    await db.rollup.update({
       where: { id },
       data: { name, description, summary },
     });
@@ -74,7 +73,7 @@ export async function PATCH(
         const { id: dealId, chunk_text, description: dealDescription } = deal;
         if (!dealId) continue;
 
-        await prisma.deal.update({
+        await db.deal.update({
           where: { id: dealId },
           data: { chunk_text, description: dealDescription },
         });
@@ -82,7 +81,7 @@ export async function PATCH(
     }
 
     // Return updated rollup with relations
-    const rollupWithRelations = await prisma.rollup.findUnique({
+    const rollupWithRelations = await db.rollup.findUnique({
       where: { id },
       include: {
         users: true,
@@ -114,7 +113,7 @@ export async function DELETE(
     //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     // }
 
-    await prisma.rollup.delete({
+    await db.rollup.delete({
       where: { id },
     });
 

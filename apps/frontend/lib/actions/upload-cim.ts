@@ -1,7 +1,7 @@
 "use server";
 
 import { put } from "@vercel/blob";
-import { DealType, PrismaClient } from "@prisma/client";
+import { DealType } from "db";
 import { revalidatePath } from "next/cache";
 import { cimFormSchema } from "@/lib/schemas";
 import db from "db";
@@ -49,15 +49,7 @@ export default async function UploadCim(
       },
     });
 
-    // Revalidate the deal page to show the new CIM
-    switch (dealType) {
-      case "MANUAL":
-        revalidatePath(`/manual-deals/${dealId}`);
-      case "SCRAPED":
-        revalidatePath(`/raw-deals/${dealId}`);
-      case "AI_INFERRED":
-        revalidatePath(`/inferred-deals/${dealId}`);
-    }
+    revalidatePath(`/raw-deals/${dealId}`);
 
     return { success: true, cim };
   } catch (error) {

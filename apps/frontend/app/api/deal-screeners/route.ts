@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { getAllScreenersWithContent } from "@/lib/queries";
+import { getAllScreenersWithContent } from "db/queries";
 import { rateLimit } from "@/lib/redis";
 import { NextResponse } from "next/server";
 

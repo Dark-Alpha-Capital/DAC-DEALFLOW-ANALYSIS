@@ -3,6 +3,7 @@
 import db from "db";
 import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
+import { DeleteQuestionnaireById } from "db/mutations";
 
 export default async function DeleteBaseline(
   blobUrl: string,
@@ -11,11 +12,7 @@ export default async function DeleteBaseline(
   try {
     await del(blobUrl);
 
-    await db.questionnaire.delete({
-      where: {
-        id: questionnaireId,
-      },
-    });
+    await DeleteQuestionnaireById(questionnaireId);
 
     revalidatePath("/questionnaires");
     return {

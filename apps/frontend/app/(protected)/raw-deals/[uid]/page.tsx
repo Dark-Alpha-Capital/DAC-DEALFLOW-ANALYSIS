@@ -403,7 +403,7 @@ export default async function ManualDealSpecificPage(props: {
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[300px] pr-4">
-              <FetchDealDocuments dealId={uid} dealType={dealType} />
+              <FetchDealDocuments dealId={uid} />
             </ScrollArea>
           </CardContent>
         </Card>
@@ -433,7 +433,7 @@ export default async function ManualDealSpecificPage(props: {
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[300px] pr-4">
-              <FetchDealPOC dealId={uid} dealType={dealType} />
+              <FetchDealPOC dealId={uid} />
             </ScrollArea>
           </CardContent>
         </Card>

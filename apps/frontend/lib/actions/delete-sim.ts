@@ -1,14 +1,12 @@
 "use server";
 import { auth } from "@/auth";
 import db from "db";
-import { DealType } from "@prisma/client";
 import { del } from "@vercel/blob";
 
 import { revalidatePath } from "next/cache";
 
 const DeleteSimFromDB = async (
   cimId: string,
-  dealType: DealType,
   dealId: string,
   fileUrl: string,
 ) => {
@@ -30,14 +28,7 @@ const DeleteSimFromDB = async (
       },
     });
 
-    switch (dealType) {
-      case "MANUAL":
-        revalidatePath(`/manual-deals/${dealId}`);
-      case "SCRAPED":
-        revalidatePath(`/raw-deals/${dealId}`);
-      case "AI_INFERRED":
-        revalidatePath(`/inferred-deals/${dealId}`);
-    }
+    revalidatePath(`/raw-deals/${dealId}`);
 
     return {
       type: "success",

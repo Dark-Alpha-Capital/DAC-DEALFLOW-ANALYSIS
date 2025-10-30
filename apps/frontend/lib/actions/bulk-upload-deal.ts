@@ -8,9 +8,9 @@ import { rateLimit } from "@/lib/redis";
 import { headers } from "next/headers";
 
 /**
- * Adds a list of transformed deals to Firebase.
+ * Adds a list of transformed deals to the database.
  *
- * This asynchronous function handles bulk uploading of deals to Firebase Firestore.
+ * This asynchronous function handles bulk uploading of deals to the database.
  * Each deal is added to the "manual-deals" collection with a timestamp.
  *
  * @param {TransformedDeal[]} deals - An array of deals conforming to the `TransformedDeal` type.

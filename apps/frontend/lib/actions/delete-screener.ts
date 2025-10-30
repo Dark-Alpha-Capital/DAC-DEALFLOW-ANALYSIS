@@ -5,6 +5,7 @@ import db from "db";
 import { rateLimit } from "@/lib/redis";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { DeleteScreenerById } from "db/mutations";
 
 /**
  * @description Delete a screener
@@ -48,11 +49,7 @@ export async function deleteScreener(screenerId: string) {
   }
 
   try {
-    await db.screener.delete({
-      where: {
-        id: screenerId,
-      },
-    });
+    await DeleteScreenerById(screenerId);
 
     revalidatePath("/screeners");
 

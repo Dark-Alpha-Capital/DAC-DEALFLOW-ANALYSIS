@@ -1,9 +1,8 @@
-import prismaDB from "@/lib/prisma";
-import React from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "./ui/button";
 import { DealType } from "@prisma/client";
 import AIReasoning from "./AiReasoning";
+import { getFirstThreeDealAIScreenings } from "db/queries";
 
 const FetchDealAIScreenings = async ({
   dealId,
@@ -12,20 +11,22 @@ const FetchDealAIScreenings = async ({
   dealId: string;
   dealType: DealType;
 }) => {
-  const screenings = await prismaDB.aiScreening.findMany({
-    where: {
-      dealId: dealId,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 3,
-  });
+  let screenings = null;
+  try {
+    screenings = await getFirstThreeDealAIScreenings(dealId);
+  } catch (error) {
+    console.error("Error fetching deal ai screenings", error);
+    screenings = null;
+  }
+
+  if (!screenings) {
+    return <div>Error fetching deal ai screenings</div>;
+  }
 
   return (
     <div>
       <div>
-        {screenings.length > 0 ? (
+        {screenings && screenings.length > 0 ? (
           screenings.map((e, index) => (
             <AIReasoning
               key={index}
