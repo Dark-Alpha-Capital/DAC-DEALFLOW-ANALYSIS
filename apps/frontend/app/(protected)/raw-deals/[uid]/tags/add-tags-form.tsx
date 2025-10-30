@@ -1,6 +1,6 @@
 "use client";
 
-import { saveDealTags } from "@/app/actions/add-deal-tags";
+import { saveDealTags } from "@/lib/actions/add-deal-tags";
 import {
   Card,
   CardContent,

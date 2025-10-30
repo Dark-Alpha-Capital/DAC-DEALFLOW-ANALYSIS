@@ -1,33 +1,28 @@
 "use server";
 
-import {
-  NewDealFormSchema,
-  NewDealFormSchemaType,
-} from "@/components/forms/new-deal-form";
-import prismaDB from "@/lib/prisma";
+import { NewDealFormSchemaType } from "@/components/forms/new-deal-form";
+import db from "db";
 import { withAuthServerAction } from "@/lib/withAuth";
 import { DealType, User } from "@prisma/client";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
-import React from "react";
 
 /**
- * Adds a new deal to Firebase.
+ * Adds a new deal to the database.
  *
- * This asynchronous function handles adding a new deal to Firebase based on values
+ * This asynchronous function handles adding a new deal to the database based on values
  * validated by the `NewDealSchemaZodType` schema. It is intended for use in React applications
- * where form submissions are validated using Zod schemas before interacting with Firebase.
+ * where form submissions are validated using Zod schemas before interacting with the database.
  *
- * @param {NewDealSchemaZodType} values - An object containing the form values that conform
- *                                         to the `NewDealSchemaZodType` schema. This includes
- *                                         all necessary fields and structure expected by Firebase.
+ * @param {NewDealFormSchemaType} values - An object containing the form values that conform
+ *                                         to the `NewDealFormSchemaType` schema. This includes
+ *                                         all necessary fields and structure expected by the database.
  *
- * @returns {Promise<void>} Returns a promise that resolves once the deal has been added to Firebase.
+ * @returns {Promise<void>} Returns a promise that resolves once the deal has been added to the database.
  */
 const AddDealToDB = withAuthServerAction(
   async (user: User, values: NewDealFormSchemaType) => {
     try {
-      const addedDeal = await prismaDB.deal.create({
+      const addedDeal = await db.deal.create({
         data: {
           title: values.title,
           dealCaption: values.deal_caption,

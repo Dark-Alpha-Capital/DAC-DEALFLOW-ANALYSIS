@@ -1,6 +1,6 @@
 "use server";
 
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { put } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 
@@ -18,7 +18,7 @@ export default async function AddScreeningBaseline(values: FormData) {
       access: "public",
     });
 
-    const docRef = await prismaDB.questionnaire.create({
+    const docRef = await db.questionnaire.create({
       data: {
         fileUrl: url,
         title,

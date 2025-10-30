@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { InferDealSchema } from "@/components/schemas/infer-deal-schema";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 
 export default async function SaveInferredDeal({
   generation,
@@ -36,7 +36,7 @@ export default async function SaveInferredDeal({
 
     console.log("saving inferred deals.....");
 
-    const docRef = await prismaDB.deal.create({
+    const docRef = await db.deal.create({
       data: {
         sourceWebsite: parsedDeal.sourceWebsite || "",
         firstName: parsedDeal.firstName || "",

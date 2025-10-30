@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { rateLimit } from "@/lib/redis";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -48,7 +48,7 @@ export async function deleteScreener(screenerId: string) {
   }
 
   try {
-    await prismaDB.screener.delete({
+    await db.screener.delete({
       where: {
         id: screenerId,
       },

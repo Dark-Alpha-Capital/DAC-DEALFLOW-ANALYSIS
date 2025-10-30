@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import {
   dealSpecificationsFormSchemaType,
   dealSpecificationsFormSchema,
@@ -40,7 +40,7 @@ export async function updateDealSpecificationsAction(
   }
 
   try {
-    await prismaDB.deal.update({
+    await db.deal.update({
       where: {
         id: dealUid,
       },

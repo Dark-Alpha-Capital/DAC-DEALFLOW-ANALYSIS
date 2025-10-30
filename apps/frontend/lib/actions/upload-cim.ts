@@ -4,7 +4,7 @@ import { put } from "@vercel/blob";
 import { DealType, PrismaClient } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { cimFormSchema } from "@/lib/schemas";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 
 export default async function UploadCim(
   data: FormData,
@@ -37,7 +37,7 @@ export default async function UploadCim(
     });
 
     // Save CIM metadata to database
-    const cim = await prismaDB.sIM.create({
+    const cim = await db.sIM.create({
       data: {
         title,
         caption,

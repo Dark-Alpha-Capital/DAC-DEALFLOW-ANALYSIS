@@ -25,7 +25,7 @@ import {
 import { screenDealSchema, screenDealSchemaType } from "@/lib/schemas";
 import { useTransition } from "react";
 import { DealType, Sentiment } from "@prisma/client";
-import editScreenDealResult from "@/app/actions/edit-screen-deal-result";
+import editScreenDealResult from "@/lib/actions/edit-screen-deal-result";
 import { useToast } from "@/hooks/use-toast";
 
 const EditScreeningResultForm = ({

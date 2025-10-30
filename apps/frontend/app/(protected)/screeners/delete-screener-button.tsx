@@ -1,6 +1,6 @@
 "use client";
 
-import { deleteScreener } from "@/app/actions/delete-screener";
+import { deleteScreener } from "@/lib/actions/delete-screener";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import React from "react";

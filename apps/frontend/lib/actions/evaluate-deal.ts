@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { openai, openaiClient } from "@/lib/ai/available-models";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { splitContentIntoChunks } from "@/lib/utils";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
@@ -44,7 +44,7 @@ export async function evaluateDeal(dealId: string, screenerId: string) {
     };
   }
 
-  const fetchedDealInformation = await prismaDB.deal.findFirst({
+  const fetchedDealInformation = await db.deal.findFirst({
     where: {
       id: dealId,
     },
@@ -72,7 +72,7 @@ export async function evaluateDeal(dealId: string, screenerId: string) {
   }
 
   try {
-    const screener = await prismaDB.screener.findFirst({
+    const screener = await db.screener.findFirst({
       where: {
         id: screenerId,
       },

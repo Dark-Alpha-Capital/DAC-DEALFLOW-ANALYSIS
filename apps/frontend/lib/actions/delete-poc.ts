@@ -1,14 +1,14 @@
 "use server";
 
 import { withAuthServerAction } from "@/lib/withAuth";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { User } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 const deletePoc = withAuthServerAction(
   async (user: User, pocId: string, dealId: string) => {
     try {
-      const poc = await prismaDB.pOC.delete({
+      const poc = await db.pOC.delete({
         where: { id: pocId },
       });
 

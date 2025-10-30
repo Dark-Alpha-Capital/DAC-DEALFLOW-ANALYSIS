@@ -1,6 +1,6 @@
 "use client";
 
-import { deleteReasoning } from "@/app/actions/delete-reasoning";
+import { deleteReasoning } from "@/lib/actions/delete-reasoning";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import React from "react";

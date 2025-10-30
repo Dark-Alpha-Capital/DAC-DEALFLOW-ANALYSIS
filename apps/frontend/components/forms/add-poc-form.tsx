@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import AddPoc from "@/app/actions/add-poc";
+import AddPoc from "@/lib/actions/add-poc";
 // import { createPoc } from "@/app/actions/poc-actions"; // Assume an action like this will be created
 
 export const addPocFormSchema = z.object({

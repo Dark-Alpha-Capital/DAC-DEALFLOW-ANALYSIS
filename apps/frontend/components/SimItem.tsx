@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "./ui/button";
 import { Trash2 } from "lucide-react";
 import { DealType } from "@prisma/client";
-import DeleteSimFromDB from "@/app/actions/delete-sim";
+import DeleteSimFromDB from "@/lib/actions/delete-sim";
 import { useToast } from "@/hooks/use-toast";
 
 interface SimItemProps {

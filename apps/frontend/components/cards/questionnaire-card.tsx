@@ -19,7 +19,7 @@ import {
 import { Button } from "../ui/button";
 import { useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
-import DeleteBaseline from "@/app/actions/delete-baseline";
+import DeleteBaseline from "@/lib/actions/delete-baseline";
 
 interface QuestionnaireCardProps {
   questionnaire: Questionnaire;

@@ -1,12 +1,12 @@
 "use server";
 
 import { EditDealFormSchemaType } from "@/components/forms/edit-deal-form";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 
 import { revalidatePath } from "next/cache";
 
 /**
- * Updates an existing deal in Firebase.
+ * Updates an existing deal in the database.
  *
  * This asynchronous function handles updating an existing deal in Firebase based on values
  * validated by the `NewDealFormSchemaType` schema. It is intended for use in React applications
@@ -23,12 +23,12 @@ import { revalidatePath } from "next/cache";
  *                            of the update operation.
  */
 
-export default async function EditDealFromFirebase(
+export default async function EditDealInDB(
   values: EditDealFormSchemaType,
   dealId: string,
 ) {
   try {
-    await prismaDB.deal.update({
+    await db.deal.update({
       where: {
         id: dealId,
       },

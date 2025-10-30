@@ -14,6 +14,14 @@ export const adminEmails = [
   "daigbe@gmail.com",
 ];
 
+export const formatPercent = (value: number) => {
+  return new Intl.NumberFormat("en-US", {
+    style: "percent",
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(value);
+};
+
 export function getFileIcon(type: string) {
   if (type.startsWith("image/")) return ImageIcon;
   if (type.startsWith("video/")) return File;
@@ -62,6 +70,10 @@ export function formatCurrency(value: number): string {
     notation: value >= 1000000 ? "compact" : "standard",
     compactDisplay: "short",
   }).format(value);
+}
+export function calculateEbitdaMargin(ebitda: number, revenue: number) {
+  if (revenue === 0) return 0;
+  return ebitda / revenue;
 }
 
 export function formatNumberWithCommas(x: string) {

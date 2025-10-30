@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "../ui/scroll-area";
 import { TransformedDeal } from "@/app/types";
 import { useToast } from "@/hooks/use-toast";
-import BulkUploadDealsToDB from "@/app/actions/bulk-upload-deal";
+import BulkUploadDealsToDB from "@/lib/actions/bulk-upload-deal";
 
 type SheetDeal = {
   Brokerage: string;

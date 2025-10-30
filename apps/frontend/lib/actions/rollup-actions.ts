@@ -1,6 +1,6 @@
 "use server";
 
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 
@@ -22,7 +22,7 @@ export async function deleteRollup(rollupId: string) {
       return { success: false, error: "Only admins can delete rollups" };
     }
 
-    await prismaDB.rollup.delete({
+    await db.rollup.delete({
       where: { id: rollupId },
     });
 
@@ -55,7 +55,7 @@ export async function updateRollup(
       return { success: false, error: "Unauthorized" };
     }
 
-    const updatedRollup = await prismaDB.rollup.update({
+    const updatedRollup = await db.rollup.update({
       where: { id: rollupId },
       data,
       include: {
@@ -100,7 +100,7 @@ export async function updateDealInRollup(
       return { success: false, error: "Unauthorized" };
     }
 
-    await prismaDB.deal.update({
+    await db.deal.update({
       where: { id: dealId },
       data,
     });
@@ -132,7 +132,7 @@ export async function removeDealFromRollup(dealId: string, rollupId: string) {
       return { success: false, error: "Only admins can remove deals" };
     }
 
-    await prismaDB.deal.update({
+    await db.deal.update({
       where: { id: dealId },
       data: { rollupId: null },
     });

@@ -1,7 +1,7 @@
 "use server";
 
-import { TransformedDeal } from "../types";
-import prismaDB from "@/lib/prisma";
+import { TransformedDeal } from "../../app/types";
+import db from "db";
 import { DealType } from "@prisma/client";
 import { auth } from "@/auth";
 import { rateLimit } from "@/lib/redis";
@@ -51,7 +51,7 @@ const BulkUploadDealsToDB = async (deals: TransformedDeal[]) => {
   console.log("deals received", deals);
 
   try {
-    await prismaDB.deal.createMany({
+    await db.deal.createMany({
       data: deals.map((deal) => ({
         title: deal.dealCaption || null, // Title is optional in schema, use null as fallback
         dealCaption: deal.dealCaption || "", // Required in schema, use empty string as fallback

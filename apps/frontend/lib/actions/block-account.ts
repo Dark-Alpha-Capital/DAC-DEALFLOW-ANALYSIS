@@ -2,10 +2,10 @@
 
 import { auth } from "@/auth";
 import getCurrentUserRole from "@/lib/data/current-user-role";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { revalidatePath } from "next/cache";
 
-const unblockAccount = async (userId: string) => {
+const blockAccount = async (userId: string) => {
   try {
     const session = await auth();
 
@@ -17,12 +17,12 @@ const unblockAccount = async (userId: string) => {
       throw new Error("Unauthorized");
     }
 
-    await prismaDB.user.update({
+    await db.user.update({
       where: {
         id: userId,
       },
       data: {
-        isBlocked: false,
+        isBlocked: true,
       },
     });
 
@@ -30,7 +30,7 @@ const unblockAccount = async (userId: string) => {
 
     return {
       type: "success",
-      message: "Account Unblocked successfully",
+      message: "Account blocked successfully",
     };
   } catch (error) {
     console.error(error);
@@ -38,4 +38,4 @@ const unblockAccount = async (userId: string) => {
   }
 };
 
-export default unblockAccount;
+export default blockAccount;

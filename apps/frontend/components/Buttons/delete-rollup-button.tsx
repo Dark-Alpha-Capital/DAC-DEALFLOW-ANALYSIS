@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { deleteRollup } from "@/app/actions/rollup-actions";
+import { deleteRollup } from "@/lib/actions/rollup-actions";
 import { toast } from "sonner";
 import { useTransition } from "react";
 

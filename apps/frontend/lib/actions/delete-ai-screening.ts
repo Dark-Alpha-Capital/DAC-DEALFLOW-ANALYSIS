@@ -1,5 +1,5 @@
 "use server";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { DealType } from "@prisma/client";
 
 import { revalidatePath } from "next/cache";
@@ -10,7 +10,7 @@ const DeleteAIScreeningFromDB = async (
   dealId: string,
 ) => {
   try {
-    await prismaDB.aiScreening.delete({
+    await db.aiScreening.delete({
       where: {
         id: screeningId,
       },

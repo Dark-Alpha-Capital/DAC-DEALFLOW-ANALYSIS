@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { withAuthServerAction } from "@/lib/withAuth";
 import { User } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -18,7 +18,7 @@ const AddCompany = async (values: AddCompanyFormSchemaType) => {
   }
 
   try {
-    const newCompany = await prismaDB.company.create({
+    const newCompany = await db.company.create({
       data: {
         name: values.name,
         website: values.website,

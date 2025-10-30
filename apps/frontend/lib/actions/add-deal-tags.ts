@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -41,7 +41,7 @@ export async function saveDealTags(tags: string[], dealUid: string) {
   }
 
   try {
-    const updatedDeal = await prismaDB.deal.update({
+    const updatedDeal = await db.deal.update({
       where: {
         id: dealUid,
       },

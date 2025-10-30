@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { openai } from "@/lib/ai/available-models";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { Sentiment } from "@prisma/client";
 import { generateObject } from "ai";
 import { revalidatePath } from "next/cache";
@@ -39,7 +39,7 @@ export const screeningSaveResult = async (
 
     const { title, explanation, sentiment, score } = object;
 
-    await prismaDB.aiScreening.create({
+    await db.aiScreening.create({
       data: {
         title,
         explanation,

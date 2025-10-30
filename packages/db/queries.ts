@@ -3,6 +3,22 @@ import type { DealStatus, DealType } from "@prisma/client";
 import type { Deal } from "@prisma/client";
 import type { AdminUser, CompanyWithRelationsForList } from "./types";
 
+/**
+ * Get a deal by id
+ * @param id - the id of the deal
+ * @returns the deal
+ */
+export const GetDealById = async (id: string) => {
+  try {
+    return await db.deal.findUnique({
+      where: { id },
+    });
+  } catch (error) {
+    console.error("Error fetching deal by id", error);
+    throw error;
+  }
+};
+
 interface GetDealsResult {
   data: Deal[];
   totalCount: number;

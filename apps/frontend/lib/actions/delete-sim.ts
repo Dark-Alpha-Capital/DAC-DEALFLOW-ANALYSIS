@@ -1,6 +1,6 @@
 "use server";
 import { auth } from "@/auth";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { DealType } from "@prisma/client";
 import { del } from "@vercel/blob";
 
@@ -24,7 +24,7 @@ const DeleteSimFromDB = async (
 
     await del(fileUrl);
 
-    await prismaDB.sIM.delete({
+    await db.sIM.delete({
       where: {
         id: cimId,
       },

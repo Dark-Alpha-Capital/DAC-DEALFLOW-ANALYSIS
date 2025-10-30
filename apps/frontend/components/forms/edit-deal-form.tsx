@@ -3,13 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -21,12 +15,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "../ui/textarea";
 import { useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { ToastAction } from "@/components/ui/toast";
 import { useRouter } from "next/navigation";
-import EditDealFromFirebase from "@/app/actions/edit-deal";
+import EditDealInDB from "@/lib/actions/edit-deal";
 import { Deal } from "@prisma/client";
 
 export const EditDealFormSchema = z.object({
@@ -107,18 +99,19 @@ const EditDealForm = ({ deal }: EditDealFormProps) => {
   function onSubmit(values: EditDealFormSchemaType) {
     startTransition(async () => {
       console.log("values", values);
-      const response = await EditDealFromFirebase(values, deal.id);
+      const response = await EditDealInDB(values, deal.id);
       if (response.type === "success") {
         toast({
           title: `Deal Edit successfully`,
-          description: `Deal Edit successfully from the collection`,
+          description: `Deal Edit successfully from the database`,
         });
+        router.push(`/raw-deals/${deal.id}`);
       }
 
       if (response.type === "error") {
         toast({
-          title: "Error saving deal",
-          description: "Error saving deal",
+          title: "Error editing deal",
+          description: "Error editing deal",
           variant: "destructive",
         });
       }

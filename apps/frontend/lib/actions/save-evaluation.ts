@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { rateLimit } from "@/lib/redis";
 import { Sentiment } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -90,7 +90,7 @@ export async function saveEvaluation(
     }
 
     // Create the AI screening record
-    const savedEvaluation = await prismaDB.aiScreening.create({
+    const savedEvaluation = await db.aiScreening.create({
       data: {
         dealId,
         title: evaluation.title,

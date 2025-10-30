@@ -19,13 +19,13 @@ const BulkDeleteDealsFromDb = async (dealIds: string[]) => {
       };
     }
 
-    const response = await BulkDeleteDeals(dealIds);
-    if (response.type === "error") {
-      return response;
-    }
+    await BulkDeleteDeals(dealIds);
 
     revalidatePath("/raw-deals");
-    return response;
+    return {
+      type: "success",
+      message: "Deals deleted successfully",
+    };
   } catch (error) {
     console.error("Error deleting deals:", error);
     if (error instanceof Error) {

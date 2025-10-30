@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
-import DeleteAIScreeningFromDB from "@/app/actions/delete-ai-screening";
+import DeleteAIScreeningFromDB from "@/lib/actions/delete-ai-screening";
 import { DealType, Sentiment } from "@prisma/client";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";

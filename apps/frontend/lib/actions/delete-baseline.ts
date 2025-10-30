@@ -1,6 +1,6 @@
 "use server";
 
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 
@@ -11,7 +11,7 @@ export default async function DeleteBaseline(
   try {
     await del(blobUrl);
 
-    await prismaDB.questionnaire.delete({
+    await db.questionnaire.delete({
       where: {
         id: questionnaireId,
       },

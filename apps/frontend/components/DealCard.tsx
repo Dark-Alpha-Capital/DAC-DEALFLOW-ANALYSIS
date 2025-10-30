@@ -32,8 +32,13 @@ import {
 } from "@/components/ui/tooltip";
 import { Deal, UserRole } from "@prisma/client";
 import { useToast } from "@/hooks/use-toast";
-import DeleteDealFromDB from "@/app/actions/delete-deal";
+import DeleteDealFromDB from "@/lib/actions/delete-deal";
 import { cn } from "@/lib/utils";
+import {
+  calculateEbitdaMargin,
+  formatCurrency,
+  formatPercent,
+} from "@/lib/utils";
 
 const DealCard = ({
   deal,
@@ -53,27 +58,6 @@ const DealCard = ({
   const screenLink = `/raw-deals/${deal.id}/screen`;
 
   const { toast } = useToast();
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(amount);
-  };
-
-  const formatPercent = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "percent",
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    }).format(value);
-  };
-
-  const calculateEbitdaMargin = (ebitda: number, revenue: number) => {
-    if (revenue === 0) return 0;
-    return ebitda / revenue;
-  };
 
   const handleDelete = async () => {
     try {

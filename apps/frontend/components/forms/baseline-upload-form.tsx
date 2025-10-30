@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ImagePlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import AddScreeningBaseline from "@/app/actions/add-baseline";
+import AddScreeningBaseline from "@/lib/actions/add-baseline";
 import { Textarea } from "../ui/textarea";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 7MB in bytes

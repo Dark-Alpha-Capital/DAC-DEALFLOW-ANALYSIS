@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { revalidatePath } from "next/cache";
 
 export async function deleteReasoning(reasoningId: string, dealId: string) {
@@ -26,7 +26,7 @@ export async function deleteReasoning(reasoningId: string, dealId: string) {
   }
 
   try {
-    await prismaDB.aiScreening.delete({
+    await db.aiScreening.delete({
       where: {
         id: reasoningId,
       },

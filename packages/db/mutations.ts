@@ -1,40 +1,17 @@
 import db from ".";
 
-type BulkDeleteDealsResult =
-  | { type: "success"; count: number; message: string }
-  | { type: "error"; message: string; code?: string };
-
-export const BulkDeleteDeals = async (
-  dealIds: readonly string[],
-  client: typeof db = db
-): Promise<BulkDeleteDealsResult> => {
-  if (!dealIds?.length) {
-    return { type: "success", count: 0, message: "No deals to delete" };
-  }
-
+export const BulkDeleteDeals = async (dealIds: readonly string[]) => {
   try {
-    const { count } = await client.deal.deleteMany({
+    if (!dealIds?.length) {
+      throw new Error("No deals to delete");
+    }
+
+    await db.deal.deleteMany({
       where: { id: { in: dealIds as string[] } },
     });
-    return {
-      type: "success",
-      count,
-      message: `${count} deal${count === 1 ? "" : "s"} deleted successfully`,
-    };
-  } catch (error: unknown) {
+  } catch (error) {
     console.error("Error deleting deals:", error);
-    const message =
-      error instanceof Error ? error.message : "Unknown error occurred";
-    const code =
-      typeof error === "object" && error && "code" in error
-        ? (error.code as string | undefined)
-        : undefined;
-
-    return {
-      type: "error",
-      message: `Failed to delete deals: ${message}`,
-      code,
-    };
+    throw error;
   }
 };
 
@@ -54,6 +31,21 @@ export const DeleteCompanyById = async (companyId: string) => {
     };
   } catch (error) {
     console.error("Error deleting company:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a deal by id
+ * @param dealId - the id of the deal to delete
+ */
+export const DeleteDealById = async (dealId: string) => {
+  try {
+    await db.deal.delete({
+      where: { id: dealId },
+    });
+  } catch (error) {
+    console.error("Error deleting deal:", error);
     throw error;
   }
 };

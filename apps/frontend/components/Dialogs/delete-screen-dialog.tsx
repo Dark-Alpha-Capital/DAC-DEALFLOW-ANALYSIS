@@ -12,7 +12,7 @@ import {
 import ScreenDealComponent from "@/components/ScreenDealComponent";
 import { Button } from "../ui/button";
 import { Trash } from "lucide-react";
-import DeleteBaseline from "@/app/actions/delete-baseline";
+import DeleteBaseline from "@/lib/actions/delete-baseline";
 import { useToast } from "@/hooks/use-toast";
 
 const DeleteScreenerDialog = ({

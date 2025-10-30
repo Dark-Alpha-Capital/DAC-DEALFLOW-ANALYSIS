@@ -24,7 +24,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import PreviousPageButton from "@/components/PreviousPageButton";
 import { DealDetailItem } from "@/components/DealDetailItem";
-import prismaDB from "@/lib/prisma";
 import SimUploadDialog from "@/components/Dialogs/sim-upload-dialog";
 import FetchDealSim from "@/components/FetchDealSim";
 import SimItemSkeleton from "@/components/skeletons/SimItemSkeleton";
@@ -44,6 +43,8 @@ import { formatNumberWithCommas } from "@/lib/utils";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { DealSpecificationsDialog } from "@/components/Dialogs/DealSpecificationsDialog";
+import { GetDealById } from "db/queries";
+import { Deal } from "@prisma/client";
 
 type Params = Promise<{ uid: string }>;
 
@@ -53,11 +54,7 @@ export async function generateMetadata(props: {
   const { uid } = await props.params;
 
   try {
-    const fetchedDeal = await prismaDB.deal.findUnique({
-      where: {
-        id: uid,
-      },
-    });
+    const fetchedDeal = await GetDealById(uid);
 
     return {
       title: fetchedDeal?.dealCaption || "Raw Deal Page",
@@ -78,13 +75,15 @@ export default async function ManualDealSpecificPage(props: {
   const { uid } = await props.params;
   const userSession = await auth();
 
-     if (!userSession) redirect("/login");
+  if (!userSession) redirect("/login");
 
-  const fetchedDeal = await prismaDB.deal.findUnique({
-    where: {
-      id: uid,
-    },
-  });
+  let fetchedDeal: Deal | null = null;
+
+  try {
+    fetchedDeal = await GetDealById(uid);
+  } catch (err) {
+    console.error("Error fetching deal by id", err);
+  }
 
   if (!fetchedDeal) {
     return (
@@ -98,7 +97,7 @@ export default async function ManualDealSpecificPage(props: {
               The deal you are looking for does not exist or has been removed.
             </p>
             <Button asChild className="mt-4">
-              <Link href="/manual-deals">Back to Manual Deals</Link>
+              <Link href="/raw-deals">Back to Raw Deals</Link>
             </Button>
           </CardContent>
         </Card>
@@ -243,7 +242,7 @@ export default async function ManualDealSpecificPage(props: {
             <Edit className="mr-2 h-4 w-4" /> Edit Deal
           </Link>
         </Button>
-         <PerformRollup />
+        <PerformRollup />
         {bitrixId ? (
           <Badge variant="outline">
             <CheckCircle className="mr-2 h-4 w-4" /> Deal Published to Bitrix

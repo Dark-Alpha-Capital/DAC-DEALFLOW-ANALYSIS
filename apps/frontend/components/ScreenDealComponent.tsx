@@ -8,8 +8,8 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import ReactMarkdown from "react-markdown";
 import { Trash2, Save, PlayCircle } from "lucide-react";
-import screenDeal from "@/app/actions/screen-deal";
-import { screeningSaveResult } from "@/app/actions/screening-save-result";
+import screenDeal from "@/lib/actions/screen-deal";
+import { screeningSaveResult } from "@/lib/actions/screening-save-result";
 import { Skeleton } from "./ui/skeleton";
 import axios from "axios";
 import { Input } from "./ui/input";
@@ -254,7 +254,7 @@ const ScreenDealComponent = ({ deal }: { deal: Deal }) => {
               {annotations.map((annotation) => (
                 <div key={annotation}>{annotation}</div>
               ))}
-              <div className="prose dark:prose-invert max-w-none">
+              <div className="prose max-w-none dark:prose-invert">
                 <ReactMarkdown>{screeningResult}</ReactMarkdown>
               </div>
             </div>

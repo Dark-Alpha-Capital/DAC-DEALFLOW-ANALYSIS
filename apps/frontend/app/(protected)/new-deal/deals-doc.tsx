@@ -29,7 +29,7 @@ import {
   InferRawDealsSchema,
   inferRawDealsSchema,
 } from "@/lib/zod-schemas/raw-deal-schema";
-import BulkUploadDealsToDB from "@/app/actions/bulk-upload-deal";
+import BulkUploadDealsToDB from "@/lib/actions/bulk-upload-deal";
 import { toast } from "sonner";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 

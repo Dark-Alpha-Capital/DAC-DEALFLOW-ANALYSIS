@@ -19,7 +19,7 @@ import { Textarea } from "../ui/textarea";
 import { useTransition } from "react";
 
 import { useRouter } from "next/navigation";
-import AddDealToDB from "@/app/actions/add-deal";
+import AddDealToDB from "@/lib/actions/add-deal";
 import { toast } from "sonner";
 
 export const NewDealFormSchema = z.object({

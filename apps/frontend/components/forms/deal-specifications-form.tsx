@@ -30,7 +30,7 @@ import {
 import { DealStatus } from "@prisma/client";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { updateDealSpecificationsAction } from "@/app/actions/update-deal-specifications";
+import { updateDealSpecificationsAction } from "@/lib/actions/update-deal-specifications";
 
 const DealSpecificationsForm = ({
   dealUid,

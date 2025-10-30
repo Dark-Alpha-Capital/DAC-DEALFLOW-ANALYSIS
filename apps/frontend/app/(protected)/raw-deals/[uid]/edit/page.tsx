@@ -1,9 +1,9 @@
 import EditDealForm from "@/components/forms/edit-deal-form";
 import PreviousPageButton from "@/components/PreviousPageButton";
 import { Card, CardContent } from "@/components/ui/card";
-import prismaDB from "@/lib/prisma";
 import { Metadata } from "next";
-import React from "react";
+import { GetDealById } from "db/queries";
+import { Deal } from "@prisma/client";
 
 type Params = Promise<{ uid: string }>;
 
@@ -13,11 +13,7 @@ export async function generateMetadata(props: {
   const { uid } = await props.params;
 
   try {
-    const fetchedDeal = await prismaDB.deal.findUnique({
-      where: {
-        id: uid,
-      },
-    });
+    const fetchedDeal = await GetDealById(uid);
 
     return {
       title: `Edit ${fetchedDeal?.dealCaption}` || "Dark Alpha Capital",
@@ -34,11 +30,13 @@ export async function generateMetadata(props: {
 const EditManualDealPage = async (props: { params: Params }) => {
   const { uid } = await props.params;
 
-  const fetchedDeal = await prismaDB.deal.findUnique({
-    where: {
-      id: uid,
-    },
-  });
+  let fetchedDeal: Deal | null = null;
+
+  try {
+    fetchedDeal = await GetDealById(uid);
+  } catch (error) {
+    console.error("Error fetching deal by id", error);
+  }
 
   if (!fetchedDeal) {
     return (

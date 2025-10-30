@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { screenDealSchemaType } from "@/lib/schemas";
 import { DealType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -44,7 +44,7 @@ const editScreenDealResult = async (
       };
     }
 
-    await prismaDB.aiScreening.update({
+    await db.aiScreening.update({
       where: {
         id: screeningId,
       },

@@ -4,7 +4,7 @@
 import axios from "axios";
 import { Deal, User } from "@prisma/client";
 import { auth } from "@/auth";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { revalidatePath } from "next/cache";
 import { withAuthServerAction } from "@/lib/withAuth";
 
@@ -62,7 +62,7 @@ const exportDealToBitrix = withAuthServerAction(
       console.log("response data", responseData);
 
       if (responseData.result) {
-        await prismaDB.deal.update({
+        await db.deal.update({
           where: { id: deal.id },
           data: {
             bitrixId: responseData.result.toString(),

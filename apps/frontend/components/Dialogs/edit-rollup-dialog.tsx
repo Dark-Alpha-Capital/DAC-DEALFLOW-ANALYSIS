@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Rollup as RollupType, Deal as DealType } from "@prisma/client";
 import { toast } from "sonner";
-import { updateRollup, updateDealInRollup } from "@/app/actions/rollup-actions";
+import { updateRollup, updateDealInRollup } from "@/lib/actions/rollup-actions";
 
 // --- Custom types ---
 export type DealUpdatePayload = {

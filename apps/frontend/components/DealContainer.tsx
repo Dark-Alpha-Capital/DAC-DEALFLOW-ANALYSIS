@@ -5,7 +5,7 @@ import { Grid, List } from "lucide-react";
 import DealCard from "@/components/DealCard";
 import DealListItem from "@/components/DealListItem";
 import type { Deal, UserRole } from "@prisma/client";
-import DeleteDealFromDB from "@/app/actions/delete-deal";
+import DeleteDealFromDB from "@/lib/actions/delete-deal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "./ui/button";
-import BulkDeleteDealsFromDb from "@/app/actions/bulk-delete-deals";
+import BulkDeleteDealsFromDb from "@/lib/actions/bulk-delete-deals";
 import { toast } from "sonner";
 
 import { BulkScreenDialog } from "./Dialogs/bulk-screen-dialog";

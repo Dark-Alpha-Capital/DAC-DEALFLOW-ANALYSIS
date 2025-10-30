@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { screenDealSchemaType } from "@/lib/schemas";
 import { DealType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -32,7 +32,7 @@ const SaveScreeningResultToDB = async (
       throw new Error("User not authenticated");
     }
 
-    const addedScreenResult = await prismaDB.aiScreening.create({
+    const addedScreenResult = await db.aiScreening.create({
       data: {
         dealId,
         title: values.title,

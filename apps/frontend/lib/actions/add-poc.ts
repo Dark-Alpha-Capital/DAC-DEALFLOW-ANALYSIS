@@ -4,7 +4,7 @@ import {
   addPocFormSchema,
   AddPocFormValues,
 } from "@/components/forms/add-poc-form";
-import prismaDB from "@/lib/prisma";
+import db from "db";
 import { User } from "@prisma/client";
 import { withAuthServerAction } from "@/lib/withAuth";
 import { revalidatePath } from "next/cache";
@@ -12,20 +12,8 @@ import { z } from "zod";
 
 const AddPoc = withAuthServerAction(
   async (user: User, values: AddPocFormValues, dealId: string) => {
-    // const validationResult = addPocFormSchema.safeParse(values);
-
-    // if (!validationResult.success) {
-    //   console.log(validationResult.error.flatten().fieldErrors);
-    //   return {
-    //     type: "error",
-    //     message: "Invalid input. Please check the form fields.",
-    //   };
-    // }
-
-    // const validatedFields = validationResult.data;
-
     try {
-      const newPoc = await prismaDB.pOC.create({
+      const newPoc = await db.pOC.create({
         data: {
           name: values.name,
           email: values.email,
@@ -35,7 +23,7 @@ const AddPoc = withAuthServerAction(
       });
 
       revalidatePath(`/raw-deals/${dealId}`);
-      revalidatePath(`/manual-deals/${dealId}`); // Assuming this path might also need revalidation
+      revalidatePath(`/manual-deals/${dealId}`);
 
       return {
         type: "success",

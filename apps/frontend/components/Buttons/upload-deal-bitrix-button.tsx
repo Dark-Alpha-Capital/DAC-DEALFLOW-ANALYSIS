@@ -4,7 +4,7 @@ import { Upload, Loader2 } from "lucide-react";
 import React, { useTransition } from "react";
 import { Button } from "../ui/button";
 import { Deal } from "@prisma/client";
-import { exportDealToBitrix } from "@/app/actions/upload-bitrix";
+import { exportDealToBitrix } from "@/lib/actions/upload-bitrix";
 import { toast } from "sonner";
 
 const UploadDealToBitrixButton = ({ specificDeal }: { specificDeal: Deal }) => {

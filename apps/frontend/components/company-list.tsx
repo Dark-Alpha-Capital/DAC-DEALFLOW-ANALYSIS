@@ -25,7 +25,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import DeleteCompanyDialog from "@/components/Dialogs/delete-company-dialog";
-import DeleteCompany from "@/app/actions/delete-company";
+import DeleteCompany from "@/lib/actions/delete-company";
 import { CompanyWithRelationsForList } from "db/types";
 
 interface CompanyCardProps {

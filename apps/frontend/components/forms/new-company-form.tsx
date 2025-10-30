@@ -30,7 +30,7 @@ import {
   AddCompanyFormSchema,
   AddCompanyFormSchemaType,
 } from "@/lib/zod-schemas/add-company-schema";
-import AddCompany from "@/app/actions/add-company";
+import AddCompany from "@/lib/actions/add-company";
 import { Loader2 } from "lucide-react";
 
 export default function CreateNewCompanyForm() {

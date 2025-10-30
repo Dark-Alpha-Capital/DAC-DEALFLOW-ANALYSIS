@@ -3,7 +3,7 @@ import { Trash } from "lucide-react";
 
 import React from "react";
 import { Button } from "../ui/button";
-import deletePoc from "@/app/actions/delete-poc";
+import deletePoc from "@/lib/actions/delete-poc";
 import { toast } from "sonner";
 
 const DeletePocButton = ({
