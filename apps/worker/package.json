@@ -25,13 +25,15 @@
     "@prisma/client": "^6.12.0",
     "@types/express": "^5.0.3",
     "@types/multer": "^2.0.0",
-    "ai": "^5.0.24",
+    "ai": "^5.0.82",
+    "db": "workspace:*",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "ioredis": "^5.8.1",
     "multer": "^2.0.2",
     "openai": "^5.10.1",
     "redis": "^5.6.0",
-    "zod": "^4.0.11"
+    "types": "workspace:*",
+    "zod": "^3.25.76"
   }
 }

@@ -11,10 +11,10 @@ import Link from "next/link";
 import DeleteReasoningButton from "./delete-reasoning-button";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import PreviousPageButton from "@/components/PreviousPageButton";
 
 const page = async ({ params }: { params: Promise<{ uid: string }> }) => {
   const userSession = await auth();
-
   if (!userSession) redirect("/login");
 
   const dealId = (await params).uid;
@@ -22,7 +22,8 @@ const page = async ({ params }: { params: Promise<{ uid: string }> }) => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="mx-auto max-w-4xl space-y-6">
-        {/* Page Header */}
+        <PreviousPageButton />
+
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Deal Reasonings
@@ -62,7 +63,7 @@ async function GetDealReasonings({ dealId }: { dealId: string }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div>
       {reasonings.map((reasoning, index) => (
         <ReasoningCard
           key={reasoning.id}

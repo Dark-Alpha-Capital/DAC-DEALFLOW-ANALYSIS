@@ -1,10 +1,10 @@
 import { generateText } from "ai";
-import prismaDB from "../prisma";
 import { splitContentIntoChunks } from "../utils";
-import { openai, openaiClient } from "../ai/available-models";
+import { openai } from "../ai/available-models";
 import { z } from "zod";
 import { generateObject } from "ai";
 import { Sentiment } from "@prisma/client";
+import db from "db";
 
 /**
  * Evaluates a deal against a screener
@@ -16,7 +16,7 @@ export async function evaluateDealAndSaveResult(
   dealId: string,
   screenerId: string
 ) {
-  const fetchedDealInformation = await prismaDB.deal.findFirst({
+  const fetchedDealInformation = await db.deal.findFirst({
     where: {
       id: dealId,
     },
@@ -44,7 +44,7 @@ export async function evaluateDealAndSaveResult(
   }
 
   try {
-    const screener = await prismaDB.screener.findFirst({
+    const screener = await db.screener.findFirst({
       where: {
         id: screenerId,
       },
@@ -121,7 +121,7 @@ export async function evaluateDealAndSaveResult(
     }
 
     // Create the AI screening record
-    const savedEvaluation = await prismaDB.aiScreening.create({
+    const savedEvaluation = await db.aiScreening.create({
       data: {
         dealId,
         title: evaluation.title,
