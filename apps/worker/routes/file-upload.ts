@@ -1,134 +1,102 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import multer from "multer";
-
-import redis from "../lib/redis";
+import Redis from "ioredis";
+import { v4 as uuidv4 } from "uuid";
 
 const router = Router();
+const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 
 // Configure multer to store files in memory by default.
 // Swap to disk storage if needed in the future.
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+});
+
+/**
+ * Publish progress update to Redis
+ * @param channel - Redis channel (e.g., "file-upload", "bulk-upload")
+ * @param jobId - Unique job identifier
+ * @param data - Progress data
+ */
+async function publishProgress(
+  channel: string,
+  jobId: string,
+  data: Record<string, any>
+) {
+  const payload = {
+    jobId,
+    timestamp: Date.now(),
+    ...data,
+  };
+
+  await redis.publish(channel, JSON.stringify(payload));
+  console.log(`📡 Published to ${channel}:`, payload);
+}
 
 router.post(
   "/file-upload",
   upload.single("file"),
   async (req: Request, res: Response) => {
+    const file = req.file;
+    const { userId, userEmail } = req.body;
+
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const jobId = uuidv4();
+
     try {
-      console.log(`[file-upload-worker] Received request`, {
-        timestamp: new Date().toISOString(),
-        bodyKeys: Object.keys(req.body),
+      // Send initial response with jobId
+      res.status(202).json({
+        jobId,
+        message: "File upload started",
+        fileName: file.originalname,
+        fileSize: file.size,
       });
 
-      const msg = req.body.message;
-      const data = JSON.parse(Buffer.from(msg.data, "base64").toString());
-
-      const { jobId, fileName, fileBuffer } = data;
-
-      console.log(`[file-upload-worker] Processing job`, {
-        jobId,
-        fileName,
-        fileSize: fileBuffer ? Buffer.from(fileBuffer, "base64").length : 0,
-        timestamp: new Date().toISOString(),
+      // Publish initial progress
+      await publishProgress("file-upload", jobId, {
+        status: "processing",
+        progress: 0,
+        fileName: file.originalname,
+        fileSize: file.size,
+        userId,
+        userEmail,
       });
 
-      // Update job status to processing
-      await redis.hset(`job:${jobId}`, "status", "processing");
-      console.log(`[file-upload-worker] Updated job status to processing`, {
-        jobId,
-      });
+      // Simulate file processing (replace with actual logic)
+      for (let i = 1; i <= 10; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
-      const buffer = Buffer.from(fileBuffer, "base64");
-      const destFileName = `uploads/${Date.now()}-${fileName}`;
-
-      console.log(`[file-upload-worker] Starting file upload simulation`, {
-        jobId,
-        fileName,
-        destFileName,
-        bufferSize: buffer.length,
-      });
-
-      // Simulate file upload processing with realistic delays
-      const uploadSteps = [
-        { step: "Validating file", delay: 200 },
-        { step: "Compressing file", delay: 500 },
-        { step: "Uploading to storage", delay: 800 },
-        { step: "Generating metadata", delay: 300 },
-        { step: "Finalizing upload", delay: 200 },
-      ];
-
-      for (const { step, delay } of uploadSteps) {
-        console.log(`[file-upload-worker] ${step}`, {
-          jobId,
-          fileName,
-          step,
-          delay,
-        });
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-
-      console.log(`[file-upload-worker] File upload simulation completed`, {
-        jobId,
-        fileName,
-        destFileName,
-        totalProcessingTime: uploadSteps.reduce((sum, s) => sum + s.delay, 0),
-      });
-
-      // Simulate actual storage upload (commented out for testing)
-      // await storage.bucket(BUCKET).file(destFileName).save(buffer);
-
-      // Update job progress
-      const processed = await redis.hincrby(`job:${jobId}`, "processed", 1);
-      const total = await redis.hget(`job:${jobId}`, "totalFiles");
-
-      console.log(`[file-upload-worker] Updated job progress`, {
-        jobId,
-        fileName,
-        processed,
-        total,
-        isComplete: processed === Number(total),
-      });
-
-      // Publish progress update
-      const progressData = {
-        jobId,
-        status: processed === Number(total) ? "done" : "processing",
-        processed,
-        total,
-        fileName,
-        timestamp: new Date().toISOString(),
-      };
-
-      await redis.publish(`job:${jobId}`, JSON.stringify(progressData));
-      console.log(
-        `[file-upload-worker] Published progress update`,
-        progressData
-      );
-
-      // Mark job as complete if all files processed
-      if (processed === Number(total)) {
-        await redis.hset(`job:${jobId}`, "status", "done");
-        console.log(`[file-upload-worker] Job completed`, {
-          jobId,
-          totalFiles: total,
-          finalStatus: "done",
+        await publishProgress("file-upload", jobId, {
+          status: "processing",
+          progress: i * 10,
+          fileName: file.originalname,
+          message: `Processing chunk ${i}/10...`,
         });
       }
 
-      console.log(`[file-upload-worker] Request completed successfully`, {
-        jobId,
-        fileName,
-        status: "success",
+      // Final completion
+      await publishProgress("file-upload", jobId, {
+        status: "completed",
+        progress: 100,
+        fileName: file.originalname,
+        message: "File processing completed",
       });
 
-      res.status(204).send();
+      console.log(`✅ File upload completed: ${jobId}`);
     } catch (error) {
-      console.error(`[file-upload-worker] Error processing file upload`, {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        timestamp: new Date().toISOString(),
+      console.error(`❌ File upload error for ${jobId}:`, error);
+
+      await publishProgress("file-upload", jobId, {
+        status: "failed",
+        progress: 0,
+        fileName: file.originalname,
+        error: error instanceof Error ? error.message : "Unknown error",
       });
-      res.status(500).json({ error: "Internal server error" });
     }
   }
 );
