@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import multer from "multer";
 
-import redis from "../lib/redis";
+import { redis } from "services";
 
 const router = Router();
 

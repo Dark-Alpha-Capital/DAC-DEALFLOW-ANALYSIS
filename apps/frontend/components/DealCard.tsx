@@ -42,13 +42,11 @@ import {
 
 const DealCard = ({
   deal,
-  userRole,
   className,
   showActions = true,
   showScreenButton = true,
 }: {
   deal: Deal;
-  userRole: UserRole;
   className?: string;
   showActions?: boolean;
   showScreenButton?: boolean;
@@ -109,25 +107,24 @@ const DealCard = ({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              {userRole === "ADMIN" && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 hover:bg-red-100 dark:hover:bg-red-900/20"
-                        onClick={handleDelete}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Delete Deal</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 hover:bg-red-100 dark:hover:bg-red-900/20"
+                      onClick={handleDelete}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Delete Deal</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )}
         </div>

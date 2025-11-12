@@ -3,7 +3,7 @@
 import { NewDealFormSchemaType } from "@/components/forms/new-deal-form";
 import db from "db";
 import { DealType } from "db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { auth } from "@/auth";
 
 const AddDealToDB = async (values: NewDealFormSchemaType) => {
@@ -39,6 +39,7 @@ const AddDealToDB = async (values: NewDealFormSchemaType) => {
     });
 
     revalidatePath(`/manual-deals`);
+    updateTag("deals");
 
     return {
       dealId: addedDeal.id,

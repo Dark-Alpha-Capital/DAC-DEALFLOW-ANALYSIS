@@ -6,6 +6,7 @@ import { DealType } from "@prisma/client";
 import { auth } from "@/auth";
 import { rateLimit } from "@/lib/redis";
 import { headers } from "next/headers";
+import { revalidateTag, updateTag } from "next/cache";
 
 /**
  * Adds a list of transformed deals to the database.
@@ -71,6 +72,8 @@ const BulkUploadDealsToDB = async (deals: TransformedDeal[]) => {
         userId: userSession.user.id,
       })),
     });
+
+    updateTag("deals");
 
     return {
       success: `${deals.length} deals uploaded successfully.`,

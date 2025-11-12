@@ -3,6 +3,11 @@ import "dotenv/config";
 import Exa from "exa-js";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
+
+export const googleGenAI = new GoogleGenAI({
+  apiKey: process.env.GOOGLE_AI_API_KEY,
+});
 
 export const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_AI_API_KEY,

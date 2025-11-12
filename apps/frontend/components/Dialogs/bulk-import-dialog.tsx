@@ -101,9 +101,14 @@ export function BulkImportDialog() {
       const data = new Uint8Array(e.target?.result as ArrayBuffer);
       const workbook = XLSX.read(data, { type: "array" });
       const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+      const worksheet = workbook.Sheets[sheetName || ""];
 
-      const rows = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
+      const rows = XLSX.utils.sheet_to_json<string[]>(
+        worksheet as unknown as XLSX.WorkSheet,
+        {
+          header: 1,
+        },
+      );
       const headerRow = (rows[0] || []) as string[];
       console.log("headerRow", headerRow);
       console.log("expectedHeaders", expectedHeaders);
@@ -119,7 +124,9 @@ export function BulkImportDialog() {
         return;
       }
 
-      const jsonData = XLSX.utils.sheet_to_json(worksheet) as SheetDeal[];
+      const jsonData = XLSX.utils.sheet_to_json(
+        worksheet as unknown as XLSX.WorkSheet,
+      ) as SheetDeal[];
       setDeals(jsonData);
       setError(null);
     };

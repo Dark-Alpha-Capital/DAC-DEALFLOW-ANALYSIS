@@ -1,21 +1,21 @@
 // WebSocket server for real-time job updates
 import type { ServerWebSocket } from "bun";
-import { redis } from "services";
+import Redis from "ioredis";
+
+const redis = new Redis(process.env.REDIS_URL!);
 
 type WS = ServerWebSocket<unknown>;
 
-// Map: WebSocket → clientId
 const clientIds = new Map<WS, string>();
 
-// Map: WebSocket → Set of jobIds
 const clientJobs = new Map<WS, Set<string>>();
 
 // Map: jobId → WebSocket
 const jobSubscriptions = new Map<string, WS>();
 
-redis.subscribe("job-updates", (channel, msg) => {
+await redis.subscribe("job-updates", (msg, channel) => {
   try {
-    const update = JSON.parse(msg.toString());
+    const update = JSON.parse(msg?.toString() ?? "");
     console.log("📨 Redis message received:", channel, update);
 
     const ws = jobSubscriptions.get(update.jobId);

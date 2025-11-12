@@ -3,6 +3,7 @@ import { NextConfig } from "next";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse", "tiktoken"],
   reactCompiler: true,
+  cacheComponents: true,
 
   images: {
     remotePatterns: [

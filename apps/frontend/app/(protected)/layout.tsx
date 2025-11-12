@@ -20,8 +20,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const userSession = await auth();
-
   return (
     <html
       lang="en"
@@ -38,7 +36,7 @@ export default async function RootLayout({
           <SessionProvider>
             <main>
               <MenuDialog />
-              <Header session={userSession} />
+              <Header />
 
               {children}
               <Footer />

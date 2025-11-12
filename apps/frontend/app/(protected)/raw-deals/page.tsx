@@ -24,8 +24,6 @@ import SearchStatusDeals from "@/components/search-status-deals";
 import SearchTagsDeals from "@/components/search-tags-deals";
 import DeleteFiltersButton from "@/components/Buttons/delete-filters-button";
 import SearchRecentDeals from "@/components/search-recent-deals";
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 import { GetAllDeals } from "db/queries";
 
 export const metadata: Metadata = {
@@ -36,67 +34,6 @@ export const metadata: Metadata = {
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
 
 const RawDealsPage = async (props: { searchParams: SearchParams }) => {
-  const searchParams = await props.searchParams;
-  const search = searchParams?.query || "";
-  const revenue = searchParams?.revenue || "";
-  const location = searchParams?.location || "";
-  const maxRevenue = searchParams?.maxRevenue || "";
-  const maxEbitda = searchParams?.maxEbitda || "";
-  const brokerage = searchParams?.brokerage || "";
-  const industry = searchParams?.industry || "";
-  const ebitdaMargin = searchParams?.ebitdaMargin || "";
-  const currentPage = Number(searchParams?.page) || 1;
-  const limit = Number(searchParams?.limit) || 50;
-  const offset = (currentPage - 1) * limit;
-  const ebitda = searchParams?.ebitda || "";
-  const userId = searchParams?.userId || "";
-  const showSeen = searchParams?.seen === "true" ? true : false;
-  const showRecent = searchParams?.recent === "true" ? true : false;
-  const showReviewed = searchParams?.reviewed === "true" ? true : false;
-  const showPublished = searchParams?.published === "true" ? true : false;
-
-  const status = searchParams?.status || "";
-
-  const dealTypes =
-    typeof searchParams?.dealType === "string"
-      ? [searchParams.dealType]
-      : searchParams?.dealType || [];
-
-  const tags =
-    typeof searchParams?.tags === "string"
-      ? [searchParams.tags]
-      : searchParams?.tags || [];
-
-  console.log("tags inside filter", tags);
-
-  const userSession = await auth();
-
-  if (!userSession) redirect("/auth/login");
-
-  const { data, totalPages, totalCount } = await GetAllDeals({
-    search,
-    offset,
-    limit,
-    dealTypes: dealTypes as DealType[],
-    ebitda,
-    userId,
-    revenue,
-    location,
-    maxRevenue,
-    maxEbitda,
-    brokerage,
-    industry,
-    ebitdaMargin,
-    showSeen,
-    showRecent,
-    showReviewed,
-    showPublished,
-    status: status as DealStatus,
-    tags: tags as string[],
-  });
-
-  const currentUserRole = await getCurrentUserRole();
-
   return (
     <section className="block-space group container">
       <div className="mb-8 text-center">
@@ -110,14 +47,6 @@ const RawDealsPage = async (props: { searchParams: SearchParams }) => {
 
       <div className="mb-6 flex flex-col gap-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2">
-            <h4 className="text-lg font-medium">
-              Total Deals: <span className="font-bold">{totalCount}</span>
-            </h4>
-            <div className="ml-4 rounded-md bg-primary/10 px-3 py-1 text-sm">
-              Page {currentPage} of {totalPages}
-            </div>
-          </div>
           <div className="flex w-full flex-col gap-4 md:w-auto md:flex-row">
             <Suspense fallback={<DealTypeFilterSkeleton />}>
               <DealTypeFilter />
@@ -184,7 +113,72 @@ const RawDealsPage = async (props: { searchParams: SearchParams }) => {
           <DeleteFiltersButton />
         </div>
       </div>
+      <Suspense fallback={<div>Loading deals...</div>}>
+        <ShowDealsComponent searchParams={props.searchParams} />
+      </Suspense>
+    </section>
+  );
+};
 
+export default RawDealsPage;
+
+async function ShowDealsComponent(props: { searchParams: SearchParams }) {
+  const searchParams = await props.searchParams;
+  const search = searchParams?.query || "";
+  const revenue = searchParams?.revenue || "";
+  const location = searchParams?.location || "";
+  const maxRevenue = searchParams?.maxRevenue || "";
+  const maxEbitda = searchParams?.maxEbitda || "";
+  const brokerage = searchParams?.brokerage || "";
+  const industry = searchParams?.industry || "";
+  const ebitdaMargin = searchParams?.ebitdaMargin || "";
+  const currentPage = Number(searchParams?.page) || 1;
+  const limit = Number(searchParams?.limit) || 50;
+  const offset = (currentPage - 1) * limit;
+  const ebitda = searchParams?.ebitda || "";
+  const userId = searchParams?.userId || "";
+  const showSeen = searchParams?.seen === "true" ? true : false;
+  const showRecent = searchParams?.recent === "true" ? true : false;
+  const showReviewed = searchParams?.reviewed === "true" ? true : false;
+  const showPublished = searchParams?.published === "true" ? true : false;
+
+  const status = searchParams?.status || "";
+
+  const dealTypes =
+    typeof searchParams?.dealType === "string"
+      ? [searchParams.dealType]
+      : searchParams?.dealType || [];
+
+  const tags =
+    typeof searchParams?.tags === "string"
+      ? [searchParams.tags]
+      : searchParams?.tags || [];
+
+  console.log("tags inside filter", tags);
+  const { data, totalPages, totalCount } = await GetAllDeals({
+    search,
+    offset,
+    limit,
+    dealTypes: dealTypes as DealType[],
+    ebitda,
+    userId,
+    revenue,
+    location,
+    maxRevenue,
+    maxEbitda,
+    brokerage,
+    industry,
+    ebitdaMargin,
+    showSeen,
+    showRecent,
+    showReviewed,
+    showPublished,
+    status: status as DealStatus,
+    tags: tags as string[],
+  });
+
+  return (
+    <div>
       <div className="group-has-[[data-pending]]:animate-pulse">
         {data.length === 0 ? (
           <div className="mt-12 text-center">
@@ -195,7 +189,6 @@ const RawDealsPage = async (props: { searchParams: SearchParams }) => {
         ) : (
           <DealContainer
             data={data}
-            userRole={currentUserRole!}
             currentPage={currentPage}
             totalPages={totalPages}
             totalCount={totalCount}
@@ -205,8 +198,6 @@ const RawDealsPage = async (props: { searchParams: SearchParams }) => {
       <div className="mt-8 flex justify-center">
         <Pagination totalPages={totalPages} />
       </div>
-    </section>
+    </div>
   );
-};
-
-export default RawDealsPage;
+}

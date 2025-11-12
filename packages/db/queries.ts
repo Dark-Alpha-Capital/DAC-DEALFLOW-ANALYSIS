@@ -1,4 +1,6 @@
 import db from ".";
+
+import { cacheTag, revalidateTag, cacheLife } from "next/cache";
 import type { DealStatus, DealType } from "@prisma/client";
 import type { Deal } from "@prisma/client";
 import type { AdminUser, CompanyWithRelationsForList } from "./types";
@@ -9,7 +11,12 @@ import type { AdminUser, CompanyWithRelationsForList } from "./types";
  * @returns the deal
  */
 export const GetDealById = async (id: string) => {
+  "use cache";
+
   try {
+    cacheTag("deal");
+    cacheLife("hours");
+
     return await db.deal.findUnique({
       where: { id },
     });
@@ -80,6 +87,11 @@ export const GetAllDeals = async ({
   tags?: string[];
   showRecent?: boolean;
 }): Promise<GetDealsResult> => {
+  "use cache";
+
+  cacheTag("deals");
+  cacheLife("hours");
+
   const ebitdaValue = ebitda ? parseFloat(ebitda) : undefined;
   const revenueValue = revenue ? parseFloat(revenue) : undefined;
   const locationValue = location ? location : undefined;

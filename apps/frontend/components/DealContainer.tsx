@@ -25,13 +25,13 @@ import { BulkScreenDialog } from "./Dialogs/bulk-screen-dialog";
 
 interface DealContainerProps {
   data: Deal[];
-  userRole: UserRole;
+
   currentPage: number;
   totalPages: number;
   totalCount: number;
 }
 
-export default function DealContainer({ data, userRole }: DealContainerProps) {
+export default function DealContainer({ data }: DealContainerProps) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -144,7 +144,7 @@ export default function DealContainer({ data, userRole }: DealContainerProps) {
       {viewMode === "grid" ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {data.map((deal) => (
-            <DealCard key={deal.id} deal={deal} userRole={userRole} />
+            <DealCard key={deal.id} deal={deal} />
           ))}
         </div>
       ) : (

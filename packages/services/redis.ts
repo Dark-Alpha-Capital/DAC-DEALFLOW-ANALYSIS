@@ -1,4 +1,7 @@
 import { RedisClient } from "bun";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const configuredUrl = process.env.REDIS_URL;
 const redisUrlToUse = configuredUrl ?? "redis://127.0.0.1:6379";
