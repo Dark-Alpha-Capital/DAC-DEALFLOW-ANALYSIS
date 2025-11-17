@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import { screenDealPayloadSchema } from "../lib/schemas/screen-deal-payload-schema";
-import { redis } from "services";
+import { redis } from "../lib/redis";
 import { evaluateDealAndSaveResult } from "../lib/actions/evaluate-deal";
 
 const router = Router();

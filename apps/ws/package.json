@@ -14,7 +14,6 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "services": "workspace:*",
     "types": "workspace:*",
     "db": "workspace:*",
     "@types/ws": "^8.18.1",

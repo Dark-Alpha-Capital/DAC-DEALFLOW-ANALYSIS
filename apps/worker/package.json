@@ -31,7 +31,6 @@
     "express": "^5.1.0",
     "multer": "^2.0.2",
     "openai": "^5.10.1",
-    "services": "workspace:*",
     "types": "workspace:*",
     "zod": "^3.25.76"
   }
