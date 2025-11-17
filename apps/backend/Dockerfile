@@ -13,6 +13,7 @@ WORKDIR /app
 # Copy package files and workspace packages
 COPY package.json bun.lock ./
 COPY packages/db ./packages/db/
+COPY packages/types ./packages/types/
 COPY apps/backend/package.json ./apps/backend/
 
 # Install dependencies (this will install prisma from packages/db)
@@ -25,14 +26,6 @@ RUN cd packages/db && \
     (bunx prisma generate --schema=prisma/schema.prisma || \
      npx prisma generate --schema=prisma/schema.prisma) && \
     echo "Prisma client generated successfully"
-
-# Verify Prisma client was generated (check common locations)
-RUN (test -d packages/db/node_modules/.prisma/client || \
-     test -d node_modules/.prisma/client || \
-     test -d node_modules/@prisma/client || \
-     (find . -name ".prisma" -type d | head -1 | xargs test -d)) && \
-    echo "Prisma client found" || \
-    (echo "WARNING: Prisma client location not verified, but continuing..." && ls -la packages/db/node_modules/ 2>/dev/null || true)
 
 # Copy the rest of your application code
 COPY . .

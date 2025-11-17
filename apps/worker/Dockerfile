@@ -13,6 +13,7 @@ WORKDIR /app
 # Copy package files and workspace packages
 COPY package.json bun.lock ./
 COPY packages/db ./packages/db/
+COPY packages/types ./packages/types/
 COPY apps/worker/package.json ./apps/worker/
 
 # Install dependencies (this will install prisma from packages/db)
