@@ -36,7 +36,7 @@ router.post(
       if (!redisClient) {
         return res.status(503).json({ error: "Redis client not available" });
       }
-      await redisClient.hSet(`job:${jobId}`, "status", "processing");
+      await redisClient.hset(`job:${jobId}`, "status", "processing");
       console.log(`[file-upload-worker] Updated job status to processing`, {
         jobId,
       });
@@ -85,12 +85,12 @@ router.post(
         return res.status(503).json({ error: "Redis client not available" });
       }
 
-      const processed = await redisClient.hIncrBy(
+      const processed = await redisClient.hincrby(
         `job:${jobId}`,
         "processed",
         1
       );
-      const total = await redisClient.hGet(`job:${jobId}`, "totalFiles");
+      const total = await redisClient.hget(`job:${jobId}`, "totalFiles");
 
       console.log(`[file-upload-worker] Updated job progress`, {
         jobId,
@@ -118,7 +118,7 @@ router.post(
 
       // Mark job as complete if all files processed
       if (processed === Number(total)) {
-        await redisClient.hSet(`job:${jobId}`, "status", "done");
+        await redisClient.hset(`job:${jobId}`, "status", "done");
         console.log(`[file-upload-worker] Job completed`, {
           jobId,
           totalFiles: total,

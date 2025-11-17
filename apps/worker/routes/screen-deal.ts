@@ -69,7 +69,7 @@ router.post("/screen-deal", async (req: Request, res: Response) => {
     await redis.expire(jobKey, 86400); // 24 hours for job id
 
     // Update status to processing
-    await redis.hSet(`job:${jobId}`, { status: "processing" });
+    await redis.hset(`job:${jobId}`, "status", "processing");
     console.log(`📝 Updated job ${jobId} status to processing in Redis`, {
       jobId,
       status: "processing",
@@ -94,7 +94,7 @@ router.post("/screen-deal", async (req: Request, res: Response) => {
         evaluationResult.message
       );
       // Mark job as failed and publish update
-      await redis.hSet(`job:${jobId}`, ["status", "failed"]);
+      await redis.hset(`job:${jobId}`, "status", "failed");
       await redis.publish(
         "job-updates",
         JSON.stringify({
@@ -110,7 +110,7 @@ router.post("/screen-deal", async (req: Request, res: Response) => {
     }
     console.log(`⏱️ Processing job ${jobId}...`);
     // Update status to done
-    await redis.hSet(`job:${jobId}`, ["status", "done"]);
+    await redis.hset(`job:${jobId}`, "status", "done");
     console.log(`📝 Updated job ${jobId} status to done in Redis`);
 
     // Publish completion status
@@ -126,7 +126,7 @@ router.post("/screen-deal", async (req: Request, res: Response) => {
     // Try to publish error status if we have jobId
     try {
       if (jobId) {
-        await redis.hSet(`job:${jobId}`, ["status", "failed"]);
+        await redis.hset(`job:${jobId}`, "status", "failed");
         await redis.publish(
           "job-updates",
           JSON.stringify({ jobId, status: "failed" })

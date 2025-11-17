@@ -1,26 +1,28 @@
-import { createClient, RedisClientType } from "redis";
+import { RedisClient } from "bun";
 
 const redisUrl = process.env.REDIS_URL as string;
+const redisUrlToUse = redisUrl ?? "redis://127.0.0.1:6379";
 
-let redisClient: RedisClientType | null = null;
+let redisInstance: RedisClient | null = null;
 
-if (redisUrl) {
-  redisClient = createClient({
-    url: redisUrl,
-  });
-
-  redisClient.on("error", (err) => {
-    console.error("Redis Client Error:", err);
-  });
-
-  // Connect to Redis (non-blocking)
-  redisClient.connect().catch((err) => {
-    console.error("Failed to connect to Redis:", err);
-  });
-} else {
-  console.warn("REDIS_URL not configured, Redis features will be unavailable");
+try {
+  if (redisUrlToUse) {
+    redisInstance = new RedisClient(redisUrlToUse);
+    console.log("Redis client initialized with Bun");
+  }
+} catch (error) {
+  console.error("Failed to initialize Redis client:", error);
+  // Continue without Redis - the app should still start
 }
 
-// Export both for compatibility
-export { redisClient };
-export const redis = redisClient;
+export const redis = redisInstance;
+export const redisClient = redisInstance;
+
+export function createRedisClient(
+  url?: string,
+  options?: ConstructorParameters<typeof RedisClient>[1]
+) {
+  return new RedisClient(url ?? redisUrlToUse, options as any);
+}
+
+export type { RedisClient };
