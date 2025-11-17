@@ -95,6 +95,7 @@
     "react-resizable-panels": "^2.1.6",
     "react-syntax-highlighter": "^16.0.0",
     "recharts": "^2.13.3",
+    "redis": "^4.7.0",
     "remark-gfm": "^4.0.1",
     "sonner": "^1.7.4",
     "streamdown": "^1.4.0",

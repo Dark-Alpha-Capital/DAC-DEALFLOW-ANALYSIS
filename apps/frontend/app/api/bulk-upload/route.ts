@@ -24,14 +24,11 @@ export async function POST(req: NextRequest) {
     // Seed Redis so clients can track status immediately
     await Promise.allSettled(
       jobs.map(async ({ jobId, fileName }) => {
-        await redisClient.hmset(`job:${jobId}`, [
-          "status",
-          "queued",
-          "fileName",
-          fileName,
-          "createdAt",
-          Date.now().toString(),
-        ]);
+        await redisClient.hSet(`job:${jobId}`, {
+          status: "queued",
+          fileName: fileName,
+          createdAt: Date.now().toString(),
+        });
         await redisClient.expire(`job:${jobId}`, 3600 * 24);
       }),
     );
