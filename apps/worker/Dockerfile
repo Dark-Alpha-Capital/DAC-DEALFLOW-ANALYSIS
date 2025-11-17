@@ -46,4 +46,4 @@ ENV PORT=8080
 
 WORKDIR /app/apps/worker
 
-CMD ["bun", "apps/worker/index.ts"]
+CMD ["bun", "index.ts"]

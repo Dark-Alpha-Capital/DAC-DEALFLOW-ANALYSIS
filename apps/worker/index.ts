@@ -14,6 +14,41 @@ const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+// Health check endpoint
+app.get("/health", async (req, res) => {
+  try {
+    // Check Redis connection
+    const redisStatus = redis ? "connected" : "not configured";
+    if (redis) {
+      try {
+        await redis.ping();
+      } catch (error) {
+        return res.status(503).json({
+          status: "unhealthy",
+          redis: "disconnected",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    res.json({
+      status: "healthy",
+      redis: redisStatus,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "unhealthy",
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+// Root endpoint
+app.get("/", (req, res) => {
+  res.json({ message: "Worker server is running" });
+});
+
 // Mount route modules
 app.use(screenDealRouter);
 app.use(fileUploadRouter);
