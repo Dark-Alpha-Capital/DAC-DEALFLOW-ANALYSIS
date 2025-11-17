@@ -42,11 +42,15 @@ function useMediaQuery(query: string) {
 }
 
 export function PerformRollup() {
-  const [activeSection, setActiveSection] = useState<"custom" | "filters" | null>(null);
+  const [activeSection, setActiveSection] = useState<
+    "custom" | "filters" | null
+  >(null);
   const [customDescription, setCustomDescription] = useState("");
   const [industry, setIndustry] = useState("");
   const [location, setLocation] = useState("");
-  const [revenueRange, setRevenueRange] = useState<[number, number]>([0, 1000000]);
+  const [revenueRange, setRevenueRange] = useState<[number, number]>([
+    0, 1000000,
+  ]);
   const [ebitdaRange, setEbitdaRange] = useState<[number, number]>([0, 30]);
   const [strategicFocus, setStrategicFocus] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,7 +65,7 @@ export function PerformRollup() {
 
   const handleCheckboxChange = (value: string) => {
     setStrategicFocus((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
     );
   };
 
@@ -87,7 +91,7 @@ export function PerformRollup() {
 
   // Shared Rollup content
   const RollupContent = (
-    <div className="max-h-[70vh] overflow-y-auto flex flex-col gap-4 p-4">
+    <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto p-4">
       {/* Section Selection */}
       <div className="flex gap-4">
         <Button
@@ -110,7 +114,7 @@ export function PerformRollup() {
 
       {/* Custom Description */}
       {activeSection === "custom" && (
-        <div className="flex flex-col gap-4 mt-2 border p-4 rounded-md">
+        <div className="mt-2 flex flex-col gap-4 rounded-md border p-4">
           <label htmlFor="customDescription" className="text-sm font-medium">
             Custom Description
           </label>
@@ -127,7 +131,7 @@ export function PerformRollup() {
 
       {/* Filters */}
       {activeSection === "filters" && (
-        <div className="flex flex-col gap-6 mt-2 border p-4 rounded-md">
+        <div className="mt-2 flex flex-col gap-6 rounded-md border p-4">
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">Industry</label>
             <input
@@ -135,7 +139,7 @@ export function PerformRollup() {
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
               placeholder="No Preference"
-              className="border rounded-md p-2"
+              className="rounded-md border p-2"
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -145,20 +149,20 @@ export function PerformRollup() {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="No Preference"
-              className="border rounded-md p-2"
+              className="rounded-md border p-2"
             />
           </div>
 
           {/* Revenue Range */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">Revenue Range ($)</label>
-            <div className="flex gap-2 items-center">
+            <div className="flex items-center gap-2">
               <span className="w-8 text-sm">Min</span>
               <Slider
                 value={[revenueRange[0]]}
                 onValueChange={(val) =>
                   setRevenueRange([
-                    Math.min(val[0], revenueRange[1]),
+                    Math.min(val[0] || 0, revenueRange[1]),
                     revenueRange[1],
                   ])
                 }
@@ -169,14 +173,14 @@ export function PerformRollup() {
               />
               <span>${revenueRange[0].toLocaleString()}</span>
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="flex items-center gap-2">
               <span className="w-8 text-sm">Max</span>
               <Slider
                 value={[revenueRange[1]]}
                 onValueChange={(val) =>
                   setRevenueRange([
                     revenueRange[0],
-                    Math.max(val[0], revenueRange[0]),
+                    Math.max(val[0] || 0, revenueRange[0]),
                   ])
                 }
                 min={0}
@@ -210,13 +214,18 @@ export function PerformRollup() {
 
           {/* EBITDA Margin */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Target EBITDA Margin Range (%)</label>
-            <div className="flex gap-2 items-center">
+            <label className="text-sm font-medium">
+              Target EBITDA Margin Range (%)
+            </label>
+            <div className="flex items-center gap-2">
               <span className="w-8 text-sm">Min</span>
               <Slider
                 value={[ebitdaRange[0]]}
                 onValueChange={(val) =>
-                  setEbitdaRange([Math.min(val[0], ebitdaRange[1]), ebitdaRange[1]])
+                  setEbitdaRange([
+                    Math.min(val[0] || 0, ebitdaRange[1]),
+                    ebitdaRange[1],
+                  ])
                 }
                 min={0}
                 max={100}
@@ -225,12 +234,15 @@ export function PerformRollup() {
               />
               <span>{ebitdaRange[0]}%</span>
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="flex items-center gap-2">
               <span className="w-8 text-sm">Max</span>
               <Slider
                 value={[ebitdaRange[1]]}
                 onValueChange={(val) =>
-                  setEbitdaRange([ebitdaRange[0], Math.max(val[0], ebitdaRange[0])])
+                  setEbitdaRange([
+                    ebitdaRange[0],
+                    Math.max(val[0] || 0, ebitdaRange[0]),
+                  ])
                 }
                 min={0}
                 max={100}

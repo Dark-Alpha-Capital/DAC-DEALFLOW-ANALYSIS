@@ -8,7 +8,6 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import ReactMarkdown from "react-markdown";
 import { Trash2, Save, PlayCircle } from "lucide-react";
-import screenDeal from "@/lib/actions/screen-deal";
 import { screeningSaveResult } from "@/lib/actions/screening-save-result";
 import { Skeleton } from "./ui/skeleton";
 import axios from "axios";
@@ -21,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Switch } from "./ui/switch";
 import { Slider } from "./ui/slider";
 import { EvalOptions } from "@/app/types";
 

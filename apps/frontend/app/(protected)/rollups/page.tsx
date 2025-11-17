@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { ChevronUp } from "lucide-react";
 import { Metadata } from "next";
-import { getAllRollups } from "@/lib/queries";
+import { getAllRollups } from "db/queries";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import RollupCard from "@/components/RollupCard";

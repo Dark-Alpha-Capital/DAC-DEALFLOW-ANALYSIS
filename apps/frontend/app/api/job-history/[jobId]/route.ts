@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import { redis } from "services";
+import { redisClient } from "@/lib/redis";
 
 export async function DELETE(
   request: Request,
@@ -22,19 +22,19 @@ export async function DELETE(
     const jobKey = `job:${jobId}`;
 
     // Check if job exists
-    const exists = await redis.exists(jobKey);
+    const exists = await redisClient.exists(jobKey);
     if (!exists) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
     // Validate owner via hmget to avoid relying on hgetall structure
-    const [userId] = await redis.hmget(jobKey, ["userId"]);
+    const userId = await redisClient.hget(jobKey, "userId");
     if (userId !== userSession.user.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     // Delete the job from Redis
-    await redis.del(jobKey);
+    await redisClient.del(jobKey);
 
     console.log(`Deleted job ${jobId} for user ${userSession.user.id}`);
 

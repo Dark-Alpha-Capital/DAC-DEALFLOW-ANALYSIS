@@ -1,9 +1,6 @@
 "use server";
 
-import { z } from "zod";
 import db from "db";
-import { withAuthServerAction } from "@/lib/withAuth";
-import { User } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { AddCompanyFormSchemaType } from "@/lib/zod-schemas/add-company-schema";
 import { auth } from "@/auth";

@@ -21,9 +21,9 @@ const DeletePocButton = ({
       onClick={async () => {
         const response = await deletePoc(pocId, dealId);
         if ("error" in response) {
-          toast.error(response.error);
+          toast.error("Failed to delete POC");
         } else {
-          toast.success(response.message);
+          toast.success("POC deleted successfully");
         }
       }}
     >

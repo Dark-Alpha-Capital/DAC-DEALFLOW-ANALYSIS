@@ -171,12 +171,10 @@ export function BulkFileUploadDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        {children || (
-          <Button className="gap-2">
-            <Upload className="h-4 w-4" />
-            Upload Files
-          </Button>
-        )}
+        <Button className="gap-2">
+          <Upload className="h-4 w-4" />
+          Upload Files
+        </Button>
       </DialogTrigger>
       <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden">
         <DialogHeader>

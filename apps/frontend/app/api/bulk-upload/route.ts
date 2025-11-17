@@ -1,8 +1,8 @@
 // app/api/bulk-upload/route.ts
 import { NextRequest } from "next/server";
-import { pubSubClient } from "services";
+import { pubSubClient } from "@/lib/pubsub-client";
 import { randomUUID } from "crypto";
-import { redis } from "services";
+import { redisClient } from "@/lib/redis";
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     // Seed Redis so clients can track status immediately
     await Promise.allSettled(
       jobs.map(async ({ jobId, fileName }) => {
-        await redis.hmset(`job:${jobId}`, [
+        await redisClient.hmset(`job:${jobId}`, [
           "status",
           "queued",
           "fileName",
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
           "createdAt",
           Date.now().toString(),
         ]);
-        await redis.expire(`job:${jobId}`, 3600 * 24);
+        await redisClient.expire(`job:${jobId}`, 3600 * 24);
       }),
     );
 

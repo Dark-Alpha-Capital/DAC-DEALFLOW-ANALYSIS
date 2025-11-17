@@ -69,12 +69,7 @@ const SimItem: React.FC<SimItemProps> = ({
           variant={"destructive"}
           onClick={async () => {
             startTransition(async () => {
-              const response = await DeleteSimFromDB(
-                cimId,
-                dealType,
-                dealId,
-                fileUrl,
-              );
+              const response = await DeleteSimFromDB(cimId, dealType, dealId);
               if (response.type === "success") {
                 toast({
                   title: "SIM deleted successfully",

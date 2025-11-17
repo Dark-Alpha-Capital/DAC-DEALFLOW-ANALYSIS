@@ -5,10 +5,10 @@ import Header from "@/components/Header";
 import { Toaster } from "@/components/ui/sonner";
 import MenuDialog from "@/components/Dialogs/menu-dialog";
 import { ThemeProvider } from "@/components/theme-provider";
-import { auth } from "@/auth";
 import Footer from "@/components/Footer";
 import { SessionProvider } from "next-auth/react";
 import { raleway, bitter } from "@/app/fonts";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Dark Alpha Capital Deal Sourcing Organization",
@@ -36,7 +36,9 @@ export default async function RootLayout({
           <SessionProvider>
             <main>
               <MenuDialog />
-              <Header />
+              <Suspense fallback={<div className="h-16 w-full" />}>
+                <Header />
+              </Suspense>
 
               {children}
               <Footer />

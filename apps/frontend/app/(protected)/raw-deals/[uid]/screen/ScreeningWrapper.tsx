@@ -32,7 +32,7 @@ export default function ScreeningWrapper({
   // Set the first screener as selected by default when screeners are loaded
   useEffect(() => {
     if (screeners && screeners.length > 0 && !selectedScreenerId) {
-      setSelectedScreenerId(screeners[0].id);
+      setSelectedScreenerId(screeners[0]?.id || "");
     }
   }, [screeners, selectedScreenerId]);
 

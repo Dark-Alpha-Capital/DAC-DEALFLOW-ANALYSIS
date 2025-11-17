@@ -30,7 +30,7 @@ declare module "next-auth" {
   }
 }
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+const nextAuth = NextAuth({
   session: { strategy: "jwt" },
   debug: true,
   pages: {
@@ -151,3 +151,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   ...authConfig,
 });
+
+export const handlers = nextAuth.handlers;
+export const signIn: typeof nextAuth.signIn = nextAuth.signIn;
+export const signOut: typeof nextAuth.signOut = nextAuth.signOut;
+export const auth: typeof nextAuth.auth = nextAuth.auth;

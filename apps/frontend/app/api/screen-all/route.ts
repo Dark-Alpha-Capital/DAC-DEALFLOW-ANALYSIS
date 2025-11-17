@@ -1,8 +1,8 @@
-import { pubSubClient } from "services";
+import { pubSubClient } from "@/lib/pubsub-client";
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import { redis } from "services";
 import crypto from "crypto";
+import { redisClient } from "@/lib/redis";
 
 export async function POST(request: Request) {
   const userSession = await auth();
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
       // Store individual job in Redis with error handling
       try {
-        await redis.hmset(`job:${jobId}`, [
+        await redisClient.hmset(`job:${jobId}`, [
           "status",
           "queued",
           "userId",
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
           "createdAt",
           Date.now().toString(),
         ]);
-        await redis.expire(`job:${jobId}`, 3600 * 24);
+        await redisClient.expire(`job:${jobId}`, 3600 * 24);
       } catch (redisError) {
         console.error(`Redis operation failed for job ${jobId}:`, redisError);
         throw new Error(`Failed to store job information for deal ${dealId}`);

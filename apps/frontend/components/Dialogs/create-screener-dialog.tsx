@@ -20,20 +20,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
-import { Session } from "next-auth";
 import { toast } from "sonner";
 import axios from "axios";
 import {
@@ -61,7 +52,7 @@ const AddScreenerDialog = () => {
       const selectedFile = e.target.files[0];
 
       // Update the form field value
-      form.setValue("file", selectedFile);
+      form.setValue("file", selectedFile as File);
       setError(null);
     }
   };

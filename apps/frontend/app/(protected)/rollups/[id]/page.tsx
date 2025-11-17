@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { getRollupById } from "@/lib/queries";
+import { getRollupById } from "db/queries";
 import PreviousPageButton from "@/components/PreviousPageButton";
 import EditRollupDialog from "@/components/Dialogs/edit-rollup-dialog";
 import RollupDealsList from "@/components/RollupDealsList";

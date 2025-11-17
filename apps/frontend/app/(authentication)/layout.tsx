@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { cn } from "@/lib/utils";
 import "../globals.css";
-import { Toaster } from "@/components/ui/toaster";
 import { raleway, bitter } from "@/app/fonts";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Dark Alpha Capital Deal Sourcing Organization",
@@ -20,6 +20,7 @@ export default function RootLayout({
         <main>
           <div>{children}</div>
         </main>
+
         <Toaster />
       </body>
     </html>

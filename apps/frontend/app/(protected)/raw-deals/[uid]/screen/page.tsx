@@ -1,5 +1,5 @@
 import React, { Suspense } from "react";
-import { getAllScreeners } from "@/lib/queries";
+import { getAllScreeners } from "db/queries";
 import ScreeningWrapper from "./ScreeningWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 

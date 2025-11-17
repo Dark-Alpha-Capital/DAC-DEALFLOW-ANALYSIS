@@ -28,11 +28,6 @@ import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import NotificationPopover from "./NotificationPopover";
 import { FaScrewdriver } from "react-icons/fa";
-
-type HeaderProps = {
-  className?: string;
-};
-
 type NavLinkType = {
   navlink: string;
   navlabel: string;
@@ -49,7 +44,7 @@ export const NavLinks: NavLinkType = [
   // { navlink: "/rollups", navlabel: "Rollups", icon: HiChevronUp },
 ];
 
-const Header = ({ className }: HeaderProps) => {
+const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
@@ -81,7 +76,6 @@ const Header = ({ className }: HeaderProps) => {
           ? "bg-background/95 shadow-sm backdrop-blur-md"
           : "bg-background",
         "border-b border-border/40 px-4 py-3 lg:px-8",
-        className,
       )}
     >
       <nav aria-label="Main-navigation" className="mx-auto max-w-7xl">

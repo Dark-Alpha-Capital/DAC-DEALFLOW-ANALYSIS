@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import AddPoc from "@/lib/actions/add-poc";
-// import { createPoc } from "@/app/actions/poc-actions"; // Assume an action like this will be created
 
 export const addPocFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -53,10 +52,10 @@ const AddPocForm = ({ dealId, onSuccess }: AddPocFormProps) => {
         const response = await AddPoc(values, dealId);
 
         if ("error" in response) {
-          toast.error(response.error);
+          toast.error("Failed to add POC");
           return;
         } else if (response.type === "success") {
-          toast.success(response.message || `${values.name} has been added.`);
+          toast.success("POC added successfully");
           onSuccess?.();
         }
       } catch (error) {
