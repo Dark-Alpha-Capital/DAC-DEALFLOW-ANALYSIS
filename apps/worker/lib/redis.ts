@@ -1,7 +1,10 @@
 import { RedisClient } from "bun";
 import dotenv from "dotenv";
 
-dotenv.config();
+// Only load .env file in development (not in production where env vars are set by Cloud Run)
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
+}
 
 const configuredUrl = process.env.REDIS_URL;
 const redisUrlToUse = configuredUrl ?? "redis://127.0.0.1:6379";

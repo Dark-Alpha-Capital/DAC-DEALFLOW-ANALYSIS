@@ -55,7 +55,55 @@ app.use(fileUploadRouter);
 
 const port = parseInt(process.env.PORT || "8080");
 
-app.listen(port, "0.0.0.0", () => {
-  console.log(`Server is running on port ${port}`);
-  console.log(`PORT env var: ${process.env.PORT}`);
+// Error handling middleware (must be after all routes)
+app.use(
+  (
+    err: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    console.error("Unhandled error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+);
+
+// Handle uncaught exceptions and unhandled rejections
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  // Don't exit - let the server continue running
 });
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  // Don't exit - let the server continue running
+});
+
+// Start the server with error handling
+try {
+  const server = app.listen(port, "0.0.0.0", () => {
+    console.log(`Server is running on port ${port}`);
+    console.log(`PORT env var: ${process.env.PORT}`);
+    console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
+  });
+
+  // Handle graceful shutdown for Cloud Run
+  process.on("SIGTERM", () => {
+    console.log("SIGTERM received, shutting down gracefully");
+    server.close(() => {
+      console.log("Server closed");
+      process.exit(0);
+    });
+  });
+
+  process.on("SIGINT", () => {
+    console.log("SIGINT received, shutting down gracefully");
+    server.close(() => {
+      console.log("Server closed");
+      process.exit(0);
+    });
+  });
+} catch (error) {
+  console.error("Failed to start server:", error);
+  process.exit(1);
+}
