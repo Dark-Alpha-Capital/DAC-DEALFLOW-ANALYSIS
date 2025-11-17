@@ -4,6 +4,7 @@ import db from "db";
 console.log("Starting backend server...");
 console.log(`Node version: ${process.version}`);
 console.log(`Working directory: ${process.cwd()}`);
+console.log("Database client imported successfully");
 
 const app = new Hono();
 
