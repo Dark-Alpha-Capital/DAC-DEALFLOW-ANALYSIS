@@ -9,14 +9,17 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
 # Copy Prisma schema and generate client
-COPY prisma ./prisma/
-RUN bun run prisma:generate
+COPY packages/db ./packages/db/
+RUN cd packages/db && bunx prisma generate
 
 # Copy the rest of your application code
 COPY . .
 
 # Expose the port
 EXPOSE 8080
+
+# Set environment variable for port
+ENV PORT=8080
 
 # Start the worker using Bun with production script
 CMD ["bun", "run", "start:prod"]

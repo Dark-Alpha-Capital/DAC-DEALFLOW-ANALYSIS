@@ -1,7 +1,7 @@
 import express from "express";
 import screenDealRouter from "./routes/screen-deal";
 import fileUploadRouter from "./routes/file-upload";
-import { redis } from "services";
+import { redis } from "./lib/redis";
 
 const app = express();
 

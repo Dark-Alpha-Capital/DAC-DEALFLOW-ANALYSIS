@@ -8,6 +8,10 @@ WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
+# Copy Prisma schema and generate client
+COPY packages/db ./packages/db/
+RUN cd packages/db && bunx prisma generate
+
 # Copy the rest of your application code
 COPY . .
 
@@ -17,5 +21,6 @@ EXPOSE 8080
 # Set environment variable for port
 ENV PORT=8080
 
-# Start the server using Bun
-CMD ["bun", "apps/ws/index.ts"]
+# Start the backend server using Bun
+CMD ["bun", "apps/backend/index.ts"]
+
