@@ -44,7 +44,6 @@ EXPOSE 8080
 # Set environment variable for port
 ENV PORT=8080
 
-# Change to worker directory and start the worker using Bun with production script
 WORKDIR /app/apps/worker
 
-CMD ["bun", "run", "index.ts"]
+CMD ["bun", "apps/worker/index.ts"]
