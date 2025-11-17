@@ -24,6 +24,14 @@ app.get("/users", async (c) => {
   }
 });
 
+app.get("/redis-health", async (c) => {
+  try {
+    return c.text("OK");
+  } catch (error) {
+    console.error("Error pinging Redis", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
 app.get("/health", (c) => c.text("OK"));
 
 const port = Number(process.env.PORT) || 8080;
