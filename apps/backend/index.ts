@@ -32,7 +32,6 @@ app.get("/redis-health", async (c) => {
     return c.json({ error: "Internal server error" }, 500);
   }
 });
-app.get("/health", (c) => c.text("OK"));
 
 const port = Number(process.env.PORT) || 8080;
 const hostname = process.env.HOST || "0.0.0.0";
