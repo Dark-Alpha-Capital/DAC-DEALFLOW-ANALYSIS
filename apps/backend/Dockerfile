@@ -11,8 +11,8 @@ COPY packages/db ./packages/db/
 # Install dependencies (this will install prisma from packages/db)
 RUN bun install --frozen-lockfile
 
-# Generate Prisma client (prisma is installed in root node_modules due to workspace hoisting)
-RUN node_modules/.bin/prisma generate --schema=packages/db/prisma/schema.prisma
+# Generate Prisma client (using bun to run prisma since node is not available in bun image)
+RUN bun node_modules/.bin/prisma generate --schema=packages/db/prisma/schema.prisma
 
 # Copy the rest of your application code
 COPY . .
