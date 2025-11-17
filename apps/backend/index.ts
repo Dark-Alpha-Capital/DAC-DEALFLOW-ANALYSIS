@@ -68,26 +68,4 @@ try {
   process.exit(1);
 }
 
-// Graceful shutdown for Google Cloud Run
-const gracefulShutdown = async (signal: string) => {
-  console.log(`Received ${signal}, starting graceful shutdown...`);
-  console.log("Graceful shutdown complete");
-  process.exit(0);
-};
-
-// Handle termination signals
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-
-// Handle uncaught exceptions
-process.on("uncaughtException", (error) => {
-  console.error("Uncaught Exception:", error);
-  gracefulShutdown("uncaughtException");
-});
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason);
-  gracefulShutdown("unhandledRejection");
-});
-
 export default app;
