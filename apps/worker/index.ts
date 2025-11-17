@@ -14,25 +14,6 @@ const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Health check endpoint with Redis status
-app.get("/", (req, res) => {
-  console.log("Root check");
-  res.send("OK");
-});
-
-app.get("/health", async (req, res) => {
-  console.log("Health check");
-
-  const health = {
-    status: "OK",
-    timestamp: new Date().toISOString(),
-    redis: redis ? "connected" : "not configured",
-    uptime: process.uptime(),
-  };
-
-  res.json(health);
-});
-
 // Mount route modules
 app.use(screenDealRouter);
 app.use(fileUploadRouter);
