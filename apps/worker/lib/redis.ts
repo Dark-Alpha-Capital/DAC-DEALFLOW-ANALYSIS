@@ -6,7 +6,19 @@ dotenv.config();
 const configuredUrl = process.env.REDIS_URL;
 const redisUrlToUse = configuredUrl ?? "redis://127.0.0.1:6379";
 
-export const redis = new RedisClient(redisUrlToUse);
+let redisInstance: RedisClient | null = null;
+
+try {
+  if (redisUrlToUse) {
+    redisInstance = new RedisClient(redisUrlToUse);
+    console.log("Redis client initialized");
+  }
+} catch (error) {
+  console.error("Failed to initialize Redis client:", error);
+  // Continue without Redis - the app should still start
+}
+
+export const redis = redisInstance;
 
 export function createRedisClient(
   url?: string,

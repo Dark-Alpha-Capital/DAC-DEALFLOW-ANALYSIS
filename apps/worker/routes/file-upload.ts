@@ -14,6 +14,11 @@ router.post(
   "/file-upload",
   upload.single("file"),
   async (req: Request, res: Response) => {
+    if (!redis) {
+      console.error("Redis not configured");
+      return res.status(503).json({ error: "Redis not configured" });
+    }
+
     try {
       console.log(`[file-upload-worker] Received request`, {
         timestamp: new Date().toISOString(),
