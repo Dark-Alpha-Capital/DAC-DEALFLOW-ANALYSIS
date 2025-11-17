@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import multer from "multer";
 
-import { redis } from "../lib/redis";
+import { redisClient } from "../lib/redis";
 
 const router = Router();
 
@@ -14,11 +14,6 @@ router.post(
   "/file-upload",
   upload.single("file"),
   async (req: Request, res: Response) => {
-    if (!redis) {
-      console.error("Redis not configured");
-      return res.status(503).json({ error: "Redis not configured" });
-    }
-
     try {
       console.log(`[file-upload-worker] Received request`, {
         timestamp: new Date().toISOString(),
@@ -38,7 +33,10 @@ router.post(
       });
 
       // Update job status to processing
-      await redis.hset(`job:${jobId}`, "status", "processing");
+      if (!redisClient) {
+        return res.status(503).json({ error: "Redis client not available" });
+      }
+      await redisClient.hSet(`job:${jobId}`, "status", "processing");
       console.log(`[file-upload-worker] Updated job status to processing`, {
         jobId,
       });
@@ -83,8 +81,16 @@ router.post(
       // await storage.bucket(BUCKET).file(destFileName).save(buffer);
 
       // Update job progress
-      const processed = await redis.hincrby(`job:${jobId}`, "processed", 1);
-      const total = await redis.hget(`job:${jobId}`, "totalFiles");
+      if (!redisClient) {
+        return res.status(503).json({ error: "Redis client not available" });
+      }
+
+      const processed = await redisClient.hIncrBy(
+        `job:${jobId}`,
+        "processed",
+        1
+      );
+      const total = await redisClient.hGet(`job:${jobId}`, "totalFiles");
 
       console.log(`[file-upload-worker] Updated job progress`, {
         jobId,
@@ -104,7 +110,7 @@ router.post(
         timestamp: new Date().toISOString(),
       };
 
-      await redis.publish(`job:${jobId}`, JSON.stringify(progressData));
+      await redisClient.publish(`job:${jobId}`, JSON.stringify(progressData));
       console.log(
         `[file-upload-worker] Published progress update`,
         progressData
@@ -112,7 +118,7 @@ router.post(
 
       // Mark job as complete if all files processed
       if (processed === Number(total)) {
-        await redis.hset(`job:${jobId}`, "status", "done");
+        await redisClient.hSet(`job:${jobId}`, "status", "done");
         console.log(`[file-upload-worker] Job completed`, {
           jobId,
           totalFiles: total,

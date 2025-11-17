@@ -1,4 +1,3 @@
-import "dotenv/config";
 import OpenAI from "openai";
 import { createOpenAI } from "@ai-sdk/openai";
 

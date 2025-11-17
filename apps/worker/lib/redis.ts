@@ -1,33 +1,26 @@
-import { RedisClient } from "bun";
-import dotenv from "dotenv";
+import { createClient, RedisClientType } from "redis";
 
-// Only load .env file in development (not in production where env vars are set by Cloud Run)
-if (process.env.NODE_ENV !== "production") {
-  dotenv.config();
+const redisUrl = process.env.REDIS_URL as string;
+
+let redisClient: RedisClientType | null = null;
+
+if (redisUrl) {
+  redisClient = createClient({
+    url: redisUrl,
+  });
+
+  redisClient.on("error", (err) => {
+    console.error("Redis Client Error:", err);
+  });
+
+  // Connect to Redis (non-blocking)
+  redisClient.connect().catch((err) => {
+    console.error("Failed to connect to Redis:", err);
+  });
+} else {
+  console.warn("REDIS_URL not configured, Redis features will be unavailable");
 }
 
-const configuredUrl = process.env.REDIS_URL;
-const redisUrlToUse = configuredUrl ?? "redis://127.0.0.1:6379";
-
-let redisInstance: RedisClient | null = null;
-
-try {
-  if (redisUrlToUse) {
-    redisInstance = new RedisClient(redisUrlToUse);
-    console.log("Redis client initialized");
-  }
-} catch (error) {
-  console.error("Failed to initialize Redis client:", error);
-  // Continue without Redis - the app should still start
-}
-
-export const redis = redisInstance;
-
-export function createRedisClient(
-  url?: string,
-  options?: ConstructorParameters<typeof RedisClient>[1]
-) {
-  return new RedisClient(url ?? redisUrlToUse, options as any);
-}
-
-export type { RedisClient };
+// Export both for compatibility
+export { redisClient };
+export const redis = redisClient;
