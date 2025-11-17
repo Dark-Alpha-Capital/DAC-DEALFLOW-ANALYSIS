@@ -66,5 +66,5 @@ jobs:
               GCS_CLIENT_EMAIL=${{ secrets.GCS_CLIENT_EMAIL }},\
               GCS_PRIVATE_KEY=${{ secrets.GCS_PRIVATE_KEY }}\
             " \
-            --timeout=900s
+            --timeout=1800s
 

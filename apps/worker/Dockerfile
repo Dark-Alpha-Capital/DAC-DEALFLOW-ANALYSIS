@@ -47,4 +47,4 @@ ENV PORT=8080
 # Change to worker directory and start the worker using Bun with production script
 WORKDIR /app/apps/worker
 
-CMD ["bun", "run", "start:prod"]
+CMD ["bun", "run", "index.ts"]
