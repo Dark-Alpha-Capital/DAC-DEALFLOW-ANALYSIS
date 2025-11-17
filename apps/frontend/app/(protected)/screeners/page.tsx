@@ -16,18 +16,27 @@ import {
 import DeleteScreenerButton from "./delete-screener-button";
 import AddScreenerDialog from "@/components/Dialogs/create-screener-dialog";
 import { getAllScreeners } from "db/queries";
+import { unstable_cacheLife as cacheLife } from "next/cache";
 
 export const metadata = {
   title: "Screeners",
   description: "Manage and view your deal screening criteria",
 };
 
+async function getScreenersData() {
+  "use cache";
+  cacheLife("minutes");
+
+  const screeners = await getAllScreeners();
+  return screeners;
+}
+
 const Screeners = async () => {
   const userSession = await auth();
 
   if (!userSession) redirect("/login");
 
-  const screeners = await getAllScreeners();
+  const screeners = await getScreenersData();
 
   return (
     <div className="block-space big-container">

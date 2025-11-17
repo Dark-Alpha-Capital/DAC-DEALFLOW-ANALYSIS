@@ -27,6 +27,7 @@ import SearchRecentDeals from "@/components/search-recent-deals";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { GetAllDeals } from "db/queries";
+import { unstable_cacheLife as cacheLife } from "next/cache";
 
 export const metadata: Metadata = {
   title: "Raw Deals",
@@ -34,6 +35,15 @@ export const metadata: Metadata = {
 };
 
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
+
+// Cached wrapper for GetAllDeals to reduce database load
+async function getCachedDeals(params: Parameters<typeof GetAllDeals>[0]) {
+  "use cache";
+  cacheLife("seconds");
+
+  const result = await GetAllDeals(params);
+  return result;
+}
 
 const RawDealsPage = async (props: { searchParams: SearchParams }) => {
   const searchParams = await props.searchParams;
@@ -73,7 +83,7 @@ const RawDealsPage = async (props: { searchParams: SearchParams }) => {
 
   if (!userSession) redirect("/auth/login");
 
-  const { data, totalPages, totalCount } = await GetAllDeals({
+  const { data, totalPages, totalCount } = await getCachedDeals({
     search,
     offset,
     limit,

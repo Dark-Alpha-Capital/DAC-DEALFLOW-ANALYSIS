@@ -7,6 +7,7 @@ import GetCompanies from "db/queries";
 import CompanyList from "@/components/company-list";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { unstable_cacheLife as cacheLife } from "next/cache";
 
 export const metadata: Metadata = {
   title: "Companies - Due Diligence",
@@ -18,6 +19,15 @@ interface CompaniesPageProps {
     search?: string;
     page?: string;
   }>;
+}
+
+// Cached wrapper for GetCompanies to reduce database load
+async function getCachedCompanies(params: Parameters<typeof GetCompanies>[0]) {
+  "use cache";
+  cacheLife("minutes");
+
+  const result = await GetCompanies(params);
+  return result;
 }
 
 export default async function CompaniesPage({
@@ -34,7 +44,7 @@ export default async function CompaniesPage({
     redirect("/auth/login");
   }
 
-  const { companies, totalCount, totalPages } = await GetCompanies({
+  const { companies, totalCount, totalPages } = await getCachedCompanies({
     search,
     offset,
     limit,

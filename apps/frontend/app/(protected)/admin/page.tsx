@@ -3,11 +3,20 @@ import { redirect } from "next/navigation";
 import { DataTable } from "./data-table";
 import { columns } from "./columns";
 import { getUsersForAdminTable } from "db/queries";
+import { unstable_cacheLife as cacheLife } from "next/cache";
 
 export const metadata = {
   title: "Admin Dashboard",
   description: "Admin Dashboard",
 };
+
+async function getAdminData() {
+  "use cache";
+  cacheLife("minutes");
+
+  const data = await getUsersForAdminTable();
+  return data;
+}
 
 const AdminPage = async () => {
   const currentUserRole = await getCurrentUserRole();
@@ -16,7 +25,7 @@ const AdminPage = async () => {
     redirect("/");
   }
 
-  const data = await getUsersForAdminTable();
+  const data = await getAdminData();
 
   return (
     <>
