@@ -10,7 +10,7 @@ RUN bun install --frozen-lockfile
 
 # Copy Prisma schema and generate client
 COPY packages/db ./packages/db/
-RUN cd packages/db && bunx prisma generate
+RUN bunx prisma generate --schema=packages/db/prisma/schema.prisma
 
 # Copy the rest of your application code
 COPY . .
