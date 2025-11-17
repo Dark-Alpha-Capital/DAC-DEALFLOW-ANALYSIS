@@ -1,6 +1,12 @@
 # Use the official Bun image
 FROM oven/bun:1.1.13
 
+# Install Node.js (required for Prisma)
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
 # Set the working directory inside the container
 WORKDIR /app
 
@@ -11,8 +17,8 @@ COPY packages/db ./packages/db/
 # Install dependencies (this will install prisma from packages/db)
 RUN bun install --frozen-lockfile
 
-# Generate Prisma client (using bun to run prisma since node is not available in bun image)
-RUN bun node_modules/.bin/prisma generate --schema=packages/db/prisma/schema.prisma
+# Generate Prisma client (prisma is installed in root node_modules due to workspace hoisting)
+RUN node_modules/.bin/prisma generate --schema=packages/db/prisma/schema.prisma
 
 # Copy the rest of your application code
 COPY . .
