@@ -179,4 +179,13 @@ export interface RollupDetailsResponse {
   error?: string;
 };
 
-
+// Placeholder ticket for UI Demo
+export interface Ticket {
+  id: string;
+  title: string;
+  status: "open" | "in progress" | "closed" | "urgent";
+  priority: 1 | 2 | 3;
+  createdAt: Date;
+  assignedTo: { name: string; email: string }; // required
+  tags?: string[];
+}

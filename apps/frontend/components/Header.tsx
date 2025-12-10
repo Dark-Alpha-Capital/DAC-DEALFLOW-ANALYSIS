@@ -14,6 +14,8 @@ import {
   FiTrendingUp,
   FiSearch,
   FiClock,
+  FiTag,
+  FiFolder,
 } from "react-icons/fi";
 import { FiHome } from "react-icons/fi";
 import {
@@ -49,6 +51,10 @@ export const NavLinks: NavLinkType = [
   { navlink: "/screeners", navlabel: "Screener", icon: FaScrewdriver },
   { navlink: "/companies", navlabel: "Companies", icon: FiHome },
   { navlink: "/job-history", navlabel: "History", icon: FiClock },
+  { navlink: "/categories", navlabel: "Categories", icon: FiFolder },
+  { navlink: "/tickets", navlabel: "Tickets", icon: FiTag },
+
+   
   // { navlink: "/rollups", navlabel: "Rollups", icon: HiChevronUp },
 ];
 
