@@ -1,9 +1,8 @@
 "use server";
 
-import { auth } from "@/auth";
-import db from "db";
+import { getSession } from "@/lib/auth-server";
+import db, { Sentiment, aiScreenings } from "db";
 import { rateLimit } from "@/lib/redis";
-import { Sentiment } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
@@ -30,7 +29,7 @@ export async function saveEvaluation(
   evaluation: DealEvaluation,
   screenerId: string,
 ) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return {
@@ -73,7 +72,7 @@ export async function saveEvaluation(
     }
 
     // Map sentiment string to enum
-    let sentiment: Sentiment = Sentiment.NEUTRAL;
+    let sentiment: typeof Sentiment[keyof typeof Sentiment] = Sentiment.NEUTRAL;
     if (evaluation.sentiment) {
       switch (evaluation.sentiment) {
         case "POSITIVE":
@@ -90,17 +89,15 @@ export async function saveEvaluation(
     }
 
     // Create the AI screening record
-    const savedEvaluation = await db.aiScreening.create({
-      data: {
-        dealId,
-        title: evaluation.title,
-        explanation: evaluation.explanation,
-        score: evaluation.score ? Math.round(evaluation.score) : null,
-        content: evaluation.content || null,
-        sentiment,
-        screenerId,
-      },
-    });
+    const [savedEvaluation] = await db.insert(aiScreenings).values({
+      dealId,
+      title: evaluation.title,
+      explanation: evaluation.explanation,
+      score: evaluation.score ? Math.round(evaluation.score) : null,
+      content: evaluation.content || null,
+      sentiment,
+      screenerId,
+    }).returning();
 
     // Revalidate relevant paths to update the UI
     revalidatePath(`/raw-deals/${dealId}`);

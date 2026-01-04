@@ -1,11 +1,10 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "db/schema";
 import { ImageIcon } from "lucide-react";
 
 export const adminEmails = [
   "rg5353070@gmail.com",
-  "amani.151413@gmail.com",
   "rahul@darkalphacapital.com",
   "destiny@darkalphacapital.com",
   "daigbe@darkalphacapital.com",
@@ -95,7 +94,7 @@ export function unformatNumber(x: string) {
  * @param userEmail - the email of the user
  * @returns the role of the user
  */
-export function determineRole(userEmail: string) {
+export function determineRole(userEmail: string): UserRole {
   if (adminEmails.includes(userEmail)) {
     return UserRole.ADMIN;
   } else {

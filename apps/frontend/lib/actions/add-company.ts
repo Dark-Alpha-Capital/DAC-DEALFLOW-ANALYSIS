@@ -1,12 +1,12 @@
 "use server";
 
-import db from "db";
+import db, { companies } from "db";
 import { revalidatePath } from "next/cache";
 import { AddCompanyFormSchemaType } from "@/lib/zod-schemas/add-company-schema";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 
 const AddCompany = async (values: AddCompanyFormSchemaType) => {
-  const userSession = await auth();
+  const userSession = await getSession();
   if (!userSession) {
     return {
       type: "error",
@@ -15,20 +15,18 @@ const AddCompany = async (values: AddCompanyFormSchemaType) => {
   }
 
   try {
-    const newCompany = await db.company.create({
-      data: {
-        name: values.name,
-        website: values.website,
-        sector: values.sector,
-        stage: values.stage,
-        headquarters: values.headquarters,
-        description: values.description,
-        revenue: values.revenue,
-        ebitda: values.ebitda,
-        growthRate: values.growthRate,
-        employees: values.employees,
-      },
-    });
+    const [newCompany] = await db.insert(companies).values({
+      name: values.name,
+      website: values.website,
+      sector: values.sector,
+      stage: values.stage,
+      headquarters: values.headquarters,
+      description: values.description,
+      revenue: values.revenue,
+      ebitda: values.ebitda,
+      growthRate: values.growthRate,
+      employees: values.employees,
+    }).returning();
 
     revalidatePath("/companies");
     revalidatePath("/due-diligence");

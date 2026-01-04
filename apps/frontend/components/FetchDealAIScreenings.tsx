@@ -1,6 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import { Button } from "./ui/button";
-import { DealType } from "@prisma/client";
+import { DealType } from "db/schema";
 import AIReasoning from "./AiReasoning";
 import { getFirstThreeDealAIScreenings } from "db/queries";
 import { cacheLife, cacheTag } from "next/cache";

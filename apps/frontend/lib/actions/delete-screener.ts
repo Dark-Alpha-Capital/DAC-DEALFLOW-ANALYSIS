@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import db from "db";
 import { rateLimit } from "@/lib/redis";
 import { revalidatePath } from "next/cache";
@@ -13,7 +13,7 @@ import { DeleteScreenerById } from "db/mutations";
  * @returns {Object} - An object containing the success status and message
  */
 export async function deleteScreener(screenerId: string) {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession) {
     return {

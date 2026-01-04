@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Questionnaire } from "@prisma/client";
+import type { Questionnaire } from "db";
 import {
   CalendarIcon,
   LinkIcon,

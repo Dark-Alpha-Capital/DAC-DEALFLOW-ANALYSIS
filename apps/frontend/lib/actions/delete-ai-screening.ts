@@ -1,6 +1,6 @@
 "use server";
 import { DeleteReasoningById } from "db/mutations";
-import { DealType } from "@prisma/client";
+import { DealType } from "db";
 
 import { revalidatePath } from "next/cache";
 

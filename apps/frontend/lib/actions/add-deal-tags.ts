@@ -1,7 +1,7 @@
 "use server";
 
-import { auth } from "@/auth";
-import db from "db";
+import { getSession } from "@/lib/auth-server";
+import db, { deals, eq } from "db";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -13,7 +13,7 @@ import { revalidatePath } from "next/cache";
  * @param dealUid - The UID of the deal to save the tags to
  */
 export async function saveDealTags(tags: string[], dealUid: string) {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession) {
     return {
@@ -41,14 +41,9 @@ export async function saveDealTags(tags: string[], dealUid: string) {
   }
 
   try {
-    const updatedDeal = await db.deal.update({
-      where: {
-        id: dealUid,
-      },
-      data: {
-        tags: tags,
-      },
-    });
+    await db.update(deals).set({
+      tags: tags,
+    }).where(eq(deals.id, dealUid));
 
     revalidatePath(`/raw-deals/${dealUid}`);
     revalidatePath(`/raw-deals`);

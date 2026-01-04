@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import DeleteRollupButton from "@/components/Buttons/delete-rollup-button";
-import { Deal, User, Rollup } from "@prisma/client";
+import type { Deal, User, Rollup } from "db";
 
 type RollupWithRelations = Rollup & {
   deals: Deal[];

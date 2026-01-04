@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DealStatus } from "@prisma/client";
+import { DealStatus } from "db/schema";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { updateDealSpecificationsAction } from "@/lib/actions/update-deal-specifications";

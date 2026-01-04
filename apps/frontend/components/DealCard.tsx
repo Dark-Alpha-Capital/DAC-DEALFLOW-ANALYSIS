@@ -30,7 +30,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Deal, UserRole } from "@prisma/client";
+import { Deal, UserRole } from "db";
 import { useToast } from "@/hooks/use-toast";
 import DeleteDealFromDB from "@/lib/actions/delete-deal";
 import { cn } from "@/lib/utils";

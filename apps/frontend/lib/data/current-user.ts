@@ -1,6 +1,6 @@
 // helper function to get the current User
 
-import prismaDB from "../prisma";
+import db, { users, eq } from "db";
 
 /**
  * get the current user by using their id
@@ -10,13 +10,13 @@ import prismaDB from "../prisma";
  */
 export async function getCurrentUserById(userId: string) {
   try {
-    const existingUser = await prismaDB.user.findUnique({
-      where: {
-        id: userId,
-      },
-    });
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-    return existingUser;
+    return existingUser ?? null;
   } catch (error) {
     console.log("an error occured while trying to get current user");
     return null;
@@ -31,13 +31,13 @@ export async function getCurrentUserById(userId: string) {
  */
 export async function getCurrentUserByEmail(userEmail: string) {
   try {
-    const existingUser = await prismaDB.user.findUnique({
-      where: {
-        email: userEmail,
-      },
-    });
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, userEmail))
+      .limit(1);
 
-    return existingUser;
+    return existingUser ?? null;
   } catch (error) {
     console.log("an error occured while trying to get current user");
     return null;

@@ -4,7 +4,7 @@ import getCurrentUserRole from "@/lib/data/current-user-role";
 import SearchDeals from "@/components/SearchDeal";
 import Pagination from "@/components/pagination";
 import DealTypeFilter from "@/components/DealTypeFilter";
-import { DealStatus, DealType } from "@prisma/client";
+import { DealStatus, DealType } from "db/schema";
 import SearchDealsSkeleton from "@/components/skeletons/SearchDealsSkeleton";
 import SearchEbitdaDeals from "@/components/SearchEbitdaDeals";
 import DealTypeFilterSkeleton from "@/components/skeletons/DealTypeFilterSkeleton";
@@ -26,6 +26,8 @@ import DeleteFiltersButton from "@/components/Buttons/delete-filters-button";
 import SearchRecentDeals from "@/components/search-recent-deals";
 import { GetAllDeals } from "db/queries";
 import { cacheLife, cacheTag } from "next/cache";
+import { getSession } from "@/lib/auth-server";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Raw Deals",
@@ -124,6 +126,11 @@ const RawDealsPage = async (props: { searchParams: SearchParams }) => {
 export default RawDealsPage;
 
 async function ShowDealsComponent(props: { searchParams: SearchParams }) {
+  const userSession = await getSession();
+  if (!userSession?.user) {
+    redirect("/auth/login");
+  }
+
   const searchParams = await props.searchParams;
   const search = searchParams?.query || "";
   const revenue = searchParams?.revenue || "";
@@ -227,7 +234,6 @@ async function FetchAndDisplayDeals({
   tags: string[];
 }) {
   "use cache";
-
   cacheTag("deals");
   cacheLife("hours");
 

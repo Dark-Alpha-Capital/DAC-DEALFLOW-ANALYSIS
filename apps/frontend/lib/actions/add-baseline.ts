@@ -1,6 +1,6 @@
 "use server";
 
-import db from "db";
+import db, { questionnaires } from "db";
 import { put } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 
@@ -18,15 +18,13 @@ export default async function AddScreeningBaseline(values: FormData) {
       access: "public",
     });
 
-    const docRef = await db.questionnaire.create({
-      data: {
-        fileUrl: url,
-        title,
-        purpose,
-        author,
-        version,
-      },
-    });
+    const [docRef] = await db.insert(questionnaires).values({
+      fileUrl: url,
+      title,
+      purpose,
+      author,
+      version,
+    }).returning();
 
     revalidatePath("/questionnaires");
 

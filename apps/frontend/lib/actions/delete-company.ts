@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { DeleteCompanyById } from "db/mutations";
 
 interface DeleteCompanyResult {
@@ -12,7 +12,7 @@ interface DeleteCompanyResult {
 const DeleteCompany = async (
   companyId: string,
 ): Promise<DeleteCompanyResult> => {
-  const userSession = await auth();
+  const userSession = await getSession();
   if (!userSession) {
     return {
       type: "error",

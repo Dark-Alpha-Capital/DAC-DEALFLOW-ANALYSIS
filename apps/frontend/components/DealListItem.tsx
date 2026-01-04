@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import type { Deal } from "@prisma/client";
+import type { Deal } from "db";
 import { ScrollArea } from "./ui/scroll-area";
 
 interface Props {

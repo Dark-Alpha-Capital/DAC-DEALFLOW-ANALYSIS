@@ -1,7 +1,7 @@
 "use server";
 
 import { EditDealFormSchemaType } from "@/components/forms/edit-deal-form";
-import db from "db";
+import db, { deals, eq } from "db";
 
 import { revalidatePath } from "next/cache";
 
@@ -28,29 +28,24 @@ export default async function EditDealInDB(
   dealId: string,
 ) {
   try {
-    await db.deal.update({
-      where: {
-        id: dealId,
-      },
-      data: {
-        title: values.title,
-        dealCaption: values.deal_caption,
-        firstName: values.first_name,
-        lastName: values.last_name,
-        email: values.email,
-        linkedinUrl: values.linkedinurl,
-        workPhone: values.work_phone,
-        revenue: values.revenue,
-        ebitda: values.ebitda,
-        ebitdaMargin: values.ebitda_margin,
-        grossRevenue: values.gross_revenue,
-        companyLocation: values.company_location,
-        brokerage: values.brokerage,
-        sourceWebsite: values.source_website || "",
-        industry: values.industry,
-        askingPrice: values.asking_price,
-      },
-    });
+    await db.update(deals).set({
+      title: values.title,
+      dealCaption: values.deal_caption,
+      firstName: values.first_name,
+      lastName: values.last_name,
+      email: values.email,
+      linkedinUrl: values.linkedinurl,
+      workPhone: values.work_phone,
+      revenue: values.revenue,
+      ebitda: values.ebitda,
+      ebitdaMargin: values.ebitda_margin,
+      grossRevenue: values.gross_revenue,
+      companyLocation: values.company_location,
+      brokerage: values.brokerage,
+      sourceWebsite: values.source_website || "",
+      industry: values.industry,
+      askingPrice: values.asking_price,
+    }).where(eq(deals.id, dealId));
 
     revalidatePath(`/raw-deals/${dealId}`);
 

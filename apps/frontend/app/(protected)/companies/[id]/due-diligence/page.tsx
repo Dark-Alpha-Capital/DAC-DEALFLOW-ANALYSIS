@@ -17,7 +17,7 @@ import {
   Plus,
 } from "lucide-react";
 import Link from "next/link";
-import prismaDB from "@/lib/prisma";
+import db, { companies, dueDiligenceSections, files, reviews, tasks, users, eq, desc, count } from "db";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 
@@ -32,10 +32,11 @@ export async function generateMetadata({
 }: DueDiligencePageProps): Promise<Metadata> {
   const { id } = await params;
 
-  const company = await prismaDB.company.findUnique({
-    where: { id },
-    select: { name: true },
-  });
+  const [company] = await db
+    .select({ name: companies.name })
+    .from(companies)
+    .where(eq(companies.id, id))
+    .limit(1);
 
   if (!company) {
     return {
@@ -58,45 +59,83 @@ export default async function DueDiligencePage({
   if (!session?.user) {
     redirect("/auth/login");
   }
-  const company = await prismaDB.company.findUnique({
-    where: { id },
-    include: {
-      sections: {
-        orderBy: { createdAt: "desc" },
-      },
-      files: {
-        orderBy: { createdAt: "desc" },
-      },
-      reviews: {
-        include: {
-          reviewer: {
-            select: { name: true },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-      tasks: {
-        include: {
-          assignedTo: {
-            select: { name: true },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-      _count: {
-        select: {
-          files: true,
-          sections: true,
-          reviews: true,
-          tasks: true,
-        },
-      },
-    },
-  });
 
-  if (!company) {
+  // Fetch company
+  const [companyData] = await db
+    .select()
+    .from(companies)
+    .where(eq(companies.id, id))
+    .limit(1);
+
+  if (!companyData) {
     notFound();
   }
+
+  // Fetch sections
+  const sectionsList = await db
+    .select()
+    .from(dueDiligenceSections)
+    .where(eq(dueDiligenceSections.companyId, id))
+    .orderBy(desc(dueDiligenceSections.createdAt));
+
+  // Fetch files
+  const filesList = await db
+    .select()
+    .from(files)
+    .where(eq(files.companyId, id))
+    .orderBy(desc(files.createdAt));
+
+  // Fetch reviews with reviewer
+  const reviewsData = await db
+    .select({
+      review: reviews,
+      reviewerName: users.name,
+    })
+    .from(reviews)
+    .leftJoin(users, eq(reviews.reviewerId, users.id))
+    .where(eq(reviews.companyId, id))
+    .orderBy(desc(reviews.createdAt));
+
+  const reviewsList = reviewsData.map((r) => ({
+    ...r.review,
+    reviewer: { name: r.reviewerName },
+  }));
+
+  // Fetch tasks with assignee
+  const tasksData = await db
+    .select({
+      task: tasks,
+      assigneeName: users.name,
+    })
+    .from(tasks)
+    .leftJoin(users, eq(tasks.assignedToId, users.id))
+    .where(eq(tasks.companyId, id))
+    .orderBy(desc(tasks.createdAt));
+
+  const tasksList = tasksData.map((t) => ({
+    ...t.task,
+    assignedTo: { name: t.assigneeName },
+  }));
+
+  // Get counts
+  const [filesCount] = await db.select({ count: count() }).from(files).where(eq(files.companyId, id));
+  const [sectionsCount] = await db.select({ count: count() }).from(dueDiligenceSections).where(eq(dueDiligenceSections.companyId, id));
+  const [reviewsCount] = await db.select({ count: count() }).from(reviews).where(eq(reviews.companyId, id));
+  const [tasksCount] = await db.select({ count: count() }).from(tasks).where(eq(tasks.companyId, id));
+
+  const company = {
+    ...companyData,
+    sections: sectionsList,
+    files: filesList,
+    reviews: reviewsList,
+    tasks: tasksList,
+    _count: {
+      files: filesCount?.count ?? 0,
+      sections: sectionsCount?.count ?? 0,
+      reviews: reviewsCount?.count ?? 0,
+      tasks: tasksCount?.count ?? 0,
+    },
+  };
 
   return (
     <section className="big-container block-space min-h-screen">

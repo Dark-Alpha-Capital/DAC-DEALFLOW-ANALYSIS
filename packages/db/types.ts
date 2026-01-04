@@ -4,7 +4,7 @@ import type {
   Founder,
   File,
   DueDiligenceSection,
-} from "@prisma/client";
+} from "./schema";
 
 export type AdminUser = {
   id: string;

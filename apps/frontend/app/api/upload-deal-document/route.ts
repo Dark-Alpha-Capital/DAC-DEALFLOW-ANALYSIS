@@ -1,12 +1,12 @@
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { dealDocumentFormSchema } from "@/lib/schemas";
 import { put } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import db from "db";
+import db, { dealDocuments } from "db";
 
 export async function POST(request: NextRequest) {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -63,15 +63,13 @@ export async function POST(request: NextRequest) {
   // Save CIM metadata to database
 
   try {
-    const dealDocument = await db.dealDocument.create({
-      data: {
-        title: validatedData.data.title,
-        description: validatedData.data.description,
-        category: validatedData.data.category,
-        documentUrl: blobUrl,
-        dealId: dealId as string,
-      },
-    });
+    const [dealDocument] = await db.insert(dealDocuments).values({
+      title: validatedData.data.title,
+      description: validatedData.data.description,
+      category: validatedData.data.category,
+      documentUrl: blobUrl,
+      dealId: dealId as string,
+    }).returning();
 
     revalidatePath(`/raw-deals/${dealId}`);
 

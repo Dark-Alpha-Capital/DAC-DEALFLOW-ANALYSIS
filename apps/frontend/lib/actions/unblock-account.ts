@@ -1,13 +1,13 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import getCurrentUserRole from "@/lib/data/current-user-role";
-import db from "db";
+import db, { users, eq } from "db";
 import { revalidatePath } from "next/cache";
 
 const unblockAccount = async (userId: string) => {
   try {
-    const session = await auth();
+    const session = await getSession();
 
     if (!session) throw new Error("Not Logged In");
 
@@ -17,14 +17,9 @@ const unblockAccount = async (userId: string) => {
       throw new Error("Unauthorized");
     }
 
-    await db.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        isBlocked: false,
-      },
-    });
+    await db.update(users).set({
+      isBlocked: false,
+    }).where(eq(users.id, userId));
 
     revalidatePath("/admin");
 

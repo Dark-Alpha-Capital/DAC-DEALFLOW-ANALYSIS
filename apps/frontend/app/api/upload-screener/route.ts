@@ -1,13 +1,13 @@
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { DocxLoader } from "@/lib/docx-loader";
 import { PDFLoader } from "@/lib/pdf-loader";
-import db from "db";
+import db, { screeners } from "db";
 import { newScreenerFormSchema } from "@/lib/zod-schemas/new-screener-form-schema";
 import { put } from "@vercel/blob";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -77,14 +77,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const screener = await db.screener.create({
-      data: {
-        name: validatedData.data.name,
-        description: validatedData.data.description,
-        content,
-        fileUrl: blobUrl,
-      },
-    });
+    const [screener] = await db.insert(screeners).values({
+      name: validatedData.data.name,
+      description: validatedData.data.description,
+      content,
+      fileUrl: blobUrl,
+    }).returning();
 
     return Response.json({ screener }, { status: 200 });
   } catch (error) {

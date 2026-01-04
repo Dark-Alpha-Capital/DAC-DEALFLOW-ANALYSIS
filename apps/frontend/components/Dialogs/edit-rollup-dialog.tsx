@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Rollup as RollupType, Deal as DealType } from "@prisma/client";
+import type { Rollup as RollupType, Deal as DealType } from "db";
 import { toast } from "sonner";
 import { updateRollup, updateDealInRollup } from "@/lib/actions/rollup-actions";
 

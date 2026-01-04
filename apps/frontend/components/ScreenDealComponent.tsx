@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import { Button } from "./ui/button";
-import { Deal } from "@prisma/client";
+import type { Deal } from "db";
 import { toast } from "sonner";
 import { ScrollArea } from "./ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";

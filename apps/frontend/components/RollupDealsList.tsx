@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import RemoveDealFromRollupButton from "@/components/Buttons/remove-deal-from-rollup-button";
-import { Deal } from "@prisma/client";
+import type { Deal } from "db";
 
 interface RollupDealsListProps {
   deals: Deal[];

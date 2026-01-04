@@ -5,41 +5,22 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import GetCompanies from "db/queries";
 import CompanyList from "@/components/company-list";
-import { auth } from "@/auth";
+import CompaniesLoadingSkeleton from "./loading";
+import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
+import { cacheLife, cacheTag } from "next/cache";
 
 export const metadata: Metadata = {
   title: "Companies - Due Diligence",
   description: "Manage companies for due diligence",
 };
 
-interface CompaniesPageProps {
-  searchParams: Promise<{
-    search?: string;
-    page?: string;
-  }>;
-}
+type SearchParams = Promise<{
+  search?: string;
+  page?: string;
+}>;
 
-export default async function CompaniesPage({
-  searchParams,
-}: CompaniesPageProps) {
-  const params = await searchParams;
-  const search = params.search;
-  const page = parseInt(params.page || "1");
-  const limit = 12;
-  const offset = (page - 1) * limit;
-
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/auth/login");
-  }
-
-  const { companies, totalCount, totalPages } = await GetCompanies({
-    search,
-    offset,
-    limit,
-  });
-
+const CompaniesPage = async (props: { searchParams: SearchParams }) => {
   return (
     <section className="big-container block-space min-h-screen">
       <div className="mb-6 flex items-center justify-between">
@@ -55,14 +36,79 @@ export default async function CompaniesPage({
         </Button>
       </div>
 
-      <Suspense fallback={<div>Loading companies...</div>}>
-        <CompanyList
-          companies={companies}
-          totalCount={totalCount}
-          totalPages={totalPages}
-          currentPage={page}
-        />
+      <Suspense fallback={<CompaniesLoadingSkeleton />}>
+        <ShowCompaniesComponent searchParams={props.searchParams} />
       </Suspense>
     </section>
+  );
+};
+
+export default CompaniesPage;
+
+async function ShowCompaniesComponent(props: { searchParams: SearchParams }) {
+  const userSession = await getSession();
+  if (!userSession?.user) {
+    redirect("/auth/login");
+  }
+
+  const searchParams = await props.searchParams;
+  const search = searchParams?.search || "";
+  const currentPage = Number(searchParams?.page) || 1;
+  const limit = 12;
+  const offset = (currentPage - 1) * limit;
+
+  return (
+    <div>
+      <FetchAndDisplayCompanies
+        search={search}
+        offset={offset}
+        limit={limit}
+        currentPage={currentPage}
+      />
+    </div>
+  );
+}
+
+async function FetchAndDisplayCompanies({
+  search,
+  offset,
+  limit,
+  currentPage,
+}: {
+  search: string;
+  offset: number;
+  limit: number;
+  currentPage: number;
+}) {
+  "use cache";
+
+  cacheTag("companies");
+  cacheLife("hours");
+
+  const { companies, totalCount, totalPages } = await GetCompanies({
+    search,
+    offset,
+    limit,
+  });
+
+  return (
+    <div>
+      <div className="group-has-[[data-pending]]:animate-pulse">
+        {companies.length === 0 ? (
+          <div className="mt-12 text-center">
+            <p className="text-xl text-muted-foreground">
+              No companies found matching your criteria.
+            </p>
+          </div>
+        ) : (
+          <CompanyList
+            companies={companies}
+            totalCount={totalCount}
+            totalPages={totalPages}
+            currentPage={currentPage}
+          />
+        )}
+      </div>
+    </div>
   );
 }

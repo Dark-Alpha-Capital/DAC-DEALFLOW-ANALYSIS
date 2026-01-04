@@ -1,4 +1,13 @@
-import db from ".";
+import { db } from ".";
+import {
+  deals,
+  companies,
+  pocs,
+  screeners,
+  aiScreenings,
+  questionnaires,
+} from "./schema";
+import { eq, inArray } from "drizzle-orm";
 
 export const BulkDeleteDeals = async (dealIds: readonly string[]) => {
   try {
@@ -6,9 +15,7 @@ export const BulkDeleteDeals = async (dealIds: readonly string[]) => {
       throw new Error("No deals to delete");
     }
 
-    await db.deal.deleteMany({
-      where: { id: { in: dealIds as string[] } },
-    });
+    await db.delete(deals).where(inArray(deals.id, dealIds as string[]));
   } catch (error) {
     console.error("Error deleting deals:", error);
     throw error;
@@ -22,9 +29,7 @@ export const BulkDeleteDeals = async (dealIds: readonly string[]) => {
  */
 export const DeleteCompanyById = async (companyId: string) => {
   try {
-    await db.company.delete({
-      where: { id: companyId },
-    });
+    await db.delete(companies).where(eq(companies.id, companyId));
     return {
       type: "success",
       message: "Company deleted successfully",
@@ -41,9 +46,7 @@ export const DeleteCompanyById = async (companyId: string) => {
  */
 export const DeleteDealById = async (dealId: string) => {
   try {
-    await db.deal.delete({
-      where: { id: dealId },
-    });
+    await db.delete(deals).where(eq(deals.id, dealId));
   } catch (error) {
     console.error("Error deleting deal:", error);
     throw error;
@@ -52,9 +55,7 @@ export const DeleteDealById = async (dealId: string) => {
 
 export const DeletePOCById = async (pocId: string) => {
   try {
-    await db.pOC.delete({
-      where: { id: pocId },
-    });
+    await db.delete(pocs).where(eq(pocs.id, pocId));
   } catch (error) {
     console.error("Error deleting poc:", error);
     throw error;
@@ -63,9 +64,7 @@ export const DeletePOCById = async (pocId: string) => {
 
 export const DeleteScreenerById = async (screenerId: string) => {
   try {
-    await db.screener.delete({
-      where: { id: screenerId },
-    });
+    await db.delete(screeners).where(eq(screeners.id, screenerId));
   } catch (error) {
     console.error("Error deleting screener:", error);
     throw error;
@@ -78,9 +77,7 @@ export const DeleteScreenerById = async (screenerId: string) => {
  */
 export const DeleteReasoningById = async (reasoningId: string) => {
   try {
-    await db.aiScreening.delete({
-      where: { id: reasoningId },
-    });
+    await db.delete(aiScreenings).where(eq(aiScreenings.id, reasoningId));
   } catch (error) {
     console.error("Error deleting reasoning:", error);
     throw error;
@@ -93,9 +90,9 @@ export const DeleteReasoningById = async (reasoningId: string) => {
  */
 export const DeleteQuestionnaireById = async (questionnaireId: string) => {
   try {
-    await db.questionnaire.delete({
-      where: { id: questionnaireId },
-    });
+    await db
+      .delete(questionnaires)
+      .where(eq(questionnaires.id, questionnaireId));
   } catch (error) {
     console.error("Error deleting questionnaire:", error);
     throw error;

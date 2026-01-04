@@ -1,4 +1,4 @@
-import prismaDB from "@/lib/prisma";
+import db, { deals, eq } from "db";
 import { Metadata } from "next";
 import React from "react";
 import AddTagsForm from "./add-tags-form";
@@ -14,11 +14,11 @@ export async function generateMetadata(props: {
   const { uid } = await props.params;
 
   try {
-    const fetchedDeal = await prismaDB.deal.findUnique({
-      where: {
-        id: uid,
-      },
-    });
+    const [fetchedDeal] = await db
+      .select({ dealCaption: deals.dealCaption })
+      .from(deals)
+      .where(eq(deals.id, uid))
+      .limit(1);
 
     return {
       title: fetchedDeal?.dealCaption || "Raw Deal Page",
@@ -39,14 +39,11 @@ const AddTagsPage = async ({ params }: { params: Params }) => {
 
   if (!userSession) redirect("/login");
 
-  const fetchedDealTags = await prismaDB.deal.findUnique({
-    where: {
-      id: uid,
-    },
-    select: {
-      tags: true,
-    },
-  });
+  const [fetchedDealTags] = await db
+    .select({ tags: deals.tags })
+    .from(deals)
+    .where(eq(deals.id, uid))
+    .limit(1);
 
   return (
     <div className="block-space big-container">

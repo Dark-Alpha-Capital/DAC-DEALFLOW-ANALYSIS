@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import db from "db";
+import db, { rollups, deals, users, usersToRollups, eq } from "db";
 
 interface UpdateDealPayload {
   id: string;
@@ -22,19 +22,22 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const rollup = await db.rollup.findUnique({
-      where: { id },
-      include: {
-        users: true,
-        deals: true,
-      },
-    });
+    const [rollup] = await db.select().from(rollups).where(eq(rollups.id, id)).limit(1);
 
     if (!rollup) {
       return NextResponse.json({ rollup: null }, { status: 404 });
     }
 
-    return NextResponse.json({ rollup });
+    // Fetch relations
+    const rollupUsers = await db
+      .select({ id: users.id, name: users.name, email: users.email, role: users.role })
+      .from(usersToRollups)
+      .innerJoin(users, eq(usersToRollups.userId, users.id))
+      .where(eq(usersToRollups.rollupId, id));
+
+    const rollupDeals = await db.select().from(deals).where(eq(deals.rollupId, id));
+
+    return NextResponse.json({ rollup: { ...rollup, users: rollupUsers, deals: rollupDeals } });
   } catch (error) {
     console.error("Error fetching rollup:", error);
     return NextResponse.json(
@@ -52,44 +55,34 @@ export async function PATCH(
   const { id } = await params;
 
   try {
-    // Optional: check user session
-    // const userSession = await auth();
-    // if (!userSession) {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
-
     const body: RollupUpdatePayload = await request.json();
-    const { name, description, summary, deals } = body;
+    const { name, description, summary, deals: dealsToUpdate } = body;
 
     // Update the rollup itself
-    await db.rollup.update({
-      where: { id },
-      data: { name, description, summary },
-    });
+    await db.update(rollups).set({ name, description, summary }).where(eq(rollups.id, id));
 
     // Update individual deals if provided
-    if (Array.isArray(deals)) {
-      for (const deal of deals) {
+    if (Array.isArray(dealsToUpdate)) {
+      for (const deal of dealsToUpdate) {
         const { id: dealId, chunk_text, description: dealDescription } = deal;
         if (!dealId) continue;
 
-        await db.deal.update({
-          where: { id: dealId },
-          data: { chunk_text, description: dealDescription },
-        });
+        await db.update(deals).set({ chunk_text, description: dealDescription }).where(eq(deals.id, dealId));
       }
     }
 
     // Return updated rollup with relations
-    const rollupWithRelations = await db.rollup.findUnique({
-      where: { id },
-      include: {
-        users: true,
-        deals: true,
-      },
-    });
+    const [updatedRollup] = await db.select().from(rollups).where(eq(rollups.id, id)).limit(1);
 
-    return NextResponse.json({ rollup: rollupWithRelations });
+    const rollupUsers = await db
+      .select({ id: users.id, name: users.name, email: users.email, role: users.role })
+      .from(usersToRollups)
+      .innerJoin(users, eq(usersToRollups.userId, users.id))
+      .where(eq(usersToRollups.rollupId, id));
+
+    const rollupDeals = await db.select().from(deals).where(eq(deals.rollupId, id));
+
+    return NextResponse.json({ rollup: { ...updatedRollup, users: rollupUsers, deals: rollupDeals } });
   } catch (error) {
     console.error("Update failed:", error);
     return NextResponse.json(
@@ -107,15 +100,7 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    // Optional: check user session
-    // const userSession = await auth();
-    // if (!userSession) {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
-
-    await db.rollup.delete({
-      where: { id },
-    });
+    await db.delete(rollups).where(eq(rollups.id, id));
 
     return NextResponse.json({ message: "Rollup deleted" });
   } catch (error) {

@@ -1,21 +1,61 @@
-import { PrismaClient } from "@prisma/client";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "./schema";
 
-const prismaClientSingleton = () => {
-  return new PrismaClient({
-    log: ["info"],
+// Re-export everything from schema
+export * from "./schema";
+
+// Re-export drizzle operators
+export {
+  eq,
+  and,
+  or,
+  sql,
+  asc,
+  desc,
+  inArray,
+  count,
+  gte,
+  lte,
+  isNull,
+  isNotNull,
+  ne,
+  gt,
+  lt,
+  like,
+  ilike,
+  between,
+  notInArray,
+} from "drizzle-orm";
+export type { InferSelectModel, InferInsertModel } from "drizzle-orm";
+
+const url = process.env.DATABASE_URL;
+
+if (!url) {
+  console.error("ERROR: DATABASE_URL environment variable is not set!");
+  throw new Error("DATABASE_URL is required");
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var postgresClient: postgres.Sql | undefined;
+}
+
+const client =
+  globalThis.postgresClient ??
+  postgres(url, {
+    max: 10,
+    idle_timeout: 20,
+    connect_timeout: 10,
+    onnotice: () => {},
+    debug: process.env.NODE_ENV === "development" ? console.log : undefined,
   });
-};
 
-declare const globalThis: {
-  prismaGlobal: ReturnType<typeof prismaClientSingleton>;
-} & typeof global;
+if (process.env.NODE_ENV !== "production") {
+  globalThis.postgresClient = client;
+}
 
-const db = globalThis.prismaGlobal ?? prismaClientSingleton();
+export const db = drizzle(client, { schema });
 
+// Default export for convenience
 export default db;
-
-if (process.env.NODE_ENV !== "production") globalThis.prismaGlobal = db;
-
-// Re-export Prisma client namespace and all schema types for consumers
-export { Prisma } from "@prisma/client";
-export type * from "@prisma/client";

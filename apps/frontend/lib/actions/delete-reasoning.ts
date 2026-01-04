@@ -1,11 +1,11 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { DeleteReasoningById } from "db/mutations";
 import { revalidatePath } from "next/cache";
 
 export async function deleteReasoning(reasoningId: string, dealId: string) {
-  const session = await auth();
+  const session = await getSession();
   if (!session) {
     return {
       success: false,

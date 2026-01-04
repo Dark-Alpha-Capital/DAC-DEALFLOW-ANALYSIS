@@ -36,7 +36,7 @@ import {
 import { cimFormSchema, CimFormValues } from "@/lib/schemas";
 import { useToast } from "@/hooks/use-toast";
 import UploadCim from "@/lib/actions/upload-cim";
-import { DealType } from "@prisma/client";
+import { DealType } from "db/schema";
 
 interface SimUploadDialogProps {
   dealId: string;

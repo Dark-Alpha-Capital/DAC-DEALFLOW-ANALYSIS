@@ -1,9 +1,8 @@
 "use server";
 
-import { auth } from "@/auth";
-import db from "db";
+import { getSession } from "@/lib/auth-server";
+import db, { DealType, aiScreenings, eq } from "db";
 import { screenDealSchemaType } from "@/lib/schemas";
-import { DealType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 // this function will be used to edit the results of a Deal screened using AI
@@ -14,7 +13,7 @@ const editScreenDealResult = async (
   dealType: DealType,
 ) => {
   try {
-    const session = await auth();
+    const session = await getSession();
 
     if (!session) {
       return {
@@ -44,14 +43,9 @@ const editScreenDealResult = async (
       };
     }
 
-    await db.aiScreening.update({
-      where: {
-        id: screeningId,
-      },
-      data: {
-        ...values,
-      },
-    });
+    await db.update(aiScreenings).set({
+      ...values,
+    }).where(eq(aiScreenings.id, screeningId));
 
     revalidatePath(`/raw-deals/${dealId}`);
 

@@ -1,15 +1,15 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { InferDealSchema } from "@/components/schemas/infer-deal-schema";
-import db from "db";
+import db, { deals, DealType } from "db";
 
 export default async function SaveInferredDeal({
   generation,
 }: {
   generation: string;
 }) {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession) {
     return {
@@ -36,26 +36,24 @@ export default async function SaveInferredDeal({
 
     console.log("saving inferred deals.....");
 
-    const docRef = await db.deal.create({
-      data: {
-        sourceWebsite: parsedDeal.sourceWebsite || "",
-        firstName: parsedDeal.firstName || "",
-        lastName: parsedDeal.lastName || "",
-        email: parsedDeal.email || "",
-        companyLocation: parsedDeal.companyLocation || "",
-        dealCaption: parsedDeal.dealCaption || "",
-        industry: parsedDeal.industry || "",
-        askingPrice: parsedDeal.askingPrice || 0,
-        revenue: parsedDeal.revenue || 0,
-        grossRevenue: parsedDeal.grossRevenue || 0,
-        title: parsedDeal.title || "",
-        ebitda: parsedDeal.ebitda || 0,
-        ebitdaMargin: parsedDeal.ebitdaMargin || 0,
-        brokerage: parsedDeal.brokerage || "Not Mentioned",
-        dealType: "AI_INFERRED",
-        userId: userSession.user?.id,
-      },
-    });
+    const [docRef] = await db.insert(deals).values({
+      sourceWebsite: parsedDeal.sourceWebsite || "",
+      firstName: parsedDeal.firstName || "",
+      lastName: parsedDeal.lastName || "",
+      email: parsedDeal.email || "",
+      companyLocation: parsedDeal.companyLocation || "",
+      dealCaption: parsedDeal.dealCaption || "",
+      industry: parsedDeal.industry || "",
+      askingPrice: parsedDeal.askingPrice || 0,
+      revenue: parsedDeal.revenue || 0,
+      grossRevenue: parsedDeal.grossRevenue || 0,
+      title: parsedDeal.title || "",
+      ebitda: parsedDeal.ebitda || 0,
+      ebitdaMargin: parsedDeal.ebitdaMargin || 0,
+      brokerage: parsedDeal.brokerage || "Not Mentioned",
+      dealType: DealType.AI_INFERRED,
+      userId: userSession.user?.id,
+    }).returning();
 
     return {
       type: "success",

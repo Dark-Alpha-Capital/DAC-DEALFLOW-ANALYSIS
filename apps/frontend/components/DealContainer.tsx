@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Grid, List } from "lucide-react";
 import DealCard from "@/components/DealCard";
 import DealListItem from "@/components/DealListItem";
-import type { Deal, UserRole } from "@prisma/client";
+import type { Deal, UserRole } from "db";
 import DeleteDealFromDB from "@/lib/actions/delete-deal";
 import {
   AlertDialog,

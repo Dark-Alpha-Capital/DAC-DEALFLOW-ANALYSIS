@@ -1,12 +1,11 @@
 "use server";
 
 import { TransformedDeal } from "../../app/types";
-import db from "db";
-import { DealType } from "@prisma/client";
-import { auth } from "@/auth";
+import db, { DealType, deals as dealsTable } from "db";
+import { getSession } from "@/lib/auth-server";
 import { rateLimit } from "@/lib/redis";
 import { headers } from "next/headers";
-import { revalidateTag, updateTag } from "next/cache";
+import { updateTag } from "next/cache";
 
 /**
  * Adds a list of transformed deals to the database.
@@ -19,7 +18,7 @@ import { revalidateTag, updateTag } from "next/cache";
  *          Returns an object indicating success or failure and lists any deals that failed to upload.
  */
 const BulkUploadDealsToDB = async (deals: TransformedDeal[]) => {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession) {
     return {
@@ -52,8 +51,8 @@ const BulkUploadDealsToDB = async (deals: TransformedDeal[]) => {
   console.log("deals received", deals);
 
   try {
-    await db.deal.createMany({
-      data: deals.map((deal) => ({
+    await db.insert(dealsTable).values(
+      deals.map((deal) => ({
         title: deal.dealCaption || null, // Title is optional in schema, use null as fallback
         dealCaption: deal.dealCaption || "", // Required in schema, use empty string as fallback
         firstName: String(deal.firstName) || null, // Optional in schema
@@ -69,9 +68,9 @@ const BulkUploadDealsToDB = async (deals: TransformedDeal[]) => {
         companyLocation: String(deal.companyLocation) || null, // Optional in schema
         brokerage: deal.brokerage || "", // Required in schema, use empty string as fallback
         dealType: DealType.MANUAL, // Fixed value, no fallback needed
-        userId: userSession.user.id,
+        userId: userSession.user?.id,
       })),
-    });
+    );
 
     updateTag("deals");
 

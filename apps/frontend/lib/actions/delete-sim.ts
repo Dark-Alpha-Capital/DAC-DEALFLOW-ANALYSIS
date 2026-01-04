@@ -1,6 +1,6 @@
 "use server";
-import { auth } from "@/auth";
-import db from "db";
+import { getSession } from "@/lib/auth-server";
+import db, { sims, eq } from "db";
 import { del } from "@vercel/blob";
 
 import { revalidatePath } from "next/cache";
@@ -11,7 +11,7 @@ const DeleteSimFromDB = async (
   fileUrl: string,
 ) => {
   try {
-    const session = await auth();
+    const session = await getSession();
 
     if (!session) {
       return {
@@ -22,11 +22,7 @@ const DeleteSimFromDB = async (
 
     await del(fileUrl);
 
-    await db.sIM.delete({
-      where: {
-        id: cimId,
-      },
-    });
+    await db.delete(sims).where(eq(sims.id, cimId));
 
     revalidatePath(`/raw-deals/${dealId}`);
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import db from "db";
+import { getSession } from "@/lib/auth-server";
+import db, { rollups, deals, users, usersToRollups, eq, desc } from "db";
 
 interface SaveRollupRequestBody {
   name: string;
@@ -10,7 +10,7 @@ interface SaveRollupRequestBody {
 
 // Create a new rollup
 export async function POST(request: Request) {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,20 +27,33 @@ export async function POST(request: Request) {
       );
     }
 
-    const rollup = await db.rollup.create({
-      data: {
-        name,
-        description,
-        users: { connect: { id: userSession.user.id } },
-        deals: { connect: dealIds.map((id) => ({ id })) },
-      },
-      include: {
-        users: true,
-        deals: true,
-      },
+    // Create the rollup
+    const [rollup] = await db.insert(rollups).values({
+      name,
+      description,
+    }).returning();
+
+    // Connect user to rollup (A = rollupId, B = userId in the join table)
+    await db.insert(usersToRollups).values({
+      A: rollup.id,
+      B: userSession.user.id,
     });
 
-    return NextResponse.json({ rollup });
+    // Connect deals to rollup
+    for (const dealId of dealIds) {
+      await db.update(deals).set({ rollupId: rollup.id }).where(eq(deals.id, dealId));
+    }
+
+    // Fetch rollup with relations (A = rollupId, B = userId in the join table)
+    const rollupUsers = await db
+      .select({ id: users.id, name: users.name, email: users.email, role: users.role })
+      .from(usersToRollups)
+      .innerJoin(users, eq(usersToRollups.B, users.id))
+      .where(eq(usersToRollups.A, rollup.id));
+
+    const rollupDeals = await db.select().from(deals).where(eq(deals.rollupId, rollup.id));
+
+    return NextResponse.json({ rollup: { ...rollup, users: rollupUsers, deals: rollupDeals } });
   } catch (error) {
     console.error("Error saving rollup:", error);
     return NextResponse.json(
@@ -53,12 +66,24 @@ export async function POST(request: Request) {
 // GET all rollups
 export async function GET() {
   try {
-    const rollups = await db.rollup.findMany({
-      include: { users: true, deals: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const rollupsList = await db.select().from(rollups).orderBy(desc(rollups.createdAt));
 
-    return NextResponse.json({ rollups });
+    // Fetch relations for each rollup
+    const rollupsWithRelations = await Promise.all(
+      rollupsList.map(async (rollup) => {
+        const rollupUsers = await db
+          .select({ id: users.id, name: users.name, email: users.email, role: users.role })
+          .from(usersToRollups)
+          .innerJoin(users, eq(usersToRollups.B, users.id))
+          .where(eq(usersToRollups.A, rollup.id));
+
+        const rollupDeals = await db.select().from(deals).where(eq(deals.rollupId, rollup.id));
+
+        return { ...rollup, users: rollupUsers, deals: rollupDeals };
+      }),
+    );
+
+    return NextResponse.json({ rollups: rollupsWithRelations });
   } catch (error) {
     console.error("Error fetching rollups:", error);
     return NextResponse.json(

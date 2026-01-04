@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, FileIcon, Download } from "lucide-react";
-import { DealDocumentCategory } from "db";
+import { DealDocumentCategory } from "db/schema";
 
 const DealDocumentItem = ({
   title,

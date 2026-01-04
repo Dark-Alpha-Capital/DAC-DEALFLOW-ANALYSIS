@@ -5,20 +5,29 @@
   "private": true,
   "devDependencies": {
     "@types/bun": "latest",
-    "prisma": "^6.18.0"
+    "drizzle-kit": "^0.31.8"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:introspect": "drizzle-kit introspect"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "@prisma/client": "^6.18.0"
+    "@paralleldrive/cuid2": "^3.0.6",
+    "drizzle-orm": "^0.45.1",
+    "postgres": "^3.4.7"
   },
- "exports": {
-  ".": "./index.ts",
-  "./queries": "./queries.ts",
-  "./mutations": "./mutations.ts",
-  "./types": "./types.ts"
-  
- }
-  
+  "exports": {
+    ".": "./index.ts",
+    "./schema": "./schema.ts",
+    "./queries": "./queries.ts",
+    "./mutations": "./mutations.ts",
+    "./types": "./types.ts",
+    "./types-only": "./types-only.ts"
+  }
 }

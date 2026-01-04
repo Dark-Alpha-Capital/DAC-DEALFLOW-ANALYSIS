@@ -3,8 +3,8 @@
 // lib/bitrix.js
 import axios from "axios";
 import { Deal } from "db";
-import { auth } from "@/auth";
-import db from "db";
+import { getSession } from "@/lib/auth-server";
+import db, { deals, eq } from "db";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -14,7 +14,7 @@ import { revalidatePath } from "next/cache";
  * @returns {Promise<Object>} - The response from Bitrix24 API.
  */
 const exportDealToBitrix = async (deal: Deal) => {
-  const session = await auth();
+  const session = await getSession();
   if (!session) {
     return {
       error: "Unauthorized",
@@ -62,13 +62,10 @@ const exportDealToBitrix = async (deal: Deal) => {
     console.log("response data", responseData);
 
     if (responseData.result) {
-      await db.deal.update({
-        where: { id: deal.id },
-        data: {
-          bitrixId: responseData.result.toString(),
-          bitrixCreatedAt: new Date(),
-        },
-      });
+      await db.update(deals).set({
+        bitrixId: responseData.result.toString(),
+        bitrixCreatedAt: new Date(),
+      }).where(eq(deals.id, deal.id));
     }
 
     revalidatePath(`/raw-deals/${deal.id}`);

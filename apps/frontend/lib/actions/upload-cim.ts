@@ -4,7 +4,7 @@ import { put } from "@vercel/blob";
 import { DealType } from "db";
 import { revalidatePath } from "next/cache";
 import { cimFormSchema } from "@/lib/schemas";
-import db from "db";
+import db, { sims } from "db";
 
 export default async function UploadCim(
   data: FormData,
@@ -37,17 +37,15 @@ export default async function UploadCim(
     });
 
     // Save CIM metadata to database
-    const cim = await db.sIM.create({
-      data: {
-        title,
-        caption,
-        status,
-        fileName: file.name,
-        fileType: file.type,
-        fileUrl: blob.url,
-        deal: { connect: { id: dealId } },
-      },
-    });
+    const [cim] = await db.insert(sims).values({
+      title,
+      caption,
+      status,
+      fileName: file.name,
+      fileType: file.type,
+      fileUrl: blob.url,
+      dealId,
+    }).returning();
 
     revalidatePath(`/raw-deals/${dealId}`);
 

@@ -1,15 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
-import {
-  FiPlus,
-  FiList,
-  FiCheckSquare,
-  FiHome,
-  FiClock,
-} from "react-icons/fi";
+import { usePathname, useRouter } from "next/navigation";
+import { FiPlus, FiList, FiCheckSquare, FiHome, FiClock } from "react-icons/fi";
 import { FaScrewdriver } from "react-icons/fa";
 import { Lock, User2, LogOut, ChevronUp } from "lucide-react";
 import {
@@ -33,6 +26,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2 } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
+import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 
 type NavItem = {
   title: string;
@@ -46,14 +41,14 @@ const navItems: NavItem[] = [
   { title: "Published", url: "/published-deals", icon: FiCheckSquare },
   { title: "Screener", url: "/screeners", icon: FaScrewdriver },
   { title: "Companies", url: "/companies", icon: FiHome },
-  { title: "History", url: "/job-history", icon: FiClock },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const session = useSession();
-  const isLoading = session.status === "loading";
-  const isAdmin = session.data?.user?.role === "ADMIN";
+  const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
+  const isLoading = isPending;
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
 
   // Add admin link if user is admin
   const menuItems = isAdmin
@@ -61,9 +56,9 @@ export function AppSidebar() {
     : navItems;
 
   const userInitials =
-    session.data?.user?.name
+    session?.user?.name
       ?.split(" ")
-      .map((n) => n[0])
+      .map((n: string) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2) || "U";
@@ -79,9 +74,7 @@ export function AppSidebar() {
                   <span className="text-sm font-bold">DAC</span>
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">
-                    DAC Dealflow
-                  </span>
+                  <span className="truncate font-semibold">DAC Dealflow</span>
                   <span className="truncate text-xs text-sidebar-foreground/70">
                     Deal Origination
                   </span>
@@ -97,10 +90,15 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {
-                const isActive = pathname === item.url || pathname.startsWith(item.url + "/");
+                const isActive =
+                  pathname === item.url || pathname.startsWith(item.url + "/");
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.title}
+                    >
                       <Link href={item.url}>
                         <item.icon />
                         <span>{item.title}</span>
@@ -121,14 +119,14 @@ export function AppSidebar() {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Loading...</span>
               </SidebarMenuButton>
-            ) : session.data ? (
+            ) : session ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton size="lg">
                     <Avatar className="h-8 w-8 rounded-lg">
                       <AvatarImage
-                        src={session.data.user?.image || undefined}
-                        alt={session.data.user?.name || "User"}
+                        src={session.user?.image || undefined}
+                        alt={session.user?.name || "User"}
                       />
                       <AvatarFallback className="rounded-lg text-xs font-semibold">
                         {userInitials}
@@ -136,10 +134,10 @@ export function AppSidebar() {
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">
-                        {session.data.user?.name || "Account"}
+                        {session.user?.name || "Account"}
                       </span>
                       <span className="truncate text-xs text-sidebar-foreground/70">
-                        {session.data.user?.email}
+                        {session.user?.email}
                       </span>
                     </div>
                     <ChevronUp className="ml-auto" />
@@ -151,16 +149,24 @@ export function AppSidebar() {
                   align="end"
                   sideOffset={4}
                 >
-                  {session.data.user?.id && (
+                  {session.user?.id && (
                     <DropdownMenuItem asChild>
-                      <Link href={`/profile/${session.data.user.id}`}>
+                      <Link href={`/profile/${session.user.id}`}>
                         <User2 />
                         <span>Profile</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
-                    onClick={() => signOut({ callbackUrl: "/auth/login" })}
+                    onClick={async () => {
+                      await authClient.signOut({
+                        fetchOptions: {
+                          onSuccess: () => {
+                            router.push("/auth/login");
+                          },
+                        },
+                      });
+                    }}
                     className="text-destructive focus:text-destructive"
                   >
                     <LogOut />
@@ -170,7 +176,7 @@ export function AppSidebar() {
               </DropdownMenu>
             ) : (
               <SidebarMenuButton asChild size="lg">
-                <Link href="/auth/login">
+                <Link href={"/auth/login"}>
                   <User2 />
                   <span>Sign In</span>
                 </Link>
@@ -182,4 +188,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-

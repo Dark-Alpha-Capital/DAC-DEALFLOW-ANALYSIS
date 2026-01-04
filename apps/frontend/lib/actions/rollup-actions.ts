@@ -1,7 +1,7 @@
 "use server";
 
-import db from "db";
-import { auth } from "@/auth";
+import db, { rollups, deals, users, usersToRollups, eq } from "db";
+import { getSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -11,20 +11,18 @@ import { revalidatePath } from "next/cache";
  */
 export async function deleteRollup(rollupId: string) {
   try {
-    const session = await auth();
+    const session = await getSession();
 
     if (!session?.user) {
       return { success: false, error: "Unauthorized" };
     }
 
     // Check if user is admin
-    if (session.user.role !== "ADMIN") {
+    if ((session.user as any).role !== "ADMIN") {
       return { success: false, error: "Only admins can delete rollups" };
     }
 
-    await db.rollup.delete({
-      where: { id: rollupId },
-    });
+    await db.delete(rollups).where(eq(rollups.id, rollupId));
 
     revalidatePath("/rollups");
     return { success: true };
@@ -49,27 +47,24 @@ export async function updateRollup(
   },
 ) {
   try {
-    const session = await auth();
+    const session = await getSession();
 
     if (!session?.user) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const updatedRollup = await db.rollup.update({
-      where: { id: rollupId },
-      data,
-      include: {
-        users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        deals: true,
-      },
-    });
+    const [updated] = await db.update(rollups).set(data).where(eq(rollups.id, rollupId)).returning();
+
+    // Fetch related users and deals
+    const rollupUsers = await db
+      .select({ id: users.id, name: users.name, email: users.email, role: users.role })
+      .from(usersToRollups)
+      .innerJoin(users, eq(usersToRollups.userId, users.id))
+      .where(eq(usersToRollups.rollupId, rollupId));
+
+    const rollupDeals = await db.select().from(deals).where(eq(deals.rollupId, rollupId));
+
+    const updatedRollup = { ...updated, users: rollupUsers, deals: rollupDeals };
 
     revalidatePath("/rollups");
     revalidatePath(`/rollups/${rollupId}`);
@@ -94,16 +89,13 @@ export async function updateDealInRollup(
   },
 ) {
   try {
-    const session = await auth();
+    const session = await getSession();
 
     if (!session?.user) {
       return { success: false, error: "Unauthorized" };
     }
 
-    await db.deal.update({
-      where: { id: dealId },
-      data,
-    });
+    await db.update(deals).set(data).where(eq(deals.id, dealId));
 
     revalidatePath("/rollups");
     return { success: true };
@@ -121,21 +113,18 @@ export async function updateDealInRollup(
  */
 export async function removeDealFromRollup(dealId: string, rollupId: string) {
   try {
-    const session = await auth();
+    const session = await getSession();
 
     if (!session?.user) {
       return { success: false, error: "Unauthorized" };
     }
 
     // Check if user is admin
-    if (session.user.role !== "ADMIN") {
+    if ((session.user as any).role !== "ADMIN") {
       return { success: false, error: "Only admins can remove deals" };
     }
 
-    await db.deal.update({
-      where: { id: dealId },
-      data: { rollupId: null },
-    });
+    await db.update(deals).set({ rollupId: null }).where(eq(deals.id, dealId));
 
     revalidatePath("/rollups");
     revalidatePath(`/rollups/${rollupId}`);
