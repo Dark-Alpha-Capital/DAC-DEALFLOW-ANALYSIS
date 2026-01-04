@@ -71,7 +71,8 @@ export interface JobProgressData {
 
 // Helper function to get job status and progress
 export async function getJobStatus(queueName: string, jobId: string) {
-  const queue = queueName === QUEUE_NAMES.SCREEN_DEAL ? screenDealQueue : fileUploadQueue;
+  const queue =
+    queueName === QUEUE_NAMES.SCREEN_DEAL ? screenDealQueue : fileUploadQueue;
   const job = await queue.getJob(jobId);
 
   if (!job) {

@@ -152,8 +152,77 @@ Required env vars are defined in `turbo.json` build task. Each app has `.env.exa
 
 Key variables:
 - `DATABASE_URL`, `DIRECT_URL`: PostgreSQL connection strings
-- `REDIS_URL`: Redis connection
+- `REDIS_URL`: Redis connection (used by BullMQ for job queues)
 - `BETTER_AUTH_SECRET`: Better Auth secret
 - `GCLOUD_*`: Google Cloud credentials (project ID, bucket, service account)
 - `GOOGLE_AI_API_KEY`: Google Gemini API key
 - `AI_API_KEY`: OpenAI API key
+
+## Worker Architecture
+
+The worker service (`apps/worker`) uses BullMQ for background job processing with the following structure:
+
+### Job Queues
+
+| Queue Name | Purpose | Handler |
+|------------|---------|---------|
+| `screen-deal` | AI screening of deals against screeners | `handlers/screen-deal-handler.ts` |
+| `file-upload` | File upload processing | `handlers/file-upload-handler.ts` |
+
+### Worker File Structure
+
+```
+apps/worker/
+├── index.ts                    # Entry point: health check server + worker init
+├── handlers/
+│   ├── screen-deal-handler.ts  # Screen deal job processor
+│   └── file-upload-handler.ts  # File upload job processor
+└── lib/
+    ├── bullmq-connection.ts    # ioredis connection for BullMQ
+    ├── queues.ts               # Queue definitions and types
+    └── actions/
+        └── evaluate-deal.ts    # Deal evaluation with progress callbacks
+```
+
+### Progress Tracking
+
+Jobs report step-based progress updates:
+```typescript
+// Screen deal progress steps:
+"Fetching deal information" (5%)
+"Fetching screener" (10%)
+"Splitting content into chunks" (15%)
+"Processing chunk 1/N" (15-75%)
+"Generating final summary" (80%)
+"Saving results to database" (95%)
+"Completed" (100%)
+```
+
+### Adding New Job Types
+
+1. Create a handler in `apps/worker/handlers/`:
+```typescript
+import { Job } from "bullmq";
+
+export async function myJobHandler(job: Job<MyJobData>) {
+  await job.updateProgress({ step: "Starting", percentage: 0 });
+  // ... process job
+  await job.updateProgress({ step: "Completed", percentage: 100 });
+  return { success: true };
+}
+```
+
+2. Add queue in `apps/worker/lib/queues.ts`:
+```typescript
+export const QUEUE_NAMES = {
+  // ...existing queues
+  MY_QUEUE: "my-queue",
+} as const;
+```
+
+3. Register worker in `apps/worker/index.ts`:
+```typescript
+const myWorker = new Worker(QUEUE_NAMES.MY_QUEUE, myJobHandler, { connection });
+```
+
+4. Add queue client in `apps/frontend/lib/queue-client.ts` to enqueue jobs from frontend

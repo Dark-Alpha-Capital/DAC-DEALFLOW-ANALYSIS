@@ -1,23 +1,38 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import CreateNewCompanyForm from "@/components/forms/new-company-form";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
+import NewCompanyLoadingSkeleton from "./loading";
 
 export const metadata: Metadata = {
   title: "Add New Company - Due Diligence",
   description: "Add a new company for due diligence",
 };
 
-export default async function NewCompanyPage() {
-  const session = await auth();
-  if (!session?.user) {
+const NewCompanyPage = async () => {
+  return (
+    <section className="big-container block-space group min-h-screen">
+      <Suspense fallback={<NewCompanyLoadingSkeleton />}>
+        <ShowNewCompanyComponent />
+      </Suspense>
+    </section>
+  );
+};
+
+export default NewCompanyPage;
+
+async function ShowNewCompanyComponent() {
+  const userSession = await getSession();
+  if (!userSession?.user) {
     redirect("/auth/login");
   }
+
   return (
-    <section className="big-container block-space min-h-screen">
+    <>
       <div className="mb-6">
         <Button variant="ghost" asChild className="mb-4">
           <Link href="/companies">
@@ -32,6 +47,6 @@ export default async function NewCompanyPage() {
       <div className="max-w-4xl">
         <CreateNewCompanyForm />
       </div>
-    </section>
+    </>
   );
 }

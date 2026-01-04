@@ -72,7 +72,8 @@ export async function saveEvaluation(
     }
 
     // Map sentiment string to enum
-    let sentiment: typeof Sentiment[keyof typeof Sentiment] = Sentiment.NEUTRAL;
+    let sentiment: (typeof Sentiment)[keyof typeof Sentiment] =
+      Sentiment.NEUTRAL;
     if (evaluation.sentiment) {
       switch (evaluation.sentiment) {
         case "POSITIVE":
@@ -89,15 +90,18 @@ export async function saveEvaluation(
     }
 
     // Create the AI screening record
-    const [savedEvaluation] = await db.insert(aiScreenings).values({
-      dealId,
-      title: evaluation.title,
-      explanation: evaluation.explanation,
-      score: evaluation.score ? Math.round(evaluation.score) : null,
-      content: evaluation.content || null,
-      sentiment,
-      screenerId,
-    }).returning();
+    const [savedEvaluation] = await db
+      .insert(aiScreenings)
+      .values({
+        dealId,
+        title: evaluation.title,
+        explanation: evaluation.explanation,
+        score: evaluation.score ? Math.round(evaluation.score) : null,
+        content: evaluation.content || null,
+        sentiment,
+        screenerId,
+      })
+      .returning();
 
     // Revalidate relevant paths to update the UI
     revalidatePath(`/raw-deals/${dealId}`);
@@ -107,7 +111,7 @@ export async function saveEvaluation(
     return {
       success: true,
       message: "Evaluation saved successfully",
-      evaluationId: savedEvaluation.id,
+      evaluationId: savedEvaluation?.id,
       data: savedEvaluation,
     };
   } catch (error) {

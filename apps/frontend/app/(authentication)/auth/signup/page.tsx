@@ -31,48 +31,52 @@ import {
 } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(1, "Password is required"),
-});
+const signupSchema = z
+  .object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Please enter a valid email"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+type SignupFormValues = z.infer<typeof signupSchema>;
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
     defaultValues: {
+      name: "",
       email: "",
       password: "",
+      confirmPassword: "",
     },
   });
 
-  async function onSubmit(data: LoginFormValues) {
+  async function onSubmit(data: SignupFormValues) {
     setIsLoading(true);
     try {
-      const response = await authClient.signIn.email({
+      const response = await authClient.signUp.email({
+        name: data.name,
         email: data.email,
         password: data.password,
         callbackURL: DEFAULT_LOGIN_REDIRECT,
       });
 
       if (response.error) {
-        // Handle email verification required
-        if (response.error.status === 403) {
-          toast.error("Please verify your email before signing in");
-          router.push("/auth/verify-email?email=" + encodeURIComponent(data.email));
-          return;
-        }
-        toast.error(response.error.message || "Invalid email or password");
+        toast.error(response.error.message || "Failed to create account");
         return;
       }
 
-      toast.success("Welcome back!");
-      router.push(DEFAULT_LOGIN_REDIRECT);
+      toast.success("Account created! Please check your email to verify.");
+      router.push("/auth/verify-email?email=" + encodeURIComponent(data.email));
     } catch (error) {
       console.error(error);
       toast.error("Something went wrong. Please try again.");
@@ -81,7 +85,7 @@ export default function LoginPage() {
     }
   }
 
-  async function handleGoogleSignIn() {
+  async function handleGoogleSignup() {
     setIsGoogleLoading(true);
     try {
       await authClient.signIn.social({
@@ -90,7 +94,7 @@ export default function LoginPage() {
       });
     } catch (error) {
       console.error(error);
-      toast.error("Failed to sign in with Google");
+      toast.error("Failed to sign up with Google");
       setIsGoogleLoading(false);
     }
   }
@@ -104,16 +108,18 @@ export default function LoginPage() {
               DAC DEALFLOW
             </div>
           </div>
-          <CardTitle className="text-2xl font-semibold">Welcome Back</CardTitle>
+          <CardTitle className="text-2xl font-semibold">
+            Create an Account
+          </CardTitle>
           <CardDescription className="text-base">
-            Sign in to access your deal sourcing platform
+            Sign up to access the deal sourcing platform
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button
             variant="outline"
             className="w-full"
-            onClick={handleGoogleSignIn}
+            onClick={handleGoogleSignup}
             disabled={isGoogleLoading || isLoading}
           >
             {isGoogleLoading ? (
@@ -121,7 +127,7 @@ export default function LoginPage() {
             ) : (
               <FaGoogle className="mr-2 size-5" />
             )}
-            Sign in with Google
+            Sign up with Google
           </Button>
 
           <div className="relative">
@@ -137,6 +143,23 @@ export default function LoginPage() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="John Doe"
+                        {...field}
+                        disabled={isLoading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="email"
@@ -160,19 +183,29 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex items-center justify-between">
-                      <FormLabel>Password</FormLabel>
-                      <Link
-                        href="/auth/forgot-password"
-                        className="text-sm text-muted-foreground hover:text-primary underline-offset-4 hover:underline"
-                      >
-                        Forgot password?
-                      </Link>
-                    </div>
+                    <FormLabel>Password</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="Enter your password"
+                        placeholder="At least 8 characters"
+                        {...field}
+                        disabled={isLoading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Confirm your password"
                         {...field}
                         disabled={isLoading}
                       />
@@ -183,23 +216,20 @@ export default function LoginPage() {
               />
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
-                Sign In
+                Create Account
               </Button>
             </form>
           </Form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
           <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
+            Already have an account?{" "}
             <Link
-              href="/auth/signup"
+              href="/auth/login"
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
-              Sign up
+              Sign in
             </Link>
-          </p>
-          <p className="text-center text-xs text-muted-foreground">
-            Only authorized members can access this platform
           </p>
           <div className="text-center text-xs text-muted-foreground/70">
             Powered by{" "}

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getCompleteAiReasoningById } from "db/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +8,10 @@ import ReactMarkdown from "react-markdown";
 import PreviousPageButton from "@/components/PreviousPageButton";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
+import { cacheLife, cacheTag } from "next/cache";
+import ReasoningLoadingSkeleton from "./loading";
 
 const page = async ({
   params,
@@ -17,50 +20,85 @@ const page = async ({
 }) => {
   const { uid: dealId, reasoningId } = await params;
 
-  const userSession = await auth();
+  return (
+    <div className="group min-h-screen bg-background p-6">
+      <Suspense fallback={<ReasoningLoadingSkeleton />}>
+        <ShowReasoningComponent dealId={dealId} reasoningId={reasoningId} />
+      </Suspense>
+    </div>
+  );
+};
 
-  if (!userSession) redirect("/login");
+export default page;
+
+async function ShowReasoningComponent({
+  dealId,
+  reasoningId,
+}: {
+  dealId: string;
+  reasoningId: string;
+}) {
+  const userSession = await getSession();
+
+  if (!userSession?.user) {
+    redirect("/auth/login");
+  }
+
+  return (
+    <FetchAndDisplayReasoningData dealId={dealId} reasoningId={reasoningId} />
+  );
+}
+
+async function FetchAndDisplayReasoningData({
+  dealId,
+  reasoningId,
+}: {
+  dealId: string;
+  reasoningId: string;
+}) {
+  "use cache";
+  cacheTag(`reasoning-${reasoningId}`);
+  cacheTag("reasonings");
+  cacheLife("hours");
 
   const reasoning = await getCompleteAiReasoningById(reasoningId);
 
   if (!reasoning) {
     return (
-      <div className="min-h-screen bg-background p-6">
-        <div className="mx-auto max-w-4xl space-y-6">
-          <PreviousPageButton />
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <MessageSquare className="h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">
-                Reasoning not found
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                The requested reasoning could not be found.
-              </p>
-              <Button asChild className="mt-4">
-                <Link href={`/raw-deals/${dealId}/reasonings`}>
-                  Back to Reasonings
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="mx-auto max-w-4xl space-y-6">
+        <PreviousPageButton />
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <MessageSquare className="h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mt-4 text-lg font-semibold text-foreground">
+              Reasoning not found
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              The requested reasoning could not be found.
+            </p>
+            <Button asChild className="mt-4">
+              <Link href={`/raw-deals/${dealId}/reasonings`}>
+                Back to Reasonings
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-center justify-between">
-          <PreviousPageButton />
-          <Button asChild variant="outline">
-            <Link href={`/raw-deals/${dealId}/reasonings`}>
-              View All Reasonings
-            </Link>
-          </Button>
-        </div>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div className="flex items-center justify-between">
+        <PreviousPageButton />
+        <Button asChild variant="outline">
+          <Link href={`/raw-deals/${dealId}/reasonings`}>
+            View All Reasonings
+          </Link>
+        </Button>
+      </div>
 
+      <div className="group-has-[[data-pending]]:animate-pulse">
         <div className="space-y-6">
           <Card>
             <CardHeader className="space-y-4">
@@ -182,6 +220,4 @@ const page = async ({
       </div>
     </div>
   );
-};
-
-export default page;
+}

@@ -6,13 +6,10 @@ import {
   type JobProgressData,
 } from "@/lib/queue-client";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 // SSE endpoint for streaming job progress updates
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ jobId: string }> }
+  { params }: { params: Promise<{ jobId: string }> },
 ) {
   const { jobId } = await params;
 
@@ -28,7 +25,9 @@ export async function GET(
     async start(controller) {
       const sendEvent = (data: object) => {
         try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(data)}\n\n`),
+          );
         } catch (error) {
           // Controller might be closed
           console.error("[SSE] Error sending event:", error);

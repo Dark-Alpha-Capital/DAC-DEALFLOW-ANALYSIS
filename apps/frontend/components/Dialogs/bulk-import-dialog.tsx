@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { useDropzone } from "react-dropzone";
 import * as XLSX from "xlsx";
 import {
@@ -17,12 +17,20 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle,
+  XCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "../ui/scroll-area";
 import { TransformedDeal } from "@/app/types";
 import { useToast } from "@/hooks/use-toast";
 import BulkUploadDealsToDB from "@/lib/actions/bulk-upload-deal";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type SheetDeal = {
   Brokerage: string;
@@ -42,6 +50,115 @@ type SheetDeal = {
   "Company Location"?: string;
 };
 
+type RowValidationError = {
+  row: number;
+  errors: string[];
+};
+
+// Expected headers for the Excel/CSV file
+const EXPECTED_HEADERS = [
+  "Brokerage",
+  "First Name",
+  "Last Name",
+  "Work Phone",
+  "Email",
+  "LinkedIn URL",
+  "Deal Caption",
+  "Revenue",
+  "EBITDA",
+  "EBITDA Margin",
+  "Industry",
+  "Source Website",
+  "Upload",
+  "UploadOnCRM",
+  "Company Location",
+] as const;
+
+// Validation helper functions
+const isValidEmail = (email: string): boolean => {
+  if (!email) return true; // Optional field
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const isValidUrl = (url: string): boolean => {
+  if (!url) return true; // Optional field
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const isValidNumber = (value: unknown): boolean => {
+  if (value === undefined || value === null || value === "") return false;
+  const num = Number(value);
+  return !isNaN(num) && isFinite(num);
+};
+
+const validateDealRow = (deal: Record<string, unknown>): string[] => {
+  const errors: string[] = [];
+
+  // Required string fields
+  if (!deal["Brokerage"] || String(deal["Brokerage"]).trim() === "") {
+    errors.push("Brokerage is required");
+  }
+
+  if (!deal["Deal Caption"] || String(deal["Deal Caption"]).trim() === "") {
+    errors.push("Deal Caption is required");
+  }
+
+  if (!deal["Industry"] || String(deal["Industry"]).trim() === "") {
+    errors.push("Industry is required");
+  }
+
+  if (!deal["Source Website"] || String(deal["Source Website"]).trim() === "") {
+    errors.push("Source Website is required");
+  } else if (!isValidUrl(String(deal["Source Website"]))) {
+    errors.push("Source Website must be a valid URL");
+  }
+
+  // Required numeric fields
+  if (!isValidNumber(deal["Revenue"])) {
+    errors.push("Revenue is required and must be a valid number");
+  }
+
+  if (!isValidNumber(deal["EBITDA"])) {
+    errors.push("EBITDA is required and must be a valid number");
+  }
+
+  if (!isValidNumber(deal["EBITDA Margin"])) {
+    errors.push("EBITDA Margin is required and must be a valid number");
+  }
+
+  // Upload field validation
+  const uploadValue = String(deal["Upload"] || "").toUpperCase();
+  if (!uploadValue || (uploadValue !== "Y" && uploadValue !== "N")) {
+    errors.push('Upload must be "Y" or "N"');
+  }
+
+  // UploadOnCRM field validation
+  const uploadOnCRMValue = String(deal["UploadOnCRM"] || "").toLowerCase();
+  if (
+    !uploadOnCRMValue ||
+    (uploadOnCRMValue !== "yes" && uploadOnCRMValue !== "no")
+  ) {
+    errors.push('UploadOnCRM must be "Yes" or "No"');
+  }
+
+  // Optional field validations
+  if (deal["Email"] && !isValidEmail(String(deal["Email"]))) {
+    errors.push("Email must be a valid email address");
+  }
+
+  if (deal["LinkedIn URL"] && !isValidUrl(String(deal["LinkedIn URL"]))) {
+    errors.push("LinkedIn URL must be a valid URL");
+  }
+
+  return errors;
+};
+
 export function BulkImportDialog() {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -50,52 +167,27 @@ export function BulkImportDialog() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadComplete, setUploadComplete] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<RowValidationError[]>(
+    []
+  );
+  const [showValidationDetails, setShowValidationDetails] = useState(false);
 
-  const expectedHeaders = [
-    "Brokerage",
-    "First Name",
-    "Last Name",
-    "Work Phone",
-    "Email",
-    "LinkedIn URL",
-    "Deal Caption",
-    "Revenue",
-    "EBITDA",
-    "EBITDA Margin",
-    "Industry",
-    "Source Website",
-    "Upload",
-    "UploadOnCRM",
-    "Company Location",
-  ];
+  // Compute if there are any validation errors
+  const hasValidationErrors = useMemo(
+    () => validationErrors.length > 0,
+    [validationErrors]
+  );
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      const validTypes = [
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "text/csv",
-      ];
-      if (
-        validTypes.includes(file.type) ||
-        file.name.endsWith(".xlsx") ||
-        file.name.endsWith(".csv")
-      ) {
-        setFile(file);
-        setError(null);
-        parseFile(file);
-      } else {
-        setFile(null);
-        setDeals([]);
-        setError("Please upload a valid Excel (.xlsx) or CSV file.");
-      }
-    }
-  }, []);
+  // Get count of deals that will be uploaded (only those with Upload = "Y")
+  const dealsToUpload = useMemo(
+    () =>
+      deals.filter(
+        (deal) => String(deal["Upload"]).toUpperCase() === "Y"
+      ),
+    [deals]
+  );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
-
-  const parseFile = (file: File) => {
+  const parseFile = useCallback((uploadedFile: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const data = new Uint8Array(e.target?.result as ArrayBuffer);
@@ -107,31 +199,91 @@ export function BulkImportDialog() {
         worksheet as unknown as XLSX.WorkSheet,
         {
           header: 1,
-        },
+        }
       );
       const headerRow = (rows[0] || []) as string[];
-      console.log("headerRow", headerRow);
-      console.log("expectedHeaders", expectedHeaders);
 
-      const missing = expectedHeaders.filter((h) => !headerRow.includes(h));
-      const extra = headerRow.filter((h) => !expectedHeaders.includes(h));
+      const missing = EXPECTED_HEADERS.filter(
+        (h) => !headerRow.includes(h)
+      );
+      const extra = headerRow.filter(
+        (h) => !EXPECTED_HEADERS.includes(h as (typeof EXPECTED_HEADERS)[number])
+      );
       if (missing.length > 0 || extra.length > 0) {
         const msgs: string[] = [];
-        if (missing.length) msgs.push(`Missing columns: ${missing.join(", ")}`);
+        if (missing.length)
+          msgs.push(`Missing columns: ${missing.join(", ")}`);
         if (extra.length) msgs.push(`Unexpected columns: ${extra.join(", ")}`);
         setError(`Invalid file format. ${msgs.join(". ")}`);
         setDeals([]);
+        setValidationErrors([]);
         return;
       }
 
       const jsonData = XLSX.utils.sheet_to_json(
-        worksheet as unknown as XLSX.WorkSheet,
+        worksheet as unknown as XLSX.WorkSheet
       ) as SheetDeal[];
+
+      // Validate each row
+      const rowErrors: RowValidationError[] = [];
+      jsonData.forEach((deal, index) => {
+        const errors = validateDealRow(
+          deal as unknown as Record<string, unknown>
+        );
+        if (errors.length > 0) {
+          rowErrors.push({
+            row: index + 2, // +2 because row 1 is header, and index is 0-based
+            errors,
+          });
+        }
+      });
+
       setDeals(jsonData);
-      setError(null);
+      setValidationErrors(rowErrors);
+
+      if (rowErrors.length > 0) {
+        setError(
+          `Validation failed for ${rowErrors.length} row(s). Please fix the errors before uploading.`
+        );
+        setShowValidationDetails(true);
+      } else {
+        setError(null);
+      }
     };
-    reader.readAsArrayBuffer(file);
-  };
+    reader.readAsArrayBuffer(uploadedFile);
+  }, []);
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const droppedFile = acceptedFiles[0];
+      if (droppedFile) {
+        const validTypes = [
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "text/csv",
+        ];
+        if (
+          validTypes.includes(droppedFile.type) ||
+          droppedFile.name.endsWith(".xlsx") ||
+          droppedFile.name.endsWith(".csv")
+        ) {
+          setFile(droppedFile);
+          setError(null);
+          setSuccess(null);
+          setValidationErrors([]);
+          setShowValidationDetails(false);
+          parseFile(droppedFile);
+        } else {
+          setFile(null);
+          setDeals([]);
+          setValidationErrors([]);
+          setError("Please upload a valid Excel (.xlsx) or CSV file.");
+        }
+      }
+    },
+    [parseFile]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   const transformDeals = (deals: SheetDeal[]): TransformedDeal[] => {
     return deals.map((deal) => ({
@@ -154,11 +306,37 @@ export function BulkImportDialog() {
   const handleUpload = async () => {
     if (!file || deals.length === 0) return;
 
+    // Block upload if there are validation errors
+    if (hasValidationErrors) {
+      toast({
+        title: "Cannot upload",
+        variant: "destructive",
+        description:
+          "Please fix all validation errors before uploading. No deals will be uploaded until all errors are resolved.",
+      });
+      return;
+    }
+
+    // Filter only deals marked for upload
+    const dealsMarkedForUpload = deals.filter(
+      (deal) => String(deal["Upload"]).toUpperCase() === "Y"
+    );
+
+    if (dealsMarkedForUpload.length === 0) {
+      toast({
+        title: "No deals to upload",
+        variant: "destructive",
+        description:
+          'No deals are marked for upload. Set the "Upload" column to "Y" for deals you want to upload.',
+      });
+      return;
+    }
+
     setUploading(true);
     setSuccess(null);
     setError(null);
 
-    const formattedDeals = transformDeals(deals);
+    const formattedDeals = transformDeals(dealsMarkedForUpload);
     console.log("formattedDeals", formattedDeals);
     const response = await BulkUploadDealsToDB(formattedDeals);
 
@@ -170,14 +348,19 @@ export function BulkImportDialog() {
         description: response.error,
       });
     } else {
-      setSuccess("Deals uploaded successfully");
+      setSuccess(
+        `${dealsMarkedForUpload.length} deal(s) uploaded successfully`
+      );
       setDeals([]);
       setFile(null);
-      toast({ title: "Deals uploaded successfully" });
+      setValidationErrors([]);
+      toast({
+        title: "Success",
+        description: `${dealsMarkedForUpload.length} deal(s) uploaded successfully`,
+      });
     }
 
     setUploading(false);
-    setUploadComplete(true);
   };
 
   return (
@@ -227,10 +410,103 @@ export function BulkImportDialog() {
                   <span className="min-w-0 break-words">{error}</span>
                 </div>
               )}
-              {deals.length > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {deals.length} deals found in the file
-                </p>
+
+              {/* Validation Errors Display */}
+              {validationErrors.length > 0 && (
+                <Collapsible
+                  open={showValidationDetails}
+                  onOpenChange={setShowValidationDetails}
+                  className="rounded-lg border border-destructive/50 bg-destructive/5"
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="flex w-full items-center justify-between p-4 hover:bg-destructive/10"
+                    >
+                      <div className="flex items-center gap-2">
+                        <XCircle className="h-5 w-5 text-destructive" />
+                        <span className="font-medium text-destructive">
+                          {validationErrors.length} row(s) with validation errors
+                        </span>
+                      </div>
+                      {showValidationDetails ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="max-h-[200px] space-y-3 overflow-y-auto p-4 pt-0">
+                      {validationErrors.map((rowError) => (
+                        <div
+                          key={rowError.row}
+                          className="rounded-md border border-destructive/30 bg-background p-3"
+                        >
+                          <div className="mb-2 flex items-center gap-2">
+                            <span className="rounded bg-destructive/20 px-2 py-0.5 text-xs font-semibold text-destructive">
+                              Row {rowError.row}
+                            </span>
+                          </div>
+                          <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                            {rowError.errors.map((err, idx) => (
+                              <li key={idx} className="text-destructive/80">
+                                {err}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t p-4">
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Note:</strong> All errors must be fixed in your
+                        file before uploading. No deals will be uploaded until
+                        all validation errors are resolved.
+                      </p>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Deal Summary */}
+              {deals.length > 0 && !hasValidationErrors && (
+                <div className="rounded-lg border border-green-500/50 bg-green-500/5 p-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <span className="font-medium text-green-600">
+                      Validation Passed
+                    </span>
+                  </div>
+                  <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    <p>Total rows in file: {deals.length}</p>
+                    <p>Deals marked for upload: {dealsToUpload.length}</p>
+                    <p>
+                      Deals skipped (Upload = &quot;N&quot;):{" "}
+                      {deals.length - dealsToUpload.length}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {deals.length > 0 && hasValidationErrors && (
+                <div className="rounded-lg border border-amber-500/50 bg-amber-500/5 p-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-amber-600" />
+                    <span className="font-medium text-amber-600">
+                      Fix Errors to Continue
+                    </span>
+                  </div>
+                  <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    <p>Total rows in file: {deals.length}</p>
+                    <p className="text-destructive">
+                      Rows with errors: {validationErrors.length}
+                    </p>
+                    <p>
+                      Valid rows:{" "}
+                      {deals.length - validationErrors.length}
+                    </p>
+                  </div>
+                </div>
               )}
               {uploading && (
                 <div className="flex items-center justify-center py-4">
@@ -241,9 +517,25 @@ export function BulkImportDialog() {
           </ScrollArea>
           <Button
             onClick={handleUpload}
-            disabled={!file || deals.length === 0 || uploading}
+            disabled={
+              !file ||
+              deals.length === 0 ||
+              uploading ||
+              hasValidationErrors ||
+              dealsToUpload.length === 0
+            }
+            className={cn(
+              hasValidationErrors &&
+                "cursor-not-allowed bg-destructive/50 hover:bg-destructive/50"
+            )}
           >
-            {uploading ? "Uploading..." : "Upload Deals"}
+            {uploading
+              ? "Uploading..."
+              : hasValidationErrors
+                ? `Fix ${validationErrors.length} Error(s) to Upload`
+                : dealsToUpload.length === 0
+                  ? "No Deals Marked for Upload"
+                  : `Upload ${dealsToUpload.length} Deal(s)`}
           </Button>
         </DialogContent>
       </Dialog>

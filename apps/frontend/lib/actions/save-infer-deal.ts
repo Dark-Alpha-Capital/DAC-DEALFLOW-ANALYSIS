@@ -36,29 +36,32 @@ export default async function SaveInferredDeal({
 
     console.log("saving inferred deals.....");
 
-    const [docRef] = await db.insert(deals).values({
-      sourceWebsite: parsedDeal.sourceWebsite || "",
-      firstName: parsedDeal.firstName || "",
-      lastName: parsedDeal.lastName || "",
-      email: parsedDeal.email || "",
-      companyLocation: parsedDeal.companyLocation || "",
-      dealCaption: parsedDeal.dealCaption || "",
-      industry: parsedDeal.industry || "",
-      askingPrice: parsedDeal.askingPrice || 0,
-      revenue: parsedDeal.revenue || 0,
-      grossRevenue: parsedDeal.grossRevenue || 0,
-      title: parsedDeal.title || "",
-      ebitda: parsedDeal.ebitda || 0,
-      ebitdaMargin: parsedDeal.ebitdaMargin || 0,
-      brokerage: parsedDeal.brokerage || "Not Mentioned",
-      dealType: DealType.AI_INFERRED,
-      userId: userSession.user?.id,
-    }).returning();
+    const [docRef] = await db
+      .insert(deals)
+      .values({
+        sourceWebsite: parsedDeal.sourceWebsite || "",
+        firstName: parsedDeal.firstName || "",
+        lastName: parsedDeal.lastName || "",
+        email: parsedDeal.email || "",
+        companyLocation: parsedDeal.companyLocation || "",
+        dealCaption: parsedDeal.dealCaption || "",
+        industry: parsedDeal.industry || "",
+        askingPrice: parsedDeal.askingPrice || 0,
+        revenue: parsedDeal.revenue || 0,
+        grossRevenue: parsedDeal.grossRevenue || 0,
+        title: parsedDeal.title || "",
+        ebitda: parsedDeal.ebitda || 0,
+        ebitdaMargin: parsedDeal.ebitdaMargin || 0,
+        brokerage: parsedDeal.brokerage || "Not Mentioned",
+        dealType: DealType.AI_INFERRED,
+        userId: userSession.user?.id,
+      })
+      .returning();
 
     return {
       type: "success",
       message: "Deal saved successfully",
-      documentId: docRef.id,
+      documentId: docRef?.id,
     };
   } catch (error) {
     console.log(error);

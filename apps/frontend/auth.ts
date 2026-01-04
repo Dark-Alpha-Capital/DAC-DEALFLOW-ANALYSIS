@@ -4,6 +4,11 @@ import { db } from "db";
 import { users, accounts, sessions, verifications, UserRole } from "db/schema";
 import { eq } from "drizzle-orm";
 import { adminEmails } from "./lib/utils";
+import {
+  sendEmail,
+  getVerificationEmailHtml,
+  getPasswordResetEmailHtml,
+} from "./lib/email";
 
 /**
  * Determine the role of the user based on their email
@@ -26,7 +31,26 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
     },
   }),
   emailAndPassword: {
-    enabled: false, // We only use Google OAuth
+    enabled: true,
+    requireEmailVerification: true,
+    sendResetPassword: async ({ user, url }) => {
+      sendEmail({
+        to: user.email,
+        subject: "Reset your password - DAC DealFlow",
+        html: getPasswordResetEmailHtml(url),
+      });
+    },
+  },
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      sendEmail({
+        to: user.email,
+        subject: "Verify your email - DAC DealFlow",
+        html: getVerificationEmailHtml(url),
+      });
+    },
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
   },
   socialProviders: {
     google: {
@@ -62,7 +86,7 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          // Determine role based on email
+          // Determine role based on email (admin emails get ADMIN role)
           const role = determineRole(user.email);
           return {
             data: {

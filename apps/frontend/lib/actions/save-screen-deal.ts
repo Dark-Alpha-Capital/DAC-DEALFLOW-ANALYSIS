@@ -31,19 +31,22 @@ const SaveScreeningResultToDB = async (
       throw new Error("User not authenticated");
     }
 
-    const [addedScreenResult] = await db.insert(aiScreenings).values({
-      dealId,
-      title: values.title,
-      explanation: values.explanation,
-      sentiment: values.sentiment,
-    }).returning();
+    const [addedScreenResult] = await db
+      .insert(aiScreenings)
+      .values({
+        dealId,
+        title: values.title,
+        explanation: values.explanation,
+        sentiment: values.sentiment,
+      })
+      .returning();
 
     revalidatePath(`/raw-deals/${dealId}`);
 
     return {
       type: "success",
       message: "Screening Result saved successfully",
-      documentId: addedScreenResult.id,
+      documentId: addedScreenResult?.id,
     };
   } catch (error) {
     console.error("Error adding deal: ", error);
