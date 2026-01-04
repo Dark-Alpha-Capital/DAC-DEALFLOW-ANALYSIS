@@ -1,7 +1,7 @@
 import { createClient } from "redis";
 import http from "http";
 
-import prismaDB from "./lib/prisma";
+import db, { aiScreenings } from "db";
 import { splitContentIntoChunks } from "./lib/utils";
 import { generateObject, generateText } from "ai";
 import { openai } from "./lib/ai/available-models";
@@ -94,15 +94,13 @@ async function saveAIScreeningResult(
     console.log(
       `Saving AI screening result to database for submission: ${submissionId}`
     );
-    await prismaDB.aiScreening.create({
-      data: {
-        dealId: submissionId,
-        title: result.title,
-        explanation: result.explanation,
-        score: result.score,
-        sentiment: result.sentiment,
-        content: combinedSummary,
-      },
+    await db.insert(aiScreenings).values({
+      dealId: submissionId,
+      title: result.title,
+      explanation: result.explanation,
+      score: result.score,
+      sentiment: result.sentiment,
+      content: combinedSummary,
     });
     console.log("AI screening result saved successfully to database");
     return true;

@@ -1,12 +1,12 @@
 "use server";
 
 import { AddPocFormValues } from "@/components/forms/add-poc-form";
-import db from "db";
-import { auth } from "@/auth";
+import db, { pocs } from "db";
+import { getSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 
 const AddPoc = async (values: AddPocFormValues, dealId: string) => {
-  const session = await auth();
+  const session = await getSession();
   if (!session) {
     return {
       type: "error",
@@ -22,14 +22,12 @@ const AddPoc = async (values: AddPocFormValues, dealId: string) => {
   }
 
   try {
-    const newPoc = await db.pOC.create({
-      data: {
-        name: values.name,
-        email: values.email,
-        workPhone: values.workPhone,
-        dealId,
-      },
-    });
+    const [newPoc] = await db.insert(pocs).values({
+      name: values.name,
+      email: values.email,
+      workPhone: values.workPhone,
+      dealId,
+    }).returning();
 
     revalidatePath(`/raw-deals/${dealId}`);
     revalidatePath(`/manual-deals/${dealId}`);
@@ -37,11 +35,10 @@ const AddPoc = async (values: AddPocFormValues, dealId: string) => {
     return {
       type: "success",
       message: "POC added successfully.",
-      poc: newPoc, // Optionally return the created POC
+      poc: newPoc,
     };
   } catch (error) {
     console.error("Error adding POC:", error);
-    // Check for specific Prisma errors if needed
     return {
       type: "error",
       message: "Failed to add POC. Please try again.",

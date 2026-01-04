@@ -16,10 +16,12 @@ const BulkImportCard = () => {
         effort with bulk import functionality.
       </p>
 
-      <p className="mb-6 text-center text-red-600">
-        keep in mind that the excel sheet should be in a specific format for
-        bulk upload
-      </p>
+      <div className="mb-4 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3">
+        <p className="text-center text-sm font-medium text-amber-700 dark:text-amber-400">
+          All-or-Nothing Upload: All rows must pass validation before any deals
+          are uploaded. Fix all errors to proceed.
+        </p>
+      </div>
 
       <div className="mb-6 space-y-4">
         <div className="rounded-lg border p-4">
@@ -29,18 +31,22 @@ const BulkImportCard = () => {
             <li>First Name (Optional)</li>
             <li>Last Name (Optional)</li>
             <li>Work Phone (Optional)</li>
-            <li>Email (Optional)</li>
-            <li>LinkedIn URL (Optional)</li>
+            <li>Email (Optional, must be valid format)</li>
+            <li>LinkedIn URL (Optional, must be valid URL)</li>
             <li>Deal Caption (Required)</li>
-            <li>Revenue (Required, number)</li>
-            <li>EBITDA (Required, number)</li>
-            <li>EBITDA Margin (Required, number)</li>
+            <li>Revenue (Required, must be a number)</li>
+            <li>EBITDA (Required, must be a number)</li>
+            <li>EBITDA Margin (Required, must be a number)</li>
             <li>Industry (Required)</li>
-            <li>Source Website (Required)</li>
+            <li>Source Website (Required, must be valid URL)</li>
             <li>Upload (Required, &quot;Y&quot; or &quot;N&quot;)</li>
             <li>UploadOnCRM (Required, &quot;Yes&quot; or &quot;No&quot;)</li>
             <li>Company Location (Optional)</li>
           </ul>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Only rows with Upload = &quot;Y&quot; will be uploaded. Rows with
+            Upload = &quot;N&quot; will be skipped.
+          </p>
         </div>
 
         <div className="flex justify-center gap-4">

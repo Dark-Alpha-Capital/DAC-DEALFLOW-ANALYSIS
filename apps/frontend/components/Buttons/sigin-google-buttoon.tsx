@@ -2,21 +2,30 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { signIn } from "next-auth/react";
+import { authClient } from "@/lib/auth-client";
 import { FaGoogle } from "react-icons/fa6";
 import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
+import { toast } from "sonner";
 
 const SigninGoogle = () => {
   return (
     <Button
-      variant="outline"
-      type="button"
-      onClick={() => {
-        signIn("google", { callbackUrl: DEFAULT_LOGIN_REDIRECT });
+      onClick={async () => {
+        console.log("clicked google sign in");
+
+        try {
+          const response = await authClient.signIn.social({
+            provider: "google",
+            callbackURL: DEFAULT_LOGIN_REDIRECT,
+          });
+          console.log(response);
+        } catch (error) {
+          console.error(error);
+          toast.error("Failed to sign in with Google");
+        }
       }}
-      className="w-full h-11 text-base font-medium hover:bg-accent transition-colors"
     >
-      <FaGoogle className="mr-2 size-5" /> 
+      <FaGoogle className="mr-2 size-5" />
       Sign in with Google
     </Button>
   );

@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import DeleteAIScreeningFromDB from "@/lib/actions/delete-ai-screening";
-import { DealType, Sentiment } from "@prisma/client";
+import { DealType, Sentiment } from "db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
 import { useTransition } from "react";

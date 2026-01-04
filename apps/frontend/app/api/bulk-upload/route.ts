@@ -1,6 +1,6 @@
 // app/api/bulk-upload/route.ts
 import { NextRequest } from "next/server";
-import { pubSubClient } from "@/lib/pubsub-client";
+import { fileUploadQueue, type FileUploadJobData } from "@/lib/queue-client";
 import { randomUUID } from "crypto";
 import { redisClient } from "@/lib/redis";
 
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Create a unique job for each file (similar to screen-all route)
+    // Create a unique job for each file
     const jobs = files.map((file) => ({
       jobId: randomUUID(),
       fileName: file.name,
@@ -33,62 +33,38 @@ export async function POST(req: NextRequest) {
       }),
     );
 
-    // Fire-and-forget async processing per-file
-    (async () => {
-      const topicName = `projects/${process.env.GCLOUD_PROJECT_ID}/topics/file-upload`;
-      console.log(`[bulk-upload] Starting publish for batch`, {
-        total: files.length,
+    // Add jobs to BullMQ queue
+    const jobPromises = jobs.map(async ({ jobId }, index) => {
+      const file = files[index]!;
+      console.log(`[bulk-upload] Queueing job`, {
+        jobId,
+        index,
+        name: file.name,
+        size: file.size,
       });
 
-      const publishPromises = jobs.map(async ({ jobId }, index) => {
-        const file = files[index]!;
-        console.log(`[bulk-upload] Queueing publish`, {
-          jobId,
-          index,
-          name: file.name,
-          size: file.size,
-        });
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-        const data = {
-          jobType: "file-upload",
-          fileName: file.name,
-          fileBuffer: buffer.toString("base64"),
-          jobId,
-        };
+      const jobData: FileUploadJobData = {
+        jobId,
+        fileName: file.name,
+        fileBuffer: buffer.toString("base64"),
+      };
 
-        return pubSubClient
-          .topic(topicName)
-          .publishMessage({
-            data: Buffer.from(JSON.stringify(data)),
-            attributes: { jobType: "file-upload" },
-          })
-          .then((messageId) => {
-            console.log(`[bulk-upload] Published message`, {
-              jobId,
-              index,
-              name: file.name,
-              messageId,
-            });
-            return messageId;
-          })
-          .catch((err) => {
-            console.error(`[bulk-upload] Failed to publish`, {
-              jobId,
-              index,
-              name: file.name,
-              err,
-            });
-            throw err;
-          });
+      const job = await fileUploadQueue.add("upload", jobData, {
+        jobId, // Use our own jobId for easier tracking
       });
 
-      await Promise.all(publishPromises);
-      console.log(`[bulk-upload] All messages published successfully`, {
-        count: publishPromises.length,
+      console.log(`[bulk-upload] Added job ${job.id}`, {
+        fileName: file.name,
       });
-    })();
+
+      return { jobId, fileName: file.name, bullmqJobId: job.id };
+    });
+
+    await Promise.all(jobPromises);
+    console.log(`[bulk-upload] All ${jobs.length} jobs added to BullMQ queue`);
 
     return new Response(
       JSON.stringify({

@@ -1,158 +1,131 @@
-import NextAuth, { DefaultSession } from "next-auth";
-import { User, UserRole } from "@prisma/client";
-import authConfig from "./auth.config";
-import { getCurrentUserByEmail } from "./lib/data/current-user";
-import { determineRole } from "./lib/utils";
-import db from "db";
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { db } from "db";
+import { users, accounts, sessions, verifications, UserRole } from "db/schema";
+import { eq } from "drizzle-orm";
+import { adminEmails } from "./lib/utils";
+import {
+  sendEmail,
+  getVerificationEmailHtml,
+  getPasswordResetEmailHtml,
+} from "./lib/email";
 
-declare module "next-auth" {
-  interface Session {
-    user: {
-      role: UserRole;
-      isOAuth: boolean;
-    } & DefaultSession["user"];
-    accessToken?: string;
-    error?: string;
+/**
+ * Determine the role of the user based on their email
+ */
+function determineRole(userEmail: string): UserRole {
+  if (adminEmails.includes(userEmail)) {
+    return UserRole.ADMIN;
   }
+  return UserRole.USER;
 }
 
-declare module "next-auth" {
-  interface JWT {
-    accessToken?: string;
-    accessTokenExpires?: number;
-    user?: {
-      id: string;
-      email: string;
-      name?: string;
-      image?: string;
-    };
-    error?: string;
-  }
-}
-
-const nextAuth = NextAuth({
-  session: { strategy: "jwt" },
-  debug: true,
-  pages: {
-    signIn: "/auth/login",
-    error: "/auth/error",
+export const auth: ReturnType<typeof betterAuth> = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema: {
+      user: users,
+      account: accounts,
+      session: sessions,
+      verification: verifications,
+    },
+  }),
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+    sendResetPassword: async ({ user, url }) => {
+      sendEmail({
+        to: user.email,
+        subject: "Reset your password - DAC DealFlow",
+        html: getPasswordResetEmailHtml(url),
+      });
+    },
   },
-
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      sendEmail({
+        to: user.email,
+        subject: "Verify your email - DAC DealFlow",
+        html: getVerificationEmailHtml(url),
+      });
+    },
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+  },
+  socialProviders: {
+    google: {
+      clientId: process.env.AUTH_GOOGLE_ID!,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+    },
+  },
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 days
+    updateAge: 60 * 60 * 24, // Update session every 24 hours
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 5, // 5 minutes
+    },
+  },
+  user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        required: false,
+        defaultValue: "USER",
+        input: false,
+      },
+      isBlocked: {
+        type: "boolean",
+        required: false,
+        defaultValue: false,
+        input: false,
+      },
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          // Determine role based on email (admin emails get ADMIN role)
+          const role = determineRole(user.email);
+          return {
+            data: {
+              ...user,
+              role,
+              isBlocked: false,
+            },
+          };
+        },
+      },
+    },
+  },
   callbacks: {
-    async jwt({ token, user, account }) {
-      // Initial sign in
-      if (account && user) {
-        return {
-          ...token,
-          accessToken: account.access_token,
-          accessTokenExpires: account.expires_at
-            ? account.expires_at * 1000
-            : 0,
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            image: user.image,
-          },
-        };
+    session: async ({ session, user }: { session: any; user: any }) => {
+      // Check if user is blocked
+      const [dbUser] = await db
+        .select({ isBlocked: users.isBlocked, role: users.role })
+        .from(users)
+        .where(eq(users.id, user.id));
+
+      if (dbUser?.isBlocked) {
+        // Return null to invalidate the session for blocked users
+        return null;
       }
 
-      // Return previous token if the access token has not expired yet
-      if (Date.now() < (token.accessTokenExpires as number)) {
-        return token;
-      }
-
-      // Access token has expired, return token with error
+      // Add role and isBlocked to session
       return {
-        ...token,
-        error: "AccessTokenExpired",
+        ...session,
+        user: {
+          ...session.user,
+          role: dbUser?.role || "USER",
+          isBlocked: dbUser?.isBlocked || false,
+        },
       };
     },
-    async session({ session, token }) {
-      // Send properties to the client
-      // Ensure session.user exists and is an object
-      if (token && typeof token.user === "object" && token.user !== null) {
-        session.user = {
-          ...session.user,
-          ...(token.user as {
-            id: string;
-            email: string;
-            name?: string | null;
-            image?: string | null;
-          }),
-        };
-        if (
-          typeof token.accessToken === "string" ||
-          typeof token.accessToken === "undefined"
-        ) {
-          session.accessToken = token.accessToken;
-        }
-        if (
-          typeof token.error === "string" ||
-          typeof token.error === "undefined"
-        ) {
-          session.error = token.error;
-        }
-      }
-
-      // Hydrate additional user data from database
-      if (session.user?.email) {
-        try {
-          const dbUser = await db.user.findUnique({
-            where: { email: session.user.email },
-          });
-          if (dbUser) {
-            session.user.role = dbUser.role as UserRole;
-            session.user.isOAuth = true;
-          }
-        } catch (error) {
-          console.error("Error fetching user from database:", error);
-        }
-      }
-
-      return session;
-    },
-    async signIn({ user, account, profile }) {
-      if (!user.email) return false;
-
-      try {
-        // Check if user is blocked
-        const currentUser = await getCurrentUserByEmail(user.email);
-        if (currentUser?.isBlocked) {
-          return false;
-        }
-
-        // Ensure user exists in database and role is set
-        const userRole = determineRole(user.email);
-        await db.user.upsert({
-          where: { email: user.email },
-          update: {
-            role: userRole,
-            name: user.name,
-            image: user.image,
-            emailVerified: new Date(),
-          },
-          create: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            image: user.image,
-            role: userRole,
-            emailVerified: new Date(),
-          },
-        });
-
-        return true;
-      } catch (error) {
-        console.error("Error during sign in:", error);
-        return false;
-      }
-    },
   },
-  ...authConfig,
+  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
 });
 
-export const handlers = nextAuth.handlers;
-export const signIn: typeof nextAuth.signIn = nextAuth.signIn;
-export const signOut: typeof nextAuth.signOut = nextAuth.signOut;
-export const auth: typeof nextAuth.auth = nextAuth.auth;
+// Export types for use in components
+export type Session = typeof auth.$Infer.Session;
+export type User = typeof auth.$Infer.Session.user;

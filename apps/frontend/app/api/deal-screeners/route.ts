@@ -1,10 +1,10 @@
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { getAllScreenersWithContent } from "db/queries";
 import { rateLimit } from "@/lib/redis";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession) {
     return new Response("Unauthorized", { status: 401 });

@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { rateLimit } from "@/lib/redis";
 import { inferRawDealsSchema } from "@/lib/zod-schemas/raw-deal-schema";
 import { openai } from "@ai-sdk/openai";
@@ -7,7 +7,7 @@ import { streamObject } from "ai";
 export const maxDuration = 30;
 
 export async function POST(request: Request) {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession?.user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });

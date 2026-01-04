@@ -2,10 +2,10 @@
 
 import { DeletePOCById } from "db/mutations";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 
 const deletePoc = async (pocId: string, dealId: string) => {
-  const session = await auth();
+  const session = await getSession();
   if (!session) {
     return {
       type: "error",

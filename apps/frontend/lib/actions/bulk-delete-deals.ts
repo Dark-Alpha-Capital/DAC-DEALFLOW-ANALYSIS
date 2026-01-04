@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { revalidatePath } from "next/cache";
 import { BulkDeleteDeals } from "db/mutations";
 
@@ -11,7 +11,7 @@ import { BulkDeleteDeals } from "db/mutations";
  */
 const BulkDeleteDealsFromDb = async (dealIds: string[]) => {
   try {
-    const userSession = await auth();
+    const userSession = await getSession();
     if (!userSession || !userSession?.user) {
       return {
         type: "error",

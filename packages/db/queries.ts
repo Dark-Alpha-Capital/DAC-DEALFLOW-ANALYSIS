@@ -1,8 +1,39 @@
-import db from ".";
-
-import { cacheTag, revalidateTag, cacheLife } from "next/cache";
-import type { DealStatus, DealType } from "@prisma/client";
-import type { Deal } from "@prisma/client";
+import { db } from ".";
+import {
+  deals,
+  users,
+  pocs,
+  screeners,
+  aiScreenings,
+  rollups,
+  companies,
+  founders,
+  files,
+  dueDiligenceSections,
+  reviews,
+  tasks,
+  dealDocuments,
+  usersToRollups,
+  type Deal,
+  type DealType,
+  type DealStatus,
+} from "./schema";
+import {
+  eq,
+  and,
+  or,
+  gte,
+  lte,
+  like,
+  ilike,
+  inArray,
+  desc,
+  asc,
+  count,
+  arrayOverlaps,
+  sql,
+} from "drizzle-orm";
+import { cacheTag, cacheLife } from "next/cache";
 import type { AdminUser, CompanyWithRelationsForList } from "./types";
 
 /**
@@ -17,9 +48,8 @@ export const GetDealById = async (id: string) => {
     cacheTag("deal");
     cacheLife("hours");
 
-    return await db.deal.findUnique({
-      where: { id },
-    });
+    const [deal] = await db.select().from(deals).where(eq(deals.id, id));
+    return deal ?? null;
   } catch (error) {
     console.error("Error fetching deal by id", error);
     throw error;
@@ -101,58 +131,90 @@ export const GetAllDeals = async ({
   const industryValue = industry ? industry : undefined;
   const ebitdaMarginValue = ebitdaMargin ? parseFloat(ebitdaMargin) : undefined;
 
-  const orderBy = showRecent
-    ? { createdAt: "desc" as const }
-    : { createdAt: "asc" as const };
+  // Build conditions array
+  const conditions = [];
 
-  const whereClause = {
-    ...(search ? { dealCaption: { contains: search } } : {}),
-    ...(dealTypes && dealTypes.length > 0
-      ? { dealType: { in: dealTypes } }
-      : {}),
-    ...(ebitdaValue !== undefined ? { ebitda: { gte: ebitdaValue } } : {}),
-    ...(revenueValue !== undefined ? { revenue: { gte: revenueValue } } : {}),
-    ...(maxEbitdaValue !== undefined
-      ? { ebitda: { lte: maxEbitdaValue } }
-      : {}),
-    ...(maxRevenueValue !== undefined
-      ? { revenue: { lte: maxRevenueValue } }
-      : {}),
-    ...(userId ? { userId: { equals: userId } } : {}),
-    ...(locationValue !== undefined
-      ? { companyLocation: { contains: locationValue } }
-      : {}),
-    ...(brokerageValue !== undefined
-      ? { brokerage: { contains: brokerageValue } }
-      : {}),
-    ...(industryValue !== undefined
-      ? { industry: { contains: industryValue } }
-      : {}),
-    ...(ebitdaMarginValue !== undefined
-      ? { ebitdaMargin: { gte: ebitdaMarginValue } }
-      : {}),
-    ...(showSeen ? { seen: { equals: showSeen } } : {}),
-    ...(showReviewed ? { isReviewed: { equals: showReviewed } } : {}),
-    ...(showPublished ? { isPublished: { equals: showPublished } } : {}),
-    ...(status ? { status: { equals: status } } : {}),
-    ...(tags && tags.length > 0 ? { tags: { hasSome: tags } } : {}),
-  };
+  if (search) {
+    conditions.push(like(deals.dealCaption, `%${search}%`));
+  }
+  if (dealTypes && dealTypes.length > 0) {
+    conditions.push(inArray(deals.dealType, dealTypes));
+  }
+  if (ebitdaValue !== undefined) {
+    conditions.push(gte(deals.ebitda, ebitdaValue));
+  }
+  if (revenueValue !== undefined) {
+    conditions.push(gte(deals.revenue, revenueValue));
+  }
+  if (maxEbitdaValue !== undefined) {
+    conditions.push(lte(deals.ebitda, maxEbitdaValue));
+  }
+  if (maxRevenueValue !== undefined) {
+    conditions.push(lte(deals.revenue, maxRevenueValue));
+  }
+  if (userId) {
+    conditions.push(eq(deals.userId, userId));
+  }
+  if (locationValue !== undefined) {
+    conditions.push(like(deals.companyLocation, `%${locationValue}%`));
+  }
+  if (brokerageValue !== undefined) {
+    conditions.push(like(deals.brokerage, `%${brokerageValue}%`));
+  }
+  if (industryValue !== undefined) {
+    conditions.push(like(deals.industry, `%${industryValue}%`));
+  }
+  if (ebitdaMarginValue !== undefined) {
+    conditions.push(gte(deals.ebitdaMargin, ebitdaMarginValue));
+  }
+  if (showSeen) {
+    conditions.push(eq(deals.seen, showSeen));
+  }
+  if (showReviewed) {
+    conditions.push(eq(deals.isReviewed, showReviewed));
+  }
+  if (showPublished) {
+    conditions.push(eq(deals.isPublished, showPublished));
+  }
+  if (status) {
+    conditions.push(eq(deals.status, status));
+  }
+  if (tags && tags.length > 0) {
+    conditions.push(arrayOverlaps(deals.tags, tags));
+  }
 
-  const [data, totalCount] = await Promise.all([
-    db.deal.findMany({
-      where: whereClause,
-      skip: offset,
-      take: limit,
-      orderBy,
-    }),
-    db.deal.count({
-      where: whereClause,
-    }),
-  ]);
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const orderByClause = showRecent
+    ? desc(deals.createdAt)
+    : asc(deals.createdAt);
 
-  const totalPages = Math.ceil(totalCount / limit);
+  try {
+    const baseDataQuery = db
+      .select()
+      .from(deals)
+      .orderBy(orderByClause)
+      .limit(limit)
+      .offset(offset);
 
-  return { data, totalCount, totalPages };
+    const baseCountQuery = db.select({ count: count() }).from(deals);
+
+    const [data, countResult] = await Promise.all([
+      whereClause ? baseDataQuery.where(whereClause) : baseDataQuery,
+      whereClause ? baseCountQuery.where(whereClause) : baseCountQuery,
+    ]);
+
+    const totalCount = countResult[0]?.count ?? 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return { data, totalCount, totalPages };
+  } catch (error) {
+    console.error("Failed query: select from Deal", error);
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
+    throw error;
+  }
 };
 
 /**
@@ -162,11 +224,8 @@ export const GetAllDeals = async ({
  */
 export const getUserById = async (id: string) => {
   try {
-    return await db.user.findUnique({
-      where: {
-        id,
-      },
-    });
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user ?? null;
   } catch (error) {
     console.error("Error fetching user by id", error);
     throw new Error("Error fetching user by id");
@@ -180,9 +239,7 @@ export const getUserById = async (id: string) => {
  */
 export const getDealPOC = async (dealId: string) => {
   try {
-    return await db.pOC.findMany({
-      where: { dealId },
-    });
+    return await db.select().from(pocs).where(eq(pocs.dealId, dealId));
   } catch (error) {
     console.error("Error fetching deal POC", error);
     throw new Error("Error fetching deal POC");
@@ -195,14 +252,14 @@ export const getDealPOC = async (dealId: string) => {
  */
 export async function getAllScreeners() {
   try {
-    return await db.screener.findMany({
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    return await db
+      .select({
+        id: screeners.id,
+        name: screeners.name,
+        createdAt: screeners.createdAt,
+        updatedAt: screeners.updatedAt,
+      })
+      .from(screeners);
   } catch (error) {
     console.error("Error fetching all screeners", error);
     return null;
@@ -215,12 +272,12 @@ export async function getAllScreeners() {
  */
 export async function getAllScreenersWithContent() {
   try {
-    return await db.screener.findMany({
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+    return await db
+      .select({
+        id: screeners.id,
+        name: screeners.name,
+      })
+      .from(screeners);
   } catch (error) {
     console.error("Error fetching all screeners", error);
     return null;
@@ -234,29 +291,29 @@ export async function getAllScreenersWithContent() {
  */
 export async function getAllDealReasoningsWithScreenerName(dealId: string) {
   try {
-    return await db.aiScreening.findMany({
-      where: {
-        dealId,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      select: {
-        id: true,
-        title: true,
-        sentiment: true,
-        score: true,
-        explanation: true,
-        createdAt: true,
-        updatedAt: true,
+    const results = await db
+      .select({
+        id: aiScreenings.id,
+        title: aiScreenings.title,
+        sentiment: aiScreenings.sentiment,
+        score: aiScreenings.score,
+        explanation: aiScreenings.explanation,
+        createdAt: aiScreenings.createdAt,
+        updatedAt: aiScreenings.updatedAt,
         screener: {
-          select: {
-            id: true,
-            name: true,
-          },
+          id: screeners.id,
+          name: screeners.name,
         },
-      },
-    });
+      })
+      .from(aiScreenings)
+      .leftJoin(screeners, eq(aiScreenings.screenerId, screeners.id))
+      .where(eq(aiScreenings.dealId, dealId))
+      .orderBy(desc(aiScreenings.createdAt));
+
+    return results.map((r) => ({
+      ...r,
+      screener: r.screener?.id ? r.screener : null,
+    }));
   } catch (error) {
     console.error(
       "Error fetching all deal reasonings with screener name",
@@ -273,27 +330,31 @@ export async function getAllDealReasoningsWithScreenerName(dealId: string) {
  */
 export async function getCompleteAiReasoningById(reasoningId: string) {
   try {
-    return await db.aiScreening.findUnique({
-      where: {
-        id: reasoningId,
-      },
-      select: {
-        id: true,
-        title: true,
-        sentiment: true,
-        score: true,
-        content: true,
-        explanation: true,
-        createdAt: true,
-        updatedAt: true,
+    const [result] = await db
+      .select({
+        id: aiScreenings.id,
+        title: aiScreenings.title,
+        sentiment: aiScreenings.sentiment,
+        score: aiScreenings.score,
+        content: aiScreenings.content,
+        explanation: aiScreenings.explanation,
+        createdAt: aiScreenings.createdAt,
+        updatedAt: aiScreenings.updatedAt,
         screener: {
-          select: {
-            id: true,
-            name: true,
-          },
+          id: screeners.id,
+          name: screeners.name,
         },
-      },
-    });
+      })
+      .from(aiScreenings)
+      .leftJoin(screeners, eq(aiScreenings.screenerId, screeners.id))
+      .where(eq(aiScreenings.id, reasoningId));
+
+    if (!result) return null;
+
+    return {
+      ...result,
+      screener: result.screener?.id ? result.screener : null,
+    };
   } catch (error) {
     console.log(error);
     return null;
@@ -306,22 +367,38 @@ export async function getCompleteAiReasoningById(reasoningId: string) {
  */
 export async function getAllRollups() {
   try {
-    return await db.rollup.findMany({
-      include: {
-        users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        deals: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    // Get all rollups
+    const allRollups = await db
+      .select()
+      .from(rollups)
+      .orderBy(desc(rollups.createdAt));
+
+    // For each rollup, get users and deals
+    const results = await Promise.all(
+      allRollups.map(async (rollup) => {
+        const [rollupUsers, rollupDeals] = await Promise.all([
+          db
+            .select({
+              id: users.id,
+              name: users.name,
+              email: users.email,
+              role: users.role,
+            })
+            .from(usersToRollups)
+            .innerJoin(users, eq(usersToRollups.B, users.id))
+            .where(eq(usersToRollups.A, rollup.id)),
+          db.select().from(deals).where(eq(deals.rollupId, rollup.id)),
+        ]);
+
+        return {
+          ...rollup,
+          users: rollupUsers,
+          deals: rollupDeals,
+        };
+      })
+    );
+
+    return results;
   } catch (error) {
     console.error("Error fetching all rollups", error);
     return null;
@@ -335,22 +412,32 @@ export async function getAllRollups() {
  */
 export async function getRollupById(rollupId: string) {
   try {
-    return await db.rollup.findUnique({
-      where: {
-        id: rollupId,
-      },
-      include: {
-        users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        deals: true,
-      },
-    });
+    const [rollup] = await db
+      .select()
+      .from(rollups)
+      .where(eq(rollups.id, rollupId));
+
+    if (!rollup) return null;
+
+    const [rollupUsers, rollupDeals] = await Promise.all([
+      db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+        })
+        .from(usersToRollups)
+        .innerJoin(users, eq(usersToRollups.B, users.id))
+        .where(eq(usersToRollups.A, rollup.id)),
+      db.select().from(deals).where(eq(deals.rollupId, rollup.id)),
+    ]);
+
+    return {
+      ...rollup,
+      users: rollupUsers,
+      deals: rollupDeals,
+    };
   } catch (error) {
     console.error("Error fetching rollup by id", error);
     return null;
@@ -364,45 +451,127 @@ export async function getRollupById(rollupId: string) {
  */
 export async function getCompanyById(id: string) {
   try {
-    return await db.company.findUnique({
-      where: { id },
-      include: {
-        founders: true,
-        files: {
-          orderBy: { createdAt: "desc" },
-        },
-        sections: {
-          orderBy: { createdAt: "desc" },
-        },
-        reviews: {
-          include: {
-            reviewer: {
-              select: { name: true, email: true },
-            },
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, id));
+
+    if (!company) return null;
+
+    const [
+      companyFounders,
+      companyFiles,
+      companySections,
+      companyReviews,
+      companyTasks,
+      counts,
+    ] = await Promise.all([
+      db.select().from(founders).where(eq(founders.companyId, id)),
+      db
+        .select()
+        .from(files)
+        .where(eq(files.companyId, id))
+        .orderBy(desc(files.createdAt)),
+      db
+        .select()
+        .from(dueDiligenceSections)
+        .where(eq(dueDiligenceSections.companyId, id))
+        .orderBy(desc(dueDiligenceSections.createdAt)),
+      db
+        .select({
+          id: reviews.id,
+          title: reviews.title,
+          content: reviews.content,
+          riskLevel: reviews.riskLevel,
+          confidence: reviews.confidence,
+          companyId: reviews.companyId,
+          sectionId: reviews.sectionId,
+          reviewerId: reviews.reviewerId,
+          createdAt: reviews.createdAt,
+          updatedAt: reviews.updatedAt,
+          reviewer: {
+            name: users.name,
+            email: users.email,
           },
-          orderBy: { createdAt: "desc" },
-        },
-        tasks: {
-          include: {
-            assignedTo: {
-              select: { name: true, email: true },
-            },
-            createdBy: {
-              select: { name: true, email: true },
-            },
-          },
-          orderBy: { createdAt: "desc" },
-        },
-        _count: {
-          select: {
-            files: true,
-            sections: true,
-            reviews: true,
-            tasks: true,
-          },
-        },
+        })
+        .from(reviews)
+        .leftJoin(users, eq(reviews.reviewerId, users.id))
+        .where(eq(reviews.companyId, id))
+        .orderBy(desc(reviews.createdAt)),
+      db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          description: tasks.description,
+          status: tasks.status,
+          priority: tasks.priority,
+          dueDate: tasks.dueDate,
+          completedAt: tasks.completedAt,
+          companyId: tasks.companyId,
+          sectionId: tasks.sectionId,
+          assignedToId: tasks.assignedToId,
+          createdById: tasks.createdById,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
+        })
+        .from(tasks)
+        .where(eq(tasks.companyId, id))
+        .orderBy(desc(tasks.createdAt)),
+      Promise.all([
+        db
+          .select({ count: count() })
+          .from(files)
+          .where(eq(files.companyId, id)),
+        db
+          .select({ count: count() })
+          .from(dueDiligenceSections)
+          .where(eq(dueDiligenceSections.companyId, id)),
+        db
+          .select({ count: count() })
+          .from(reviews)
+          .where(eq(reviews.companyId, id)),
+        db
+          .select({ count: count() })
+          .from(tasks)
+          .where(eq(tasks.companyId, id)),
+      ]),
+    ]);
+
+    // Get assignedTo and createdBy for tasks
+    const tasksWithRelations = await Promise.all(
+      companyTasks.map(async (task) => {
+        const [assignedTo, createdBy] = await Promise.all([
+          db
+            .select({ name: users.name, email: users.email })
+            .from(users)
+            .where(eq(users.id, task.assignedToId)),
+          db
+            .select({ name: users.name, email: users.email })
+            .from(users)
+            .where(eq(users.id, task.createdById)),
+        ]);
+        return {
+          ...task,
+          assignedTo: assignedTo[0] ?? null,
+          createdBy: createdBy[0] ?? null,
+        };
+      })
+    );
+
+    return {
+      ...company,
+      founders: companyFounders,
+      files: companyFiles,
+      sections: companySections,
+      reviews: companyReviews,
+      tasks: tasksWithRelations,
+      _count: {
+        files: counts[0][0]?.count ?? 0,
+        sections: counts[1][0]?.count ?? 0,
+        reviews: counts[2][0]?.count ?? 0,
+        tasks: counts[3][0]?.count ?? 0,
       },
-    });
+    };
   } catch (error) {
     console.error("Error fetching company by id", error);
     return null;
@@ -413,20 +582,20 @@ export async function getCompanyById(id: string) {
  * Minimal user list for Admin table
  * Selects only the fields required by the UI.
  */
-
 export async function getUsersForAdminTable(): Promise<AdminUser[]> {
   try {
-    const users = await db.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        isBlocked: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    return users.map((user) => ({
+    const result = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        isBlocked: users.isBlocked,
+      })
+      .from(users)
+      .orderBy(desc(users.createdAt));
+
+    return result.map((user) => ({
       id: user.id,
       name: user.name ?? "",
       email: user.email,
@@ -455,51 +624,86 @@ export default async function GetCompanies({
   limit?: number;
 }): Promise<GetCompaniesResult> {
   try {
-    const whereClause = search
-      ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" as const } },
-            { sector: { contains: search, mode: "insensitive" as const } },
-            {
-              headquarters: { contains: search, mode: "insensitive" as const },
-            },
-          ],
-        }
-      : {};
+    const conditions = search
+      ? or(
+          ilike(companies.name, `%${search}%`),
+          ilike(companies.sector, `%${search}%`),
+          ilike(companies.headquarters, `%${search}%`)
+        )
+      : undefined;
 
-    const [companies, totalCount] = await Promise.all([
-      db.company.findMany({
-        where: whereClause,
-        include: {
-          founders: true,
-          files: {
-            take: 3,
-            orderBy: { createdAt: "desc" },
-          },
-          sections: {
-            take: 3,
-            orderBy: { createdAt: "desc" },
-          },
-          _count: {
-            select: {
-              files: true,
-              sections: true,
-              reviews: true,
-              tasks: true,
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        skip: offset,
-        take: limit,
-      }),
-      db.company.count({ where: whereClause }),
+    const [companiesList, countResult] = await Promise.all([
+      db
+        .select()
+        .from(companies)
+        .where(conditions)
+        .orderBy(desc(companies.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: count() }).from(companies).where(conditions),
     ]);
 
+    const totalCount = countResult[0]?.count ?? 0;
     const totalPages = Math.ceil(totalCount / limit);
 
+    // Get relations for each company
+    const companiesWithRelations = await Promise.all(
+      companiesList.map(async (company) => {
+        const [companyFounders, companyFiles, companySections, counts] =
+          await Promise.all([
+            db
+              .select()
+              .from(founders)
+              .where(eq(founders.companyId, company.id)),
+            db
+              .select()
+              .from(files)
+              .where(eq(files.companyId, company.id))
+              .orderBy(desc(files.createdAt))
+              .limit(3),
+            db
+              .select()
+              .from(dueDiligenceSections)
+              .where(eq(dueDiligenceSections.companyId, company.id))
+              .orderBy(desc(dueDiligenceSections.createdAt))
+              .limit(3),
+            Promise.all([
+              db
+                .select({ count: count() })
+                .from(files)
+                .where(eq(files.companyId, company.id)),
+              db
+                .select({ count: count() })
+                .from(dueDiligenceSections)
+                .where(eq(dueDiligenceSections.companyId, company.id)),
+              db
+                .select({ count: count() })
+                .from(reviews)
+                .where(eq(reviews.companyId, company.id)),
+              db
+                .select({ count: count() })
+                .from(tasks)
+                .where(eq(tasks.companyId, company.id)),
+            ]),
+          ]);
+
+        return {
+          ...company,
+          founders: companyFounders,
+          files: companyFiles,
+          sections: companySections,
+          _count: {
+            files: counts[0][0]?.count ?? 0,
+            sections: counts[1][0]?.count ?? 0,
+            reviews: counts[2][0]?.count ?? 0,
+            tasks: counts[3][0]?.count ?? 0,
+          },
+        };
+      })
+    );
+
     return {
-      companies,
+      companies: companiesWithRelations as CompanyWithRelationsForList[],
       totalCount,
       totalPages,
     };
@@ -515,13 +719,12 @@ export default async function GetCompanies({
 
 export const getFirstThreeDealAIScreenings = async (dealId: string) => {
   try {
-    return await db.aiScreening.findMany({
-      where: { dealId },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 3,
-    });
+    return await db
+      .select()
+      .from(aiScreenings)
+      .where(eq(aiScreenings.dealId, dealId))
+      .orderBy(desc(aiScreenings.createdAt))
+      .limit(3);
   } catch (error) {
     console.error("Error fetching deal ai screenings", error);
     throw error;
@@ -530,9 +733,10 @@ export const getFirstThreeDealAIScreenings = async (dealId: string) => {
 
 export const getDealDocuments = async (dealId: string) => {
   try {
-    return await db.dealDocument.findMany({
-      where: { dealId },
-    });
+    return await db
+      .select()
+      .from(dealDocuments)
+      .where(eq(dealDocuments.dealId, dealId));
   } catch (error) {
     console.error("Error fetching deal documents", error);
     throw error;

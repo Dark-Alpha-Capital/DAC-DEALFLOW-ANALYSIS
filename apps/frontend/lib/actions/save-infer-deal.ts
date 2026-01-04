@@ -1,15 +1,15 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { InferDealSchema } from "@/components/schemas/infer-deal-schema";
-import db from "db";
+import db, { deals, DealType } from "db";
 
 export default async function SaveInferredDeal({
   generation,
 }: {
   generation: string;
 }) {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession) {
     return {
@@ -36,8 +36,9 @@ export default async function SaveInferredDeal({
 
     console.log("saving inferred deals.....");
 
-    const docRef = await db.deal.create({
-      data: {
+    const [docRef] = await db
+      .insert(deals)
+      .values({
         sourceWebsite: parsedDeal.sourceWebsite || "",
         firstName: parsedDeal.firstName || "",
         lastName: parsedDeal.lastName || "",
@@ -52,15 +53,15 @@ export default async function SaveInferredDeal({
         ebitda: parsedDeal.ebitda || 0,
         ebitdaMargin: parsedDeal.ebitdaMargin || 0,
         brokerage: parsedDeal.brokerage || "Not Mentioned",
-        dealType: "AI_INFERRED",
+        dealType: DealType.AI_INFERRED,
         userId: userSession.user?.id,
-      },
-    });
+      })
+      .returning();
 
     return {
       type: "success",
       message: "Deal saved successfully",
-      documentId: docRef.id,
+      documentId: docRef?.id,
     };
   } catch (error) {
     console.log(error);

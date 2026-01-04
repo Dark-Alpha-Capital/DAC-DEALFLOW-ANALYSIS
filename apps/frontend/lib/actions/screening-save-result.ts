@@ -1,9 +1,8 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { openai } from "@/lib/ai/available-models";
-import db from "db";
-import { Sentiment } from "@prisma/client";
+import db, { Sentiment, aiScreenings } from "db";
 import { generateObject } from "ai";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -11,7 +10,7 @@ import { z } from "zod";
 const ScreeningResultSchema = z.object({
   title: z.string(),
   explanation: z.string(),
-  sentiment: z.nativeEnum(Sentiment),
+  sentiment: z.enum(["POSITIVE", "NEGATIVE", "NEUTRAL"]),
   score: z.number(),
 });
 
@@ -19,7 +18,7 @@ export const screeningSaveResult = async (
   resultMarkdown: string,
   dealId: string,
 ) => {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return {
@@ -39,15 +38,13 @@ export const screeningSaveResult = async (
 
     const { title, explanation, sentiment, score } = object;
 
-    await db.aiScreening.create({
-      data: {
-        title,
-        explanation,
-        sentiment,
-        score,
-        dealId,
-        content: resultMarkdown,
-      },
+    await db.insert(aiScreenings).values({
+      title,
+      explanation,
+      sentiment,
+      score,
+      dealId,
+      content: resultMarkdown,
     });
 
     revalidatePath(`/raw-deals/${dealId}`);

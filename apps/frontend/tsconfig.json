@@ -3,7 +3,12 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "db": ["../../packages/db/index.ts"],
+      "db/schema": ["../../packages/db/schema.ts"],
+      "db/queries": ["../../packages/db/queries.ts"],
+      "db/mutations": ["../../packages/db/mutations.ts"],
+      "db/types": ["../../packages/db/types.ts"]
     },
     "jsx": "react-jsx"
   },

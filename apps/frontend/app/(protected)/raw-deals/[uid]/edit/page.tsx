@@ -3,7 +3,7 @@ import PreviousPageButton from "@/components/PreviousPageButton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Metadata } from "next";
 import { GetDealById } from "db/queries";
-import { Deal } from "@prisma/client";
+import type { Deal } from "db";
 
 type Params = Promise<{ uid: string }>;
 

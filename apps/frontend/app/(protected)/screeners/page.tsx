@@ -1,4 +1,5 @@
-import { auth } from "@/auth";
+import React, { Suspense } from "react";
+import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,19 +17,15 @@ import {
 import DeleteScreenerButton from "./delete-screener-button";
 import AddScreenerDialog from "@/components/Dialogs/create-screener-dialog";
 import { getAllScreeners } from "db/queries";
+import { cacheLife, cacheTag } from "next/cache";
+import { getSession } from "@/lib/auth-server";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Screeners",
   description: "Manage and view your deal screening criteria",
 };
 
 const Screeners = async () => {
-  const userSession = await auth();
-
-  if (!userSession) redirect("/login");
-
-  const screeners = await getAllScreeners();
-
   return (
     <div className="block-space big-container">
       <div className="mb-8">
@@ -43,13 +40,40 @@ const Screeners = async () => {
         </div>
       </div>
 
+      <Suspense fallback={<div>Loading screeners...</div>}>
+        <ShowScreenersComponent />
+      </Suspense>
+    </div>
+  );
+};
+
+export default Screeners;
+
+async function ShowScreenersComponent() {
+  const userSession = await getSession();
+  if (!userSession?.user) {
+    redirect("/auth/login");
+  }
+
+  return <FetchAndDisplayScreeners />;
+}
+
+async function FetchAndDisplayScreeners() {
+  "use cache";
+  cacheTag("screeners");
+  cacheLife("hours");
+
+  const screeners = await getAllScreeners();
+
+  return (
+    <>
       {/* Stats Section */}
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
-              <div className="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/20">
-                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="rounded-lg bg-muted p-2">
+                <FileText className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
@@ -64,8 +88,8 @@ const Screeners = async () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
-              <div className="rounded-lg bg-green-100 p-2 dark:bg-green-900/20">
-                <Filter className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <div className="rounded-lg bg-muted p-2">
+                <Filter className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
@@ -80,8 +104,8 @@ const Screeners = async () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
-              <div className="rounded-lg bg-purple-100 p-2 dark:bg-purple-900/20">
-                <Search className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <div className="rounded-lg bg-muted p-2">
+                <Search className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
@@ -120,8 +144,8 @@ const Screeners = async () => {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center space-x-2">
-                      <div className="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/20">
-                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="rounded-lg bg-muted p-2">
+                        <FileText className="h-4 w-4 text-primary" />
                       </div>
                       <div>
                         <CardTitle className="text-lg">
@@ -195,8 +219,6 @@ const Screeners = async () => {
           </Card>
         )}
       </div>
-    </div>
+    </>
   );
-};
-
-export default Screeners;
+}

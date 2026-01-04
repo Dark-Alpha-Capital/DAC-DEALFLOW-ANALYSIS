@@ -1,7 +1,7 @@
 "use server";
 
-import { auth } from "@/auth";
-import db from "db";
+import { getSession } from "@/lib/auth-server";
+import db, { deals, eq } from "db";
 import {
   dealSpecificationsFormSchemaType,
   dealSpecificationsFormSchema,
@@ -12,7 +12,7 @@ export async function updateDealSpecificationsAction(
   values: dealSpecificationsFormSchemaType,
   dealUid: string,
 ) {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession) {
     return {
@@ -40,17 +40,12 @@ export async function updateDealSpecificationsAction(
   }
 
   try {
-    await db.deal.update({
-      where: {
-        id: dealUid,
-      },
-      data: {
-        seen: validatedFields.data.seen,
-        status: validatedFields.data.status,
-        isReviewed: validatedFields.data.isReviewed,
-        isPublished: validatedFields.data.isPublished,
-      },
-    });
+    await db.update(deals).set({
+      seen: validatedFields.data.seen,
+      status: validatedFields.data.status,
+      isReviewed: validatedFields.data.isReviewed,
+      isPublished: validatedFields.data.isPublished,
+    }).where(eq(deals.id, dealUid));
 
     revalidatePath(`/raw-deals/${dealUid}`);
     revalidatePath(`/raw-deals`);

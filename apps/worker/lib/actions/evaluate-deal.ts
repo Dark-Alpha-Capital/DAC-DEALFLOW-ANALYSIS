@@ -3,38 +3,45 @@ import { splitContentIntoChunks } from "../utils";
 import { openai } from "../ai/available-models";
 import { z } from "zod";
 import { generateObject } from "ai";
-import { Sentiment } from "@prisma/client";
-import db from "db";
+import db, { Sentiment, deals, screeners, aiScreenings, eq } from "db";
+
+/**
+ * Progress callback type for tracking job progress
+ */
+export type ProgressCallback = (step: string, percentage: number) => Promise<void>;
 
 /**
  * Evaluates a deal against a screener
  * @param dealId - The ID of the deal to evaluate
  * @param screenerId - The ID of the screener to use for evaluation
+ * @param onProgress - Optional callback to report progress
  * @returns The evaluation result
  */
 export async function evaluateDealAndSaveResult(
   dealId: string,
-  screenerId: string
+  screenerId: string,
+  onProgress?: ProgressCallback
 ) {
-  const fetchedDealInformation = await db.deal.findFirst({
-    where: {
-      id: dealId,
-    },
-    select: {
-      id: true,
-      title: true,
-      dealCaption: true,
-      dealTeaser: true,
-      askingPrice: true,
-      dealType: true,
-      grossRevenue: true,
-      tags: true,
-      brokerage: true,
-      ebitdaMargin: true,
-      ebitda: true,
-      revenue: true,
-    },
-  });
+  // Report initial progress
+  await onProgress?.("Fetching deal information", 5);
+
+  const [fetchedDealInformation] = await db
+    .select({
+      id: deals.id,
+      title: deals.title,
+      dealCaption: deals.dealCaption,
+      dealTeaser: deals.dealTeaser,
+      askingPrice: deals.askingPrice,
+      dealType: deals.dealType,
+      grossRevenue: deals.grossRevenue,
+      tags: deals.tags,
+      brokerage: deals.brokerage,
+      ebitdaMargin: deals.ebitdaMargin,
+      ebitda: deals.ebitda,
+      revenue: deals.revenue,
+    })
+    .from(deals)
+    .where(eq(deals.id, dealId));
 
   if (!fetchedDealInformation) {
     return {
@@ -44,11 +51,13 @@ export async function evaluateDealAndSaveResult(
   }
 
   try {
-    const screener = await db.screener.findFirst({
-      where: {
-        id: screenerId,
-      },
-    });
+    // Report progress for fetching screener
+    await onProgress?.("Fetching screener", 10);
+
+    const [screener] = await db
+      .select()
+      .from(screeners)
+      .where(eq(screeners.id, screenerId));
 
     if (!screener) {
       return {
@@ -57,13 +66,22 @@ export async function evaluateDealAndSaveResult(
       };
     }
 
+    // Report progress for splitting content
+    await onProgress?.("Splitting content into chunks", 15);
+
     const chunks = await splitContentIntoChunks(screener.content);
     const totalChunks = chunks.length;
     console.log("total chunks", totalChunks);
 
     const intermediateSummaries = [];
 
-    for (const chunk of chunks) {
+    // Process each chunk with progress updates
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      // Calculate percentage: 15% (start) to 75% (end of chunk processing)
+      const chunkPercentage = 15 + Math.round(((i + 1) / totalChunks) * 60);
+      await onProgress?.(`Processing chunk ${i + 1}/${totalChunks}`, chunkPercentage);
+
       const summary = await generateText({
         model: openai("gpt-4o-mini"),
         prompt: `Evaluate this listing ${JSON.stringify(
@@ -78,6 +96,9 @@ export async function evaluateDealAndSaveResult(
     );
 
     console.log(combinedSummary);
+
+    // Report progress for generating final summary
+    await onProgress?.("Generating final summary", 80);
 
     let finalSummary;
 
@@ -104,7 +125,7 @@ export async function evaluateDealAndSaveResult(
 
     console.log("evaluation", evaluation);
 
-    let sentiment: Sentiment = Sentiment.NEUTRAL;
+    let sentiment: typeof Sentiment[keyof typeof Sentiment] = Sentiment.NEUTRAL;
     if (evaluation.sentiment) {
       switch (evaluation.sentiment) {
         case "POSITIVE":
@@ -120,9 +141,13 @@ export async function evaluateDealAndSaveResult(
       }
     }
 
+    // Report progress for saving results
+    await onProgress?.("Saving results to database", 95);
+
     // Create the AI screening record
-    const savedEvaluation = await db.aiScreening.create({
-      data: {
+    const [savedEvaluation] = await db
+      .insert(aiScreenings)
+      .values({
         dealId,
         title: evaluation.title,
         explanation: evaluation.explanation,
@@ -130,8 +155,15 @@ export async function evaluateDealAndSaveResult(
         content: combinedSummary,
         sentiment,
         screenerId,
-      },
-    });
+      })
+      .returning();
+
+    if (!savedEvaluation) {
+      return {
+        success: false,
+        message: "Failed to save evaluation",
+      };
+    }
 
     return {
       success: true,

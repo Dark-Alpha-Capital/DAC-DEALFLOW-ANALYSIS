@@ -23,8 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronDown, Lock, Loader2 } from "lucide-react";
-import { Session } from "next-auth";
-import { signOut, useSession } from "next-auth/react";
+import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { FaScrewdriver } from "react-icons/fa";
 type NavLinkType = {
@@ -47,7 +46,7 @@ const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
-  const session = useSession();
+  const { data: session, isPending } = authClient.useSession();
 
   // Handle scroll detection for backdrop blur effect
   useEffect(() => {
@@ -60,12 +59,12 @@ const Header = () => {
   }, []);
 
   // Add admin-specific link if user is an admin
-  const isAdmin = session.data?.user?.role === "ADMIN";
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
   const dynamicNavLinks = isAdmin
     ? [...NavLinks, { navlink: "/admin", navlabel: "Admin", icon: Lock }]
     : NavLinks;
 
-  const isLoading = session.status === "loading";
+  const isLoading = isPending;
 
   return (
     <header
@@ -100,8 +99,8 @@ const Header = () => {
                   Loading...
                 </span>
               </div>
-            ) : session.data ? (
-              <ProfileMenu session={session.data} />
+            ) : session ? (
+              <ProfileMenu session={session} />
             ) : (
               <AuthDialogNavs />
             )}
@@ -266,12 +265,12 @@ function AuthDialogNavs() {
   );
 }
 
-function ProfileMenu({ session }: { session: Session }) {
+function ProfileMenu({ session }: { session: { user: any; session: any } }) {
   const router = useRouter();
   const userInitials =
     session.user?.name
       ?.split(" ")
-      .map((n) => n[0])
+      .map((n: string) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2) || "U";
@@ -305,8 +304,14 @@ function ProfileMenu({ session }: { session: Session }) {
           Profile
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => {
-            signOut({ callbackUrl: "/auth/login" });
+          onClick={async () => {
+            await authClient.signOut({
+              fetchOptions: {
+                onSuccess: () => {
+                  router.push("/auth/login");
+                },
+              },
+            });
           }}
           className="cursor-pointer text-destructive focus:text-destructive"
         >

@@ -1,10 +1,9 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 
-import db from "db";
+import db, { DealType, aiScreenings } from "db";
 import { screenDealSchemaType } from "@/lib/schemas";
-import { DealType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -26,27 +25,28 @@ const SaveScreeningResultToDB = async (
   dealType: DealType,
 ) => {
   try {
-    const session = await auth();
+    const session = await getSession();
 
     if (!session) {
       throw new Error("User not authenticated");
     }
 
-    const addedScreenResult = await db.aiScreening.create({
-      data: {
+    const [addedScreenResult] = await db
+      .insert(aiScreenings)
+      .values({
         dealId,
         title: values.title,
         explanation: values.explanation,
         sentiment: values.sentiment,
-      },
-    });
+      })
+      .returning();
 
     revalidatePath(`/raw-deals/${dealId}`);
 
     return {
       type: "success",
       message: "Screening Result saved successfully",
-      documentId: addedScreenResult.id,
+      documentId: addedScreenResult?.id,
     };
   } catch (error) {
     console.error("Error adding deal: ", error);

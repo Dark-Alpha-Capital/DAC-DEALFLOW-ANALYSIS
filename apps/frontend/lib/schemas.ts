@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { DealDocumentCategory, DealStatus } from "@prisma/client";
+import { DealDocumentCategory, DealStatus } from "db/schema";
 
 export const dealSpecificationsFormSchema = z.object({
   isReviewed: z.boolean().default(false),

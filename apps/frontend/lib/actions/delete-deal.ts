@@ -1,13 +1,13 @@
 "use server";
 
 import { DeleteDealById } from "db/mutations";
-import { DealType } from "@prisma/client";
+import { DealType } from "db";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 
 const DeleteDealFromDB = async (dealType: DealType, dealId: string) => {
-  const session = await auth();
+  const session = await getSession();
   if (!session) {
     return {
       type: "error",
@@ -15,7 +15,7 @@ const DeleteDealFromDB = async (dealType: DealType, dealId: string) => {
     };
   }
 
-  if (session.user.role !== "ADMIN") {
+  if ((session.user as any).role !== "ADMIN") {
     return {
       type: "error",
       message: "You are not authorized to delete this deal",

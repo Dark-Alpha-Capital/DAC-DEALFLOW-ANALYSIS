@@ -1,5 +1,5 @@
 import { EvalOptions } from "@/app/types";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { openaiClient } from "@/lib/ai/available-models";
 import { NextResponse } from "next/server";
 
@@ -18,7 +18,7 @@ ${opts.format === "json" ? "Output MUST follow the attached JSON Schema." : "Ret
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     console.log("user is not logged in");

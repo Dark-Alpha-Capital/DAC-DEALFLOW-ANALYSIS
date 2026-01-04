@@ -34,7 +34,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { dealDocumentFormSchema, DealDocumentFormValues } from "@/lib/schemas";
-import { DealDocumentCategory, DealType } from "@prisma/client";
+import { DealDocumentCategory, DealType } from "db/schema";
 import { toast } from "sonner";
 
 interface DealDocumentUploadDialogProps {

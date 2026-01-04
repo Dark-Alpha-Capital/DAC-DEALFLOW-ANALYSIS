@@ -1,13 +1,12 @@
 "use server";
 
 import { NewDealFormSchemaType } from "@/components/forms/new-deal-form";
-import db from "db";
-import { DealType } from "db";
+import db, { deals, DealType } from "db";
 import { revalidatePath, updateTag } from "next/cache";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 
 const AddDealToDB = async (values: NewDealFormSchemaType) => {
-  const session = await auth();
+  const session = await getSession();
   if (!session) {
     return {
       error: "Unauthorized",
@@ -15,8 +14,9 @@ const AddDealToDB = async (values: NewDealFormSchemaType) => {
   }
 
   try {
-    const addedDeal = await db.deal.create({
-      data: {
+    const [addedDeal] = await db
+      .insert(deals)
+      .values({
         title: values.title,
         dealCaption: values.deal_caption,
         firstName: values.first_name,
@@ -33,16 +33,16 @@ const AddDealToDB = async (values: NewDealFormSchemaType) => {
         sourceWebsite: values.source_website || "",
         industry: values.industry,
         askingPrice: values.asking_price,
-        dealType: "MANUAL",
+        dealType: DealType.MANUAL,
         userId: session.user?.id,
-      },
-    });
+      })
+      .returning();
 
     revalidatePath(`/manual-deals`);
     updateTag("deals");
 
     return {
-      dealId: addedDeal.id,
+      dealId: addedDeal?.id,
       success: "Deal added successfully",
     };
   } catch (error) {

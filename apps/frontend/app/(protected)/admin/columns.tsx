@@ -1,21 +1,12 @@
 "use client";
 
-import { ArrowUpDown, MoreHorizontal } from "lucide-react";
-
+import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-
 import { Badge } from "@/components/ui/badge";
 import { AdminUser } from "db/types";
+import { UserActions } from "./user-actions";
 
 export const columns: ColumnDef<AdminUser>[] = [
   {
@@ -40,10 +31,13 @@ export const columns: ColumnDef<AdminUser>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-
   {
     accessorKey: "name",
     header: "Name",
+    cell: ({ row }) => {
+      const name = row.getValue("name") as string | null;
+      return <span className="font-medium">{name || "—"}</span>;
+    },
   },
   {
     accessorKey: "email",
@@ -62,43 +56,35 @@ export const columns: ColumnDef<AdminUser>[] = [
   {
     accessorKey: "role",
     header: "Role",
+    cell: ({ row }) => {
+      const role = row.getValue("role") as string;
+      return (
+        <Badge variant={role === "ADMIN" ? "default" : "secondary"}>
+          {role}
+        </Badge>
+      );
+    },
   },
   {
     accessorKey: "isBlocked",
-    header: "Blocked",
+    header: "Status",
     cell: ({ row }) => {
       const user = row.original;
       return user.isBlocked ? (
-        <Badge>Yes</Badge>
+        <Badge variant="destructive">Blocked</Badge>
       ) : (
-        <Badge variant={"destructive"}>No</Badge>
+        <Badge variant="outline" className="text-green-600 border-green-600">
+          Active
+        </Badge>
       );
     },
   },
   {
     id: "actions",
+    header: "Actions",
     cell: ({ row }) => {
       const user = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(user.id)}
-            >
-              Copy Account ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+      return <UserActions user={user} />;
     },
   },
 ];

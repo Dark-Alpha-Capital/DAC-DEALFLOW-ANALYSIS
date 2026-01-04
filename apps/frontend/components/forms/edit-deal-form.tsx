@@ -19,7 +19,7 @@ import { useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import EditDealInDB from "@/lib/actions/edit-deal";
-import { Deal } from "@prisma/client";
+import type { Deal } from "db";
 
 export const EditDealFormSchema = z.object({
   first_name: z.optional(z.string()),

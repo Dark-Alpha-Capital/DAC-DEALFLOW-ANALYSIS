@@ -1,8 +1,8 @@
 "use server";
 
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth-server";
 import { openai, openaiClient } from "@/lib/ai/available-models";
-import db from "db";
+import db, { deals, screeners, eq } from "db";
 import { splitContentIntoChunks } from "@/lib/utils";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
@@ -16,7 +16,7 @@ import { rateLimit } from "@/lib/redis";
  * @returns The evaluation result
  */
 export async function evaluateDeal(dealId: string, screenerId: string) {
-  const userSession = await auth();
+  const userSession = await getSession();
 
   if (!userSession) {
     console.log("user session is not available");
@@ -44,25 +44,20 @@ export async function evaluateDeal(dealId: string, screenerId: string) {
     };
   }
 
-  const fetchedDealInformation = await db.deal.findFirst({
-    where: {
-      id: dealId,
-    },
-    select: {
-      id: true,
-      title: true,
-      dealCaption: true,
-      dealTeaser: true,
-      askingPrice: true,
-      dealType: true,
-      grossRevenue: true,
-      tags: true,
-      brokerage: true,
-      ebitdaMargin: true,
-      ebitda: true,
-      revenue: true,
-    },
-  });
+  const [fetchedDealInformation] = await db.select({
+    id: deals.id,
+    title: deals.title,
+    dealCaption: deals.dealCaption,
+    dealTeaser: deals.dealTeaser,
+    askingPrice: deals.askingPrice,
+    dealType: deals.dealType,
+    grossRevenue: deals.grossRevenue,
+    tags: deals.tags,
+    brokerage: deals.brokerage,
+    ebitdaMargin: deals.ebitdaMargin,
+    ebitda: deals.ebitda,
+    revenue: deals.revenue,
+  }).from(deals).where(eq(deals.id, dealId)).limit(1);
 
   if (!fetchedDealInformation) {
     return {
@@ -72,11 +67,7 @@ export async function evaluateDeal(dealId: string, screenerId: string) {
   }
 
   try {
-    const screener = await db.screener.findFirst({
-      where: {
-        id: screenerId,
-      },
-    });
+    const [screener] = await db.select().from(screeners).where(eq(screeners.id, screenerId)).limit(1);
 
     if (!screener) {
       return {

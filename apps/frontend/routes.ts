@@ -4,10 +4,12 @@
  *@type{string}
  */
 export const AUTH_ROUTES = [
-  "/auth/reset",
   "/auth/login",
+  "/auth/signup",
   "/auth/error",
-  "/auth/new-password",
+  "/auth/verify-email",
+  "/auth/forgot-password",
+  "/auth/reset-password",
 ];
 
 /**

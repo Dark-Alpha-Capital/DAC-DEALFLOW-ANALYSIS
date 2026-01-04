@@ -1,10 +1,8 @@
 import { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdf-parse", "tiktoken"],
   reactCompiler: true,
   cacheComponents: true,
-
   images: {
     remotePatterns: [
       {
@@ -15,13 +13,6 @@ const nextConfig: NextConfig = {
         search: "",
       },
     ],
-  },
-  experimental: {
-    turbopackFileSystemCacheForDev: true,
-
-    serverActions: {
-      bodySizeLimit: "10mb",
-    },
   },
 };
 

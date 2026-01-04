@@ -41,39 +41,23 @@ import FetchDealPOC from "@/components/FetchDealPOC";
 import DealDocumentUploadDialog from "@/components/Dialogs/deal-document-upload-dialog";
 import FetchDealDocuments from "@/components/fetch-deal-documents";
 import { formatNumberWithCommas } from "@/lib/utils";
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
+
 import { DealSpecificationsDialog } from "@/components/Dialogs/DealSpecificationsDialog";
 import { GetDealById } from "db/queries";
-import { Deal } from "@prisma/client";
+import { Deal } from "db/schema";
 import { cacheLife, cacheTag } from "next/cache";
+import { getSession } from "@/lib/auth-server";
+import { redirect } from "next/navigation";
 
 type Params = Promise<{ uid: string }>;
-
-export async function generateMetadata(props: {
-  params: Params;
-}): Promise<Metadata> {
-  const { uid } = await props.params;
-
-  try {
-    const fetchedDeal = await GetDealById(uid);
-
-    return {
-      title: fetchedDeal?.dealCaption || "Raw Deal Page",
-      description: fetchedDeal?.dealCaption || "Raw Deal Page",
-    };
-  } catch (error) {
-    console.log(error);
-    return {
-      title: "Not Found",
-      description: "The page you are looking for does not exist",
-    };
-  }
-}
 
 // Component (not cached) reads runtime data
 async function DealContent(props: { params: Params }) {
   const { uid } = await props.params;
+  const userSession = await getSession();
+  if (!userSession?.user) {
+    redirect("/auth/login");
+  }
   return <CachedDealContent uid={uid} />;
 }
 
