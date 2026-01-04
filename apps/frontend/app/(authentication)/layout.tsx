@@ -17,8 +17,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn(raleway.variable, bitter.variable)}>
       <body className={`antialiased`}>
-        <main>
-          <div>{children}</div>
+        <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+          <div className="min-h-screen flex items-center justify-center p-4">
+            {children}
+          </div>
         </main>
 
         <Toaster />

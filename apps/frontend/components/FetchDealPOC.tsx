@@ -1,8 +1,14 @@
 import { getDealPOC } from "db/queries";
 import AddPocDialog from "./Dialogs/add-poc-dialog";
 import DeletePocButton from "./Buttons/delete-poc-button";
+import { cacheLife, cacheTag } from "next/cache";
 
 const FetchDealPOC = async ({ dealId }: { dealId: string }) => {
+  "use cache";
+  // dealId becomes part of cache key
+  cacheTag(`deal-pocs-${dealId}`);
+  cacheLife("hours");
+
   const pocs = await getDealPOC(dealId);
   return (
     <div className="space-y-4">

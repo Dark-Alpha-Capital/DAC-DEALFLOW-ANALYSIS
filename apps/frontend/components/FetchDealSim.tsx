@@ -4,6 +4,7 @@ import SimItem from "@/components/SimItem";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "./ui/button";
 import { DealType } from "@prisma/client";
+import { cacheLife, cacheTag } from "next/cache";
 
 // this component will be used to fetch and display all sims for a particular deal
 
@@ -14,6 +15,11 @@ const FetchDealSim = async ({
   dealId: string;
   dealType: DealType;
 }) => {
+  "use cache";
+  // dealId becomes part of cache key
+  cacheTag(`deal-sims-${dealId}`);
+  cacheLife("hours");
+
   const sims = await prismaDB.sIM.findMany({
     where: {
       dealId: dealId,

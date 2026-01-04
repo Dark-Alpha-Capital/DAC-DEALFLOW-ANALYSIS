@@ -26,7 +26,6 @@ import { ChevronDown, Lock, Loader2 } from "lucide-react";
 import { Session } from "next-auth";
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import NotificationPopover from "./NotificationPopover";
 import { FaScrewdriver } from "react-icons/fa";
 type NavLinkType = {
   navlink: string;
@@ -94,10 +93,6 @@ const Header = () => {
           </div>
           <DesktopMenu pathname={pathname} dynamicLinks={dynamicNavLinks} />
           <div className="flex items-center gap-3">
-            {!isLoading && session.data?.user?.id && (
-              <NotificationPopover userId={session.data.user.id} />
-            )}
-
             {isLoading ? (
               <div className="flex items-center gap-2 px-3 py-2">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

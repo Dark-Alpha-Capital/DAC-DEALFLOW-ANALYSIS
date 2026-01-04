@@ -25,6 +25,7 @@ import SearchTagsDeals from "@/components/search-tags-deals";
 import DeleteFiltersButton from "@/components/Buttons/delete-filters-button";
 import SearchRecentDeals from "@/components/search-recent-deals";
 import { GetAllDeals } from "db/queries";
+import { cacheLife, cacheTag } from "next/cache";
 
 export const metadata: Metadata = {
   title: "Raw Deals",
@@ -154,7 +155,82 @@ async function ShowDealsComponent(props: { searchParams: SearchParams }) {
       ? [searchParams.tags]
       : searchParams?.tags || [];
 
-  console.log("tags inside filter", tags);
+  return (
+    <div>
+      <FetchAndDisplayDeals
+        search={search}
+        offset={offset}
+        limit={limit}
+        dealTypes={dealTypes as DealType[]}
+        ebitda={ebitda}
+        userId={userId}
+        currentPage={currentPage}
+        revenue={revenue}
+        location={location}
+        maxRevenue={maxRevenue}
+        maxEbitda={maxEbitda}
+        brokerage={brokerage}
+        industry={industry}
+        ebitdaMargin={ebitdaMargin}
+        showSeen={showSeen}
+        showRecent={showRecent}
+        showReviewed={showReviewed}
+        showPublished={showPublished}
+        status={status as DealStatus}
+        tags={tags as string[]}
+      />
+    </div>
+  );
+}
+
+async function FetchAndDisplayDeals({
+  search,
+  offset,
+  limit,
+  dealTypes,
+  ebitda,
+  userId,
+  currentPage,
+  revenue,
+  location,
+  maxRevenue,
+  maxEbitda,
+  brokerage,
+  industry,
+  ebitdaMargin,
+  showSeen,
+  showRecent,
+  showReviewed,
+  showPublished,
+  status,
+  tags,
+}: {
+  search: string;
+  offset: number;
+  limit: number;
+  dealTypes: DealType[];
+  ebitda: string;
+  userId: string;
+  currentPage: number;
+  revenue: string;
+  location: string;
+  maxRevenue: string;
+  maxEbitda: string;
+  brokerage: string;
+  industry: string;
+  ebitdaMargin: string;
+  showSeen: boolean;
+  showRecent: boolean;
+  showReviewed: boolean;
+  showPublished: boolean;
+  status: DealStatus;
+  tags: string[];
+}) {
+  "use cache";
+
+  cacheTag("deals");
+  cacheLife("hours");
+
   const { data, totalPages, totalCount } = await GetAllDeals({
     search,
     offset,

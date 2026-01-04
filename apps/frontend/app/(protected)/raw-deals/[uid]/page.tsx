@@ -29,6 +29,7 @@ import FetchDealSim from "@/components/FetchDealSim";
 import SimItemSkeleton from "@/components/skeletons/SimItemSkeleton";
 import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
 import AIReasoningSkeleton from "@/components/skeletons/AIReasoningSkeleton";
+import DealPageLoading from "@/components/skeletons/DealPageLoading";
 import {
   Tooltip,
   TooltipContent,
@@ -45,6 +46,7 @@ import { redirect } from "next/navigation";
 import { DealSpecificationsDialog } from "@/components/Dialogs/DealSpecificationsDialog";
 import { GetDealById } from "db/queries";
 import { Deal } from "@prisma/client";
+import { cacheLife, cacheTag } from "next/cache";
 
 type Params = Promise<{ uid: string }>;
 
@@ -69,13 +71,18 @@ export async function generateMetadata(props: {
   }
 }
 
-export default async function ManualDealSpecificPage(props: {
-  params: Params;
-}) {
+// Component (not cached) reads runtime data
+async function DealContent(props: { params: Params }) {
   const { uid } = await props.params;
-  const userSession = await auth();
+  return <CachedDealContent uid={uid} />;
+}
 
-  if (!userSession) redirect("/login");
+// Cached component/function receives data as props
+async function CachedDealContent({ uid }: { uid: string }) {
+  "use cache";
+  // uid becomes part of cache key
+  cacheTag(`deal-${uid}`);
+  cacheLife("hours");
 
   let fetchedDeal: Deal | null = null;
 
@@ -439,5 +446,14 @@ export default async function ManualDealSpecificPage(props: {
         </Card>
       </div>
     </section>
+  );
+}
+
+// Main page component - creates the dynamic boundary
+export default function ManualDealSpecificPage(props: { params: Params }) {
+  return (
+    <Suspense fallback={<DealPageLoading />}>
+      <DealContent params={props.params} />
+    </Suspense>
   );
 }

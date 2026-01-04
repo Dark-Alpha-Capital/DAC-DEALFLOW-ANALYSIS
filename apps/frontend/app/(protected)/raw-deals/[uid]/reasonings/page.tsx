@@ -9,14 +9,9 @@ import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import DeleteReasoningButton from "./delete-reasoning-button";
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 import PreviousPageButton from "@/components/PreviousPageButton";
 
 const page = async ({ params }: { params: Promise<{ uid: string }> }) => {
-  const userSession = await auth();
-  if (!userSession) redirect("/login");
-
   const dealId = (await params).uid;
 
   return (

@@ -8,18 +8,17 @@ import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 
 const SigninGoogle = () => {
   return (
-    <div>
-      <Button
-        variant={"outline"}
-        type="submit"
-        onClick={() => {
-          signIn("google", { callbackUrl: DEFAULT_LOGIN_REDIRECT });
-        }}
-        className="w-full cursor-pointer"
-      >
-        <FaGoogle className="mr-2 size-4" /> Sign in With Google
-      </Button>
-    </div>
+    <Button
+      variant="outline"
+      type="button"
+      onClick={() => {
+        signIn("google", { callbackUrl: DEFAULT_LOGIN_REDIRECT });
+      }}
+      className="w-full h-11 text-base font-medium hover:bg-accent transition-colors"
+    >
+      <FaGoogle className="mr-2 size-5" /> 
+      Sign in with Google
+    </Button>
   );
 };
 

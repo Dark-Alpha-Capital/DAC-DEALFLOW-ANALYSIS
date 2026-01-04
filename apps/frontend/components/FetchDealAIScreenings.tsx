@@ -3,6 +3,7 @@ import { Button } from "./ui/button";
 import { DealType } from "@prisma/client";
 import AIReasoning from "./AiReasoning";
 import { getFirstThreeDealAIScreenings } from "db/queries";
+import { cacheLife, cacheTag } from "next/cache";
 
 const FetchDealAIScreenings = async ({
   dealId,
@@ -11,6 +12,11 @@ const FetchDealAIScreenings = async ({
   dealId: string;
   dealType: DealType;
 }) => {
+  "use cache";
+  // dealId becomes part of cache key
+  cacheTag(`deal-ai-screenings-${dealId}`);
+  cacheLife("hours");
+
   let screenings = null;
   try {
     screenings = await getFirstThreeDealAIScreenings(dealId);

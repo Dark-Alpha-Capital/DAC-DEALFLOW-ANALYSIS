@@ -2,8 +2,14 @@ import React from "react";
 import { AlertTriangle } from "lucide-react";
 import { getDealDocuments } from "db/queries";
 import DealDocumentItem from "./DealDocumentItem";
+import { cacheLife, cacheTag } from "next/cache";
 
 const FetchDealDocuments = async ({ dealId }: { dealId: string }) => {
+  "use cache";
+  // dealId becomes part of cache key
+  cacheTag(`deal-documents-${dealId}`);
+  cacheLife("hours");
+
   let dealDocuments = null;
   try {
     dealDocuments = await getDealDocuments(dealId);
