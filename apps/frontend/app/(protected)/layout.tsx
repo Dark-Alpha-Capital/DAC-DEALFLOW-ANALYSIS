@@ -15,6 +15,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { TRPCReactProvider } from "@/trpc/client";
 
 export const metadata: Metadata = {
   title: "Dark Alpha Capital Deal Sourcing Organization",
@@ -39,26 +40,27 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SidebarProvider>
-            <Suspense>
-              <AppSidebar />
-            </Suspense>
-            <SidebarInset>
-              <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-                <SidebarTrigger />
-                <div className="flex-1" />
-              </header>
-              <div className="flex flex-1 flex-col">
-                <main className="flex-1">
-                  <Suspense fallback={<div className="h-16 w-full" />}>
-                    {children}
-                  </Suspense>
-                </main>
-                <Footer />
-              </div>
-            </SidebarInset>
-          </SidebarProvider>
-          <Toaster />
+          <TRPCReactProvider>
+            <SidebarProvider>
+              <Suspense>
+                <AppSidebar />
+              </Suspense>
+              <SidebarInset>
+                <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+                  <SidebarTrigger />
+                  <div className="flex-1" />
+                </header>
+                <div className="flex flex-1 flex-col">
+                  <main className="flex-1">
+                    <Suspense fallback={<div className="h-16 w-full" />}>
+                      {children}
+                    </Suspense>
+                  </main>
+                </div>
+              </SidebarInset>
+            </SidebarProvider>
+            <Toaster />
+          </TRPCReactProvider>
         </ThemeProvider>
       </body>
     </html>

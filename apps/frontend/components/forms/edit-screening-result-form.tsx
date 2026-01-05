@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -23,10 +22,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { screenDealSchema, screenDealSchemaType } from "@/lib/schemas";
-import { useTransition } from "react";
 import { DealType, Sentiment } from "db/schema";
-import editScreenDealResult from "@/lib/actions/edit-screen-deal-result";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 const EditScreeningResultForm = ({
   screeningId,
@@ -45,8 +44,20 @@ const EditScreeningResultForm = ({
   dealType: DealType;
   setDialogClose: () => void;
 }) => {
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const trpc = useTRPC();
+
+  const { mutate: updateScreening, isPending } = useMutation(
+    trpc.screenings.update.mutationOptions({
+      onSuccess: () => {
+        toast.success("Screening result updated successfully");
+        setDialogClose();
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to update screening result");
+      },
+    })
+  );
+
   const form = useForm<screenDealSchemaType>({
     resolver: zodResolver(screenDealSchema),
     defaultValues: {
@@ -56,30 +67,14 @@ const EditScreeningResultForm = ({
     },
   });
 
-  async function onSubmit(data: screenDealSchemaType) {
-    startTransition(async () => {
-      const res = await editScreenDealResult(
-        screeningId,
-        dealId,
-        data,
-        dealType,
-      );
-      if (res.type === "success") {
-        toast({
-          title: "Edited Screening Result",
-          description: res.message,
-        });
-        setDialogClose();
-      }
-
-      if (res.type === "error") {
-        toast({
-          title: "Error in editing screening result ☠️",
-          variant: "destructive",
-          description:
-            res.message || "An error occurred, Please try again later!!!!",
-        });
-      }
+  function onSubmit(data: screenDealSchemaType) {
+    updateScreening({
+      screeningId,
+      dealId,
+      dealType,
+      title: data.title,
+      explanation: data.explanation,
+      sentiment: data.sentiment,
     });
   }
 

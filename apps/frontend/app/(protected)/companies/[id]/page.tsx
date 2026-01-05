@@ -2,17 +2,14 @@ import { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
-  Building2,
-  Users,
+  ExternalLink,
   FileText,
   CheckSquare,
   MessageSquare,
   Calendar,
-  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
@@ -50,7 +47,7 @@ const CompanyDetailPage = async ({ params }: CompanyDetailPageProps) => {
   const { id } = await params;
 
   return (
-    <section className="big-container block-space group min-h-screen">
+    <section className="big-container block-space-mini group min-h-screen">
       <Suspense fallback={<CompanyDetailLoadingSkeleton />}>
         <ShowCompanyDetailComponent companyId={id} />
       </Suspense>
@@ -89,59 +86,49 @@ async function FetchAndDisplayCompanyDetailData({
     notFound();
   }
 
-  const formatStage = (stage?: string) => {
-    if (!stage) return null;
-    const stageColors = {
-      STARTUP: "bg-blue-100 text-blue-800",
-      GROWTH: "bg-green-100 text-green-800",
-      MATURE: "bg-gray-100 text-gray-800",
-      TURNAROUND: "bg-yellow-100 text-yellow-800",
-      DISTRESSED: "bg-red-100 text-red-800",
-    };
-    return (
-      <Badge
-        className={
-          stageColors[stage as keyof typeof stageColors] ||
-          "bg-gray-100 text-gray-800"
-        }
-      >
-        {stage.replace("_", " ")}
-      </Badge>
-    );
-  };
-
   return (
     <>
-      <div className="mb-6">
-        <Button variant="ghost" asChild className="mb-4">
+      <div className="mb-8">
+        <Button variant="ghost" asChild size="sm" className="mb-6 -ml-2">
           <Link href="/companies">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Companies
+            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+            Back
           </Link>
         </Button>
 
-        <BulkFileUploadDialog />
-
-        <div className="flex items-start justify-between">
-          <div className="space-y-2">
+        <div className="flex items-start justify-between border-b border-border pb-6">
+          <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">{company.name}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {company.name}
+              </h1>
+              {company.stage && (
+                <Badge variant="secondary" className="text-xs font-normal">
+                  {company.stage.replace("_", " ")}
+                </Badge>
+              )}
             </div>
-            <p className="text-lg text-muted-foreground">{company.sector}</p>
-            <p className="max-w-2xl text-muted-foreground">
-              {company.description}
-            </p>
-            {formatStage(company.stage || "")}
+            {company.sector && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {company.sector}
+              </p>
+            )}
+            {company.description && (
+              <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+                {company.description}
+              </p>
+            )}
           </div>
 
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
+          <div className="flex items-center gap-2">
+            <BulkFileUploadDialog />
+            <Button asChild variant="outline" size="sm">
               <Link href={`/companies/${company.id}/due-diligence`}>
                 Due Diligence
               </Link>
             </Button>
-            <Button asChild>
-              <Link href={`/companies/${company.id}/edit`}>Edit Company</Link>
+            <Button asChild size="sm">
+              <Link href={`/companies/${company.id}/edit`}>Edit</Link>
             </Button>
             <CompanyActions companyId={company.id} companyName={company.name} />
           </div>
@@ -149,206 +136,186 @@ async function FetchAndDisplayCompanyDetailData({
       </div>
 
       <div className="group-has-[[data-pending]]:animate-pulse">
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Content */}
-          <div className="space-y-6 lg:col-span-2">
-            {/* Company Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Company Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Headquarters
-                    </p>
-                    <p>{company.headquarters || "Not specified"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Employees
-                    </p>
-                    <p>
-                      {company.employees
-                        ? company.employees.toLocaleString()
-                        : "Not specified"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Website
-                    </p>
-                    {company.website ? (
-                      <a
-                        href={company.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-primary hover:underline"
-                      >
-                        {company.website}
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    ) : (
-                      <p>Not specified</p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Created
-                    </p>
-                    <p>{new Date(company.createdAt).toLocaleDateString()}</p>
-                  </div>
+        <div className="grid gap-8 lg:grid-cols-3">
+          <div className="space-y-8 lg:col-span-2">
+            <section>
+              <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Company Information
+              </h2>
+              <div className="grid gap-6 border border-border p-6 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Headquarters</p>
+                  <p className="mt-1 text-sm">
+                    {company.headquarters || "Not specified"}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Financial Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Financial Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Annual Revenue
-                    </p>
-                    <p className="text-lg font-semibold">
-                      {company.revenue
-                        ? formatCurrency(company.revenue)
-                        : "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      EBITDA
-                    </p>
-                    <p className="text-lg font-semibold">
-                      {company.ebitda ? formatCurrency(company.ebitda) : "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Growth Rate
-                    </p>
-                    <p className="text-lg font-semibold">
-                      {company.growthRate ? `${company.growthRate}%` : "N/A"}
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Employees</p>
+                  <p className="mt-1 text-sm">
+                    {company.employees
+                      ? company.employees.toLocaleString()
+                      : "Not specified"}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="text-xs text-muted-foreground">Website</p>
+                  {company.website ? (
+                    <a
+                      href={company.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 flex items-center gap-1 text-sm text-primary hover:underline"
+                    >
+                      {company.website}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    <p className="mt-1 text-sm">Not specified</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Created</p>
+                  <p className="mt-1 text-sm">
+                    {new Date(company.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </section>
 
-            {/* Founders */}
+            <section>
+              <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Financial Information
+              </h2>
+              <div className="grid gap-6 border border-border p-6 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Annual Revenue</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {company.revenue ? formatCurrency(company.revenue) : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">EBITDA</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {company.ebitda ? formatCurrency(company.ebitda) : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Growth Rate</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {company.growthRate ? `${company.growthRate}%` : "—"}
+                  </p>
+                </div>
+              </div>
+            </section>
+
             {company.founders.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Founders ({company.founders.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {company.founders.map((founder) => (
-                      <div
-                        key={founder.id}
-                        className="flex items-center justify-between rounded-lg border p-3"
-                      >
-                        <div>
-                          <p className="font-medium">{founder.name}</p>
-                          {founder.title && (
-                            <p className="text-sm text-muted-foreground">
-                              {founder.title}
-                            </p>
-                          )}
-                          {founder.email && (
-                            <p className="text-sm text-muted-foreground">
-                              {founder.email}
-                            </p>
-                          )}
-                        </div>
-                        {founder.linkedin && (
-                          <Button variant="outline" size="sm" asChild>
-                            <a
-                              href={founder.linkedin}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              LinkedIn
-                            </a>
-                          </Button>
+              <section>
+                <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                  Founders ({company.founders.length})
+                </h2>
+                <div className="space-y-3">
+                  {company.founders.map((founder) => (
+                    <div
+                      key={founder.id}
+                      className="flex items-center justify-between border border-border p-4"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{founder.name}</p>
+                        {founder.title && (
+                          <p className="text-xs text-muted-foreground">
+                            {founder.title}
+                          </p>
+                        )}
+                        {founder.email && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {founder.email}
+                          </p>
                         )}
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      {founder.linkedin && (
+                        <Button variant="outline" size="sm" asChild>
+                          <a
+                            href={founder.linkedin}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            LinkedIn
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Due Diligence Overview */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Due Diligence Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          <div className="space-y-8">
+            <section>
+              <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Due Diligence Overview
+              </h2>
+              <div className="space-y-3 border border-border p-5">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    <span className="text-sm">Files</span>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Files</span>
                   </div>
-                  <Badge variant="secondary">{company._count.files}</Badge>
+                  <span className="text-sm font-medium">
+                    {company._count.files}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckSquare className="h-4 w-4" />
-                    <span className="text-sm">Sections</span>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckSquare className="h-3.5 w-3.5" />
+                    <span>Sections</span>
                   </div>
-                  <Badge variant="secondary">{company._count.sections}</Badge>
+                  <span className="text-sm font-medium">
+                    {company._count.sections}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4" />
-                    <span className="text-sm">Reviews</span>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    <span>Reviews</span>
                   </div>
-                  <Badge variant="secondary">{company._count.reviews}</Badge>
+                  <span className="text-sm font-medium">
+                    {company._count.reviews}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span className="text-sm">Tasks</span>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>Tasks</span>
                   </div>
-                  <Badge variant="secondary">{company._count.tasks}</Badge>
+                  <span className="text-sm font-medium">
+                    {company._count.tasks}
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  {company.files.slice(0, 3).map((file) => (
-                    <div key={file.id} className="flex items-center gap-2">
-                      <FileText className="h-3 w-3 text-muted-foreground" />
-                      <span className="truncate">{file.title}</span>
-                    </div>
-                  ))}
-                  {company.files.length === 0 && (
-                    <p className="text-muted-foreground">No recent activity</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <section>
+              <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Recent Activity
+              </h2>
+              <div className="border border-border p-5">
+                {company.files.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No recent activity
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {company.files.slice(0, 5).map((file) => (
+                      <div key={file.id} className="flex items-center gap-2">
+                        <FileText className="h-3 w-3 text-muted-foreground" />
+                        <span className="truncate text-sm">{file.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
         </div>
       </div>

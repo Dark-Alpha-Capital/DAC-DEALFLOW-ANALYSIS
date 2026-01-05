@@ -8,7 +8,6 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import ReactMarkdown from "react-markdown";
 import { Trash2, Save, PlayCircle } from "lucide-react";
-import { screeningSaveResult } from "@/lib/actions/screening-save-result";
 import { Skeleton } from "./ui/skeleton";
 import axios from "axios";
 import { Input } from "./ui/input";
@@ -22,10 +21,11 @@ import {
 } from "./ui/select";
 import { Slider } from "./ui/slider";
 import { EvalOptions } from "@/app/types";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 const ScreenDealComponent = ({ deal }: { deal: Deal }) => {
   const [isPending, startTransition] = useTransition();
-  const [isSaving, startSavingTransition] = useTransition();
   const [screeningResult, setScreeningResult] = useState<string>("");
   const [annotations, setAnnotations] = useState<string[]>([]);
   const [evalOptions, setEvalOptions] = useState<EvalOptions>({
@@ -39,6 +39,19 @@ const ScreenDealComponent = ({ deal }: { deal: Deal }) => {
     framework: "swot",
     temperature: 0.7,
   });
+
+  const trpc = useTRPC();
+
+  const { mutate: saveResult, isPending: isSaving } = useMutation(
+    trpc.screenings.saveRaw.mutationOptions({
+      onSuccess: () => {
+        toast.success("Screening result saved");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to save screening result");
+      },
+    })
+  );
 
   const handleScreenDeal = async () => {
     setScreeningResult(""); // Clear previous results
@@ -64,20 +77,13 @@ const ScreenDealComponent = ({ deal }: { deal: Deal }) => {
     });
   };
 
-  const handleSaveResult = async () => {
-    startSavingTransition(async () => {
-      if (!screeningResult) {
-        toast.error("No screening result to save");
-        return;
-      }
+  const handleSaveResult = () => {
+    if (!screeningResult) {
+      toast.error("No screening result to save");
+      return;
+    }
 
-      const response = await screeningSaveResult(screeningResult, deal.id);
-      if (response.type === "error") {
-        toast.error(response.message);
-      } else {
-        toast.success("Screening result saved");
-      }
-    });
+    saveResult({ result: screeningResult, dealId: deal.id });
   };
 
   const handleDeleteResult = () => {

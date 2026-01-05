@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useTransition } from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import AddPoc from "@/lib/actions/add-poc";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 export const addPocFormSchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -35,7 +36,20 @@ interface AddPocFormProps {
 }
 
 const AddPocForm = ({ dealId, onSuccess }: AddPocFormProps) => {
-  const [isPending, startTransition] = useTransition();
+  const trpc = useTRPC();
+
+  const { mutate: createPoc, isPending } = useMutation(
+    trpc.pocs.create.mutationOptions({
+      onSuccess: () => {
+        toast.success("POC added successfully");
+        form.reset();
+        onSuccess?.();
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to add POC");
+      },
+    })
+  );
 
   const form = useForm<AddPocFormValues>({
     resolver: zodResolver(addPocFormSchema),
@@ -46,23 +60,8 @@ const AddPocForm = ({ dealId, onSuccess }: AddPocFormProps) => {
     },
   });
 
-  async function onSubmit(values: AddPocFormValues) {
-    startTransition(async () => {
-      try {
-        const response = await AddPoc(values, dealId);
-
-        if ("error" in response) {
-          toast.error("Failed to add POC");
-          return;
-        } else if (response.type === "success") {
-          toast.success("POC added successfully");
-          onSuccess?.();
-        }
-      } catch (error) {
-        console.error("Submission error:", error);
-        toast.error("An unexpected error occurred while adding the POC.");
-      }
-    });
+  function onSubmit(values: AddPocFormValues) {
+    createPoc({ dealId, ...values });
   }
 
   return (

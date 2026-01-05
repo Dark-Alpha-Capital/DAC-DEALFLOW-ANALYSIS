@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useTransition } from "react";
+import React from "react";
 import {
   Card,
   CardContent,
@@ -10,10 +10,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "./ui/button";
-import { Trash2 } from "lucide-react";
 import { DealType } from "db/schema";
-import DeleteSimFromDB from "@/lib/actions/delete-sim";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 interface SimItemProps {
   title: string;
@@ -34,8 +34,18 @@ const SimItem: React.FC<SimItemProps> = ({
   fileUrl,
   dealType,
 }) => {
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const trpc = useTRPC();
+
+  const { mutate: deleteSim, isPending } = useMutation(
+    trpc.misc.deleteSim.mutationOptions({
+      onSuccess: () => {
+        toast.success("SIM deleted successfully");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to delete SIM");
+      },
+    })
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -67,25 +77,8 @@ const SimItem: React.FC<SimItemProps> = ({
         <Button>Edit</Button>
         <Button
           variant={"destructive"}
-          onClick={async () => {
-            startTransition(async () => {
-              const response = await DeleteSimFromDB(cimId, dealType, dealId);
-              if (response.type === "success") {
-                toast({
-                  title: "SIM deleted successfully",
-                  description: "The SIM has been deleted successfully",
-                });
-              }
-
-              if (response.type === "error") {
-                toast({
-                  title: "Error deleting SIM",
-                  description: response.message,
-                  variant: "destructive",
-                });
-              }
-            });
-          }}
+          disabled={isPending}
+          onClick={() => deleteSim({ simId: cimId, dealId, fileUrl })}
         >
           {isPending ? "Deleting......" : "Delete"}
         </Button>

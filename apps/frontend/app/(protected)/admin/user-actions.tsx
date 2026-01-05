@@ -22,52 +22,54 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { blockUser, unblockUser } from "@/lib/actions/user-management";
 import { AdminUser } from "db/types";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 interface UserActionsProps {
   user: AdminUser;
 }
 
 export function UserActions({ user }: UserActionsProps) {
-  const [isLoading, setIsLoading] = useState(false);
   const [showBlockDialog, setShowBlockDialog] = useState(false);
   const [showUnblockDialog, setShowUnblockDialog] = useState(false);
+  const trpc = useTRPC();
+
+  const { mutate: blockUser, isPending: isBlocking } = useMutation(
+    trpc.users.block.mutationOptions({
+      onSuccess: () => {
+        toast.success(`${user.name || user.email} has been blocked`);
+        setShowBlockDialog(false);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to block user");
+        setShowBlockDialog(false);
+      },
+    })
+  );
+
+  const { mutate: unblockUser, isPending: isUnblocking } = useMutation(
+    trpc.users.unblock.mutationOptions({
+      onSuccess: () => {
+        toast.success(`${user.name || user.email} has been unblocked`);
+        setShowUnblockDialog(false);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to unblock user");
+        setShowUnblockDialog(false);
+      },
+    })
+  );
 
   const isAdmin = user.role === "ADMIN";
+  const isLoading = isBlocking || isUnblocking;
 
-  async function handleBlock() {
-    setIsLoading(true);
-    try {
-      const result = await blockUser(user.id);
-      if (result.success) {
-        toast.success(`${user.name || user.email} has been blocked`);
-      } else {
-        toast.error(result.error || "Failed to block user");
-      }
-    } catch (error) {
-      toast.error("Something went wrong");
-    } finally {
-      setIsLoading(false);
-      setShowBlockDialog(false);
-    }
+  function handleBlock() {
+    blockUser({ userId: user.id });
   }
 
-  async function handleUnblock() {
-    setIsLoading(true);
-    try {
-      const result = await unblockUser(user.id);
-      if (result.success) {
-        toast.success(`${user.name || user.email} has been unblocked`);
-      } else {
-        toast.error(result.error || "Failed to unblock user");
-      }
-    } catch (error) {
-      toast.error("Something went wrong");
-    } finally {
-      setIsLoading(false);
-      setShowUnblockDialog(false);
-    }
+  function handleUnblock() {
+    unblockUser({ userId: user.id });
   }
 
   return (
@@ -145,13 +147,13 @@ export function UserActions({ user }: UserActionsProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isBlocking}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBlock}
-              disabled={isLoading}
+              disabled={isBlocking}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isBlocking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Block User
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -169,13 +171,13 @@ export function UserActions({ user }: UserActionsProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isUnblocking}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleUnblock}
-              disabled={isLoading}
+              disabled={isUnblocking}
               className="bg-green-600 text-white hover:bg-green-700"
             >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isUnblocking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Unblock User
             </AlertDialogAction>
           </AlertDialogFooter>

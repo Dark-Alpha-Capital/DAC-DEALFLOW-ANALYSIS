@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 const NewCompanyPage = async () => {
   return (
-    <section className="big-container block-space group min-h-screen">
+    <section className="big-container block-space-mini group min-h-screen">
       <Suspense fallback={<NewCompanyLoadingSkeleton />}>
         <ShowNewCompanyComponent />
       </Suspense>
@@ -33,18 +33,25 @@ async function ShowNewCompanyComponent() {
 
   return (
     <>
-      <div className="mb-6">
-        <Button variant="ghost" asChild className="mb-4">
+      <div className="mb-8">
+        <Button variant="ghost" asChild size="sm" className="mb-6 -ml-2">
           <Link href="/companies">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Companies
+            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+            Back
           </Link>
         </Button>
-        <h1>Add New Company</h1>
-        <p>Create a new company profile for due diligence</p>
+
+        <div className="border-b border-border pb-6">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Add New Company
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create a new company profile for due diligence
+          </p>
+        </div>
       </div>
 
-      <div className="max-w-4xl">
+      <div className="max-w-3xl">
         <CreateNewCompanyForm />
       </div>
     </>

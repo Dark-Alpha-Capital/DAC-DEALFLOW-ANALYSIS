@@ -32,13 +32,14 @@ import {
 } from "@/components/ui/tooltip";
 import { Deal, UserRole } from "db";
 import { useToast } from "@/hooks/use-toast";
-import DeleteDealFromDB from "@/lib/actions/delete-deal";
 import { cn } from "@/lib/utils";
 import {
   calculateEbitdaMargin,
   formatCurrency,
   formatPercent,
 } from "@/lib/utils";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 const DealCard = ({
   deal,
@@ -56,22 +57,28 @@ const DealCard = ({
   const screenLink = `/raw-deals/${deal.id}/screen`;
 
   const { toast } = useToast();
+  const trpc = useTRPC();
 
-  const handleDelete = async () => {
-    try {
-      const response = await DeleteDealFromDB(deal.dealType, deal.id);
-      toast({
-        title: response.type === "success" ? "Deal Deleted" : "Error",
-        description: response.message,
-        variant: response.type === "success" ? "default" : "destructive",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete deal",
-        variant: "destructive",
-      });
-    }
+  const { mutate: deleteDeal } = useMutation(
+    trpc.deals.delete.mutationOptions({
+      onSuccess: () => {
+        toast({
+          title: "Deal Deleted",
+          description: "Deal deleted successfully",
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to delete deal",
+          variant: "destructive",
+        });
+      },
+    })
+  );
+
+  const handleDelete = () => {
+    deleteDeal({ id: deal.id, dealType: deal.dealType });
   };
 
   return (

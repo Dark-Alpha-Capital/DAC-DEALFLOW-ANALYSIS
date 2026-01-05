@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import React, { useTransition } from "react";
+import React from "react";
 import { z } from "zod";
 import {
   dealSpecificationsFormSchema,
@@ -30,7 +30,8 @@ import {
 import { DealStatus } from "db/schema";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { updateDealSpecificationsAction } from "@/lib/actions/update-deal-specifications";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 const DealSpecificationsForm = ({
   dealUid,
@@ -45,7 +46,18 @@ const DealSpecificationsForm = ({
   dealReviewed: boolean;
   dealPublished: boolean;
 }) => {
-  const [isPending, startTransition] = useTransition();
+  const trpc = useTRPC();
+
+  const { mutate: updateSpecifications, isPending } = useMutation(
+    trpc.deals.updateSpecifications.mutationOptions({
+      onSuccess: () => {
+        toast.success("Deal specifications updated successfully");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to update specifications");
+      },
+    })
+  );
 
   const form = useForm<dealSpecificationsFormSchemaType>({
     resolver: zodResolver(dealSpecificationsFormSchema),
@@ -58,22 +70,7 @@ const DealSpecificationsForm = ({
   });
 
   function onSubmit(values: dealSpecificationsFormSchemaType) {
-    startTransition(async () => {
-      console.log(values);
-
-      const { success, message } = await updateDealSpecificationsAction(
-        values,
-        dealUid,
-      );
-
-      console.log(success, message);
-
-      if (success) {
-        toast.success(message);
-      } else {
-        toast.error(message);
-      }
-    });
+    updateSpecifications({ dealId: dealUid, ...values });
   }
 
   return (

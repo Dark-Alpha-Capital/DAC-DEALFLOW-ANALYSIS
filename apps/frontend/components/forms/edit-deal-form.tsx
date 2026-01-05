@@ -15,11 +15,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import EditDealInDB from "@/lib/actions/edit-deal";
 import type { Deal } from "db";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 export const EditDealFormSchema = z.object({
   first_name: z.optional(z.string()),
@@ -70,9 +70,28 @@ const EditDealForm = ({ deal }: EditDealFormProps) => {
     askingPrice,
     industry,
   } = deal;
-  const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
+  const trpc = useTRPC();
+
+  const { mutate: updateDeal, isPending } = useMutation(
+    trpc.deals.update.mutationOptions({
+      onSuccess: () => {
+        toast({
+          title: "Deal Updated",
+          description: "Deal updated successfully",
+        });
+        router.push(`/raw-deals/${deal.id}`);
+      },
+      onError: (error) => {
+        toast({
+          title: "Error editing deal",
+          description: error.message || "Error editing deal",
+          variant: "destructive",
+        });
+      },
+    })
+  );
 
   const form = useForm<EditDealFormSchemaType>({
     resolver: zodResolver(EditDealFormSchema),
@@ -95,27 +114,8 @@ const EditDealForm = ({ deal }: EditDealFormProps) => {
     },
   });
 
-  // 2. Define a submit handler.
   function onSubmit(values: EditDealFormSchemaType) {
-    startTransition(async () => {
-      console.log("values", values);
-      const response = await EditDealInDB(values, deal.id);
-      if (response.type === "success") {
-        toast({
-          title: `Deal Edit successfully`,
-          description: `Deal Edit successfully from the database`,
-        });
-        router.push(`/raw-deals/${deal.id}`);
-      }
-
-      if (response.type === "error") {
-        toast({
-          title: "Error editing deal",
-          description: "Error editing deal",
-          variant: "destructive",
-        });
-      }
-    });
+    updateDeal({ id: deal.id, ...values });
   }
 
   return (

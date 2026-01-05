@@ -34,19 +34,21 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
-      sendEmail({
+      const html = await getPasswordResetEmailHtml(url);
+      await sendEmail({
         to: user.email,
         subject: "Reset your password - DAC DealFlow",
-        html: getPasswordResetEmailHtml(url),
+        html,
       });
     },
   },
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
-      sendEmail({
+      const html = await getVerificationEmailHtml(url);
+      await sendEmail({
         to: user.email,
         subject: "Verify your email - DAC DealFlow",
-        html: getVerificationEmailHtml(url),
+        html,
       });
     },
     sendOnSignUp: true,

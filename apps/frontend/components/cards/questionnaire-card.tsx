@@ -17,9 +17,9 @@ import {
   UserIcon,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { useTransition } from "react";
-import { useToast } from "@/hooks/use-toast";
-import DeleteBaseline from "@/lib/actions/delete-baseline";
+import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 interface QuestionnaireCardProps {
   questionnaire: Questionnaire;
@@ -28,29 +28,23 @@ interface QuestionnaireCardProps {
 const QuestionnaireCard: React.FC<QuestionnaireCardProps> = ({
   questionnaire,
 }) => {
-  const [isPending, startTransition] = useTransition();
-  const { toast } = useToast();
+  const trpc = useTRPC();
 
-  const handleDelete = async () => {
-    startTransition(async () => {
-      // delete questionnaire
-      const response = await DeleteBaseline(
-        questionnaire.fileUrl,
-        questionnaire.id,
-      );
+  const { mutate: deleteBaseline, isPending } = useMutation(
+    trpc.misc.deleteBaseline.mutationOptions({
+      onSuccess: () => {
+        toast.success("Questionnaire deleted successfully");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to delete questionnaire");
+      },
+    })
+  );
 
-      if (response.type === "success") {
-        toast({
-          title: "Questionnaire deleted",
-          description: "The questionnaire has been successfully deleted.",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: response.message || "Failed to delete questionnaire",
-          variant: "destructive",
-        });
-      }
+  const handleDelete = () => {
+    deleteBaseline({
+      blobUrl: questionnaire.fileUrl,
+      questionnaireId: questionnaire.id,
     });
   };
 

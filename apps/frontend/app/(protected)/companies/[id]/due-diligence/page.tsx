@@ -3,13 +3,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   ArrowLeft,
   FileText,
   CheckSquare,
@@ -68,7 +61,7 @@ const DueDiligencePage = async ({ params }: DueDiligencePageProps) => {
   const { id } = await params;
 
   return (
-    <section className="big-container block-space group min-h-screen">
+    <section className="big-container block-space-mini group min-h-screen">
       <Suspense fallback={<DueDiligenceLoadingSkeleton />}>
         <ShowDueDiligenceComponent companyId={id} />
       </Suspense>
@@ -97,7 +90,6 @@ async function FetchAndDisplayDueDiligenceData({
   cacheTag("due-diligence");
   cacheLife("hours");
 
-  // Fetch company
   const [companyData] = await db
     .select()
     .from(companies)
@@ -108,21 +100,18 @@ async function FetchAndDisplayDueDiligenceData({
     notFound();
   }
 
-  // Fetch sections
   const sectionsList = await db
     .select()
     .from(dueDiligenceSections)
     .where(eq(dueDiligenceSections.companyId, companyId))
     .orderBy(desc(dueDiligenceSections.createdAt));
 
-  // Fetch files
   const filesList = await db
     .select()
     .from(files)
     .where(eq(files.companyId, companyId))
     .orderBy(desc(files.createdAt));
 
-  // Fetch reviews with reviewer
   const reviewsData = await db
     .select({
       review: reviews,
@@ -138,7 +127,6 @@ async function FetchAndDisplayDueDiligenceData({
     reviewer: { name: r.reviewerName },
   }));
 
-  // Fetch tasks with assignee
   const tasksData = await db
     .select({
       task: tasks,
@@ -154,7 +142,6 @@ async function FetchAndDisplayDueDiligenceData({
     assignedTo: { name: t.assigneeName },
   }));
 
-  // Get counts
   const [filesCount] = await db
     .select({ count: count() })
     .from(files)
@@ -186,224 +173,169 @@ async function FetchAndDisplayDueDiligenceData({
     },
   };
 
+  const stats = [
+    { label: "Files", value: company._count.files, icon: FileText },
+    { label: "Sections", value: company._count.sections, icon: CheckSquare },
+    { label: "Reviews", value: company._count.reviews, icon: MessageSquare },
+    { label: "Tasks", value: company._count.tasks, icon: Calendar },
+  ];
+
   return (
     <>
-      <div className="mb-6">
-        <Button variant="ghost" asChild className="mb-4">
+      <div className="mb-8">
+        <Button variant="ghost" asChild size="sm" className="mb-6 -ml-2">
           <Link href={`/companies/${company.id}`}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Company
+            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+            Back
           </Link>
         </Button>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h1>Due Diligence</h1>
-            <p className="text-muted-foreground">{company.name}</p>
-          </div>
+        <div className="border-b border-border pb-6">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Due Diligence
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">{company.name}</p>
         </div>
       </div>
 
       <div className="group-has-[[data-pending]]:animate-pulse">
-        <div className="grid gap-6 lg:grid-cols-4">
-          {/* Overview Cards */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Files</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{company._count.files}</div>
-              <p className="text-xs text-muted-foreground">
-                Documents uploaded
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Sections</CardTitle>
-              <CheckSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {company._count.sections}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <div key={stat.label} className="border border-border p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {stat.label}
+                </span>
+                <stat.icon className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Due diligence sections
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Reviews</CardTitle>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{company._count.reviews}</div>
-              <p className="text-xs text-muted-foreground">Analyst reviews</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tasks</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{company._count.tasks}</div>
-              <p className="text-xs text-muted-foreground">Assigned tasks</p>
-            </CardContent>
-          </Card>
+              <p className="mt-2 text-2xl font-semibold">{stat.value}</p>
+            </div>
+          ))}
         </div>
 
-        {/* Main Content */}
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          {/* Due Diligence Sections */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Due Diligence Sections</CardTitle>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Section
-                </Button>
-              </div>
-              <CardDescription>
-                Manage different aspects of due diligence
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <div className="mt-8 grid gap-8 lg:grid-cols-2">
+          <section>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Due Diligence Sections
+              </h2>
+              <Button size="sm" variant="outline">
+                <Plus className="mr-1.5 h-3 w-3" />
+                Add
+              </Button>
+            </div>
+
+            <div className="border border-border">
               {company.sections.length === 0 ? (
-                <div className="py-8 text-center">
-                  <CheckSquare className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                  <h3 className="mb-2 text-lg font-semibold">
+                <div className="flex flex-col items-center justify-center py-12">
+                  <CheckSquare className="h-8 w-8 text-muted-foreground" />
+                  <p className="mt-3 text-sm text-muted-foreground">
                     No sections yet
-                  </h3>
-                  <p className="mb-4 text-muted-foreground">
-                    Start by creating due diligence sections for this company
                   </p>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
+                  <Button size="sm" variant="outline" className="mt-4">
+                    <Plus className="mr-1.5 h-3 w-3" />
                     Create First Section
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="divide-y divide-border">
                   {company.sections.map((section) => (
                     <div
                       key={section.id}
-                      className="flex items-center justify-between rounded-lg border p-3"
+                      className="flex items-center justify-between p-4"
                     >
                       <div>
-                        <p className="font-medium">{section.title}</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm font-medium">{section.title}</p>
+                        <p className="text-xs text-muted-foreground">
                           {section.type}
                         </p>
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {section.status}
-                      </div>
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          {/* Recent Files */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Recent Files</CardTitle>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Upload File
-                </Button>
-              </div>
-              <CardDescription>
-                Documents and files for due diligence
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <section>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Recent Files
+              </h2>
+              <Button size="sm" variant="outline">
+                <Plus className="mr-1.5 h-3 w-3" />
+                Upload
+              </Button>
+            </div>
+
+            <div className="border border-border">
               {company.files.length === 0 ? (
-                <div className="py-8 text-center">
-                  <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                  <h3 className="mb-2 text-lg font-semibold">No files yet</h3>
-                  <p className="mb-4 text-muted-foreground">
-                    Upload documents to start the due diligence process
+                <div className="flex flex-col items-center justify-center py-12">
+                  <FileText className="h-8 w-8 text-muted-foreground" />
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    No files yet
                   </p>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
+                  <Button size="sm" variant="outline" className="mt-4">
+                    <Plus className="mr-1.5 h-3 w-3" />
                     Upload First File
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="divide-y divide-border">
                   {company.files.slice(0, 5).map((file) => (
                     <div
                       key={file.id}
-                      className="flex items-center justify-between rounded-lg border p-3"
+                      className="flex items-center justify-between p-4"
                     >
                       <div>
-                        <p className="font-medium">{file.title}</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm font-medium">{file.title}</p>
+                        <p className="text-xs text-muted-foreground">
                           {file.category}
                         </p>
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {new Date(file.createdAt).toLocaleDateString()}
-                      </div>
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         </div>
 
-        {/* Coming Soon Notice */}
-        <Card className="mt-8">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <h3 className="mb-2 text-lg font-semibold">
-                Due Diligence Features Coming Soon
-              </h3>
-              <p className="mb-4 text-muted-foreground">
-                We're building comprehensive due diligence tools including file
-                management, section tracking, review workflows, and task
-                assignments.
-              </p>
-              <div className="grid gap-4 text-sm md:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-lg border p-3">
-                  <h4 className="mb-1 font-medium">File Management</h4>
-                  <p className="text-muted-foreground">
-                    Upload and organize documents
-                  </p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <h4 className="mb-1 font-medium">Section Tracking</h4>
-                  <p className="text-muted-foreground">
-                    Track due diligence progress
-                  </p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <h4 className="mb-1 font-medium">Review Workflows</h4>
-                  <p className="text-muted-foreground">
-                    Collaborative review process
-                  </p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <h4 className="mb-1 font-medium">Task Management</h4>
-                  <p className="text-muted-foreground">
-                    Assign and track tasks
-                  </p>
-                </div>
+        <section className="mt-8">
+          <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Features
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                title: "File Management",
+                desc: "Upload and organize documents",
+              },
+              {
+                title: "Section Tracking",
+                desc: "Track due diligence progress",
+              },
+              {
+                title: "Review Workflows",
+                desc: "Collaborative review process",
+              },
+              { title: "Task Management", desc: "Assign and track tasks" },
+            ].map((feature) => (
+              <div key={feature.title} className="border border-border p-4">
+                <p className="text-sm font-medium">{feature.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {feature.desc}
+                </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+        </section>
       </div>
     </>
   );

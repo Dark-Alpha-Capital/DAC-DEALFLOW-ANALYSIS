@@ -2,9 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,12 +30,25 @@ import {
   AddCompanyFormSchema,
   AddCompanyFormSchemaType,
 } from "@/lib/zod-schemas/add-company-schema";
-import AddCompany from "@/lib/actions/add-company";
 import { Loader2 } from "lucide-react";
+import { useTRPC } from "@/trpc/client";
 
 export default function CreateNewCompanyForm() {
-  const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const trpc = useTRPC();
+
+  const { mutate: createCompany, isPending } = useMutation(
+    trpc.companies.create.mutationOptions({
+      onSuccess: (data) => {
+        toast.success("Company added successfully");
+        form.reset();
+        router.push(`/companies/${data.company?.id}`);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to add company");
+      },
+    })
+  );
 
   const form = useForm<AddCompanyFormSchemaType>({
     resolver: zodResolver(AddCompanyFormSchema),
@@ -54,17 +67,7 @@ export default function CreateNewCompanyForm() {
   });
 
   function onSubmit(values: AddCompanyFormSchemaType) {
-    startTransition(async () => {
-      const result = await AddCompany(values);
-      if (result.type === "error") {
-        toast.error(result.message);
-        return;
-      } else {
-        toast.success(result.message);
-        form.reset();
-        router.push(`/companies/${result.company?.id}`);
-      }
-    });
+    createCompany(values);
   }
 
   return (

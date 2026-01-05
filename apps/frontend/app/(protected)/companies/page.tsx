@@ -22,19 +22,21 @@ type SearchParams = Promise<{
 
 const CompaniesPage = async (props: { searchParams: SearchParams }) => {
   return (
-    <section className="big-container block-space min-h-screen">
-      <div className="mb-6 flex items-center justify-between">
+    <section className="big-container block-space-mini min-h-screen">
+      <header className="mb-8 flex items-end justify-between border-b border-border pb-6">
         <div>
-          <h1>Companies</h1>
-          <p>Manage companies for due diligence processes</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Companies</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage companies for due diligence
+          </p>
         </div>
-        <Button asChild>
+        <Button asChild size="sm">
           <Link href="/companies/new">
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
             Add Company
           </Link>
         </Button>
-      </div>
+      </header>
 
       <Suspense fallback={<CompaniesLoadingSkeleton />}>
         <ShowCompaniesComponent searchParams={props.searchParams} />
@@ -92,23 +94,27 @@ async function FetchAndDisplayCompanies({
   });
 
   return (
-    <div>
-      <div className="group-has-[[data-pending]]:animate-pulse">
-        {companies.length === 0 ? (
-          <div className="mt-12 text-center">
-            <p className="text-xl text-muted-foreground">
-              No companies found matching your criteria.
-            </p>
+    <div className="group-has-[[data-pending]]:animate-pulse">
+      {companies.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="rounded-full bg-muted p-4">
+            <Plus className="h-6 w-6 text-muted-foreground" />
           </div>
-        ) : (
-          <CompanyList
-            companies={companies}
-            totalCount={totalCount}
-            totalPages={totalPages}
-            currentPage={currentPage}
-          />
-        )}
-      </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            No companies found
+          </p>
+          <Button asChild variant="outline" size="sm" className="mt-4">
+            <Link href="/companies/new">Add your first company</Link>
+          </Button>
+        </div>
+      ) : (
+        <CompanyList
+          companies={companies}
+          totalCount={totalCount}
+          totalPages={totalPages}
+          currentPage={currentPage}
+        />
+      )}
     </div>
   );
 }

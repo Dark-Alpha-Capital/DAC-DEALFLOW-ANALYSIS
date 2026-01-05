@@ -10,12 +10,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
-import DeleteAIScreeningFromDB from "@/lib/actions/delete-ai-screening";
 import { DealType, Sentiment } from "db/schema";
-import { useToast } from "@/hooks/use-toast";
-import { Trash2 } from "lucide-react";
-import { useTransition } from "react";
 import EditScreeningResultDialog from "./Dialogs/edit-screen-result-dialog";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+import { toast } from "sonner";
 
 interface AIReasoningProps {
   screeningId: string;
@@ -34,8 +33,18 @@ export default function AIReasoning({
   dealId,
   dealType,
 }: AIReasoningProps) {
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const trpc = useTRPC();
+
+  const { mutate: deleteScreening, isPending } = useMutation(
+    trpc.screenings.delete.mutationOptions({
+      onSuccess: () => {
+        toast.success("Screening deleted successfully");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to delete screening");
+      },
+    }),
+  );
 
   return (
     <Card className="mb-4 bg-muted">
@@ -43,7 +52,9 @@ export default function AIReasoning({
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Badge
           className={cn({
-            "": sentiment === "POSITIVE",
+            "bg-green-500 text-white": sentiment === "POSITIVE",
+            "bg-red-500 text-white": sentiment === "NEGATIVE",
+            "bg-gray-500 text-white": sentiment === "NEUTRAL",
           })}
         >
           {sentiment}
@@ -57,29 +68,7 @@ export default function AIReasoning({
       <CardFooter className="space-x-2">
         <Button
           variant="destructive"
-          onClick={async () => {
-            // delete SIM
-            startTransition(async () => {
-              const response = await DeleteAIScreeningFromDB(
-                screeningId,
-                dealId,
-              );
-              if (response.type === "success") {
-                toast({
-                  title: "SIM deleted successfully",
-                  description: "The SIM has been deleted successfully",
-                });
-              }
-
-              if (response.type === "error") {
-                toast({
-                  title: "Error deleting SIM",
-                  description: response.message,
-                  variant: "destructive",
-                });
-              }
-            });
-          }}
+          onClick={() => deleteScreening({ screeningId, dealId })}
           disabled={isPending}
           aria-label="Delete SIM"
         >

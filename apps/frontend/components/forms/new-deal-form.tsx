@@ -16,11 +16,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "../ui/textarea";
-import { useTransition } from "react";
 
 import { useRouter } from "next/navigation";
-import AddDealToDB from "@/lib/actions/add-deal";
 import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 export const NewDealFormSchema = z.object({
   first_name: z.optional(z.string()),
@@ -53,9 +53,21 @@ export const NewDealFormSchema = z.object({
 export type NewDealFormSchemaType = z.infer<typeof NewDealFormSchema>;
 
 export default function CreateNewDealForm() {
-  const [isPending, startTransition] = useTransition();
   const router = useRouter();
-  // ...
+  const trpc = useTRPC();
+
+  const { mutate: createDeal, isPending } = useMutation(
+    trpc.deals.create.mutationOptions({
+      onSuccess: () => {
+        toast.success("Deal saved successfully");
+        form.reset();
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to add deal");
+      },
+    })
+  );
+
   const form = useForm<NewDealFormSchemaType>({
     resolver: zodResolver(NewDealFormSchema),
     defaultValues: {
@@ -66,7 +78,7 @@ export default function CreateNewDealForm() {
       work_phone: "",
       title: "",
       deal_caption: "",
-      revenue: undefined, // Use undefined for optional number fields for better placeholder behavior
+      revenue: undefined,
       source_website: "",
       ebitda: undefined,
       ebitda_margin: undefined,
@@ -78,16 +90,8 @@ export default function CreateNewDealForm() {
     },
   });
 
-  // 2. Define a submit handler.
   function onSubmit(values: NewDealFormSchemaType) {
-    startTransition(async () => {
-      const response = await AddDealToDB(values);
-      if (response.error) {
-        toast.error(response.error);
-      } else {
-        toast.success("Deal saved successfully");
-      }
-    });
+    createDeal(values);
   }
   return (
     <Form {...form}>

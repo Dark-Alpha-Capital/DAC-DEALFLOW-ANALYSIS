@@ -9,11 +9,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import ScreenDealComponent from "@/components/ScreenDealComponent";
 import { Button } from "../ui/button";
 import { Trash } from "lucide-react";
-import DeleteBaseline from "@/lib/actions/delete-baseline";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 const DeleteScreenerDialog = ({
   url,
@@ -22,32 +22,23 @@ const DeleteScreenerDialog = ({
   url: string;
   dealScreenerId: string;
 }) => {
-  const { toast } = useToast();
   const [openDialog, setOpenDialog] = useState(false);
-  const [isPending, startTransition] = React.useTransition();
+  const trpc = useTRPC();
 
-  async function onClickHandler() {
-    startTransition(async () => {
-      // delete the screener
-      const response = await DeleteBaseline(url, dealScreenerId);
-      if (response.type === "success") {
-        toast({
-          title: "Screener deleted successfully",
-          description: response.message,
-          variant: "success",
-        });
-
+  const { mutate: deleteBaseline, isPending } = useMutation(
+    trpc.misc.deleteBaseline.mutationOptions({
+      onSuccess: () => {
+        toast.success("Screener deleted successfully");
         setOpenDialog(false);
-      }
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to delete screener");
+      },
+    })
+  );
 
-      if (response.type === "error") {
-        toast({
-          title: "Could not delete Screener",
-          description: response.message,
-          variant: "destructive",
-        });
-      }
-    });
+  function onClickHandler() {
+    deleteBaseline({ blobUrl: url, questionnaireId: dealScreenerId });
   }
 
   return (

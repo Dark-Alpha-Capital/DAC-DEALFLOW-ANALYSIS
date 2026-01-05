@@ -8,6 +8,7 @@ import { SessionProvider } from "next-auth/react";
 import { raleway, bitter } from "@/app/fonts";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import ChatSidebar from "@/components/sidebars/chat-sidebar";
+import { TRPCReactProvider } from "@/trpc/client";
 
 export const metadata: Metadata = {
   title: "Dark Alpha Capital Deal Sourcing Organization",
@@ -28,13 +29,15 @@ const layout = ({ children }: { children: React.ReactNode }) => {
           enableSystem
           disableTransitionOnChange
         >
-          <SessionProvider>
-            <SidebarProvider>
-              <ChatSidebar />
-              <main className="flex-1">{children}</main>
-            </SidebarProvider>
-          </SessionProvider>
-          <Toaster />
+          <TRPCReactProvider>
+            <SessionProvider>
+              <SidebarProvider>
+                <ChatSidebar />
+                <main className="flex-1">{children}</main>
+              </SidebarProvider>
+            </SessionProvider>
+            <Toaster />
+          </TRPCReactProvider>
         </ThemeProvider>
       </body>
     </html>

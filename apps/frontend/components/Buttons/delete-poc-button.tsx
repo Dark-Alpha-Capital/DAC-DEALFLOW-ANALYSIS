@@ -3,8 +3,9 @@ import { Trash } from "lucide-react";
 
 import React from "react";
 import { Button } from "../ui/button";
-import deletePoc from "@/lib/actions/delete-poc";
 import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 const DeletePocButton = ({
   pocId,
@@ -13,19 +14,25 @@ const DeletePocButton = ({
   pocId: string;
   dealId: string;
 }) => {
+  const trpc = useTRPC();
+
+  const { mutate: deletePoc } = useMutation(
+    trpc.pocs.delete.mutationOptions({
+      onSuccess: () => {
+        toast.success("POC deleted successfully");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to delete POC");
+      },
+    })
+  );
+
   return (
     <Button
       variant="ghost"
       size="icon"
       className="flex-shrink-0 text-destructive hover:text-destructive/80"
-      onClick={async () => {
-        const response = await deletePoc(pocId, dealId);
-        if ("error" in response) {
-          toast.error("Failed to delete POC");
-        } else {
-          toast.success("POC deleted successfully");
-        }
-      }}
+      onClick={() => deletePoc({ pocId, dealId })}
     >
       <Trash className="h-4 w-4" />
       <span className="sr-only">Delete POC</span>

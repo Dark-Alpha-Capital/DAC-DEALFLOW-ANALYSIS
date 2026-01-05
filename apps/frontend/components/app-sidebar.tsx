@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { FiPlus, FiList, FiCheckSquare, FiHome, FiClock } from "react-icons/fi";
+import { usePathname } from "next/navigation";
+import { FiPlus, FiList, FiCheckSquare, FiHome } from "react-icons/fi";
 import { FaScrewdriver } from "react-icons/fa";
-import { Lock, User2, LogOut, ChevronUp } from "lucide-react";
+import { User2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,18 +16,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
 } from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
+import { UserDropdown } from "@/components/user-dropdown";
 
 type NavItem = {
   title: string;
@@ -45,15 +37,8 @@ const navItems: NavItem[] = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const isLoading = isPending;
-  const isAdmin = (session?.user as any)?.role === "ADMIN";
-
-  // Add admin link if user is admin
-  const menuItems = isAdmin
-    ? [...navItems, { title: "Admin", url: "/admin", icon: Lock }]
-    : navItems;
 
   const userInitials =
     session?.user?.name
@@ -89,7 +74,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
+              {navItems.map((item) => {
                 const isActive =
                   pathname === item.url || pathname.startsWith(item.url + "/");
                 return (
@@ -120,60 +105,7 @@ export function AppSidebar() {
                 <span>Loading...</span>
               </SidebarMenuButton>
             ) : session ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton size="lg">
-                    <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage
-                        src={session.user?.image || undefined}
-                        alt={session.user?.name || "User"}
-                      />
-                      <AvatarFallback className="rounded-lg text-xs font-semibold">
-                        {userInitials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">
-                        {session.user?.name || "Account"}
-                      </span>
-                      <span className="truncate text-xs text-sidebar-foreground/70">
-                        {session.user?.email}
-                      </span>
-                    </div>
-                    <ChevronUp className="ml-auto" />
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                  side="top"
-                  align="end"
-                  sideOffset={4}
-                >
-                  {session.user?.id && (
-                    <DropdownMenuItem asChild>
-                      <Link href={`/profile/${session.user.id}`}>
-                        <User2 />
-                        <span>Profile</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      await authClient.signOut({
-                        fetchOptions: {
-                          onSuccess: () => {
-                            router.push("/auth/login");
-                          },
-                        },
-                      });
-                    }}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <LogOut />
-                    <span>Logout</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <UserDropdown session={session} userInitials={userInitials} />
             ) : (
               <SidebarMenuButton asChild size="lg">
                 <Link href={"/auth/login"}>

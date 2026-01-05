@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Alert, AlertDescription } from "./ui/alert";
 import { evaluateDeal } from "@/lib/actions/evaluate-deal";
-import { saveEvaluation } from "@/lib/actions/save-evaluation";
 import { CheckCircle, XCircle, AlertCircle, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 interface DealEvaluation {
   success: boolean;
@@ -30,7 +31,6 @@ const EvaluateDealComponent = ({
   screenerId: string;
 }) => {
   const [isPending, startTransition] = useTransition();
-  const [isSaving, startSavingTransition] = useTransition();
   const [dealEvaluation, setDealEvaluation] = useState<DealEvaluation | null>(
     null,
   );
@@ -39,6 +39,21 @@ const EvaluateDealComponent = ({
     message?: string;
     error?: string;
   } | null>(null);
+
+  const trpc = useTRPC();
+
+  const { mutate: saveEvaluationMutation, isPending: isSaving } = useMutation(
+    trpc.screenings.saveEvaluation.mutationOptions({
+      onSuccess: () => {
+        setSaveResult({ success: true });
+        toast.success("Evaluation saved successfully");
+      },
+      onError: (error) => {
+        setSaveResult({ success: false, error: error.message });
+        toast.error(error.message || "Failed to save evaluation");
+      },
+    })
+  );
 
   const dealEvaluationHandler = () => {
     startTransition(async () => {
@@ -56,26 +71,20 @@ const EvaluateDealComponent = ({
     });
   };
 
-  const saveEvaluationHandler = async () => {
-    startSavingTransition(async () => {
-      if (!dealEvaluation || !dealEvaluation.success) {
-        toast.error("No valid evaluation to save");
-        return;
-      }
+  const saveEvaluationHandler = () => {
+    if (!dealEvaluation || !dealEvaluation.success) {
+      toast.error("No valid evaluation to save");
+      return;
+    }
 
-      try {
-        const result = await saveEvaluation(dealId, dealEvaluation, screenerId);
-        setSaveResult(result);
-
-        if (result.success) {
-          toast.success("Evaluation saved successfully");
-        } else {
-          toast.error(result.error || "Failed to save evaluation");
-        }
-      } catch (error) {
-        console.error("Error saving evaluation:", error);
-        toast.error("An unexpected error occurred while saving");
-      }
+    saveEvaluationMutation({
+      dealId,
+      screenerId,
+      title: dealEvaluation.title || "Evaluation",
+      explanation: dealEvaluation.explanation || "",
+      sentiment: dealEvaluation.sentiment,
+      score: dealEvaluation.score,
+      content: dealEvaluation.content,
     });
   };
 

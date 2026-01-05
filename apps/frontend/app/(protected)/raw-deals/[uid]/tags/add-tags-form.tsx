@@ -1,6 +1,5 @@
 "use client";
 
-import { saveDealTags } from "@/lib/actions/add-deal-tags";
 import {
   Card,
   CardContent,
@@ -9,10 +8,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { TagsInput } from "@/components/ui/tags-input";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 export default function AddTagsForm({
   dealUid,
@@ -21,23 +22,23 @@ export default function AddTagsForm({
   dealUid: string;
   existingTags: string[];
 }) {
-  const [isPending, startTransition] = useTransition();
   const [tags, setTags] = useState<string[]>(existingTags);
+  const trpc = useTRPC();
+
+  const { mutate: updateTags, isPending } = useMutation(
+    trpc.deals.updateTags.mutationOptions({
+      onSuccess: () => {
+        toast.success("Tags updated successfully");
+        setTags([]);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to update tags");
+      },
+    })
+  );
 
   const handleSaveTags = () => {
-    startTransition(async () => {
-      console.log("sending tags", tags);
-
-      const result = await saveDealTags(tags, dealUid);
-      console.log("result", result);
-
-      if (result.success) {
-        toast.success(result.message);
-        setTags([]);
-      } else {
-        toast.error(result.message);
-      }
-    });
+    updateTags({ dealId: dealUid, tags });
   };
 
   const handleTagsChange = (tags: string[]) => {

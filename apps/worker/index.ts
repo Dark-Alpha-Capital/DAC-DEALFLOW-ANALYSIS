@@ -3,6 +3,23 @@ import IORedis from "ioredis";
 import { screenDealHandler } from "./handlers/screen-deal-handler";
 import { fileUploadHandler } from "./handlers/file-upload-handler";
 import { QUEUE_NAMES } from "./lib/queues";
+import { FLOW_QUEUE_NAMES } from "./lib/flow-queues";
+import { closeIdempotencyConnection } from "./lib/idempotency";
+
+// Flow handlers
+import {
+  fetchDataHandler,
+  processChunksHandler,
+  finalizeHandler,
+  screenDealParentHandler,
+} from "./handlers/flows/screen-deal-flow";
+import {
+  validateHandler,
+  compressHandler,
+  uploadHandler,
+  fileUploadFinalizeHandler,
+  fileUploadParentHandler,
+} from "./handlers/flows/file-upload-flow";
 
 // Cloud Run requires the container to listen on PORT for health checks
 // Start HTTP server FIRST before initializing workers
@@ -78,71 +95,150 @@ async function initializeWorkers() {
 
   console.log("Initializing workers...");
 
-  // Screen deal worker
+  // ============================================================================
+  // Legacy Workers (for backward compatibility during migration)
+  // ============================================================================
+
+  // Screen deal worker (legacy - non-flow)
   const screenDealWorker = new Worker(
     QUEUE_NAMES.SCREEN_DEAL,
-    screenDealHandler,
+    screenDealParentHandler, // Use flow parent handler (receives flow results)
     {
       connection,
-      concurrency: 3, // Process up to 3 jobs concurrently
+      concurrency: 3,
     }
   );
 
-  // File upload worker
+  // File upload worker (legacy - non-flow)
   const fileUploadWorker = new Worker(
     QUEUE_NAMES.FILE_UPLOAD,
-    fileUploadHandler,
+    fileUploadParentHandler, // Use flow parent handler (receives flow results)
     {
       connection,
-      concurrency: 5, // Process up to 5 file uploads concurrently
+      concurrency: 5,
     }
   );
 
-  // Screen deal worker events
-  screenDealWorker.on("completed", (job) => {
-    console.log(`[screen-deal] Job ${job.id} completed successfully`);
-  });
+  // ============================================================================
+  // Screen Deal Flow Workers
+  // ============================================================================
 
-  screenDealWorker.on("failed", (job, err) => {
-    console.error(`[screen-deal] Job ${job?.id} failed: ${err.message}`);
-  });
+  const fetchDataWorker = new Worker(
+    FLOW_QUEUE_NAMES.SCREEN_DEAL_FETCH,
+    fetchDataHandler,
+    {
+      connection,
+      concurrency: 5,
+    }
+  );
 
-  screenDealWorker.on("progress", (job, progress) => {
-    console.log(`[screen-deal] Job ${job.id} progress:`, progress);
-  });
+  const processChunksWorker = new Worker(
+    FLOW_QUEUE_NAMES.SCREEN_DEAL_PROCESS_CHUNKS,
+    processChunksHandler,
+    {
+      connection,
+      concurrency: 3, // Limit concurrency for AI API calls
+    }
+  );
 
-  screenDealWorker.on("error", (err) => {
-    console.error("[screen-deal] Worker error:", err);
-  });
+  const screenDealFinalizeWorker = new Worker(
+    FLOW_QUEUE_NAMES.SCREEN_DEAL_FINALIZE,
+    finalizeHandler,
+    {
+      connection,
+      concurrency: 5,
+    }
+  );
 
-  // File upload worker events
-  fileUploadWorker.on("completed", (job) => {
-    console.log(`[file-upload] Job ${job.id} completed successfully`);
-  });
+  // ============================================================================
+  // File Upload Flow Workers
+  // ============================================================================
 
-  fileUploadWorker.on("failed", (job, err) => {
-    console.error(`[file-upload] Job ${job?.id} failed: ${err.message}`);
-  });
+  const validateWorker = new Worker(
+    FLOW_QUEUE_NAMES.FILE_UPLOAD_VALIDATE,
+    validateHandler,
+    {
+      connection,
+      concurrency: 10,
+    }
+  );
 
-  fileUploadWorker.on("progress", (job, progress) => {
-    console.log(`[file-upload] Job ${job.id} progress:`, progress);
-  });
+  const compressWorker = new Worker(
+    FLOW_QUEUE_NAMES.FILE_UPLOAD_COMPRESS,
+    compressHandler,
+    {
+      connection,
+      concurrency: 5,
+    }
+  );
 
-  fileUploadWorker.on("error", (err) => {
-    console.error("[file-upload] Worker error:", err);
-  });
+  const uploadWorker = new Worker(
+    FLOW_QUEUE_NAMES.FILE_UPLOAD_UPLOAD,
+    uploadHandler,
+    {
+      connection,
+      concurrency: 5,
+    }
+  );
+
+  const fileUploadFinalizeWorker = new Worker(
+    FLOW_QUEUE_NAMES.FILE_UPLOAD_FINALIZE,
+    fileUploadFinalizeHandler,
+    {
+      connection,
+      concurrency: 5,
+    }
+  );
+
+  // Collect all workers for event handling and shutdown
+  const allWorkers = [
+    { name: "screen-deal", worker: screenDealWorker },
+    { name: "file-upload", worker: fileUploadWorker },
+    { name: "fetch-data", worker: fetchDataWorker },
+    { name: "process-chunks", worker: processChunksWorker },
+    { name: "screen-deal-finalize", worker: screenDealFinalizeWorker },
+    { name: "validate", worker: validateWorker },
+    { name: "compress", worker: compressWorker },
+    { name: "upload", worker: uploadWorker },
+    { name: "file-upload-finalize", worker: fileUploadFinalizeWorker },
+  ];
+
+  // Register event handlers for all workers
+  for (const { name, worker } of allWorkers) {
+    worker.on("completed", (job) => {
+      console.log(`[${name}] Job ${job.id} completed successfully`);
+    });
+
+    worker.on("failed", (job, err) => {
+      console.error(`[${name}] Job ${job?.id} failed: ${err.message}`);
+    });
+
+    worker.on("progress", (job, progress) => {
+      console.log(`[${name}] Job ${job.id} progress:`, progress);
+    });
+
+    worker.on("error", (err) => {
+      console.error(`[${name}] Worker error:`, err);
+    });
+  }
 
   workersReady = true;
-  console.log("All workers initialized successfully");
+  console.log(`All workers initialized successfully (${allWorkers.length} workers)`);
   console.log("Workers are listening for jobs...");
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
     console.log(`${signal} received, shutting down gracefully...`);
     try {
-      await Promise.all([screenDealWorker.close(), fileUploadWorker.close()]);
+      // Close all workers
+      await Promise.all(allWorkers.map(({ worker }) => worker.close()));
+      console.log("All workers closed");
+
+      // Close Redis connections
       await connection.quit();
-      console.log("All workers closed successfully");
+      await closeIdempotencyConnection();
+      console.log("All connections closed successfully");
+
       process.exit(0);
     } catch (error) {
       console.error("Error during shutdown:", error);

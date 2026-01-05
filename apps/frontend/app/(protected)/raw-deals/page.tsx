@@ -1,29 +1,30 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
-import getCurrentUserRole from "@/lib/data/current-user-role";
-import SearchDeals from "@/components/SearchDeal";
 import Pagination from "@/components/pagination";
 import DealTypeFilter from "@/components/DealTypeFilter";
 import { DealStatus, DealType } from "db/schema";
 import SearchDealsSkeleton from "@/components/skeletons/SearchDealsSkeleton";
-import SearchEbitdaDeals from "@/components/SearchEbitdaDeals";
 import DealTypeFilterSkeleton from "@/components/skeletons/DealTypeFilterSkeleton";
 import UserDealFilter from "@/components/UserDealFilter";
 import DealContainer from "@/components/DealContainer";
-import SearchRevenueDeals from "@/components/search-revenue-deals";
-import SearchLocationDeals from "@/components/search-location-deals";
-import SearchMaxRevenueDeals from "@/components/search-max-revenue-deals";
-import SearchMaxEbitdaDeals from "@/components/search-max-ebitda-deals";
-import SearchBrokerageDeals from "@/components/SearchBrokerageDeals";
-import SearchIndustryDeals from "@/components/SearchIndustryDeals";
-import SearchEbitdaMarginFilter from "@/components/SearchEbitdaMarginFilter";
-import SearchSeenDeals from "@/components/search-seen-deals";
-import SearchReviewedDeals from "@/components/search-review-deals";
-import SearchPublishedDeals from "@/components/search-published-deals";
-import SearchStatusDeals from "@/components/search-status-deals";
-import SearchTagsDeals from "@/components/search-tags-deals";
 import DeleteFiltersButton from "@/components/Buttons/delete-filters-button";
-import SearchRecentDeals from "@/components/search-recent-deals";
+import {
+  SearchDeals,
+  SearchBrokerageDeals,
+  SearchIndustryDeals,
+  SearchEbitdaMarginFilter,
+  SearchEbitdaDeals,
+  SearchRevenueDeals,
+  SearchMaxRevenueDeals,
+  SearchLocationDeals,
+  SearchSeenDeals,
+  SearchRecentDeals,
+  SearchReviewedDeals,
+  SearchPublishedDeals,
+  SearchMaxEbitdaDeals,
+  SearchStatusDeals,
+  SearchTagsDeals,
+} from "@/components/raw-deals-filters";
 import { GetAllDeals } from "db/queries";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";

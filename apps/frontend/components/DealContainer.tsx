@@ -1,11 +1,10 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Grid, List } from "lucide-react";
 import DealCard from "@/components/DealCard";
 import DealListItem from "@/components/DealListItem";
 import type { Deal, UserRole } from "db";
-import DeleteDealFromDB from "@/lib/actions/delete-deal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,10 +17,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "./ui/button";
-import BulkDeleteDealsFromDb from "@/lib/actions/bulk-delete-deals";
 import { toast } from "sonner";
-
 import { BulkScreenDialog } from "./Dialogs/bulk-screen-dialog";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 interface DealContainerProps {
   data: Deal[];
@@ -35,7 +34,20 @@ export default function DealContainer({ data }: DealContainerProps) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isDeleting, startDeleteTransition] = useTransition();
+  const trpc = useTRPC();
+
+  const { mutate: bulkDeleteDeals, isPending: isDeleting } = useMutation(
+    trpc.deals.bulkDelete.mutationOptions({
+      onSuccess: () => {
+        router.refresh();
+        setSelectedIds(new Set());
+        toast.success("Deals deleted successfully");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to delete deals");
+      },
+    })
+  );
 
   const allSelected = data.length > 0 && selectedIds.size === data.length;
 
@@ -55,17 +67,8 @@ export default function DealContainer({ data }: DealContainerProps) {
     });
   }
 
-  async function handleBulkDelete() {
-    startDeleteTransition(async () => {
-      const response = await BulkDeleteDealsFromDb(Array.from(selectedIds));
-      if (response.type === "success") {
-        router.refresh();
-        setSelectedIds(new Set());
-        toast.success(response.message);
-      } else {
-        toast.error(response.message);
-      }
-    });
+  function handleBulkDelete() {
+    bulkDeleteDeals({ dealIds: Array.from(selectedIds) });
   }
 
   return (
