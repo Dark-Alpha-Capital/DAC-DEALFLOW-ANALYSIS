@@ -3,16 +3,24 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { companies } from "db";
 import { DeleteCompanyById } from "db/mutations";
 import { revalidatePath } from "next/cache";
+import { TRPCError } from "@trpc/server";
+
+// Helper to convert empty strings to undefined
+const emptyStringToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((val) => {
+    if (typeof val === "string" && val.trim() === "") return undefined;
+    return val;
+  }, schema);
 
 const createCompanySchema = z.object({
   name: z.string().min(1, "Company name is required"),
-  website: z.string().url("Invalid URL").optional(),
-  sector: z.string().optional(),
+  website: emptyStringToUndefined(z.string().url("Invalid URL").optional()),
+  sector: emptyStringToUndefined(z.string().optional()),
   stage: z
     .enum(["STARTUP", "GROWTH", "MATURE", "TURNAROUND", "DISTRESSED"])
     .optional(),
-  headquarters: z.string().optional(),
-  description: z.string().optional(),
+  headquarters: emptyStringToUndefined(z.string().optional()),
+  description: emptyStringToUndefined(z.string().optional()),
   revenue: z.number().positive("Revenue must be a positive number").optional(),
   ebitda: z.number().optional(),
   growthRate: z.number().optional(),
@@ -20,33 +28,44 @@ const createCompanySchema = z.object({
     .number()
     .int()
     .positive("Employees must be a positive integer")
-    .optional(),
+    .min(1, "Employees must be at least 1"),
 });
 
 export const companiesRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createCompanySchema)
     .mutation(async ({ input }) => {
-      const [newCompany] = await db
-        .insert(companies)
-        .values({
-          name: input.name,
-          website: input.website,
-          sector: input.sector,
-          stage: input.stage,
-          headquarters: input.headquarters,
-          description: input.description,
-          revenue: input.revenue,
-          ebitda: input.ebitda,
-          growthRate: input.growthRate,
-          employees: input.employees,
-        })
-        .returning();
+      console.log("inside create company router", input);
 
-      revalidatePath("/companies");
-      revalidatePath("/due-diligence");
+      try {
+        const [newCompany] = await db
+          .insert(companies)
+          .values({
+            name: input.name,
+            website: input.website,
+            sector: input.sector,
+            stage: input.stage,
+            headquarters: input.headquarters,
+            description: input.description,
+            revenue: input.revenue?.toString(),
+            ebitda: input.ebitda?.toString(),
+            growthRate: input.growthRate?.toString(),
+            employees: input.employees,
+            updatedAt: new Date(),
+          })
+          .returning();
 
-      return { company: newCompany };
+        revalidatePath("/companies");
+        revalidatePath("/due-diligence");
+
+        return { company: newCompany };
+      } catch (error) {
+        console.error("error creating company", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create company",
+        });
+      }
     }),
 
   delete: protectedProcedure

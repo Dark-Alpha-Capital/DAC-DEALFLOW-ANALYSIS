@@ -170,12 +170,12 @@ const AddScreenerDialog = () => {
                         </FormControl>
                         <FormMessage />
                         {error && (
-                          <span className="mt-1 text-sm font-semibold text-red-500">
+                          <span className="mt-1 text-sm font-semibold text-destructive">
                             {error}
                           </span>
                         )}
                         {field.value && !error && (
-                          <p className="mt-1 text-sm text-green-600">
+                          <p className="mt-1 text-sm text-success">
                             <FileText className="mr-1 inline size-4" />
                             {field.value.name} (
                             {(field.value.size / 1024).toFixed(2)} KB)

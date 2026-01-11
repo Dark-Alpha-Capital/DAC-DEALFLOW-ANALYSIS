@@ -174,10 +174,10 @@ async function FetchAndDisplayReasoningData({
                     }
                     className={`px-4 py-2 text-lg ${
                       reasoning.sentiment === "POSITIVE"
-                        ? "bg-green-100 text-green-800 hover:bg-green-200"
+                        ? "bg-success-muted text-success hover:bg-success-muted/80"
                         : reasoning.sentiment === "NEGATIVE"
-                          ? "bg-red-100 text-red-800 hover:bg-red-200"
-                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                          ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
                     {reasoning.sentiment}

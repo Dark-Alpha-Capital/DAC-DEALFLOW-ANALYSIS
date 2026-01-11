@@ -38,7 +38,7 @@ const FetchDealSim = async ({
         ))
       ) : (
         <div className="flex flex-col items-center justify-center text-center">
-          <AlertTriangle className="mb-4 h-12 w-12 text-red-600 dark:text-red-400" />
+          <AlertTriangle className="mb-4 h-12 w-12 text-destructive" />
           <h3 className="text-lg font-semibold">No SIMs Available</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             No Strategic Investment Memos have been created for this deal yet.

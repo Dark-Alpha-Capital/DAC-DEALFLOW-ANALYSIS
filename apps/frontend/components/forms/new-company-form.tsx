@@ -47,7 +47,7 @@ export default function CreateNewCompanyForm() {
       onError: (error) => {
         toast.error(error.message || "Failed to add company");
       },
-    })
+    }),
   );
 
   const form = useForm<AddCompanyFormSchemaType>({
@@ -67,7 +67,18 @@ export default function CreateNewCompanyForm() {
   });
 
   function onSubmit(values: AddCompanyFormSchemaType) {
-    createCompany(values);
+    createCompany({
+      name: values.name,
+      website: values.website,
+      sector: values.sector,
+      stage: values.stage,
+      headquarters: values.headquarters,
+      description: values.description,
+      revenue: values.revenue,
+      ebitda: values.ebitda,
+      growthRate: values.growthRate,
+      employees: values.employees,
+    });
   }
 
   return (
@@ -170,17 +181,17 @@ export default function CreateNewCompanyForm() {
           name="employees"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Number of Employees</FormLabel>
+              <FormLabel>Number of Employees *</FormLabel>
               <FormControl>
                 <Input
                   type="number"
                   placeholder="50"
                   {...field}
-                  onChange={(e) =>
-                    field.onChange(
-                      e.target.value ? parseInt(e.target.value) : undefined,
-                    )
-                  }
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    field.onChange(val === "" ? undefined : val);
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -200,11 +211,11 @@ export default function CreateNewCompanyForm() {
                   type="number"
                   placeholder="1000000"
                   {...field}
-                  onChange={(e) =>
-                    field.onChange(
-                      e.target.value ? parseFloat(e.target.value) : undefined,
-                    )
-                  }
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    field.onChange(val === "" ? undefined : val);
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -223,11 +234,11 @@ export default function CreateNewCompanyForm() {
                   type="number"
                   placeholder="200000"
                   {...field}
-                  onChange={(e) =>
-                    field.onChange(
-                      e.target.value ? parseFloat(e.target.value) : undefined,
-                    )
-                  }
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    field.onChange(val === "" ? undefined : val);
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -246,11 +257,11 @@ export default function CreateNewCompanyForm() {
                   type="number"
                   placeholder="25"
                   {...field}
-                  onChange={(e) =>
-                    field.onChange(
-                      e.target.value ? parseFloat(e.target.value) : undefined,
-                    )
-                  }
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    field.onChange(val === "" ? undefined : val);
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -282,9 +293,9 @@ export default function CreateNewCompanyForm() {
         />
 
         <div className="flex justify-end md:col-span-2">
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending} className="">
             {isPending ? (
-              <div>
+              <div className="flex items-center gap-2">
                 <Loader2 className="mr-2 size-4 animate-spin" />
                 Adding Company...
               </div>

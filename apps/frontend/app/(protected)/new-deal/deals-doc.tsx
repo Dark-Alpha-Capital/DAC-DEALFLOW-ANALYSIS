@@ -277,7 +277,7 @@ const DealsFromDoc = () => {
                         <p className="text-xs font-medium text-muted-foreground">
                           Asking Price
                         </p>
-                        <p className="font-semibold text-green-600">
+                        <p className="font-semibold text-success">
                           {formatCurrency(deal.askingPrice)}
                         </p>
                       </div>
@@ -331,7 +331,7 @@ const DealsFromDoc = () => {
                                 <Mail className="h-3 w-3" />
                                 <a
                                   href={`mailto:${deal.email}`}
-                                  className="text-blue-600 hover:underline"
+                                  className="text-primary hover:underline"
                                 >
                                   {deal.email}
                                 </a>
@@ -342,7 +342,7 @@ const DealsFromDoc = () => {
                                 <Phone className="h-3 w-3" />
                                 <a
                                   href={`tel:${deal.workPhone}`}
-                                  className="text-blue-600 hover:underline"
+                                  className="text-primary hover:underline"
                                 >
                                   {deal.workPhone}
                                 </a>
@@ -355,7 +355,7 @@ const DealsFromDoc = () => {
                                   href={deal.linkedinUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline"
+                                  className="text-primary hover:underline"
                                 >
                                   LinkedIn
                                 </a>

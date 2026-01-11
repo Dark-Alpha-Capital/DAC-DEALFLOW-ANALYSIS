@@ -45,6 +45,10 @@ export async function generateMetadata({
 
 const CompanyDetailPage = async ({ params }: CompanyDetailPageProps) => {
   const { id } = await params;
+  const userSession = await getSession();
+  if (!userSession?.user) {
+    redirect("/auth/login");
+  }
 
   return (
     <section className="big-container block-space-mini group min-h-screen">
@@ -62,11 +66,6 @@ async function ShowCompanyDetailComponent({
 }: {
   companyId: string;
 }) {
-  const userSession = await getSession();
-  if (!userSession?.user) {
-    redirect("/auth/login");
-  }
-
   return <FetchAndDisplayCompanyDetailData companyId={companyId} />;
 }
 
@@ -89,7 +88,7 @@ async function FetchAndDisplayCompanyDetailData({
   return (
     <>
       <div className="mb-8">
-        <Button variant="ghost" asChild size="sm" className="mb-6 -ml-2">
+        <Button variant="ghost" asChild size="sm" className="-ml-2 mb-6">
           <Link href="/companies">
             <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
             Back
@@ -121,7 +120,7 @@ async function FetchAndDisplayCompanyDetailData({
           </div>
 
           <div className="flex items-center gap-2">
-            <BulkFileUploadDialog />
+            <BulkFileUploadDialog companyId={company.id} />
             <Button asChild variant="outline" size="sm">
               <Link href={`/companies/${company.id}/due-diligence`}>
                 Due Diligence
@@ -188,7 +187,9 @@ async function FetchAndDisplayCompanyDetailData({
               </h2>
               <div className="grid gap-6 border border-border p-6 sm:grid-cols-3">
                 <div>
-                  <p className="text-xs text-muted-foreground">Annual Revenue</p>
+                  <p className="text-xs text-muted-foreground">
+                    Annual Revenue
+                  </p>
                   <p className="mt-1 text-lg font-semibold">
                     {company.revenue ? formatCurrency(company.revenue) : "—"}
                   </p>

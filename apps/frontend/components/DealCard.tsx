@@ -90,7 +90,7 @@ const DealCard = ({
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="line-clamp-2 text-lg font-bold text-gray-800 group-hover:text-primary dark:text-gray-200">
+          <CardTitle className="line-clamp-2 text-lg font-bold text-foreground group-hover:text-primary">
             {deal.dealCaption}
           </CardTitle>
           {showActions && (
@@ -121,10 +121,10 @@ const DealCard = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-red-100 dark:hover:bg-red-900/20"
+                      className="h-8 w-8 hover:bg-destructive/10"
                       onClick={handleDelete}
                     >
-                      <Trash2 className="h-4 w-4 text-red-500" />
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -139,13 +139,13 @@ const DealCard = ({
       <CardContent className="grid gap-3">
         <div className="whitespace-nowrap">
           <InfoItem
-            icon={<Building2 className="h-4 w-4 text-indigo-500" />}
+            icon={<Building2 className="h-4 w-4 text-primary" />}
             label="Brokerage"
             value={deal.brokerage}
-            className="whitespace-nowrap font-semibold text-indigo-600 dark:text-indigo-400"
+            className="whitespace-nowrap font-semibold text-primary"
           />
           <InfoItem
-            icon={<Type className="h-4 w-4 text-cyan-500" />}
+            icon={<Type className="h-4 w-4 text-info" />}
             label="Status"
             value={deal.status}
             className="whitespace-nowrap"
@@ -154,9 +154,9 @@ const DealCard = ({
           <InfoItem
             icon={
               deal.isPublished ? (
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-success" />
               ) : (
-                <Circle className="h-4 w-4 text-gray-400" />
+                <Circle className="h-4 w-4 text-muted-foreground" />
               )
             }
             label="Published"
@@ -167,9 +167,9 @@ const DealCard = ({
           <InfoItem
             icon={
               deal.isReviewed ? (
-                <Check className="h-4 w-4 text-blue-500" />
+                <Check className="h-4 w-4 text-info" />
               ) : (
-                <Clock className="h-4 w-4 text-yellow-500" />
+                <Clock className="h-4 w-4 text-warning" />
               )
             }
             label="Reviewed"
@@ -178,45 +178,45 @@ const DealCard = ({
           />
 
           <InfoItem
-            icon={<DollarSign className="h-4 w-4 text-emerald-500" />}
+            icon={<DollarSign className="h-4 w-4 text-success" />}
             label="Revenue"
             value={formatCurrency(deal.revenue)}
             className="whitespace-nowrap"
           />
 
           <InfoItem
-            icon={<Type className="h-4 w-4 text-emerald-500" />}
+            icon={<Type className="h-4 w-4 text-success" />}
             label="DealType"
             value={deal.dealType}
           />
           <InfoItem
-            icon={<DollarSign className="h-4 w-4 text-blue-500" />}
+            icon={<DollarSign className="h-4 w-4 text-info" />}
             label="EBITDA"
             value={formatCurrency(deal.ebitda)}
           />
 
           <InfoItem
-            icon={<Percent className="h-4 w-4 text-blue-500" />}
+            icon={<Percent className="h-4 w-4 text-info" />}
             label="EBITDA Margin"
             value={formatPercent(
               calculateEbitdaMargin(deal.ebitda, deal.revenue),
             )}
           />
           <InfoItem
-            icon={<Briefcase className="h-4 w-4 text-violet-500" />}
+            icon={<Briefcase className="h-4 w-4 text-primary" />}
             label="Industry"
             value={deal.industry}
           />
           {deal.askingPrice && (
             <InfoItem
-              icon={<DollarSign className="h-4 w-4 text-amber-500" />}
+              icon={<DollarSign className="h-4 w-4 text-warning" />}
               label="Asking Price"
               value={formatCurrency(deal.askingPrice)}
             />
           )}
           {deal.companyLocation && (
             <InfoItem
-              icon={<MapPin className="h-4 w-4 text-rose-500" />}
+              icon={<MapPin className="h-4 w-4 text-destructive" />}
               label="Location"
               value={deal.companyLocation}
               className="flex-col items-start"
@@ -257,11 +257,11 @@ const InfoItem = ({
   <div className={cn("flex items-center text-sm", className)}>
     <div className="flex items-center">
       {icon}
-      <span className="ml-2 font-medium text-gray-700 dark:text-gray-300">
+      <span className="ml-2 font-medium text-foreground">
         {label}:
       </span>
     </div>
-    <span className="ml-1 truncate whitespace-normal break-words text-justify text-gray-600 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-gray-200">
+    <span className="ml-1 truncate whitespace-normal break-words text-justify text-muted-foreground group-hover:text-foreground">
       {value}
     </span>
   </div>

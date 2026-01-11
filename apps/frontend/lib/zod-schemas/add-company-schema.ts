@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+// Helper to convert empty strings to undefined before coercion
+const emptyStringToUndefinedNumber = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    if (typeof val === "string" && val.trim() === "") return undefined;
+    return val;
+  }, schema);
+
 export const AddCompanyFormSchema = z.object({
   name: z.string().min(1, "Company name is required"),
   website: z.optional(z.string().url("Invalid URL")),
@@ -9,13 +17,21 @@ export const AddCompanyFormSchema = z.object({
   ),
   headquarters: z.optional(z.string()),
   description: z.optional(z.string()),
-  revenue: z.optional(
-    z.coerce.number().positive("Revenue must be a positive number"),
+  revenue: emptyStringToUndefinedNumber(
+    z.coerce.number().positive("Revenue must be a positive number").optional(),
   ),
-  ebitda: z.optional(z.coerce.number()),
-  growthRate: z.optional(z.coerce.number()),
-  employees: z.optional(
-    z.coerce.number().int().positive("Employees must be a positive integer"),
+  ebitda: emptyStringToUndefinedNumber(
+    z.coerce.number().optional(),
+  ),
+  growthRate: emptyStringToUndefinedNumber(
+    z.coerce.number().optional(),
+  ),
+  employees: emptyStringToUndefinedNumber(
+    z.coerce
+      .number()
+      .int()
+      .positive("Employees must be a positive integer")
+      .min(1, "Employees must be at least 1"),
   ),
 });
 

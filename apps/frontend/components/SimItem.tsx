@@ -50,13 +50,13 @@ const SimItem: React.FC<SimItemProps> = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "COMPLETED":
-        return "bg-green-500";
+        return "bg-success text-success-foreground";
       case "IN_PROGRESS":
-        return "bg-yellow-500";
+        return "bg-warning text-warning-foreground";
       case "PENDING":
-        return "bg-red-500";
+        return "bg-destructive text-destructive-foreground";
       default:
-        return "bg-blue-500";
+        return "bg-info text-info-foreground";
     }
   };
 

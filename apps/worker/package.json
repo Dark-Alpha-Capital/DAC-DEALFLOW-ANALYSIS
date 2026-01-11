@@ -9,13 +9,7 @@
   },
   "scripts": {
     "start": "bun --watch index.ts",
-    "start:prod": "bun index.ts",
-    "build": "bun run prisma:generate",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio",
-    "prisma:seed": "prisma db seed",
-    "prisma:push": "prisma db push"
+    "start:prod": "bun index.ts"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -24,6 +18,7 @@
     "@ai-sdk/google": "^3.0.2",
     "@ai-sdk/openai": "^3.0.2",
     "@ai-sdk/react": "^3.0.7",
+    "@google/genai": "^1.34.0",
     "@prisma/client": "^6.12.0",
     "@types/express": "^5.0.3",
     "@types/multer": "^2.0.0",
@@ -34,8 +29,9 @@
     "express": "^5.1.0",
     "ioredis": "^5.8.2",
     "multer": "^2.0.2",
-    "openai": "^5.10.1",
+    "openai": "^6.15.0",
     "types": "workspace:*",
+    "webdav": "^5.8.0",
     "zod": "^4.3.5"
   }
 }

@@ -6,14 +6,19 @@ import {
   type JobProgressData,
 } from "@/lib/queue-client";
 
-// SSE endpoint for streaming job progress updates
+/**
+ * SSE endpoint for streaming job progress updates.
+ *
+ * With the "Process Step Jobs" pattern, progress is stored directly in the job's
+ * progress field via job.updateProgress(). No need to track child queues.
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> },
 ) {
   const { jobId } = await params;
 
-  // Optional: Check authentication
+  // Check authentication
   const session = await getSession();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

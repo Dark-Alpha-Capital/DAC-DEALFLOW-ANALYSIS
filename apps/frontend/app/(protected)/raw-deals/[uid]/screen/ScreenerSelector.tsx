@@ -92,7 +92,7 @@ export default function ScreenerSelector({
             <div className="text-xs text-muted-foreground">Total Screeners</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-success">
               {screeners.length}
             </div>
             <div className="text-xs text-muted-foreground">Available</div>

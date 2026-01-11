@@ -6,6 +6,7 @@ import {
   doublePrecision,
   integer,
   pgEnum,
+  decimal,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
@@ -115,7 +116,7 @@ export const users = pgTable("User", {
     .$defaultFn(() => createId()),
   name: text("name").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  email: text("email").unique().notNull(),
+  email: text("email").notNull(),
   emailVerified: boolean("emailVerified").default(false).notNull(),
   image: text("image"),
   role: userRoleEnum("role").default("USER").notNull(),
@@ -385,10 +386,10 @@ export const companies = pgTable("Company", {
   stage: companyStageEnum("stage"),
   headquarters: text("headquarters"),
   description: text("description"),
-  revenue: doublePrecision("revenue"),
-  ebitda: doublePrecision("ebitda"),
-  growthRate: doublePrecision("growthRate"),
-  employees: integer("employees"),
+  revenue: decimal("revenue", { precision: 10, scale: 2 }),
+  ebitda: decimal("ebitda", { precision: 10, scale: 2 }),
+  growthRate: decimal("growthRate", { precision: 10, scale: 2 }),
+  employees: integer("employees").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()

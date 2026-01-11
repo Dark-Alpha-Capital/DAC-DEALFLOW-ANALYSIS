@@ -118,8 +118,8 @@ function VerifyEmailContent() {
 
             {verificationStatus === "success" && !isVerifying && (
               <div className="flex flex-col items-center space-y-4 py-6">
-                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-success-muted">
+                  <CheckCircle className="h-8 w-8 text-success" />
                 </div>
                 <div className="text-center">
                   <h3 className="font-semibold text-lg">Email Verified!</h3>

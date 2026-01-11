@@ -30,14 +30,14 @@ interface BulkFileUploadDialogProps {
   acceptedTypes?: string[];
   maxFileSize?: number; // in MB
   maxFiles?: number;
-  children?: React.ReactNode;
+  companyId: string;
 }
 
 export function BulkFileUploadDialog({
+  companyId,
   acceptedTypes = ["*/*"],
   maxFileSize = 50,
   maxFiles = 10,
-  children,
 }: BulkFileUploadDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [files, setFiles] = useState<UploadFile[]>([]);
@@ -124,13 +124,36 @@ export function BulkFileUploadDialog({
   const handleUpload = async () => {
     if (files.length === 0) return;
 
+    // Validate companyId before upload
+    if (!companyId || companyId.trim() === "") {
+      toast({
+        title: "Upload failed",
+        description:
+          "Company ID is missing. Please refresh the page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     startTransition(async () => {
       try {
-        console.log(files);
+        console.log("[bulk-upload-dialog] Starting upload", {
+          companyId,
+          filesCount: files.length,
+        });
 
         const formData = new FormData();
+        formData.append("companyId", companyId);
+
         files.forEach((file) => {
           formData.append("files", file.file);
+        });
+
+        // Debug: Log formData contents
+        console.log("[bulk-upload-dialog] FormData prepared", {
+          companyId,
+          filesCount: files.length,
+          formDataEntries: Array.from(formData.keys()),
         });
 
         const response = await fetch("/api/bulk-upload", {

@@ -52,9 +52,9 @@ export default function AIReasoning({
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Badge
           className={cn({
-            "bg-green-500 text-white": sentiment === "POSITIVE",
-            "bg-red-500 text-white": sentiment === "NEGATIVE",
-            "bg-gray-500 text-white": sentiment === "NEUTRAL",
+            "bg-positive text-positive-foreground": sentiment === "POSITIVE",
+            "bg-negative text-negative-foreground": sentiment === "NEGATIVE",
+            "bg-neutral-status text-neutral-status-foreground": sentiment === "NEUTRAL",
           })}
         >
           {sentiment}

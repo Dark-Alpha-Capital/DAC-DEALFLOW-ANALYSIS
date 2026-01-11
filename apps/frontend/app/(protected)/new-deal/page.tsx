@@ -45,12 +45,12 @@ const NewDealPage = async () => {
         <BulkImportCard />
         <div className="h-fit rounded-lg border bg-muted p-6 shadow-lg">
           <h2 className="mb-4 text-center text-xl font-semibold">Infer Deal</h2>
-          <p className="mb-2 text-center text-gray-600 dark:text-gray-200">
+          <p className="mb-2 text-center text-muted-foreground">
             Enter the description of a deal and use AI to generate the required
             format for the deal, save it to the database and then scrape it
           </p>
 
-          <p className="mb-6 text-center text-red-600">
+          <p className="mb-6 text-center text-destructive">
             Note:- Double check the output given by AI and save it accordingly
           </p>
           <div className="flex justify-center">

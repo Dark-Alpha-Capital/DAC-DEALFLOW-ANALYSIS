@@ -28,7 +28,7 @@ export function JobDebugger({ userId }: { userId: string }) {
       <div className="flex items-center gap-2">
         <span>WebSocket:</span>
         <div
-          className={`h-3 w-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}
+          className={`h-3 w-3 rounded-full ${isConnected ? "bg-success" : "bg-destructive"}`}
         />
         <span>{isConnected ? "Connected" : "Disconnected"}</span>
       </div>

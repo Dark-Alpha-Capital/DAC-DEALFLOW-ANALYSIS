@@ -111,7 +111,7 @@ export function UserActions({ user }: UserActionsProps) {
               {user.isBlocked ? (
                 <DropdownMenuItem
                   onClick={() => setShowUnblockDialog(true)}
-                  className="text-green-600 focus:text-green-600"
+                  className="text-success focus:text-success"
                 >
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Unblock User
@@ -175,7 +175,7 @@ export function UserActions({ user }: UserActionsProps) {
             <AlertDialogAction
               onClick={handleUnblock}
               disabled={isUnblocking}
-              className="bg-green-600 text-white hover:bg-green-700"
+              className="bg-success text-success-foreground hover:bg-success/90"
             >
               {isUnblocking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Unblock User

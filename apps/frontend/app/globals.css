@@ -29,6 +29,22 @@
     --chart-3: 0 0% 45.098%;
     --chart-4: 0 0% 45.098%;
     --chart-5: 0 0% 45.098%;
+    /* Semantic status colors */
+    --success: 142.1 76.2% 36.3%;
+    --success-foreground: 355.7 100% 97.3%;
+    --success-muted: 142.1 76.2% 94%;
+    --warning: 45.4 93.4% 47.5%;
+    --warning-foreground: 26 83.3% 14.1%;
+    --warning-muted: 48 96.5% 89%;
+    --info: 217.2 91.2% 59.8%;
+    --info-foreground: 0 0% 100%;
+    --info-muted: 213.8 93.9% 93.9%;
+    --positive: 142.1 70.6% 45.3%;
+    --positive-foreground: 0 0% 100%;
+    --negative: 0 84.2% 60.2%;
+    --negative-foreground: 0 0% 100%;
+    --neutral-status: 0 0% 45.1%;
+    --neutral-status-foreground: 0 0% 100%;
     --sidebar: 0 0% 98.0392%;
     --sidebar-foreground: 0 0% 3.9216%;
     --sidebar-primary: 0 0% 9.0196%;
@@ -83,6 +99,22 @@
     --chart-3: 0 0% 45.098%;
     --chart-4: 0 0% 45.098%;
     --chart-5: 0 0% 45.098%;
+    /* Semantic status colors - dark mode */
+    --success: 142.1 70.6% 45.3%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 142.4 71.8% 20%;
+    --warning: 48 96.5% 53%;
+    --warning-foreground: 26 83.3% 14.1%;
+    --warning-muted: 48 96.5% 20%;
+    --info: 217.2 91.2% 59.8%;
+    --info-foreground: 0 0% 100%;
+    --info-muted: 217.2 91.2% 25%;
+    --positive: 142.1 70.6% 45.3%;
+    --positive-foreground: 0 0% 100%;
+    --negative: 0 72.2% 50.6%;
+    --negative-foreground: 0 0% 100%;
+    --neutral-status: 0 0% 63.9%;
+    --neutral-status-foreground: 0 0% 100%;
     --sidebar: 0 0% 9.0196%;
     --sidebar-foreground: 0 0% 98.0392%;
     --sidebar-primary: 0 0% 98.0392%;

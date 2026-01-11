@@ -91,13 +91,13 @@ const EvaluateDealComponent = ({
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment) {
       case "POSITIVE":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-success-muted text-success border-success/20";
       case "NEGATIVE":
-        return "bg-red-100 text-red-800 border-red-200";
+        return "bg-destructive/10 text-destructive border-destructive/20";
       case "NEUTRAL":
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-muted text-muted-foreground border-border";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-muted text-muted-foreground border-border";
     }
   };
 
@@ -137,9 +137,9 @@ const EvaluateDealComponent = ({
             <CardTitle className="flex items-center gap-2">
               Evaluation Results
               {dealEvaluation.success ? (
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                <CheckCircle className="h-5 w-5 text-success" />
               ) : (
-                <XCircle className="h-5 w-5 text-red-600" />
+                <XCircle className="h-5 w-5 text-destructive" />
               )}
             </CardTitle>
           </CardHeader>

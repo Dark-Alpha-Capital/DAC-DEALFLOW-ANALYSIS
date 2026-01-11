@@ -154,3 +154,6 @@ eventSource.onmessage = (event) => {
 - **Why**: Handles connection, reconnection, and parsing automatically
 - **How**: `new EventSource(url)` → `onmessage` fires for each event
 
+
+
+

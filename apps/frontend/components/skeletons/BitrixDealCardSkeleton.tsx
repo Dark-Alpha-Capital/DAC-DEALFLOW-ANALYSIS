@@ -11,7 +11,7 @@ export function BitrixDealCardSkeleton({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm",
+        "overflow-hidden rounded-lg border bg-card shadow-sm",
         className,
       )}
     >
@@ -39,7 +39,7 @@ export function BitrixDealCardSkeleton({
       </div>
 
       {/* Footer skeleton */}
-      <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-5 py-3">
+      <div className="flex items-center justify-between border-t bg-muted px-5 py-3">
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-3 w-16" />
       </div>

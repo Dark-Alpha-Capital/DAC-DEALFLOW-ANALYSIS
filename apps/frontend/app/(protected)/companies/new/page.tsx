@@ -34,7 +34,7 @@ async function ShowNewCompanyComponent() {
   return (
     <>
       <div className="mb-8">
-        <Button variant="ghost" asChild size="sm" className="mb-6 -ml-2">
+        <Button variant="ghost" asChild size="sm" className="-ml-2 mb-6">
           <Link href="/companies">
             <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
             Back

@@ -7,6 +7,8 @@ export const QUEUE_NAMES = {
   FILE_UPLOAD: "file-upload",
 } as const;
 
+export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
+
 // Screen deal queue - for AI screening jobs
 export const screenDealQueue = new Queue(QUEUE_NAMES.SCREEN_DEAL, {
   connection,
@@ -34,21 +36,6 @@ export const fileUploadQueue = new Queue(QUEUE_NAMES.FILE_UPLOAD, {
     },
   },
 });
-
-// Job data types
-export interface ScreenDealJobData {
-  jobId: string;
-  dealId: string;
-  screenerId: string;
-  userId: string;
-}
-
-export interface FileUploadJobData {
-  jobId: string;
-  fileName: string;
-  fileBuffer: string; // base64 encoded
-  userId?: string;
-}
 
 // Progress types
 export interface JobProgressData {

@@ -11,13 +11,13 @@ const BulkImportCard = () => {
       <h2 className="mb-4 text-center text-xl font-semibold">
         Bulk Import Deals
       </h2>
-      <p className="mb-2 text-center text-gray-600 dark:text-gray-200">
+      <p className="mb-2 text-center text-muted-foreground">
         Quickly import multiple deals at once by uploading a file. Save time and
         effort with bulk import functionality.
       </p>
 
-      <div className="mb-4 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3">
-        <p className="text-center text-sm font-medium text-amber-700 dark:text-amber-400">
+      <div className="mb-4 rounded-lg border border-warning/50 bg-warning/10 p-3">
+        <p className="text-center text-sm font-medium text-warning">
           All-or-Nothing Upload: All rows must pass validation before any deals
           are uploaded. Fix all errors to proceed.
         </p>

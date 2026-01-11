@@ -143,8 +143,8 @@ function ResetPasswordContent() {
               </div>
             </div>
             <div className="mx-auto">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success-muted">
+                <CheckCircle className="h-8 w-8 text-success" />
               </div>
             </div>
             <CardTitle className="text-2xl font-semibold">

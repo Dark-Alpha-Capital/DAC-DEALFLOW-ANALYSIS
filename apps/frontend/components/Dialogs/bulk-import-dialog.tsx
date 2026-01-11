@@ -399,7 +399,7 @@ export function BulkImportDialog() {
                 )}
               </div>
               {success && (
-                <div className="flex items-start text-green-600 dark:text-green-400">
+                <div className="flex items-start text-success">
                   <CheckCircle className="mr-2 h-4 w-4 flex-shrink-0" />
                   <span className="min-w-0 break-words">{success}</span>
                 </div>
@@ -471,10 +471,10 @@ export function BulkImportDialog() {
 
               {/* Deal Summary */}
               {deals.length > 0 && !hasValidationErrors && (
-                <div className="rounded-lg border border-green-500/50 bg-green-500/5 p-4">
+                <div className="rounded-lg border border-success/50 bg-success/5 p-4">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="font-medium text-green-600">
+                    <CheckCircle className="h-5 w-5 text-success" />
+                    <span className="font-medium text-success">
                       Validation Passed
                     </span>
                   </div>
@@ -489,10 +489,10 @@ export function BulkImportDialog() {
                 </div>
               )}
               {deals.length > 0 && hasValidationErrors && (
-                <div className="rounded-lg border border-amber-500/50 bg-amber-500/5 p-4">
+                <div className="rounded-lg border border-warning/50 bg-warning/5 p-4">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-amber-600" />
-                    <span className="font-medium text-amber-600">
+                    <AlertCircle className="h-5 w-5 text-warning" />
+                    <span className="font-medium text-warning">
                       Fix Errors to Continue
                     </span>
                   </div>

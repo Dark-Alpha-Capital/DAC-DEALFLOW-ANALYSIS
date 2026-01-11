@@ -66,8 +66,8 @@ export function DealMetricCard({
                 className={cn(
                   "flex items-center gap-1 text-sm",
                   trend.direction === "up"
-                    ? "text-green-600 dark:text-green-400"
-                    : "text-red-600 dark:text-red-400"
+                    ? "text-success"
+                    : "text-destructive"
                 )}
               >
                 {trend.direction === "up" ? (

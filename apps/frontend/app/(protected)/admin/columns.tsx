@@ -73,7 +73,7 @@ export const columns: ColumnDef<AdminUser>[] = [
       return user.isBlocked ? (
         <Badge variant="destructive">Blocked</Badge>
       ) : (
-        <Badge variant="outline" className="text-green-600 border-green-600">
+        <Badge variant="outline" className="text-success border-success">
           Active
         </Badge>
       );

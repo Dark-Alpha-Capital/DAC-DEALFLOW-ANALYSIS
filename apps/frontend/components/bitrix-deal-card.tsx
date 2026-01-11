@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 export default function BitrixDealCard({ deal }: { deal: BitrixDealGET }) {
   return (
-    <div className="overflow-hidden rounded-lg border shadow-sm transition-all hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="overflow-hidden rounded-lg border bg-card shadow-sm transition-all hover:shadow-md">
       <div className="p-5">
         <h2 className="mb-4 line-clamp-2 text-lg font-medium">
           {deal.dealCaption}
@@ -43,13 +43,13 @@ export default function BitrixDealCard({ deal }: { deal: BitrixDealGET }) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t px-5 py-3 dark:border-neutral-800 dark:bg-neutral-800/50">
+      <div className="flex items-center justify-between border-t bg-muted/50 px-5 py-3">
         <span className="text-xs opacity-70">{deal.brokerage}</span>
         <a
           href={deal.sourceWebsite}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center text-xs text-blue-600 transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+          className="flex items-center text-xs text-primary transition-colors hover:text-primary/80"
         >
           <span>Source</span>
           <ExternalLink className="ml-1 h-3 w-3" />

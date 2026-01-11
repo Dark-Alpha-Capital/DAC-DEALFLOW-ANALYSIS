@@ -37,7 +37,7 @@ function StatusIndicator({
         className={cn(
           "h-5 w-5",
           active
-            ? "text-green-600 dark:text-green-400"
+            ? "text-success"
             : "text-muted-foreground",
         )}
       />
@@ -65,13 +65,13 @@ function getDealTypeLabel(dealType: DealType): string {
 function getStatusColor(status: DealStatus): string {
   switch (status) {
     case "AVAILABLE":
-      return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      return "bg-success-muted text-success";
     case "SOLD":
-      return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      return "bg-destructive/10 text-destructive";
     case "UNDER_CONTRACT":
-      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      return "bg-warning-muted text-warning-foreground";
     default:
-      return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
+      return "bg-muted text-muted-foreground";
   }
 }
 
@@ -157,7 +157,7 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
             className={cn(
               "h-5 w-5",
               bitrixId
-                ? "text-green-600 dark:text-green-400"
+                ? "text-success"
                 : "text-muted-foreground",
             )}
           />
