@@ -74,7 +74,7 @@ const DealCard = ({
           variant: "destructive",
         });
       },
-    })
+    }),
   );
 
   const handleDelete = () => {
@@ -257,9 +257,7 @@ const InfoItem = ({
   <div className={cn("flex items-center text-sm", className)}>
     <div className="flex items-center">
       {icon}
-      <span className="ml-2 font-medium text-foreground">
-        {label}:
-      </span>
+      <span className="ml-2 font-medium text-foreground">{label}:</span>
     </div>
     <span className="ml-1 truncate whitespace-normal break-words text-justify text-muted-foreground group-hover:text-foreground">
       {value}

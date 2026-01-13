@@ -67,7 +67,7 @@ export function SearchDeals() {
 
   return (
     <div
-      className="relative mx-auto flex h-10 w-full max-w-xs items-center sm:max-w-sm md:max-w-xs lg:max-w-xs xl:max-w-xs"
+      className="relative flex h-10 w-full items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching ? (
@@ -135,16 +135,16 @@ export function SearchBrokerageDeals() {
 
   return (
     <div
-      className="relative flex h-8 items-center"
+      className="relative flex h-10 w-full items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching ? (
-        <Loader2 className="absolute left-2 top-2 size-4 animate-spin text-muted-foreground" />
+        <Loader2 className="absolute left-2 top-3 size-4 animate-spin text-muted-foreground" />
       ) : (
-        <SearchIcon className="absolute left-2 top-2 size-4 text-muted-foreground" />
+        <SearchIcon className="absolute left-2 top-3 size-4 text-muted-foreground" />
       )}
       <Input
-        className="h-8 pl-8"
+        className="h-10 w-full rounded-md pl-8 pr-10 text-base"
         placeholder="Search using brokerage..."
         onChange={(e) => {
           handleSearch(e.target.value);
@@ -159,7 +159,7 @@ export function SearchBrokerageDeals() {
       />
       {q && (
         <Button
-          className="absolute right-2 top-2 h-4 w-4"
+          className="absolute right-2 top-2 h-6 w-6 p-0"
           onClick={handleClearInput}
           variant={"ghost"}
           size={"icon"}
@@ -203,16 +203,16 @@ export function SearchIndustryDeals() {
 
   return (
     <div
-      className="relative flex h-8 items-center"
+      className="relative flex h-10 w-full items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching ? (
-        <Loader2 className="absolute left-2 top-2 size-4 animate-spin text-muted-foreground" />
+        <Loader2 className="absolute left-2 top-3 size-4 animate-spin text-muted-foreground" />
       ) : (
-        <SearchIcon className="absolute left-2 top-2 size-4 text-muted-foreground" />
+        <SearchIcon className="absolute left-2 top-3 size-4 text-muted-foreground" />
       )}
       <Input
-        className="h-8 pl-8"
+        className="h-10 w-full rounded-md pl-8 pr-10 text-base"
         placeholder="Search using industry..."
         onChange={(e) => {
           handleSearch(e.target.value);
@@ -227,7 +227,7 @@ export function SearchIndustryDeals() {
       />
       {q && (
         <Button
-          className="absolute right-2 top-2 h-4 w-4"
+          className="absolute right-2 top-2 h-6 w-6 p-0"
           onClick={handleClearInput}
           variant={"ghost"}
           size={"icon"}
@@ -283,18 +283,18 @@ export function SearchEbitdaMarginFilter() {
 
   return (
     <div
-      className="relative flex h-8 items-center"
+      className="relative flex h-10 w-full items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching ? (
-        <Loader2 className="absolute left-2 top-2 size-4 animate-spin text-muted-foreground" />
+        <Loader2 className="absolute left-2 top-3 size-4 animate-spin text-muted-foreground" />
       ) : (
-        <SearchIcon className="absolute left-2 top-2 size-4 text-muted-foreground" />
+        <SearchIcon className="absolute left-2 top-3 size-4 text-muted-foreground" />
       )}
       <Input
-        className="h-8 w-[160px] pl-8 lg:w-[250px]"
+        className="h-10 w-full rounded-md pl-8 pr-10 text-base"
         type="text"
-        placeholder="Enter Min Ebitda Margin"
+        placeholder="Enter Min EBITDA Margin"
         value={inputValue}
         onChange={handleInputChange}
         onKeyDown={(e) => {
@@ -306,7 +306,7 @@ export function SearchEbitdaMarginFilter() {
       />
       {q && (
         <Button
-          className="absolute right-2 top-2 h-4 w-4"
+          className="absolute right-2 top-2 h-6 w-6 p-0"
           onClick={handleClearInput}
           variant={"ghost"}
           size={"icon"}
@@ -362,7 +362,7 @@ export function SearchEbitdaDeals() {
 
   return (
     <div
-      className="relative mx-auto flex h-10 w-full max-w-xs items-center sm:max-w-sm md:max-w-xs lg:max-w-xs xl:max-w-xs"
+      className="relative flex h-10 w-full items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching ? (
@@ -441,16 +441,16 @@ export function SearchRevenueDeals() {
 
   return (
     <div
-      className="relative flex h-8 items-center"
+      className="relative flex h-10 w-full items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching ? (
-        <Loader2 className="absolute left-2 top-2 size-4 animate-spin text-muted-foreground" />
+        <Loader2 className="absolute left-2 top-3 size-4 animate-spin text-muted-foreground" />
       ) : (
-        <SearchIcon className="absolute left-2 top-2 size-4 text-muted-foreground" />
+        <SearchIcon className="absolute left-2 top-3 size-4 text-muted-foreground" />
       )}
       <Input
-        className=""
+        className="h-10 w-full rounded-md pl-8 pr-10 text-base"
         type="text"
         placeholder="Enter Min Revenue"
         value={inputValue}
@@ -464,7 +464,7 @@ export function SearchRevenueDeals() {
       />
       {q && (
         <Button
-          className="absolute right-2 top-2 h-4 w-4"
+          className="absolute right-2 top-2 h-6 w-6 p-0"
           onClick={handleClearInput}
           variant={"ghost"}
           size={"icon"}
@@ -520,7 +520,7 @@ export function SearchMaxRevenueDeals() {
 
   return (
     <div
-      className="relative mx-auto flex h-10 w-full max-w-xs items-center sm:max-w-sm md:max-w-xs lg:max-w-xs xl:max-w-xs"
+      className="relative flex h-10 w-full items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching ? (
@@ -587,7 +587,7 @@ export function SearchLocationDeals() {
 
   return (
     <div
-      className="relative mx-auto flex h-10 w-full max-w-xs items-center sm:max-w-sm md:max-w-xs lg:max-w-xs xl:max-w-xs"
+      className="relative flex h-10 w-full items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching ? (
@@ -648,14 +648,14 @@ export function SearchSeenDeals() {
 
   return (
     <div
-      className="relative flex h-8 items-center"
+      className="relative flex items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching && (
         <Loader2 className="absolute left-2 top-2 size-4 animate-spin text-muted-foreground" />
       )}
       <Button
-        className="h-8 px-3"
+        className="h-9 px-3"
         variant={seen ? "default" : "outline"}
         onClick={handleToggle}
         disabled={isSearching}
@@ -665,7 +665,7 @@ export function SearchSeenDeals() {
         ) : (
           <EyeOffIcon className="mr-2 size-4" />
         )}
-        {seen ? "Showing Seen Deals" : "Show seen Deals"}
+        Seen
       </Button>
     </div>
   );
@@ -695,29 +695,24 @@ export function SearchRecentDeals() {
 
   return (
     <div
-      className="relative flex h-8 items-center"
+      className="relative flex items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching && (
         <Loader2 className="absolute left-2 top-2 size-4 animate-spin text-muted-foreground" />
       )}
       <Button
-        className="h-8 px-3"
+        className="h-9 px-3"
         variant={recent ? "default" : "outline"}
         onClick={handleToggle}
         disabled={isSearching}
       >
         {recent ? (
-          <>
-            <HistoryIcon className="mr-2 size-4" />
-            Showing Recent Deals
-          </>
+          <HistoryIcon className="mr-2 size-4" />
         ) : (
-          <>
-            <ListIcon className="mr-2 size-4" />
-            Show Recent Deals
-          </>
+          <ListIcon className="mr-2 size-4" />
         )}
+        Recent
       </Button>
     </div>
   );
@@ -747,14 +742,14 @@ export function SearchReviewedDeals() {
 
   return (
     <div
-      className="relative flex h-8 items-center"
+      className="relative flex items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching && (
         <Loader2 className="absolute left-2 top-2 size-4 animate-spin text-muted-foreground" />
       )}
       <Button
-        className="h-8 px-3"
+        className="h-9 px-3"
         variant={reviewed ? "default" : "outline"}
         onClick={handleToggle}
         disabled={isSearching}
@@ -764,7 +759,7 @@ export function SearchReviewedDeals() {
         ) : (
           <EyeOffIcon className="mr-2 size-4" />
         )}
-        {reviewed ? "Showing Reviewed Deals" : "Show reviewed Deals"}
+        Reviewed
       </Button>
     </div>
   );
@@ -794,14 +789,14 @@ export function SearchPublishedDeals() {
 
   return (
     <div
-      className="relative flex h-8 items-center"
+      className="relative flex items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching && (
         <Loader2 className="absolute left-2 top-2 size-4 animate-spin text-muted-foreground" />
       )}
       <Button
-        className="h-8 px-3"
+        className="h-9 px-3"
         variant={published ? "default" : "outline"}
         onClick={handleToggle}
         disabled={isSearching}
@@ -811,7 +806,7 @@ export function SearchPublishedDeals() {
         ) : (
           <EyeOffIcon className="mr-2 size-4" />
         )}
-        {published ? "Showing Published Deals" : "Show published Deals"}
+        Published
       </Button>
     </div>
   );
@@ -861,16 +856,16 @@ export function SearchMaxEbitdaDeals() {
 
   return (
     <div
-      className="relative flex h-8 items-center"
+      className="relative flex h-10 w-full items-center"
       data-pending={isSearching ? "" : undefined}
     >
       {isSearching ? (
-        <Loader2 className="absolute left-2 top-2 size-4 animate-spin text-muted-foreground" />
+        <Loader2 className="absolute left-2 top-3 size-4 animate-spin text-muted-foreground" />
       ) : (
-        <SearchIcon className="absolute left-2 top-2 size-4 text-muted-foreground" />
+        <SearchIcon className="absolute left-2 top-3 size-4 text-muted-foreground" />
       )}
       <Input
-        className="h-8 w-[160px] pl-8 lg:w-[250px]"
+        className="h-10 w-full rounded-md pl-8 pr-10 text-base"
         type="text"
         placeholder="Enter Max EBITDA"
         value={inputValue}
@@ -884,7 +879,7 @@ export function SearchMaxEbitdaDeals() {
       />
       {q && (
         <Button
-          className="absolute right-2 top-2 h-4 w-4"
+          className="absolute right-2 top-2 h-6 w-6 p-0"
           onClick={handleClearInput}
           variant={"ghost"}
           size={"icon"}
@@ -928,8 +923,13 @@ export function SearchStatusDeals() {
 
   return (
     <div className="flex items-center gap-2">
-      <Button onClick={handleStatusToggle} disabled={isSearching}>
-        Toggle
+      <Button
+        onClick={handleStatusToggle}
+        disabled={isSearching}
+        variant="outline"
+        size="sm"
+      >
+        Clear
       </Button>
 
       <Select
@@ -937,7 +937,7 @@ export function SearchStatusDeals() {
         onValueChange={handleStatusChange}
         disabled={isSearching}
       >
-        <SelectTrigger className="h-8 w-[180px]">
+        <SelectTrigger className="h-10 w-[220px]">
           <SelectValue placeholder="Filter by Status" />
         </SelectTrigger>
         <SelectContent>
@@ -1006,7 +1006,7 @@ export function SearchTagsDeals() {
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="h-9">
             <Tag className="mr-2 h-4 w-4" />
             Tags
           </Button>
@@ -1031,7 +1031,3 @@ export function SearchTagsDeals() {
     </div>
   );
 }
-
-
-
-

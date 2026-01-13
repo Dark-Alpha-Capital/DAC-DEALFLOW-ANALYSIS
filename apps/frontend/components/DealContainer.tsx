@@ -46,7 +46,7 @@ export default function DealContainer({ data }: DealContainerProps) {
       onError: (error) => {
         toast.error(error.message || "Failed to delete deals");
       },
-    })
+    }),
   );
 
   const allSelected = data.length > 0 && selectedIds.size === data.length;
@@ -145,7 +145,7 @@ export default function DealContainer({ data }: DealContainerProps) {
       </div>
 
       {viewMode === "grid" ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {data.map((deal) => (
             <DealCard key={deal.id} deal={deal} />
           ))}

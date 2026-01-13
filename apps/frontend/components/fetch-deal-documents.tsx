@@ -1,37 +1,29 @@
 import React from "react";
 import { AlertTriangle } from "lucide-react";
-import { getDealDocuments } from "db/queries";
+import { DealDocument } from "db/schema";
 import DealDocumentItem from "./DealDocumentItem";
-import { cacheLife, cacheTag } from "next/cache";
 
-const FetchDealDocuments = async ({ dealId }: { dealId: string }) => {
-  "use cache";
-  // dealId becomes part of cache key
-  cacheTag(`deal-documents-${dealId}`);
-  cacheLife("hours");
-
-  let dealDocuments = null;
-  try {
-    dealDocuments = await getDealDocuments(dealId);
-  } catch (error) {
-    console.error("Error fetching deal documents", error);
-    dealDocuments = null;
-  }
-
-  if (!dealDocuments) {
-    return <div>Error fetching deal documents</div>;
-  }
-
+const FetchDealDocuments = ({
+  dealId,
+  documents,
+}: {
+  dealId: string;
+  documents: DealDocument[];
+}) => {
   return (
     <div>
-      {dealDocuments.length > 0 ? (
-        dealDocuments.map((dealDocument) => (
+      {documents.length > 0 ? (
+        documents.map((dealDocument) => (
           <DealDocumentItem
             key={dealDocument.id}
             title={dealDocument.title}
             description={dealDocument.description || ""}
+            caption={dealDocument.caption}
             category={dealDocument.category}
             fileUrl={dealDocument.documentUrl}
+            tags={dealDocument.tags || []}
+            fileName={dealDocument.fileName}
+            fileType={dealDocument.fileType}
           />
         ))
       ) : (

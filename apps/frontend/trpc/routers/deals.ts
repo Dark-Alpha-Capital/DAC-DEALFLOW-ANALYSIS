@@ -1,8 +1,16 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, adminProcedure } from "../init";
-import db, { deals, eq, DealType, DealStatus } from "db";
+import db, {
+  deals,
+  eq,
+  DealType,
+  DealStatus,
+  dealDocuments,
+  DealDocumentCategory,
+} from "db";
 import { DeleteDealById, BulkDeleteDeals } from "db/mutations";
 import { revalidatePath, updateTag } from "next/cache";
+import { uploadFileToNextCloud } from "@/lib/storage";
 
 const createDealSchema = z.object({
   first_name: z.string().optional(),
@@ -24,7 +32,10 @@ const createDealSchema = z.object({
   brokerage: z.string().min(1, "Brokerage is required"),
   source_website: z.string().url("Invalid URL").optional(),
   industry: z.string().min(1, "Industry is required"),
-  asking_price: z.number().positive("Asking price must be a positive number").optional(),
+  asking_price: z
+    .number()
+    .positive("Asking price must be a positive number")
+    .optional(),
 });
 
 const updateDealSchema = z.object({
@@ -63,6 +74,17 @@ const updateSpecificationsSchema = z.object({
   isPublished: z.boolean().default(false),
   seen: z.boolean().default(false),
   status: z.nativeEnum(DealStatus),
+});
+
+const uploadDealDocumentSchema = z.object({
+  dealId: z.string(),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  category: z.nativeEnum(DealDocumentCategory),
+  tags: z.array(z.string()).optional().default([]),
+  fileData: z.string(), // base64 encoded file
+  fileName: z.string(),
+  fileType: z.string(),
 });
 
 export const dealsRouter = createTRPCRouter({
@@ -184,5 +206,43 @@ export const dealsRouter = createTRPCRouter({
       revalidatePath("/raw-deals");
 
       return { success: true };
+    }),
+
+  uploadDocument: protectedProcedure
+    .input(uploadDealDocumentSchema)
+    .mutation(async ({ input }) => {
+      // Convert base64 to buffer
+      const base64Data = input.fileData.split(",")[1] || input.fileData;
+      const buffer = Buffer.from(base64Data, "base64");
+
+      // Create a File object for Nextcloud upload
+      const file = new File([buffer], input.fileName, { type: input.fileType });
+
+      // Upload to Nextcloud with folder path: dealflow/raw-deals/[uid]
+      const folderPath = `dealflow/raw-deals/${input.dealId}`;
+      const downloadUrl = await uploadFileToNextCloud(file, folderPath);
+
+      if (!downloadUrl) {
+        throw new Error("Failed to upload file to Nextcloud");
+      }
+
+      // Save document metadata to database
+      const [dealDocument] = await db
+        .insert(dealDocuments)
+        .values({
+          title: input.title,
+          description: input.description,
+          category: input.category,
+          documentUrl: downloadUrl,
+          fileName: input.fileName,
+          fileType: input.fileType,
+          tags: input.tags || [],
+          dealId: input.dealId,
+        })
+        .returning();
+
+      revalidatePath(`/raw-deals/${input.dealId}`);
+
+      return { success: true, dealDocument };
     }),
 });

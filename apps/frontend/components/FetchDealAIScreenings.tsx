@@ -1,39 +1,22 @@
 import { AlertTriangle } from "lucide-react";
 import { Button } from "./ui/button";
-import { DealType } from "db/schema";
+import { DealType, AiScreening } from "db/schema";
 import AIReasoning from "./AiReasoning";
-import { getFirstThreeDealAIScreenings } from "db/queries";
-import { cacheLife, cacheTag } from "next/cache";
 
-const FetchDealAIScreenings = async ({
+const FetchDealAIScreenings = ({
   dealId,
   dealType,
+  aiScreenings,
 }: {
   dealId: string;
   dealType: DealType;
+  aiScreenings: AiScreening[];
 }) => {
-  "use cache";
-  // dealId becomes part of cache key
-  cacheTag(`deal-ai-screenings-${dealId}`);
-  cacheLife("hours");
-
-  let screenings = null;
-  try {
-    screenings = await getFirstThreeDealAIScreenings(dealId);
-  } catch (error) {
-    console.error("Error fetching deal ai screenings", error);
-    screenings = null;
-  }
-
-  if (!screenings) {
-    return <div>Error fetching deal ai screenings</div>;
-  }
-
   return (
     <div>
       <div>
-        {screenings && screenings.length > 0 ? (
-          screenings.map((e, index) => (
+        {aiScreenings && aiScreenings.length > 0 ? (
+          aiScreenings.map((e, index) => (
             <AIReasoning
               key={index}
               title={e.title}

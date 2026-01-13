@@ -42,12 +42,7 @@ import type { AdminUser, CompanyWithRelationsForList } from "./types";
  * @returns the deal
  */
 export const GetDealById = async (id: string) => {
-  "use cache";
-
   try {
-    cacheTag("deal");
-    cacheLife("hours");
-
     const [deal] = await db.select().from(deals).where(eq(deals.id, id));
     return deal ?? null;
   } catch (error) {
@@ -739,6 +734,69 @@ export const getDealDocuments = async (dealId: string) => {
       .where(eq(dealDocuments.dealId, dealId));
   } catch (error) {
     console.error("Error fetching deal documents", error);
+    throw error;
+  }
+};
+
+/**
+ * Get a deal with all related data (documents, AI screenings, POCs)
+ * @param id - the id of the deal
+ * @returns the deal with all related data
+ */
+export const GetDealWithAllRelations = async (id: string) => {
+  try {
+    const results = await Promise.allSettled([
+      db.select().from(deals).where(eq(deals.id, id)),
+      db.select().from(dealDocuments).where(eq(dealDocuments.dealId, id)),
+      db
+        .select()
+        .from(aiScreenings)
+        .where(eq(aiScreenings.dealId, id))
+        .orderBy(desc(aiScreenings.createdAt))
+        .limit(3),
+      db.select().from(pocs).where(eq(pocs.dealId, id)),
+    ]);
+
+    const [dealResult, documentsResult, aiScreeningsResult, pocsResult] =
+      results;
+
+    // Handle deal query result
+    if (dealResult.status === "rejected") {
+      console.error("Error fetching deal:", dealResult.reason);
+      throw dealResult.reason;
+    }
+    const dealData = dealResult.value[0] ?? null;
+    if (!dealData) {
+      return null;
+    }
+
+    // Handle other queries - log errors but don't fail completely
+    const documents =
+      documentsResult.status === "fulfilled"
+        ? documentsResult.value
+        : (console.error("Error fetching documents:", documentsResult.reason),
+          []);
+    const aiScreeningsData =
+      aiScreeningsResult.status === "fulfilled"
+        ? aiScreeningsResult.value
+        : (console.error(
+            "Error fetching AI screenings:",
+            aiScreeningsResult.reason
+          ),
+          []);
+    const pocsData =
+      pocsResult.status === "fulfilled"
+        ? pocsResult.value
+        : (console.error("Error fetching POCs:", pocsResult.reason), []);
+
+    return {
+      deal: dealData,
+      documents,
+      aiScreenings: aiScreeningsData,
+      pocs: pocsData,
+    };
+  } catch (error) {
+    console.error("Error fetching deal with all relations", error);
     throw error;
   }
 };

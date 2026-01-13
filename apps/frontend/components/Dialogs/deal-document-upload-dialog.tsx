@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useTransition } from "react";
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -34,8 +33,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { dealDocumentFormSchema, DealDocumentFormValues } from "@/lib/schemas";
-import { DealDocumentCategory, DealType } from "db/schema";
+import { DealType, DealDocumentCategory } from "db/schema";
 import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
 
 interface DealDocumentUploadDialogProps {
   dealId: string;
@@ -46,8 +47,22 @@ const DealDocumentUploadDialog: React.FC<DealDocumentUploadDialogProps> = ({
   dealId,
   dealType,
 }) => {
-  const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = React.useState(false);
+  const trpc = useTRPC();
+
+  const { mutate: uploadDocument, isPending } = useMutation(
+    trpc.deals.uploadDocument.mutationOptions({
+      onSuccess: () => {
+        toast.success("Document uploaded successfully");
+        form.reset();
+        setIsOpen(false);
+      },
+      onError: (error) => {
+        console.error("Error uploading deal document:", error);
+        toast.error(error.message || "Error uploading document");
+      },
+    }),
+  );
 
   const form = useForm<DealDocumentFormValues>({
     resolver: zodResolver(dealDocumentFormSchema),
@@ -55,38 +70,38 @@ const DealDocumentUploadDialog: React.FC<DealDocumentUploadDialogProps> = ({
       title: "",
       description: "",
       category: "OTHER",
+      tags: [],
     },
   });
 
-  const onSubmit = (data: DealDocumentFormValues) => {
-    startTransition(async () => {
-      console.log("data", data);
+  const onSubmit = async (data: DealDocumentFormValues) => {
+    if (!data.file) {
+      toast.error("Please select a file");
+      return;
+    }
 
-      const formData = new FormData();
-      formData.append("title", data.title);
-      formData.append("description", data.description);
-      formData.append("category", data.category);
-      formData.append("file", data.file);
-      formData.append("dealId", dealId);
+    // Convert file to base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
 
-      try {
-        const result = await fetch("/api/upload-deal-document", {
-          method: "POST",
-          body: formData,
-        });
+      uploadDocument({
+        dealId,
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        tags: data.tags || [],
+        fileData: base64String,
+        fileName: data.file.name,
+        fileType: data.file.type,
+      });
+    };
 
-        if (result.ok) {
-          toast.success("Document uploaded successfully");
-          form.reset();
-          setIsOpen(false);
-        } else {
-          throw new Error(result.statusText);
-        }
-      } catch (error) {
-        console.error("Error uploading deal document:", error);
-        toast.error("Error uploading document");
-      }
-    });
+    reader.onerror = () => {
+      toast.error("Error reading file");
+    };
+
+    reader.readAsDataURL(data.file);
   };
 
   return (
@@ -169,12 +184,38 @@ const DealDocumentUploadDialog: React.FC<DealDocumentUploadDialogProps> = ({
                     </FormControl>
                     <SelectContent>
                       {Object.values(DealDocumentCategory).map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
+                        <SelectItem key={category} value={category as string}>
+                          {category as string}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="tags"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tags (comma-separated)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., SIM, CIM, Financial"
+                      value={field.value?.join(", ") || ""}
+                      onChange={(e) => {
+                        const tags = e.target.value
+                          .split(",")
+                          .map((tag) => tag.trim())
+                          .filter((tag) => tag.length > 0);
+                        field.onChange(tags);
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Add tags to categorize this document (e.g., SIM, CIM)
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

@@ -5,9 +5,23 @@ import DealTypeFilter from "@/components/DealTypeFilter";
 import { DealStatus, DealType } from "db/schema";
 import SearchDealsSkeleton from "@/components/skeletons/SearchDealsSkeleton";
 import DealTypeFilterSkeleton from "@/components/skeletons/DealTypeFilterSkeleton";
+import DealCardGridSkeleton from "@/components/skeletons/DealCardGridSkeleton";
 import UserDealFilter from "@/components/UserDealFilter";
 import DealContainer from "@/components/DealContainer";
 import DeleteFiltersButton from "@/components/Buttons/delete-filters-button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   SearchDeals,
   SearchBrokerageDeals,
@@ -61,63 +75,106 @@ const RawDealsPage = async (props: { searchParams: SearchParams }) => {
           </div>
         </div>
 
-        {/* Responsive filter/search bar area */}
-        <div className="grid w-full grid-cols-1 gap-4 rounded-lg bg-muted/50 p-4 shadow-sm sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchDeals />
-          </Suspense>
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchBrokerageDeals />
-          </Suspense>
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchIndustryDeals />
-          </Suspense>
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchEbitdaMarginFilter />
-          </Suspense>
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchEbitdaDeals />
-          </Suspense>
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchRevenueDeals />
-          </Suspense>
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchMaxRevenueDeals />
-          </Suspense>
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchLocationDeals />
-          </Suspense>
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchSeenDeals />
-          </Suspense>
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchRecentDeals />
-          </Suspense>
+        <Card>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle>Filters</CardTitle>
+              <CardDescription>
+                Refine results by source, metrics, status, and tags. Most
+                filters update results as you type.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <DeleteFiltersButton />
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Accordion
+              type="multiple"
+              defaultValue={["search", "financials", "status-tags", "flags"]}
+              className="w-full"
+            >
+              <AccordionItem value="search">
+                <AccordionTrigger>Search</AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchDeals />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchBrokerageDeals />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchIndustryDeals />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchLocationDeals />
+                    </Suspense>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchReviewedDeals />
-          </Suspense>
+              <AccordionItem value="financials">
+                <AccordionTrigger>Financials</AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchRevenueDeals />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchMaxRevenueDeals />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchEbitdaDeals />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchMaxEbitdaDeals />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchEbitdaMarginFilter />
+                    </Suspense>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchPublishedDeals />
-          </Suspense>
+              <AccordionItem value="status-tags">
+                <AccordionTrigger>Status &amp; Tags</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center">
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchStatusDeals />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchTagsDeals />
+                    </Suspense>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchMaxEbitdaDeals />
-          </Suspense>
-
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchStatusDeals />
-          </Suspense>
-
-          <Suspense fallback={<SearchDealsSkeleton />}>
-            <SearchTagsDeals />
-          </Suspense>
-
-          <DeleteFiltersButton />
-        </div>
+              <AccordionItem value="flags">
+                <AccordionTrigger>Visibility</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchSeenDeals />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchRecentDeals />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchReviewedDeals />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchPublishedDeals />
+                    </Suspense>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
       </div>
-      <Suspense fallback={<div>Loading deals...</div>}>
+      <Suspense fallback={<DealCardGridSkeleton />}>
         <ShowDealsComponent searchParams={props.searchParams} />
       </Suspense>
     </section>

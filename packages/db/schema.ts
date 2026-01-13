@@ -44,8 +44,6 @@ export const dealTypeEnum = pgEnum("DealType", [
   "AI_INFERRED",
 ]);
 
-export const simStatusEnum = pgEnum("SIMStatus", ["IN_PROGRESS", "COMPLETED"]);
-
 export const sentimentEnum = pgEnum("Sentiment", [
   "POSITIVE",
   "NEUTRAL",
@@ -252,8 +250,12 @@ export const dealDocuments = pgTable("DealDocument", {
     .references(() => deals.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
+  caption: text("caption"),
   category: dealDocumentCategoryEnum("category").default("OTHER").notNull(),
   documentUrl: text("documentUrl").notNull(),
+  fileName: text("fileName"),
+  fileType: text("fileType"),
+  tags: text("tags").array().default([]),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
@@ -270,27 +272,6 @@ export const pocs = pgTable("POC", {
   workPhone: text("workPhone"),
   email: text("email").notNull(),
   dealId: text("dealId").references(() => deals.id, { onDelete: "cascade" }),
-});
-
-// SIM table
-export const sims = pgTable("SIM", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  title: text("title").notNull(),
-  caption: text("caption").notNull(),
-  status: simStatusEnum("status").notNull(),
-  fileName: text("fileName").notNull(),
-  fileType: text("fileType").notNull(),
-  fileUrl: text("fileUrl").notNull(),
-  dealId: text("dealId")
-    .notNull()
-    .references(() => deals.id, { onDelete: "cascade" }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
 });
 
 // Questionnaire table
@@ -579,7 +560,6 @@ export const dealsRelations = relations(deals, ({ one, many }) => ({
   dealDocuments: many(dealDocuments),
   employees: many(employees),
   pocs: many(pocs),
-  sims: many(sims),
 }));
 
 export const dealDocumentsRelations = relations(dealDocuments, ({ one }) => ({
@@ -592,13 +572,6 @@ export const dealDocumentsRelations = relations(dealDocuments, ({ one }) => ({
 export const pocsRelations = relations(pocs, ({ one }) => ({
   deal: one(deals, {
     fields: [pocs.dealId],
-    references: [deals.id],
-  }),
-}));
-
-export const simsRelations = relations(sims, ({ one }) => ({
-  deal: one(deals, {
-    fields: [sims.dealId],
     references: [deals.id],
   }),
 }));
@@ -759,12 +732,6 @@ export const DealType = {
 } as const;
 export type DealType = (typeof DealType)[keyof typeof DealType];
 
-export const SIMStatus = {
-  IN_PROGRESS: "IN_PROGRESS",
-  COMPLETED: "COMPLETED",
-} as const;
-export type SIMStatus = (typeof SIMStatus)[keyof typeof SIMStatus];
-
 export const Sentiment = {
   POSITIVE: "POSITIVE",
   NEUTRAL: "NEUTRAL",
@@ -856,9 +823,6 @@ export type NewDealDocument = typeof dealDocuments.$inferInsert;
 
 export type POC = typeof pocs.$inferSelect;
 export type NewPOC = typeof pocs.$inferInsert;
-
-export type SIM = typeof sims.$inferSelect;
-export type NewSIM = typeof sims.$inferInsert;
 
 export type Questionnaire = typeof questionnaires.$inferSelect;
 export type NewQuestionnaire = typeof questionnaires.$inferInsert;

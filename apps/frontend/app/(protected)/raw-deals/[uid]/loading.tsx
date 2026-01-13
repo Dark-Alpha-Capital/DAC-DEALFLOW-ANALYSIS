@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import PreviousPageButton from "@/components/PreviousPageButton";
 import AIReasoningSkeleton from "@/components/skeletons/AIReasoningSkeleton";
-import SimItemSkeleton from "@/components/skeletons/SimItemSkeleton";
 
 const Loading = () => {
   return (
@@ -85,21 +84,6 @@ const Loading = () => {
                 <AIReasoningSkeleton />
                 <AIReasoningSkeleton />
                 <AIReasoningSkeleton />
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>SIMs (Strategic Investment Memos)</CardTitle>
-            <Skeleton className="h-8 w-8 rounded-full" />
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[300px] pr-4">
-              <div className="flex flex-col gap-4">
-                <SimItemSkeleton />
-                <SimItemSkeleton />
               </div>
             </ScrollArea>
           </CardContent>

@@ -9,28 +9,58 @@ import { DealDocumentCategory } from "db/schema";
 const DealDocumentItem = ({
   title,
   description,
+  caption,
   category,
-
   fileUrl,
+  tags,
+  fileName,
+  fileType,
 }: {
   title: string;
   description: string;
+  caption?: string | null;
   category: DealDocumentCategory;
   fileUrl: string;
+  tags?: string[];
+  fileName?: string | null;
+  fileType?: string | null;
 }) => {
   return (
     <Card className="mb-4 transition-all hover:shadow-md">
       <CardContent className="pt-6">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
+          <div className="space-y-2 flex-1">
             <div className="flex items-center gap-2">
               <FileIcon className="h-5 w-5 text-primary" />
               <h3 className="text-lg font-semibold">{title}</h3>
             </div>
-            <p className="text-sm text-muted-foreground">{description}</p>
-            <Badge variant="secondary" className="mt-2">
-              {category.toLowerCase()}
-            </Badge>
+            {caption && (
+              <p className="text-sm text-muted-foreground italic">{caption}</p>
+            )}
+            {description && (
+              <p className="text-sm text-muted-foreground">{description}</p>
+            )}
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <Badge variant="secondary">
+                {category.toLowerCase()}
+              </Badge>
+              {tags && tags.length > 0 && (
+                <>
+                  {tags.map((tag, index) => (
+                    <Badge key={index} variant="outline" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </>
+              )}
+            </div>
+            {(fileName || fileType) && (
+              <div className="text-xs text-muted-foreground mt-1">
+                {fileName && <span>{fileName}</span>}
+                {fileName && fileType && <span className="mx-1">•</span>}
+                {fileType && <span>{fileType}</span>}
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

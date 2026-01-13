@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
   const category = formData.get("category");
   const file = formData.get("file");
   const dealId = formData.get("dealId");
+  const tagsJson = formData.get("tags");
 
   if (!title || !description || !category || !file || !dealId) {
     return NextResponse.json(
@@ -30,11 +31,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Deal ID is required" }, { status: 400 });
   }
 
+  // Parse tags if provided
+  let tags: string[] = [];
+  if (tagsJson) {
+    try {
+      tags = JSON.parse(tagsJson as string);
+    } catch (e) {
+      // If parsing fails, treat as empty array
+      tags = [];
+    }
+  }
+
   const validatedData = dealDocumentFormSchema.safeParse({
     title,
     description,
     category,
     file,
+    tags,
   });
 
   if (!validatedData.success) {
@@ -60,14 +73,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Save CIM metadata to database
+  // Save document metadata to database
 
   try {
+    const fileObj = validatedData.data.file;
     const [dealDocument] = await db.insert(dealDocuments).values({
       title: validatedData.data.title,
       description: validatedData.data.description,
       category: validatedData.data.category,
       documentUrl: blobUrl,
+      fileName: fileObj.name,
+      fileType: fileObj.type,
+      tags: validatedData.data.tags || [],
       dealId: dealId as string,
     }).returning();
 

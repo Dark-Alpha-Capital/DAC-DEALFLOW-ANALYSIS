@@ -70,7 +70,7 @@ export default function AIReasoning({
           variant="destructive"
           onClick={() => deleteScreening({ screeningId, dealId })}
           disabled={isPending}
-          aria-label="Delete SIM"
+          aria-label="Delete AI Screening"
         >
           {isPending ? "Deleting..." : "Delete"}
         </Button>
