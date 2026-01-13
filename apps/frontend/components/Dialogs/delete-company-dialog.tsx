@@ -13,7 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 interface DeleteCompanyDialogProps {
   companyName: string;
@@ -29,9 +29,14 @@ const DeleteCompanyDialog: React.FC<DeleteCompanyDialogProps> = ({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" size="sm" disabled={isDeleting}>
-          <Trash2 className="mr-2 h-4 w-4" />
-          {isDeleting ? "Deleting..." : "Delete Company"}
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={isDeleting}
+          className="flex items-center gap-2"
+        >
+          <Trash2 className="h-4 w-4" />
+          {isDeleting ? <Loader2 className="h-4 w-4" /> : null}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

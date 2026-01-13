@@ -574,6 +574,105 @@ export async function getCompanyById(id: string) {
 }
 
 /**
+ * Get company due diligence data by id
+ * @param id - the id of the company
+ * @returns the company with due diligence data (sections, files, reviews, tasks)
+ */
+export async function getCompanyDueDiligenceData(id: string) {
+  try {
+    const [companyData] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, id))
+      .limit(1);
+
+    if (!companyData) return null;
+
+    const [
+      sectionsList,
+      filesList,
+      reviewsData,
+      tasksData,
+      counts,
+    ] = await Promise.all([
+      db
+        .select()
+        .from(dueDiligenceSections)
+        .where(eq(dueDiligenceSections.companyId, id))
+        .orderBy(desc(dueDiligenceSections.createdAt)),
+      db
+        .select()
+        .from(files)
+        .where(eq(files.companyId, id))
+        .orderBy(desc(files.createdAt)),
+      db
+        .select({
+          review: reviews,
+          reviewerName: users.name,
+        })
+        .from(reviews)
+        .leftJoin(users, eq(reviews.reviewerId, users.id))
+        .where(eq(reviews.companyId, id))
+        .orderBy(desc(reviews.createdAt)),
+      db
+        .select({
+          task: tasks,
+          assigneeName: users.name,
+        })
+        .from(tasks)
+        .leftJoin(users, eq(tasks.assignedToId, users.id))
+        .where(eq(tasks.companyId, id))
+        .orderBy(desc(tasks.createdAt)),
+      Promise.all([
+        db
+          .select({ count: count() })
+          .from(files)
+          .where(eq(files.companyId, id)),
+        db
+          .select({ count: count() })
+          .from(dueDiligenceSections)
+          .where(eq(dueDiligenceSections.companyId, id)),
+        db
+          .select({ count: count() })
+          .from(reviews)
+          .where(eq(reviews.companyId, id)),
+        db
+          .select({ count: count() })
+          .from(tasks)
+          .where(eq(tasks.companyId, id)),
+      ]),
+    ]);
+
+    const reviewsList = reviewsData.map((r) => ({
+      ...r.review,
+      reviewer: { name: r.reviewerName },
+    }));
+
+    const tasksList = tasksData.map((t) => ({
+      ...t.task,
+      assignedTo: { name: t.assigneeName },
+    }));
+
+    return {
+      ...companyData,
+      sections: sectionsList,
+      files: filesList,
+      reviews: reviewsList,
+      tasks: tasksList,
+      _count: {
+        files: counts[0][0]?.count ?? 0,
+        sections: counts[1][0]?.count ?? 0,
+        reviews: counts[2][0]?.count ?? 0,
+        tasks: counts[3][0]?.count ?? 0,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching company due diligence data", error);
+    return null;
+  }
+}
+
+/**
  * Minimal user list for Admin table
  * Selects only the fields required by the UI.
  */
@@ -611,31 +710,107 @@ interface GetCompaniesResult {
 
 export default async function GetCompanies({
   search,
+  sector,
+  headquarters,
+  minRevenue,
+  maxRevenue,
+  minEbitda,
+  maxEbitda,
+  minEmployees,
+  maxEmployees,
   offset = 0,
   limit = 20,
 }: {
   search?: string | undefined;
+  sector?: string | undefined;
+  headquarters?: string | undefined;
+  minRevenue?: string | undefined;
+  maxRevenue?: string | undefined;
+  minEbitda?: string | undefined;
+  maxEbitda?: string | undefined;
+  minEmployees?: string | undefined;
+  maxEmployees?: string | undefined;
   offset?: number;
   limit?: number;
 }): Promise<GetCompaniesResult> {
   try {
-    const conditions = search
-      ? or(
+    const conditions = [];
+
+    // Main search (name, sector, headquarters)
+    if (search) {
+      conditions.push(
+        or(
           ilike(companies.name, `%${search}%`),
           ilike(companies.sector, `%${search}%`),
           ilike(companies.headquarters, `%${search}%`)
         )
-      : undefined;
+      );
+    }
+
+    // Individual filters
+    if (sector) {
+      conditions.push(ilike(companies.sector, `%${sector}%`));
+    }
+    if (headquarters) {
+      conditions.push(ilike(companies.headquarters, `%${headquarters}%`));
+    }
+    if (minRevenue) {
+      const minRevValue = parseFloat(minRevenue);
+      if (!isNaN(minRevValue)) {
+        conditions.push(gte(companies.revenue, minRevValue.toString()));
+      }
+    }
+    if (maxRevenue) {
+      const maxRevValue = parseFloat(maxRevenue);
+      if (!isNaN(maxRevValue)) {
+        conditions.push(lte(companies.revenue, maxRevValue.toString()));
+      }
+    }
+    if (minEbitda) {
+      const minEbitdaValue = parseFloat(minEbitda);
+      if (!isNaN(minEbitdaValue)) {
+        conditions.push(gte(companies.ebitda, minEbitdaValue.toString()));
+      }
+    }
+    if (maxEbitda) {
+      const maxEbitdaValue = parseFloat(maxEbitda);
+      if (!isNaN(maxEbitdaValue)) {
+        conditions.push(lte(companies.ebitda, maxEbitdaValue.toString()));
+      }
+    }
+    if (minEmployees) {
+      const minEmpValue = parseInt(minEmployees, 10);
+      if (!isNaN(minEmpValue)) {
+        conditions.push(gte(companies.employees, minEmpValue));
+      }
+    }
+    if (maxEmployees) {
+      const maxEmpValue = parseInt(maxEmployees, 10);
+      if (!isNaN(maxEmpValue)) {
+        conditions.push(lte(companies.employees, maxEmpValue));
+      }
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const [companiesList, countResult] = await Promise.all([
-      db
-        .select()
-        .from(companies)
-        .where(conditions)
-        .orderBy(desc(companies.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.select({ count: count() }).from(companies).where(conditions),
+      whereClause
+        ? db
+            .select()
+            .from(companies)
+            .where(whereClause)
+            .orderBy(desc(companies.createdAt))
+            .limit(limit)
+            .offset(offset)
+        : db
+            .select()
+            .from(companies)
+            .orderBy(desc(companies.createdAt))
+            .limit(limit)
+            .offset(offset),
+      whereClause
+        ? db.select({ count: count() }).from(companies).where(whereClause)
+        : db.select({ count: count() }).from(companies),
     ]);
 
     const totalCount = countResult[0]?.count ?? 0;

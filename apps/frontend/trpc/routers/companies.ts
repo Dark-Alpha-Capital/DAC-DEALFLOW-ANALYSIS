@@ -78,4 +78,25 @@ export const companiesRouter = createTRPCRouter({
 
       return { success: true };
     }),
+
+  askDueDiligenceQuestion: protectedProcedure
+    .input(
+      z.object({
+        companyId: z.string(),
+        question: z.string().min(1, "Question is required"),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      // TODO: Implement the actual AI due diligence question processing
+      // This should:
+      // 1. Fetch company data and related documents/files
+      // 2. Process the question using AI (e.g., via worker API)
+      // 3. Return the answer
+
+      // Placeholder implementation - replace with actual logic
+      return {
+        answer: `This is a placeholder response for the question: "${input.question}". Implement the actual AI processing logic here.`,
+        sources: [],
+      };
+    }),
 });

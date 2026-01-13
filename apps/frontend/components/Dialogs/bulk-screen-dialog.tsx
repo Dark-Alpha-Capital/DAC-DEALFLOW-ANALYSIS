@@ -1,7 +1,7 @@
 "use client";
 
-import useSWR from "swr";
 import * as React from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Button } from "@/components/ui/button";
@@ -24,9 +24,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { toast } from "sonner";
-import axios from "axios";
-import { fetcher } from "@/lib/utils";
-import { DealScreenersGET } from "@/app/types";
+import { useTRPC } from "@/trpc/client";
 import useCurrentUser from "@/hooks/use-current-user";
 
 export function BulkScreenDialog({ selectedIds }: { selectedIds: string[] }) {
@@ -80,14 +78,39 @@ export function BulkScreenDialog({ selectedIds }: { selectedIds: string[] }) {
 }
 
 function BulkScreenComponent({ selectedIds }: { selectedIds: string[] }) {
-  const [isPending, startScreenTransition] = React.useTransition();
   const [selectedScreenerId, setSelectedScreenerId] = React.useState<
     string | null
   >(null);
   const user = useCurrentUser();
-  const { data, error, isLoading } = useSWR<DealScreenersGET>(
-    `/api/deal-screeners`,
-    fetcher,
+  const trpc = useTRPC();
+
+  const { data, error, isLoading } = useQuery(
+    trpc.screeners.getAll.queryOptions(),
+  );
+
+  const { mutate: bulkScreen, isPending } = useMutation(
+    trpc.screenings.bulkScreen.mutationOptions({
+      onSuccess: (responseData) => {
+        if (responseData.ok && responseData.jobs) {
+          const jobData = responseData.jobs.map((job) => ({
+            jobId: job.jobId,
+            dealId: job.dealId,
+            userId: user?.id || "",
+            userEmail: user?.email || "",
+          }));
+
+          // Dispatch custom event for real-time updates
+          window.dispatchEvent(new CustomEvent("newJobs", { detail: jobData }));
+          console.log(`📢 Dispatched ${jobData.length} new jobs`);
+        }
+
+        toast.success("Deals Added to Queue");
+      },
+      onError: (error) => {
+        console.error(error);
+        toast.error("Something went wrong");
+      },
+    }),
   );
 
   if (error)
@@ -105,51 +128,17 @@ function BulkScreenComponent({ selectedIds }: { selectedIds: string[] }) {
       </div>
     );
 
-  async function handleBulkScreen() {
-    startScreenTransition(async () => {
-      if (!selectedIds.length) return;
+  function handleBulkScreen() {
+    if (!selectedIds.length) return;
 
-      if (!selectedScreenerId) {
-        toast.error("Please select a screener");
-        return;
-      }
+    if (!selectedScreenerId) {
+      toast.error("Please select a screener");
+      return;
+    }
 
-      try {
-        const response = await axios.post(`/api/screen-all`, {
-          payload: {
-            dealIds: selectedIds,
-            screenerId: selectedScreenerId,
-          },
-        });
-
-        if (response.status !== 200) {
-          throw new Error("Something went wrong");
-        }
-
-        // Notify NotificationPopover about new jobs
-        const responseData = response.data as {
-          ok: boolean;
-          jobs?: Array<{ jobId: string; dealId: string }>;
-        };
-        if (responseData.ok && responseData.jobs) {
-          const jobData = responseData.jobs.map((job) => ({
-            jobId: job.jobId,
-            dealId: job.dealId,
-            userId: user?.id || "",
-            userEmail: user?.email || "",
-          }));
-
-          // Dispatch custom event for real-time updates
-          window.dispatchEvent(new CustomEvent("newJobs", { detail: jobData }));
-          console.log(`📢 Dispatched ${jobData.length} new jobs`);
-        }
-
-        toast.success("Deals Added to Queue");
-      } catch (error) {
-        console.log(error);
-
-        toast.error("Something went wrong");
-      }
+    bulkScreen({
+      dealIds: selectedIds,
+      screenerId: selectedScreenerId,
     });
   }
 

@@ -11,7 +11,7 @@ export const openai = createOpenAI({
 });
 
 export const COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME =
-  "fileSearchStores/companyduediligencedocument-ote1yx8yepjw";
+  "fileSearchStores/companyduediligencedocument-7b631nrhb99k";
 
 // The client gets the API key from the environment variable `GOOGLE_AI_API_KEY`.
 export const googleGenAI = new GoogleGenAI({

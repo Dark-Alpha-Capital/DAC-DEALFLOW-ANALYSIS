@@ -1,3 +1,5 @@
+import { COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME } from "../available-models";
+
 /**
  * Lists all Documents in a FileSearchStore.
  *
@@ -19,7 +21,7 @@ async function listFileSearchStoreDocuments(storeId: string, maxPages = 5) {
   const baseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
   // The resource name format: fileSearchStores/{filesearchstore}
-  const parentName = `fileSearchStores/${storeId}`;
+  const parentName = storeId;
 
   console.log(`Starting document listing for store: ${storeId}`);
 
@@ -99,17 +101,14 @@ async function listFileSearchStoreDocuments(storeId: string, maxPages = 5) {
 // --- EXAMPLE USAGE ---
 //fileSearchStores/companyduediligencedocument-ote1yx8yepjw
 
-const MY_FILE_STORE_ID = "companyduediligencedocument-ote1yx8yepjw";
-
 // IMPORTANT: Replace 'YOUR_ACCESS_TOKEN' inside the function with real logic.
 // In a server environment (Node.js), you'd typically use service account credentials.
 // In a client environment, you would use an OAuth flow.
 
-listFileSearchStoreDocuments(MY_FILE_STORE_ID)
+listFileSearchStoreDocuments(COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME)
   .then((documents) => {
     console.log("Successfully retrieved documents:", documents);
-    // You can process the documents list here
-    // e.log., documents.forEach(doc => console.log(doc.displayName));
+    documents.forEach((doc) => console.log(doc.displayName));
   })
   .catch((error) => {
     console.error("Failed to execute document listing process:", error);

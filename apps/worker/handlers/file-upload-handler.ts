@@ -111,17 +111,6 @@ const MIME_TYPE_MAP: Record<string, string> = {
 // ============================================================================
 
 /**
- * Sanitize a string for use in file paths
- */
-function sanitizeForPath(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9-_]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-/**
  * Get MIME type from file extension
  */
 function getMimeType(fileName: string): string {
@@ -154,7 +143,7 @@ function createNextcloudClient() {
  *
  * Steps:
  * 1. Validate - Validate file size, type, and metadata
- * 2. UploadNextcloud - Upload to Nextcloud at /due-diligence/{companyName}/{filename}
+ * 2. UploadNextcloud - Upload to Nextcloud at /Diligence/{companyId}/{filename}
  * 3. UploadGoogle - Upload to Google File Search Store with metadata
  * 4. SaveDb - Save file record to files table
  * 5. Done - Complete
@@ -249,10 +238,8 @@ export async function fileUploadHandler(
           throw new Error("Missing validateResult - job state corrupted");
         }
 
-        // Create path: /due-diligence/{companyName}/{timestamp}-{filename}
-        const sanitizedCompanyName = sanitizeForPath(companyMetadata.name);
-        const timestamp = Date.now();
-        const destPath = `due-diligence/${sanitizedCompanyName}/${timestamp}-${fileName}`;
+        // Create simple path: Diligence/{companyId}/{filename}
+        const destPath = `Diligence/${companyId}/${fileName}`;
 
         console.log(
           `[file-upload] ${jobId}: Uploading to Nextcloud at ${destPath}`
@@ -261,7 +248,7 @@ export async function fileUploadHandler(
         const client = createNextcloudClient();
 
         // Ensure the directory exists
-        const dirPath = `due-diligence/${sanitizedCompanyName}`;
+        const dirPath = `Diligence/${companyId}`;
         try {
           await client.createDirectory(dirPath, { recursive: true });
         } catch (err) {

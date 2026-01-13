@@ -32,6 +32,7 @@ import {
 } from "@/lib/zod-schemas/add-company-schema";
 import { Loader2 } from "lucide-react";
 import { useTRPC } from "@/trpc/client";
+import { formatNumberWithCommas } from "@/lib/utils";
 
 export default function CreateNewCompanyForm() {
   const router = useRouter();
@@ -184,13 +185,23 @@ export default function CreateNewCompanyForm() {
               <FormLabel>Number of Employees *</FormLabel>
               <FormControl>
                 <Input
-                  type="number"
+                  type="text"
                   placeholder="50"
-                  {...field}
-                  value={field.value ?? ""}
+                  value={
+                    field.value !== undefined
+                      ? formatNumberWithCommas(String(field.value))
+                      : ""
+                  }
                   onChange={(e) => {
-                    const val = e.target.value;
-                    field.onChange(val === "" ? undefined : val);
+                    const rawValue = e.target.value.replace(/,/g, "");
+                    // Only allow whole numbers (no decimals for employees)
+                    if (!/^\d*$/.test(rawValue)) return;
+                    if (rawValue === "") {
+                      field.onChange(undefined);
+                    } else {
+                      const num = parseInt(rawValue, 10);
+                      field.onChange(isNaN(num) ? undefined : num);
+                    }
                   }}
                 />
               </FormControl>
@@ -208,13 +219,23 @@ export default function CreateNewCompanyForm() {
               <FormLabel>Annual Revenue ($)</FormLabel>
               <FormControl>
                 <Input
-                  type="number"
-                  placeholder="1000000"
-                  {...field}
-                  value={field.value ?? ""}
+                  type="text"
+                  placeholder="1,000,000"
+                  value={
+                    field.value !== undefined
+                      ? formatNumberWithCommas(String(field.value))
+                      : ""
+                  }
                   onChange={(e) => {
-                    const val = e.target.value;
-                    field.onChange(val === "" ? undefined : val);
+                    const rawValue = e.target.value.replace(/,/g, "");
+                    // Only allow numbers (and optional decimal)
+                    if (!/^\d*\.?\d*$/.test(rawValue)) return;
+                    if (rawValue === "") {
+                      field.onChange(undefined);
+                    } else {
+                      const num = parseFloat(rawValue);
+                      field.onChange(isNaN(num) ? undefined : num);
+                    }
                   }}
                 />
               </FormControl>
@@ -231,13 +252,23 @@ export default function CreateNewCompanyForm() {
               <FormLabel>EBITDA ($)</FormLabel>
               <FormControl>
                 <Input
-                  type="number"
-                  placeholder="200000"
-                  {...field}
-                  value={field.value ?? ""}
+                  type="text"
+                  placeholder="200,000"
+                  value={
+                    field.value !== undefined
+                      ? formatNumberWithCommas(String(field.value))
+                      : ""
+                  }
                   onChange={(e) => {
-                    const val = e.target.value;
-                    field.onChange(val === "" ? undefined : val);
+                    const rawValue = e.target.value.replace(/,/g, "");
+                    // Only allow numbers (and optional decimal)
+                    if (!/^\d*\.?\d*$/.test(rawValue)) return;
+                    if (rawValue === "") {
+                      field.onChange(undefined);
+                    } else {
+                      const num = parseFloat(rawValue);
+                      field.onChange(isNaN(num) ? undefined : num);
+                    }
                   }}
                 />
               </FormControl>
@@ -255,12 +286,17 @@ export default function CreateNewCompanyForm() {
               <FormControl>
                 <Input
                   type="number"
+                  step="0.01"
                   placeholder="25"
-                  {...field}
                   value={field.value ?? ""}
                   onChange={(e) => {
                     const val = e.target.value;
-                    field.onChange(val === "" ? undefined : val);
+                    if (val === "") {
+                      field.onChange(undefined);
+                    } else {
+                      const num = parseFloat(val);
+                      field.onChange(isNaN(num) ? undefined : num);
+                    }
                   }}
                 />
               </FormControl>

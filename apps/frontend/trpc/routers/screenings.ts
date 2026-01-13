@@ -3,6 +3,9 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { aiScreenings, eq, DealType, Sentiment } from "db";
 import { DeleteReasoningById } from "db/mutations";
 import { revalidatePath } from "next/cache";
+import { screenDealQueue, type ScreenDealJobData } from "@/lib/queue-client";
+import { redisClient } from "@/lib/redis";
+import crypto from "crypto";
 
 const screenDealSchema = z.object({
   title: z.string(),
@@ -40,6 +43,11 @@ const saveEvaluationSchema = z.object({
   sentiment: z.enum(["POSITIVE", "NEUTRAL", "NEGATIVE"]).optional(),
   score: z.number().optional(),
   content: z.string().optional(),
+});
+
+const bulkScreenSchema = z.object({
+  dealIds: z.array(z.string()).min(1, "At least one deal ID is required"),
+  screenerId: z.string(),
 });
 
 export const screeningsRouter = createTRPCRouter({
@@ -144,5 +152,40 @@ export const screeningsRouter = createTRPCRouter({
       revalidatePath(`/inferred-deals/${input.dealId}`);
 
       return { evaluationId: savedEvaluation?.id, data: savedEvaluation };
+    }),
+
+  bulkScreen: protectedProcedure
+    .input(bulkScreenSchema)
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id as string;
+
+      // Create individual jobs for each deal ID
+      const jobPromises = input.dealIds.map(async (dealId: string) => {
+        const jobId = crypto.randomUUID();
+
+        // Add job to BullMQ queue
+        const jobData: ScreenDealJobData = {
+          jobId,
+          userId: userId,
+          dealId,
+          screenerId: input.screenerId,
+        };
+
+        const job = await screenDealQueue.add("screen", jobData, {
+          jobId, // Use our own jobId for easier tracking
+        });
+
+        console.log(`Added job ${job.id} for deal ${dealId}`);
+        return { jobId, dealId, bullmqJobId: job.id };
+      });
+
+      // Wait for all jobs to be added
+      const results = await Promise.all(jobPromises);
+      console.log(`Successfully added ${results.length} jobs to BullMQ queue`);
+
+      return {
+        ok: true,
+        jobs: results.map((r) => ({ jobId: r.jobId, dealId: r.dealId })),
+      };
     }),
 });

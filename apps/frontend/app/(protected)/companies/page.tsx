@@ -9,6 +9,32 @@ import CompaniesLoadingSkeleton from "./loading";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
 import { cacheLife, cacheTag } from "next/cache";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  SearchCompanies,
+  SearchSector,
+  SearchHeadquarters,
+  SearchMinRevenue,
+  SearchMaxRevenue,
+  SearchMinEbitda,
+  SearchMaxEbitda,
+  SearchMinEmployees,
+  SearchMaxEmployees,
+} from "@/components/company-filters";
+import DeleteCompanyFiltersButton from "@/components/Buttons/delete-company-filters-button";
+import SearchDealsSkeleton from "@/components/skeletons/SearchDealsSkeleton";
 
 export const metadata: Metadata = {
   title: "Companies - Due Diligence",
@@ -17,6 +43,14 @@ export const metadata: Metadata = {
 
 type SearchParams = Promise<{
   search?: string;
+  sector?: string;
+  headquarters?: string;
+  minRevenue?: string;
+  maxRevenue?: string;
+  minEbitda?: string;
+  maxEbitda?: string;
+  minEmployees?: string;
+  maxEmployees?: string;
   page?: string;
 }>;
 
@@ -38,6 +72,81 @@ const CompaniesPage = async (props: { searchParams: SearchParams }) => {
         </Button>
       </header>
 
+      <div className="mb-6">
+        <Card>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle>Filters</CardTitle>
+              <CardDescription>
+                Refine results by name, sector, location, and financial metrics.
+                Most filters update results as you type.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <DeleteCompanyFiltersButton />
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Accordion
+              type="multiple"
+              defaultValue={["search", "financials", "details"]}
+              className="w-full"
+            >
+              <AccordionItem value="search">
+                <AccordionTrigger>Search</AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchCompanies />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchSector />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchHeadquarters />
+                    </Suspense>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="financials">
+                <AccordionTrigger>Financials</AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchMinRevenue />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchMaxRevenue />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchMinEbitda />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchMaxEbitda />
+                    </Suspense>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="details">
+                <AccordionTrigger>Company Details</AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchMinEmployees />
+                    </Suspense>
+                    <Suspense fallback={<SearchDealsSkeleton />}>
+                      <SearchMaxEmployees />
+                    </Suspense>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
+      </div>
+
       <Suspense fallback={<CompaniesLoadingSkeleton />}>
         <ShowCompaniesComponent searchParams={props.searchParams} />
       </Suspense>
@@ -55,6 +164,14 @@ async function ShowCompaniesComponent(props: { searchParams: SearchParams }) {
 
   const searchParams = await props.searchParams;
   const search = searchParams?.search || "";
+  const sector = searchParams?.sector || "";
+  const headquarters = searchParams?.headquarters || "";
+  const minRevenue = searchParams?.minRevenue || "";
+  const maxRevenue = searchParams?.maxRevenue || "";
+  const minEbitda = searchParams?.minEbitda || "";
+  const maxEbitda = searchParams?.maxEbitda || "";
+  const minEmployees = searchParams?.minEmployees || "";
+  const maxEmployees = searchParams?.maxEmployees || "";
   const currentPage = Number(searchParams?.page) || 1;
   const limit = 12;
   const offset = (currentPage - 1) * limit;
@@ -63,6 +180,14 @@ async function ShowCompaniesComponent(props: { searchParams: SearchParams }) {
     <div>
       <FetchAndDisplayCompanies
         search={search}
+        sector={sector}
+        headquarters={headquarters}
+        minRevenue={minRevenue}
+        maxRevenue={maxRevenue}
+        minEbitda={minEbitda}
+        maxEbitda={maxEbitda}
+        minEmployees={minEmployees}
+        maxEmployees={maxEmployees}
         offset={offset}
         limit={limit}
         currentPage={currentPage}
@@ -73,11 +198,27 @@ async function ShowCompaniesComponent(props: { searchParams: SearchParams }) {
 
 async function FetchAndDisplayCompanies({
   search,
+  sector,
+  headquarters,
+  minRevenue,
+  maxRevenue,
+  minEbitda,
+  maxEbitda,
+  minEmployees,
+  maxEmployees,
   offset,
   limit,
   currentPage,
 }: {
   search: string;
+  sector: string;
+  headquarters: string;
+  minRevenue: string;
+  maxRevenue: string;
+  minEbitda: string;
+  maxEbitda: string;
+  minEmployees: string;
+  maxEmployees: string;
   offset: number;
   limit: number;
   currentPage: number;
@@ -88,7 +229,15 @@ async function FetchAndDisplayCompanies({
   cacheLife("hours");
 
   const { companies, totalCount, totalPages } = await GetCompanies({
-    search,
+    search: search || undefined,
+    sector: sector || undefined,
+    headquarters: headquarters || undefined,
+    minRevenue: minRevenue || undefined,
+    maxRevenue: maxRevenue || undefined,
+    minEbitda: minEbitda || undefined,
+    maxEbitda: maxEbitda || undefined,
+    minEmployees: minEmployees || undefined,
+    maxEmployees: maxEmployees || undefined,
     offset,
     limit,
   });
