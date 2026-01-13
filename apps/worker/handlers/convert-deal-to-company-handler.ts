@@ -3,11 +3,17 @@ import { createClient } from "webdav";
 import { db } from "db";
 import { deals, companies, documents, pocs } from "db/schema";
 import { eq, and } from "drizzle-orm";
+import {
+  COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME,
+  googleGenAI,
+} from "../lib/ai/available-models";
+import { deleteCompanyDueDiligenceDocument } from "../lib/ai/tools/delete-file";
 
 export enum ConvertDealToCompanyStep {
   CreateCompany = "create-company",
   UpdateDocuments = "update-documents",
   MoveFiles = "move-files",
+  ReindexGoogleFiles = "reindex-google-files",
   MigratePOCs = "migrate-pocs",
   DeleteDeal = "delete-deal",
   Done = "done",
@@ -29,6 +35,7 @@ export interface ConvertDealToCompanyJobData {
   documentsUpdated?: number;
   pocsMigrated?: number;
   filesMoved?: number;
+  filesReindexed?: number;
 }
 
 export interface ConvertDealToCompanyResult {
@@ -39,6 +46,7 @@ export interface ConvertDealToCompanyResult {
     documentsUpdated: number;
     pocsMigrated: number;
     filesMoved: number;
+    filesReindexed: number;
   };
 }
 
@@ -84,9 +92,10 @@ function createNextcloudClient() {
  * 1. CreateCompany - Create company record from deal data
  * 2. UpdateDocuments - Update document entityType and entityId
  * 3. MoveFiles - Move files in Nextcloud and update fileUrl
- * 4. MigratePOCs - Update POCs from deal to company
- * 5. DeleteDeal - Delete original deal record
- * 6. Done - Complete
+ * 4. ReindexGoogleFiles - Re-index documents in Google File Search Store with company metadata
+ * 5. MigratePOCs - Update POCs from deal to company
+ * 6. DeleteDeal - Delete original deal record
+ * 7. Done - Complete
  */
 export async function convertDealToCompanyHandler(
   job: Job<ConvertDealToCompanyJobData>
@@ -185,7 +194,10 @@ export async function convertDealToCompanyHandler(
           .select()
           .from(documents)
           .where(
-            and(eq(documents.entityType, "DEAL"), eq(documents.entityId, dealId))
+            and(
+              eq(documents.entityType, "DEAL"),
+              eq(documents.entityId, dealId)
+            )
           );
 
         console.log(
@@ -193,34 +205,57 @@ export async function convertDealToCompanyHandler(
         );
 
         let documentsUpdated = 0;
-        for (const document of dealDocuments) {
-          await db
-            .update(documents)
-            .set({
-              entityType: "COMPANY",
-              entityId: companyId,
-              updatedAt: new Date(),
-            })
-            .where(eq(documents.id, document.id));
 
-          documentsUpdated++;
+        // Check if documents exist before proceeding
+        if (dealDocuments.length === 0) {
+          console.log(
+            `[convert-deal] ${jobId}: No documents found for deal, skipping file migration step`
+          );
+
           await job.updateProgress({
-            step: `Updating documents... (${documentsUpdated}/${dealDocuments.length})`,
-            percentage: 20 + (documentsUpdated / dealDocuments.length) * 10,
+            step: "No documents to update, skipping file migration...",
+            percentage: 30,
           });
+
+          // Skip step 3 (MoveFiles) since there are no documents to move
+          await job.updateData({
+            ...job.data,
+            step: ConvertDealToCompanyStep.MigratePOCs,
+            documentsUpdated: 0,
+            filesMoved: 0,
+          });
+          step = ConvertDealToCompanyStep.MigratePOCs;
+        } else {
+          // Update documents if they exist
+          for (const document of dealDocuments) {
+            await db
+              .update(documents)
+              .set({
+                entityType: "COMPANY",
+                entityId: companyId,
+                updatedAt: new Date(),
+              })
+              .where(eq(documents.id, document.id));
+
+            documentsUpdated++;
+            await job.updateProgress({
+              step: `Updating documents... (${documentsUpdated}/${dealDocuments.length})`,
+              percentage: 20 + (documentsUpdated / dealDocuments.length) * 10,
+            });
+          }
+
+          console.log(
+            `[convert-deal] ${jobId}: Updated ${documentsUpdated} documents`
+          );
+
+          // Save progress and move to next step (MoveFiles)
+          await job.updateData({
+            ...job.data,
+            step: ConvertDealToCompanyStep.MoveFiles,
+            documentsUpdated,
+          });
+          step = ConvertDealToCompanyStep.MoveFiles;
         }
-
-        console.log(
-          `[convert-deal] ${jobId}: Updated ${documentsUpdated} documents`
-        );
-
-        // Save progress and move to next step
-        await job.updateData({
-          ...job.data,
-          step: ConvertDealToCompanyStep.MoveFiles,
-          documentsUpdated,
-        });
-        step = ConvertDealToCompanyStep.MoveFiles;
         break;
       }
 
@@ -372,15 +407,260 @@ export async function convertDealToCompanyHandler(
         // Save progress and move to next step
         await job.updateData({
           ...job.data,
-          step: ConvertDealToCompanyStep.MigratePOCs,
+          step: ConvertDealToCompanyStep.ReindexGoogleFiles,
           filesMoved,
         });
-        step = ConvertDealToCompanyStep.MigratePOCs;
+        step = ConvertDealToCompanyStep.ReindexGoogleFiles;
         break;
       }
 
       // ========================================
-      // Step 4: Migrate POCs
+      // Step 4: Re-index Documents in Google File Search Store
+      // ========================================
+      case ConvertDealToCompanyStep.ReindexGoogleFiles: {
+        const companyResult = job.data.companyResult;
+        if (!companyResult) {
+          throw new Error("Missing companyResult - job state corrupted");
+        }
+
+        const companyId = companyResult.companyId;
+
+        // Get company data for metadata
+        const [company] = await db
+          .select()
+          .from(companies)
+          .where(eq(companies.id, companyId))
+          .limit(1);
+
+        if (!company) {
+          throw new Error(`Company ${companyId} not found`);
+        }
+
+        // Get all documents that have vectorStoreDocumentName (were indexed in Google)
+        const companyDocuments = await db
+          .select()
+          .from(documents)
+          .where(
+            and(
+              eq(documents.entityType, "COMPANY"),
+              eq(documents.entityId, companyId)
+              // Only re-index documents that were previously indexed
+              // vectorStoreDocumentName is not null
+            )
+          );
+
+        // Filter to only documents with vectorStoreDocumentName
+        const documentsToReindex = companyDocuments.filter(
+          (doc) => doc.vectorStoreDocumentName
+        );
+
+        console.log(
+          `[convert-deal] ${jobId}: Found ${documentsToReindex.length} documents to re-index in Google File Search Store`
+        );
+
+        let filesReindexed = 0;
+
+        if (documentsToReindex.length === 0) {
+          console.log(
+            `[convert-deal] ${jobId}: No documents to re-index, skipping`
+          );
+
+          await job.updateProgress({
+            step: "No documents to re-index, skipping...",
+            percentage: 65,
+          });
+
+          // Skip to next step
+          await job.updateData({
+            ...job.data,
+            step: ConvertDealToCompanyStep.MigratePOCs,
+            filesReindexed: 0,
+          });
+          step = ConvertDealToCompanyStep.MigratePOCs;
+        } else {
+          // Prepare company metadata for Google File Search Store
+          const companyMetadata = {
+            name: company.name,
+            sector: company.sector,
+            stage: company.stage,
+            headquarters: company.headquarters,
+            revenue: company.revenue ? parseFloat(company.revenue) : null,
+            ebitda: company.ebitda ? parseFloat(company.ebitda) : null,
+          };
+
+          const client = createNextcloudClient();
+
+          // Re-index each document
+          for (const document of documentsToReindex) {
+            try {
+              await job.updateProgress({
+                step: `Re-indexing documents... (${filesReindexed + 1}/${documentsToReindex.length})`,
+                percentage:
+                  60 + ((filesReindexed + 1) / documentsToReindex.length) * 10,
+              });
+
+              // Extract file path from URL
+              const filePath = extractFilePathFromUrl(document.fileUrl);
+
+              console.log(
+                `[convert-deal] ${jobId}: Re-indexing document ${document.id} (${document.fileName})`
+              );
+
+              // Step 1: Delete old document from Google File Search Store
+              if (document.vectorStoreDocumentName) {
+                const deleted = await deleteCompanyDueDiligenceDocument(
+                  document.vectorStoreDocumentName
+                );
+                if (deleted) {
+                  console.log(
+                    `[convert-deal] ${jobId}: Deleted old document from Google File Search Store: ${document.vectorStoreDocumentName}`
+                  );
+                } else {
+                  console.warn(
+                    `[convert-deal] ${jobId}: Failed to delete old document, but continuing with re-upload`
+                  );
+                }
+              }
+
+              // Step 2: Re-upload with new company metadata
+              if (COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME && googleGenAI) {
+                try {
+                  // Read file from Nextcloud
+                  const fileBuffer = (await client.getFileContents(filePath, {
+                    format: "binary",
+                  })) as Buffer;
+
+                  const fileBlob = new Blob([fileBuffer], {
+                    type: document.mimeType || "application/octet-stream",
+                  });
+
+                  // Create custom metadata for company
+                  const customMetadata = [
+                    { key: "entityType", stringValue: "COMPANY" },
+                    { key: "entityId", stringValue: companyId },
+                    {
+                      key: "companyName",
+                      stringValue: companyMetadata.name,
+                    },
+                    {
+                      key: "sector",
+                      stringValue: companyMetadata.sector ?? "",
+                    },
+                    {
+                      key: "stage",
+                      stringValue: companyMetadata.stage ?? "",
+                    },
+                    {
+                      key: "headquarters",
+                      stringValue: companyMetadata.headquarters ?? "",
+                    },
+                    {
+                      key: "revenue",
+                      numericValue: companyMetadata.revenue ?? 0,
+                    },
+                    {
+                      key: "ebitda",
+                      numericValue: companyMetadata.ebitda ?? 0,
+                    },
+                    {
+                      key: "uploadedAt",
+                      stringValue: new Date().toISOString(),
+                    },
+                    { key: "fileName", stringValue: document.fileName },
+                  ];
+
+                  // Upload to Google File Search Store
+                  let operation =
+                    await googleGenAI.fileSearchStores.uploadToFileSearchStore({
+                      file: fileBlob,
+                      fileSearchStoreName:
+                        COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME,
+                      config: {
+                        displayName: document.fileName,
+                        customMetadata,
+                      },
+                    });
+
+                  // Wait for indexing to complete
+                  let waitCount = 0;
+                  while (!operation.done) {
+                    waitCount++;
+                    await new Promise((resolve) => setTimeout(resolve, 5000));
+                    operation = await googleGenAI.operations.get({ operation });
+                    if (waitCount % 3 === 0) {
+                      console.log(
+                        `[convert-deal] ${jobId}: Still waiting for indexing... (${waitCount * 5}s elapsed)`
+                      );
+                    }
+                  }
+
+                  // Extract new document name
+                  const newDocumentName =
+                    (operation.response as any)?.documentName ||
+                    (operation.response as any)?.document?.name ||
+                    null;
+
+                  if (newDocumentName) {
+                    // Update database with new document name
+                    await db
+                      .update(documents)
+                      .set({
+                        vectorStoreDocumentName: newDocumentName,
+                        updatedAt: new Date(),
+                      })
+                      .where(eq(documents.id, document.id));
+
+                    console.log(
+                      `[convert-deal] ${jobId}: Re-indexed document ${document.id} - New document name: ${newDocumentName}`
+                    );
+                    filesReindexed++;
+                  } else {
+                    console.warn(
+                      `[convert-deal] ${jobId}: Re-upload completed but no document name returned for ${document.id}`
+                    );
+                    // Still count as reindexed since we deleted old and uploaded new
+                    filesReindexed++;
+                  }
+                } catch (error) {
+                  console.error(
+                    `[convert-deal] ${jobId}: Error re-indexing document ${document.id}:`,
+                    error
+                  );
+                  // Continue with other documents - don't fail the whole job
+                  // The old document was deleted, but new one failed to upload
+                  // This is logged but doesn't stop the conversion
+                }
+              } else {
+                console.warn(
+                  `[convert-deal] ${jobId}: Google File Search Store not configured, skipping re-index for ${document.id}`
+                );
+              }
+            } catch (error: any) {
+              console.error(
+                `[convert-deal] ${jobId}: Error processing document ${document.id} for re-indexing:`,
+                error
+              );
+              // Continue with other documents
+            }
+          }
+
+          console.log(
+            `[convert-deal] ${jobId}: Re-indexed ${filesReindexed} documents in Google File Search Store`
+          );
+
+          // Save progress and move to next step
+          await job.updateData({
+            ...job.data,
+            step: ConvertDealToCompanyStep.MigratePOCs,
+            filesReindexed,
+          });
+          step = ConvertDealToCompanyStep.MigratePOCs;
+        }
+        break;
+      }
+
+      // ========================================
+      // Step 5: Migrate POCs
       // ========================================
       case ConvertDealToCompanyStep.MigratePOCs: {
         const companyResult = job.data.companyResult;
@@ -396,26 +676,33 @@ export async function convertDealToCompanyHandler(
           .from(pocs)
           .where(eq(pocs.dealId, dealId));
 
-        console.log(`[convert-deal] ${jobId}: Found ${dealPocs.length} POCs to migrate`);
+        console.log(
+          `[convert-deal] ${jobId}: Found ${dealPocs.length} POCs to migrate`
+        );
 
         let pocsMigrated = 0;
-        for (const poc of dealPocs) {
-          await db
-            .update(pocs)
-            .set({
-              dealId: null,
-              companyId: companyId,
-            })
-            .where(eq(pocs.id, poc.id));
+        // Only migrate POCs if they exist
+        if (dealPocs.length > 0) {
+          for (const poc of dealPocs) {
+            await db
+              .update(pocs)
+              .set({
+                dealId: null,
+                companyId: companyId,
+              })
+              .where(eq(pocs.id, poc.id));
 
-          pocsMigrated++;
-          await job.updateProgress({
-            step: `Migrating POCs... (${pocsMigrated}/${dealPocs.length})`,
-            percentage: 70 + (pocsMigrated / dealPocs.length) * 10,
-          });
+            pocsMigrated++;
+            await job.updateProgress({
+              step: `Migrating POCs... (${pocsMigrated}/${dealPocs.length})`,
+              percentage: 80 + (pocsMigrated / dealPocs.length) * 5,
+            });
+          }
+
+          console.log(`[convert-deal] ${jobId}: Migrated ${pocsMigrated} POCs`);
+        } else {
+          console.log(`[convert-deal] ${jobId}: No POCs to migrate, skipping`);
         }
-
-        console.log(`[convert-deal] ${jobId}: Migrated ${pocsMigrated} POCs`);
 
         // Save progress and move to next step
         await job.updateData({
@@ -428,12 +715,12 @@ export async function convertDealToCompanyHandler(
       }
 
       // ========================================
-      // Step 5: Delete Deal
+      // Step 6: Delete Deal
       // ========================================
       case ConvertDealToCompanyStep.DeleteDeal: {
         await job.updateProgress({
           step: "Cleaning up...",
-          percentage: 90,
+          percentage: 95,
         });
 
         // Delete the deal record (this will cascade delete related records via foreign keys)
@@ -467,6 +754,7 @@ export async function convertDealToCompanyHandler(
             documentsUpdated: job.data.documentsUpdated || 0,
             pocsMigrated: job.data.pocsMigrated || 0,
             filesMoved: job.data.filesMoved || 0,
+            filesReindexed: job.data.filesReindexed || 0,
           },
         };
       }
@@ -481,6 +769,5 @@ export async function convertDealToCompanyHandler(
   return {
     success: true,
     companyId: companyResult?.companyId,
-    message: "Job already completed",
   };
 }

@@ -130,12 +130,6 @@ const ConvertDealToCompanyDialog: React.FC<ConvertDealToCompanyDialogProps> = ({
             </AlertDialogTitle>
           </div>
           <AlertDialogDescription className="space-y-4 pt-2 text-base">
-            <p>
-              You are about to convert <strong>{dealName}</strong> from a raw
-              deal to a company. This is a <strong>major action</strong> that
-              cannot be undone.
-            </p>
-
             <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
               <p className="font-semibold text-amber-900 dark:text-amber-100">
                 What will happen:

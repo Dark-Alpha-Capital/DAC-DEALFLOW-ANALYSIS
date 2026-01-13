@@ -17,8 +17,15 @@ import { uploadFileToNextCloud } from "@/lib/storage";
 import {
   createConvertDealToCompanyJob,
   type ConvertDealToCompanyJobData,
+  fileUploadQueue,
+  type FileUploadJobData,
+  type EntityMetadata,
 } from "@/lib/queue-client";
 import crypto from "crypto";
+import { randomUUID } from "crypto";
+import { GetDealById } from "db/queries";
+import { createClient } from "webdav";
+import { TRPCError } from "@trpc/server";
 
 const createDealSchema = z.object({
   first_name: z.string().optional(),
@@ -219,46 +226,161 @@ export const dealsRouter = createTRPCRouter({
   uploadDocument: protectedProcedure
     .input(uploadDealDocumentSchema)
     .mutation(async ({ input, ctx }) => {
+      const userId = ctx.session.user.id;
+
+      // Validate userId exists
+      if (!userId || userId.trim() === "") {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "User ID is required but not found in session",
+        });
+      }
+
+      // Validate required fields
+      if (!input.dealId || input.dealId.trim() === "") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "dealId is required",
+        });
+      }
+
+      // Fetch deal details for entity metadata
+      const deal = await GetDealById(input.dealId);
+      if (!deal) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Deal not found",
+        });
+      }
+
+      // Extract entity metadata for job data
+      const entityMetadata: EntityMetadata = {
+        name: deal.dealCaption || deal.title || "Unknown Deal",
+        sector: deal.industry || null,
+        stage: null, // Deals don't have stage
+        headquarters: deal.companyLocation || null,
+        revenue: deal.revenue ? parseFloat(String(deal.revenue)) : null,
+        ebitda: deal.ebitda ? parseFloat(String(deal.ebitda)) : null,
+      };
+
+      // Create Nextcloud client for file uploads
+      const nextcloudClient = createClient(
+        `${process.env.NEXTCLOUD_URL}/remote.php/dav/files/${process.env.NEXTCLOUD_USER}`,
+        {
+          username: process.env.NEXTCLOUD_USER,
+          password: process.env.NEXTCLOUD_PASSWORD,
+        },
+      );
+
+      // Ensure final directory exists
+      const finalDir = `dealflow/raw-deals/${input.dealId}`;
+      try {
+        await nextcloudClient.createDirectory(finalDir, { recursive: true });
+      } catch (err) {
+        // Directory might already exist, which is fine
+        console.log("[deal-upload] Final directory may already exist");
+      }
+
+      // Generate a unique jobId for this job
+      const jobId = randomUUID();
+
       // Convert base64 to buffer
       const base64Data = input.fileData.split(",")[1] || input.fileData;
       const buffer = Buffer.from(base64Data, "base64");
 
-      // Create a File object for Nextcloud upload
-      const file = new File([buffer], input.fileName, { type: input.fileType });
+      // Upload file directly to final Nextcloud location
+      const finalPath = `${finalDir}/${input.fileName}`;
 
-      // Upload to Nextcloud with folder path: dealflow/raw-deals/[uid]
-      const folderPath = `dealflow/raw-deals/${input.dealId}`;
-      const downloadUrl = await uploadFileToNextCloud(file, folderPath);
+      try {
+        await nextcloudClient.putFileContents(finalPath, buffer);
 
-      if (!downloadUrl) {
-        throw new Error("Failed to upload file to Nextcloud");
+        console.log(`[deal-upload] File uploaded to final location`, {
+          jobId,
+          finalPath,
+          size: buffer.length,
+        });
+      } catch (uploadError) {
+        console.error(
+          `[deal-upload] Failed to upload file for ${jobId}:`,
+          uploadError,
+        );
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to upload file to storage: ${uploadError instanceof Error ? uploadError.message : "Unknown error"}`,
+        });
       }
+
+      const mimeType = input.fileType || "application/octet-stream";
 
       // Map DealDocumentCategory to DocumentCategory (they share most values)
       const category = (input.category as DocumentCategory) || "OTHER";
 
-      // Save document metadata to unified documents table
-      const [document] = await db
-        .insert(documents)
-        .values({
-          entityType: "DEAL",
-          entityId: input.dealId,
-          title: input.title,
-          description: input.description,
-          category: category,
-          fileUrl: downloadUrl,
-          fileName: input.fileName,
-          mimeType: input.fileType,
-          tags: input.tags || [],
-          uploadedById: ctx.session.user.id,
-          version: "1.0",
-          isLatest: true,
-        })
-        .returning();
+      // Create job data - store final file path
+      const jobData: FileUploadJobData = {
+        jobId,
+        fileName: input.fileName,
+        filePath: finalPath, // Path to final file in Nextcloud
+        fileSize: buffer.length,
+        mimeType,
+        userId,
+        entityType: "DEAL",
+        entityId: input.dealId,
+        entityMetadata,
+        embedInVectorStore: true, // Enable Google File Search Store for deals
+        fileCategory: category,
+        fileDescription: input.description,
+      };
 
+      // Validate required fields
+      if (!jobData.userId || jobData.userId.trim() === "") {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `userId is required but was not provided for job ${jobId}`,
+        });
+      }
+
+      if (!jobData.entityId || jobData.entityId.trim() === "") {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `entityId is required but was not provided for job ${jobId}`,
+        });
+      }
+
+      if (!jobData.entityMetadata) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `entityMetadata is required but was not provided for job ${jobId}`,
+        });
+      }
+
+      // Log job data before queueing
+      console.log(`[deal-upload] Queueing job with data:`, {
+        jobId: jobData.jobId,
+        fileName: jobData.fileName,
+        userId: jobData.userId,
+        entityType: jobData.entityType,
+        entityId: jobData.entityId,
+        entityMetadata: jobData.entityMetadata,
+      });
+
+      // Add job to queue - pass data directly
+      const job = await fileUploadQueue.add("upload", jobData, {
+        jobId, // Use our own jobId for easier tracking
+      });
+
+      console.log(`[deal-upload] Job ${job.id} added to queue successfully`, {
+        fileName: input.fileName,
+      });
+
+      updateTag(`deal-${input.dealId}`);
       revalidatePath(`/raw-deals/${input.dealId}`);
 
-      return { success: true, document };
+      return {
+        success: true,
+        message: "File upload queued",
+        jobId: job.id,
+        fileName: input.fileName,
+      };
     }),
 
   convertToCompany: protectedProcedure

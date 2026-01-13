@@ -40,7 +40,7 @@ export interface EntityMetadata {
 export interface FileUploadJobData {
   jobId: string;
   fileName: string;
-  tempFilePath: string; // Path to temporary file in Nextcloud (much smaller than base64)
+  filePath: string; // Path to final file in Nextcloud (uploaded directly, no temp step)
   fileSize: number; // File size in bytes
   mimeType: string; // MIME type of the file
   userId: string; // Required - user who uploaded the file
@@ -141,6 +141,50 @@ function createNextcloudClient() {
   );
 }
 
+/**
+ * Revalidate Next.js cache tags by calling the frontend API
+ * This ensures the company page cache is updated after file uploads complete
+ */
+async function revalidateCacheTags(tags: string[]): Promise<void> {
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const revalidateUrl = `${frontendUrl}/api/revalidate`;
+
+  try {
+    const response = await fetch(revalidateUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ tags }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.warn(
+        `[file-upload] Cache revalidation failed: ${response.status} ${response.statusText}`,
+        errorData
+      );
+      return; // Don't throw - cache revalidation failure shouldn't fail the job
+    }
+
+    const result = (await response.json()) as { message?: string };
+    if (result && typeof result === "object" && "message" in result) {
+      console.log(
+        `[file-upload] Cache revalidation successful:`,
+        result.message || "Tags revalidated"
+      );
+    } else {
+      console.log(`[file-upload] Cache revalidation successful`);
+    }
+  } catch (error) {
+    // Log but don't throw - cache revalidation is best effort
+    console.warn(
+      `[file-upload] Failed to revalidate cache tags:`,
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+}
+
 // ============================================================================
 // Handler
 // ============================================================================
@@ -153,7 +197,7 @@ function createNextcloudClient() {
  *
  * Steps:
  * 1. Validate - Validate file size, type, and metadata
- * 2. UploadNextcloud - Upload to Nextcloud at /Diligence/{companyId}/{filename}
+ * 2. UploadNextcloud - Verify file exists at final location (uploaded by tRPC handler)
  * 3. UploadGoogle - Upload to Google File Search Store with metadata
  * 4. SaveDb - Save file record to files table
  * 5. Done - Complete
@@ -170,7 +214,7 @@ export async function fileUploadHandler(
   const jobData = job.data || {};
   const {
     fileName,
-    tempFilePath,
+    filePath,
     fileSize,
     mimeType,
     jobId,
@@ -253,11 +297,11 @@ export async function fileUploadHandler(
       }
 
       // ========================================
-      // Step 2: Upload to Nextcloud
+      // Step 2: Verify Nextcloud Upload
       // ========================================
       case FileUploadStep.UploadNextcloud: {
         await job.updateProgress({
-          step: "Uploading to Nextcloud",
+          step: "Verifying Nextcloud upload",
           percentage: 40,
         });
 
@@ -266,52 +310,35 @@ export async function fileUploadHandler(
           throw new Error("Missing validateResult - job state corrupted");
         }
 
-        // Create path based on entity type
-        const destPath =
-          entityType === "COMPANY"
-            ? `Diligence/${entityId}/${fileName}`
-            : `dealflow/raw-deals/${entityId}/${fileName}`;
+        // File is already uploaded to final location by tRPC handler
+        // Just verify it exists and get the public URL
+        if (!filePath) {
+          throw new Error("Missing filePath - job state corrupted");
+        }
 
-        console.log(
-          `[file-upload] ${jobId}: Uploading to Nextcloud at ${destPath}`
-        );
+        console.log(`[file-upload] ${jobId}: Verifying file at ${filePath}`);
 
         const client = createNextcloudClient();
 
-        // Ensure the directory exists
-        const dirPath =
-          entityType === "COMPANY"
-            ? `Diligence/${entityId}`
-            : `dealflow/raw-deals/${entityId}`;
+        // Verify file exists (will throw if it doesn't)
         try {
-          await client.createDirectory(dirPath, { recursive: true });
+          await client.stat(filePath);
         } catch (err) {
-          // Directory might already exist, which is fine
-          console.log(
-            `[file-upload] ${jobId}: Directory ${dirPath} may already exist`
+          throw new Error(
+            `File not found at ${filePath} - upload may have failed`
           );
         }
 
-        // Read file from temp location and upload to final destination
-        if (!tempFilePath) {
-          throw new Error("Missing tempFilePath - job state corrupted");
-        }
+        const publicUrl = `${process.env.NEXTCLOUD_URL}/remote.php/dav/files/${process.env.NEXTCLOUD_USER}/${filePath}`;
 
-        const fileBuffer = await client.getFileContents(tempFilePath, {
-          format: "binary",
-        });
-        await client.putFileContents(destPath, fileBuffer as Buffer);
-
-        const publicUrl = `${process.env.NEXTCLOUD_URL}/remote.php/dav/files/${process.env.NEXTCLOUD_USER}/${destPath}`;
-
-        console.log(`[file-upload] ${jobId}: Nextcloud upload complete`);
+        console.log(`[file-upload] ${jobId}: File verified at ${filePath}`);
 
         // Save progress and move to next step
         await job.updateData({
           ...job.data,
           step: FileUploadStep.UploadGoogle,
           nextcloudResult: {
-            destPath,
+            destPath: filePath,
             publicUrl,
           },
         });
@@ -558,30 +585,20 @@ export async function fileUploadHandler(
           `[file-upload] ${jobId}: Document record saved with ID: ${documentRecord.id}`
         );
 
-        // Clean up temporary file (if it still exists)
-        // Note: The temp file may have already been deleted or moved, so 404 is acceptable
-        if (tempFilePath) {
-          try {
-            const client = createNextcloudClient();
-            await client.deleteFile(tempFilePath);
-            console.log(
-              `[file-upload] ${jobId}: Deleted temp file: ${tempFilePath}`
-            );
-          } catch (cleanupError: any) {
-            // 404 is acceptable - file may have already been deleted or moved
-            if (cleanupError?.response?.status === 404) {
-              console.log(
-                `[file-upload] ${jobId}: Temp file already deleted or not found: ${tempFilePath}`
-              );
-            } else {
-              // Log other errors but don't fail - temp file cleanup is best effort
-              console.warn(
-                `[file-upload] ${jobId}: Failed to delete temp file ${tempFilePath}:`,
-                cleanupError
-              );
-            }
-          }
+        // Revalidate cache tags for the entity page
+        // This ensures the page shows updated file count and new files immediately
+        const cacheTags: string[] = [];
+        if (entityType === "COMPANY") {
+          cacheTags.push(`company-${entityId}`, "companies");
+        } else if (entityType === "DEAL") {
+          cacheTags.push(`deal-${entityId}`, "deals");
         }
+
+        if (cacheTags.length > 0) {
+          await revalidateCacheTags(cacheTags);
+        }
+
+        // No cleanup needed - file is already in final location
 
         // Mark as done
         await job.updateData({ ...job.data, step: FileUploadStep.Done });

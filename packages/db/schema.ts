@@ -565,7 +565,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   deals: many(deals),
   files: many(files), // Deprecated - use documents instead
-  documents: many(documents),
+  // documents: many(documents), // Removed - polymorphic relation, handled manually in queries
   reviews: many(reviews),
   assignedTasks: many(tasks, { relationName: "TaskAssignee" }),
   createdTasks: many(tasks, { relationName: "TaskCreator" }),
@@ -593,7 +593,7 @@ export const dealsRelations = relations(deals, ({ one, many }) => ({
   }),
   aiScreenings: many(aiScreenings),
   dealDocuments: many(dealDocuments), // Deprecated - use documents instead
-  documents: many(documents),
+  // documents: many(documents), // Removed - polymorphic relation, handled manually in queries
   employees: many(employees),
   pocs: many(pocs),
 }));
@@ -648,7 +648,7 @@ export const employeesRelations = relations(employees, ({ one }) => ({
 export const companiesRelations = relations(companies, ({ many }) => ({
   founders: many(founders),
   files: many(files), // Deprecated - use documents instead
-  documents: many(documents),
+  // documents: many(documents), // Removed - polymorphic relation, handled manually in queries
   pocs: many(pocs), // Added to support company POCs
   sections: many(dueDiligenceSections),
   reviews: many(reviews),

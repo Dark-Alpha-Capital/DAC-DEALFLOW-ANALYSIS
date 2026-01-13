@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useCallback, useRef, useTransition } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,11 +12,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FilesIcon, Upload, X } from "lucide-react";
+import { FilesIcon, Loader2, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getFileIcon, formatFileSize } from "@/lib/utils";
 import { FileIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+import useCurrentUser from "@/hooks/use-current-user";
 
 interface UploadFile {
   id: string;
@@ -42,9 +45,49 @@ export function BulkFileUploadDialog({
   const [isOpen, setIsOpen] = useState(false);
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const trpc = useTRPC();
+  const user = useCurrentUser();
+
+  const { mutate: bulkUpload, isPending } = useMutation(
+    trpc.files.bulkUpload.mutationOptions({
+      onSuccess: (data) => {
+        // Dispatch custom event for real-time job tracking
+        if (data.ok && data.jobs && data.jobs.length > 0) {
+          const jobData = data.jobs.map((job) => ({
+            jobId: job.jobId,
+            fileName: job.fileName,
+            userId: user?.id || "",
+            entityId: data.companyId,
+            entityType: "COMPANY" as const,
+            queueName: "file-upload" as const,
+          }));
+
+          window.dispatchEvent(new CustomEvent("newJobs", { detail: jobData }));
+          console.log(`📢 Dispatched ${jobData.length} new file upload jobs`);
+        }
+
+        toast({
+          title: "Files uploaded successfully",
+          description: "The files have been queued for upload.",
+        });
+        setFiles([]);
+        setIsOpen(false);
+      },
+      onError: (error) => {
+        console.error("Upload failed:", error);
+        setFiles((prev) => prev.map((f) => ({ ...f, status: "error" })));
+        toast({
+          title: "Upload failed",
+          description:
+            error.message ||
+            "The files could not be uploaded. Please try again.",
+          variant: "destructive",
+        });
+      },
+    }),
+  );
   const createFilePreview = (file: File): Promise<string | undefined> => {
     return new Promise((resolve) => {
       if (file.type.startsWith("image/")) {
@@ -135,61 +178,67 @@ export function BulkFileUploadDialog({
       return;
     }
 
-    startTransition(async () => {
-      try {
-        console.log("[bulk-upload-dialog] Starting upload", {
-          companyId,
-          filesCount: files.length,
+    try {
+      console.log("[bulk-upload-dialog] Starting upload", {
+        companyId,
+        filesCount: files.length,
+      });
+
+      // Update file statuses to uploading
+      setFiles((prev) =>
+        prev.map((f) => ({ ...f, status: "uploading" as const })),
+      );
+
+      // Convert files to base64
+      const filePromises = files.map(async (uploadFile) => {
+        return new Promise<{
+          fileData: string;
+          fileName: string;
+          fileType: string;
+          fileSize: number;
+        }>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64String = reader.result as string;
+            resolve({
+              fileData: base64String,
+              fileName: uploadFile.file.name,
+              fileType: uploadFile.file.type || "application/octet-stream",
+              fileSize: uploadFile.file.size,
+            });
+          };
+          reader.onerror = () => {
+            reject(new Error(`Failed to read file: ${uploadFile.file.name}`));
+          };
+          reader.readAsDataURL(uploadFile.file);
         });
+      });
 
-        const formData = new FormData();
-        formData.append("companyId", companyId);
+      const fileDataArray = await Promise.all(filePromises);
 
-        files.forEach((file) => {
-          formData.append("files", file.file);
-        });
+      console.log("[bulk-upload-dialog] Files converted to base64", {
+        companyId,
+        filesCount: fileDataArray.length,
+      });
 
-        // Debug: Log formData contents
-        console.log("[bulk-upload-dialog] FormData prepared", {
-          companyId,
-          filesCount: files.length,
-          formDataEntries: Array.from(formData.keys()),
-        });
-
-        const response = await fetch("/api/bulk-upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          throw new Error("Upload failed");
-        }
-
-        const data = await response.json();
-        console.log(data);
-        toast({
-          title: "Files uploaded successfully",
-          description: "The files have been uploaded to the server.",
-        });
-
-        setFiles([]);
-        setIsOpen(false);
-      } catch (error) {
-        console.error("Upload failed:", error);
-        setFiles((prev) => prev.map((f) => ({ ...f, status: "error" })));
-        toast({
-          title: "Upload failed",
-          description: "The files could not be uploaded. Please try again.",
-          variant: "destructive",
-        });
-      }
-    });
+      // Call tRPC mutation
+      bulkUpload({
+        companyId,
+        files: fileDataArray,
+      });
+    } catch (error) {
+      console.error("Upload failed:", error);
+      setFiles((prev) => prev.map((f) => ({ ...f, status: "error" })));
+      toast({
+        title: "Upload failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The files could not be uploaded. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
-
-  const totalProgress =
-    files.length > 0
-      ? files.reduce((sum, file) => sum + file.progress, 0) / files.length
-      : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -322,11 +371,8 @@ export function BulkFileUploadDialog({
 
           {isPending && (
             <div className="space-y-2">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Uploading</span>
-                <span>{Math.round(totalProgress)}%</span>
-              </div>
-              <Progress value={totalProgress} className="h-1.5" />
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Uploading...</span>
             </div>
           )}
         </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiPlus, FiList, FiCheckSquare, FiHome } from "react-icons/fi";
+import { FiPlus, FiList, FiCheckSquare, FiHome, FiBriefcase } from "react-icons/fi";
 import { FaScrewdriver } from "react-icons/fa";
 import { User2 } from "lucide-react";
 import {
@@ -20,6 +20,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { UserDropdown } from "@/components/user-dropdown";
+import { JobTrackerSidebar } from "@/components/job-tracker-sidebar";
 
 type NavItem = {
   title: string;
@@ -33,6 +34,7 @@ const navItems: NavItem[] = [
   { title: "Published", url: "/published-deals", icon: FiCheckSquare },
   { title: "Screener", url: "/screeners", icon: FaScrewdriver },
   { title: "Companies", url: "/companies", icon: FiHome },
+  { title: "Jobs", url: "/jobs", icon: FiBriefcase },
 ];
 
 export function AppSidebar() {
@@ -95,6 +97,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <JobTrackerSidebar />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

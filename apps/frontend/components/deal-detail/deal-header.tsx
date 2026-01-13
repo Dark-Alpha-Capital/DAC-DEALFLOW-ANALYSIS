@@ -36,9 +36,7 @@ function StatusIndicator({
       <Icon
         className={cn(
           "h-5 w-5",
-          active
-            ? "text-success"
-            : "text-muted-foreground",
+          active ? "text-success" : "text-muted-foreground",
         )}
       />
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
@@ -156,9 +154,7 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
           <LinkIcon
             className={cn(
               "h-5 w-5",
-              bitrixId
-                ? "text-success"
-                : "text-muted-foreground",
+              bitrixId ? "text-success" : "text-muted-foreground",
             )}
           />
           <span className="text-xs font-medium text-muted-foreground">
@@ -193,7 +189,7 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
         <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-1">
+              <h3 className="mb-1 text-sm font-semibold text-foreground">
                 Ready to move forward?
               </h3>
               <p className="text-xs text-muted-foreground">

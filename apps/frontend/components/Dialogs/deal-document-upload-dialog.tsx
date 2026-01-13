@@ -37,6 +37,7 @@ import { DealType, DealDocumentCategory } from "db/schema";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
+import useCurrentUser from "@/hooks/use-current-user";
 
 interface DealDocumentUploadDialogProps {
   dealId: string;
@@ -49,10 +50,28 @@ const DealDocumentUploadDialog: React.FC<DealDocumentUploadDialogProps> = ({
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const trpc = useTRPC();
+  const user = useCurrentUser();
 
   const { mutate: uploadDocument, isPending } = useMutation(
     trpc.deals.uploadDocument.mutationOptions({
-      onSuccess: () => {
+      onSuccess: (data) => {
+        // Dispatch custom event for real-time job tracking
+        if (data.success && data.jobId) {
+          const jobData = [
+            {
+              jobId: data.jobId,
+              fileName: data.fileName,
+              userId: user?.id || "",
+              entityId: dealId,
+              entityType: "DEAL" as const,
+              queueName: "file-upload" as const,
+            },
+          ];
+
+          window.dispatchEvent(new CustomEvent("newJobs", { detail: jobData }));
+          console.log(`📢 Dispatched new deal file upload job`);
+        }
+
         toast.success("Document uploaded successfully");
         form.reset();
         setIsOpen(false);
