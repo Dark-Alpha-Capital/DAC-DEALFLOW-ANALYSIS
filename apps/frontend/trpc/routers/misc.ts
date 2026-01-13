@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { sims, deals, eq, DealType } from "db";
+import db, { dealDocuments, deals, eq, DealType } from "db";
 import { DeleteQuestionnaireById, DeleteReasoningById } from "db/mutations";
 import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
@@ -38,7 +38,7 @@ export const miscRouter = createTRPCRouter({
     .input(z.object({ simId: z.string(), dealId: z.string(), fileUrl: z.string() }))
     .mutation(async ({ input }) => {
       await del(input.fileUrl);
-      await db.delete(sims).where(eq(sims.id, input.simId));
+      await db.delete(dealDocuments).where(eq(dealDocuments.id, input.simId));
 
       revalidatePath(`/raw-deals/${input.dealId}`);
 

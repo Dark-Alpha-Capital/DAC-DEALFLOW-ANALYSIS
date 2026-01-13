@@ -5,6 +5,7 @@ import DealTypeFilter from "@/components/DealTypeFilter";
 import { DealStatus, DealType } from "db/schema";
 import SearchDealsSkeleton from "@/components/skeletons/SearchDealsSkeleton";
 import DealTypeFilterSkeleton from "@/components/skeletons/DealTypeFilterSkeleton";
+import DealCardGridSkeleton from "@/components/skeletons/DealCardGridSkeleton";
 import UserDealFilter from "@/components/UserDealFilter";
 import DealContainer from "@/components/DealContainer";
 import DeleteFiltersButton from "@/components/Buttons/delete-filters-button";
@@ -173,7 +174,7 @@ const RawDealsPage = async (props: { searchParams: SearchParams }) => {
           </CardContent>
         </Card>
       </div>
-      <Suspense fallback={<div>Loading deals...</div>}>
+      <Suspense fallback={<DealCardGridSkeleton />}>
         <ShowDealsComponent searchParams={props.searchParams} />
       </Suspense>
     </section>

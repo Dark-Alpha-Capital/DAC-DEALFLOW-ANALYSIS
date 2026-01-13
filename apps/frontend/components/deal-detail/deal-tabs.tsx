@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,23 +17,28 @@ import {
   Mail,
   User,
 } from "lucide-react";
-import { Deal } from "db/schema";
+import { Deal, DealDocument, AiScreening, POC } from "db/schema";
 import { DealMetricCard } from "./deal-metric-card";
 import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
 import FetchDealDocuments from "@/components/fetch-deal-documents";
-import FetchDealSim from "@/components/FetchDealSim";
 import FetchDealPOC from "@/components/FetchDealPOC";
-import SimUploadDialog from "@/components/Dialogs/sim-upload-dialog";
 import DealDocumentUploadDialog from "@/components/Dialogs/deal-document-upload-dialog";
-import AIReasoningSkeleton from "@/components/skeletons/AIReasoningSkeleton";
-import SimItemSkeleton from "@/components/skeletons/SimItemSkeleton";
 
 interface DealTabsProps {
   deal: Deal;
   uid: string;
+  documents: DealDocument[];
+  aiScreenings: AiScreening[];
+  pocs: POC[];
 }
 
-export function DealTabs({ deal, uid }: DealTabsProps) {
+export function DealTabs({
+  deal,
+  uid,
+  documents,
+  aiScreenings,
+  pocs,
+}: DealTabsProps) {
   const {
     dealCaption,
     revenue,
@@ -191,17 +195,11 @@ export function DealTabs({ deal, uid }: DealTabsProps) {
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[500px] pr-4">
-              <Suspense
-                fallback={
-                  <div className="space-y-4">
-                    <AIReasoningSkeleton />
-                    <AIReasoningSkeleton />
-                    <AIReasoningSkeleton />
-                  </div>
-                }
-              >
-                <FetchDealAIScreenings dealId={uid} dealType={dealType} />
-              </Suspense>
+              <FetchDealAIScreenings
+                dealId={uid}
+                dealType={dealType}
+                aiScreenings={aiScreenings}
+              />
             </ScrollArea>
           </CardContent>
         </Card>
@@ -216,32 +214,8 @@ export function DealTabs({ deal, uid }: DealTabsProps) {
             <DealDocumentUploadDialog dealId={uid} dealType={dealType} />
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[300px] pr-4">
-              <FetchDealDocuments dealId={uid} />
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* SIMs */}
-        <Card className="shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg">
-              Strategic Investment Memos (SIMs)
-            </CardTitle>
-            <SimUploadDialog dealId={uid} dealType={dealType} />
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[300px] pr-4">
-              <Suspense
-                fallback={
-                  <div className="space-y-4">
-                    <SimItemSkeleton />
-                    <SimItemSkeleton />
-                  </div>
-                }
-              >
-                <FetchDealSim dealId={uid} dealType={dealType} />
-              </Suspense>
+            <ScrollArea className="h-[600px] pr-4">
+              <FetchDealDocuments dealId={uid} documents={documents} />
             </ScrollArea>
           </CardContent>
         </Card>
@@ -255,7 +229,7 @@ export function DealTabs({ deal, uid }: DealTabsProps) {
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[400px] pr-4">
-              <FetchDealPOC dealId={uid} />
+              <FetchDealPOC dealId={uid} pocs={pocs} />
             </ScrollArea>
           </CardContent>
         </Card>
