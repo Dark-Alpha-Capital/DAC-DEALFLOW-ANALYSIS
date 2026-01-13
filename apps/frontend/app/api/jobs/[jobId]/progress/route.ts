@@ -58,12 +58,12 @@ export async function GET(
 
           if (!job) {
             job = await fileUploadQueue.getJob(jobId);
-            queueType = QUEUE_NAMES.FILE_UPLOAD;
+            queueType = QUEUE_NAMES.SCREEN_DEAL;
           }
 
           if (!job) {
             job = await dealToCompanyQueue.getJob(jobId);
-            queueType = QUEUE_NAMES.DEAL_TO_COMPANY;
+            queueType = QUEUE_NAMES.SCREEN_DEAL;
           }
 
           if (job) {

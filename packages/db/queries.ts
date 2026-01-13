@@ -357,7 +357,6 @@ export async function getCompleteAiReasoningById(reasoningId: string) {
   }
 }
 
-
 /**
  * Get a company by id
  * @param id - the id of the company
@@ -511,64 +510,62 @@ export async function getCompanyDueDiligenceData(id: string) {
 
     if (!companyData) return null;
 
-    const [
-      sectionsList,
-      filesList,
-      reviewsData,
-      tasksData,
-      counts,
-    ] = await Promise.all([
-      db
-        .select()
-        .from(dueDiligenceSections)
-        .where(eq(dueDiligenceSections.companyId, id))
-        .orderBy(desc(dueDiligenceSections.createdAt)),
-      db
-        .select()
-        .from(documents)
-        .where(
-          and(eq(documents.entityType, "COMPANY"), eq(documents.entityId, id))
-        )
-        .orderBy(desc(documents.createdAt)),
-      db
-        .select({
-          review: reviews,
-          reviewerName: users.name,
-        })
-        .from(reviews)
-        .leftJoin(users, eq(reviews.reviewerId, users.id))
-        .where(eq(reviews.companyId, id))
-        .orderBy(desc(reviews.createdAt)),
-      db
-        .select({
-          task: tasks,
-          assigneeName: users.name,
-        })
-        .from(tasks)
-        .leftJoin(users, eq(tasks.assignedToId, users.id))
-        .where(eq(tasks.companyId, id))
-        .orderBy(desc(tasks.createdAt)),
-      Promise.all([
+    const [sectionsList, filesList, reviewsData, tasksData, counts] =
+      await Promise.all([
         db
-          .select({ count: count() })
+          .select()
+          .from(dueDiligenceSections)
+          .where(eq(dueDiligenceSections.companyId, id))
+          .orderBy(desc(dueDiligenceSections.createdAt)),
+        db
+          .select()
           .from(documents)
           .where(
             and(eq(documents.entityType, "COMPANY"), eq(documents.entityId, id))
-          ),
+          )
+          .orderBy(desc(documents.createdAt)),
         db
-          .select({ count: count() })
-          .from(dueDiligenceSections)
-          .where(eq(dueDiligenceSections.companyId, id)),
-        db
-          .select({ count: count() })
+          .select({
+            review: reviews,
+            reviewerName: users.name,
+          })
           .from(reviews)
-          .where(eq(reviews.companyId, id)),
+          .leftJoin(users, eq(reviews.reviewerId, users.id))
+          .where(eq(reviews.companyId, id))
+          .orderBy(desc(reviews.createdAt)),
         db
-          .select({ count: count() })
+          .select({
+            task: tasks,
+            assigneeName: users.name,
+          })
           .from(tasks)
-          .where(eq(tasks.companyId, id)),
-      ]),
-    ]);
+          .leftJoin(users, eq(tasks.assignedToId, users.id))
+          .where(eq(tasks.companyId, id))
+          .orderBy(desc(tasks.createdAt)),
+        Promise.all([
+          db
+            .select({ count: count() })
+            .from(documents)
+            .where(
+              and(
+                eq(documents.entityType, "COMPANY"),
+                eq(documents.entityId, id)
+              )
+            ),
+          db
+            .select({ count: count() })
+            .from(dueDiligenceSections)
+            .where(eq(dueDiligenceSections.companyId, id)),
+          db
+            .select({ count: count() })
+            .from(reviews)
+            .where(eq(reviews.companyId, id)),
+          db
+            .select({ count: count() })
+            .from(tasks)
+            .where(eq(tasks.companyId, id)),
+        ]),
+      ]);
 
     const reviewsList = reviewsData.map((r) => ({
       ...r.review,
@@ -849,7 +846,9 @@ export const getDealDocuments = async (dealId: string) => {
     return await db
       .select()
       .from(documents)
-      .where(and(eq(documents.entityType, "DEAL"), eq(documents.entityId, dealId)));
+      .where(
+        and(eq(documents.entityType, "DEAL"), eq(documents.entityId, dealId))
+      );
   } catch (error) {
     console.error("Error fetching deal documents", error);
     throw error;
@@ -868,7 +867,9 @@ export const GetDealWithAllRelations = async (id: string) => {
       db
         .select()
         .from(documents)
-        .where(and(eq(documents.entityType, "DEAL"), eq(documents.entityId, id))),
+        .where(
+          and(eq(documents.entityType, "DEAL"), eq(documents.entityId, id))
+        ),
       db
         .select()
         .from(aiScreenings)
