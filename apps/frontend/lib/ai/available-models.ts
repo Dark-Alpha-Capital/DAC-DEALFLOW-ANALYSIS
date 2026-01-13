@@ -18,3 +18,6 @@ export const openai = createOpenAI({
 export const openaiClient = new OpenAI({
   apiKey: process.env.AI_API_KEY,
 });
+
+export const COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME =
+  "fileSearchStores/companyduediligencedocument-7b631nrhb99k";

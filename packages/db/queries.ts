@@ -1,11 +1,10 @@
-import { db } from ".";
+// Import schema first to ensure all tables are initialized
 import {
   deals,
   users,
   pocs,
   screeners,
   aiScreenings,
-  rollups,
   companies,
   founders,
   files,
@@ -13,11 +12,13 @@ import {
   reviews,
   tasks,
   dealDocuments,
-  usersToRollups,
+  documents,
   type Deal,
   type DealType,
   type DealStatus,
 } from "./schema";
+// Import db after schema to ensure proper initialization order
+import { db } from "./index";
 import {
   eq,
   and,
@@ -356,88 +357,6 @@ export async function getCompleteAiReasoningById(reasoningId: string) {
   }
 }
 
-/**
- * Get all rollups with their deals and users
- * @returns all rollups with relations
- */
-export async function getAllRollups() {
-  try {
-    // Get all rollups
-    const allRollups = await db
-      .select()
-      .from(rollups)
-      .orderBy(desc(rollups.createdAt));
-
-    // For each rollup, get users and deals
-    const results = await Promise.all(
-      allRollups.map(async (rollup) => {
-        const [rollupUsers, rollupDeals] = await Promise.all([
-          db
-            .select({
-              id: users.id,
-              name: users.name,
-              email: users.email,
-              role: users.role,
-            })
-            .from(usersToRollups)
-            .innerJoin(users, eq(usersToRollups.B, users.id))
-            .where(eq(usersToRollups.A, rollup.id)),
-          db.select().from(deals).where(eq(deals.rollupId, rollup.id)),
-        ]);
-
-        return {
-          ...rollup,
-          users: rollupUsers,
-          deals: rollupDeals,
-        };
-      })
-    );
-
-    return results;
-  } catch (error) {
-    console.error("Error fetching all rollups", error);
-    return null;
-  }
-}
-
-/**
- * Get a rollup by id with its deals and users
- * @param rollupId - the id of the rollup
- * @returns the rollup with relations
- */
-export async function getRollupById(rollupId: string) {
-  try {
-    const [rollup] = await db
-      .select()
-      .from(rollups)
-      .where(eq(rollups.id, rollupId));
-
-    if (!rollup) return null;
-
-    const [rollupUsers, rollupDeals] = await Promise.all([
-      db
-        .select({
-          id: users.id,
-          name: users.name,
-          email: users.email,
-          role: users.role,
-        })
-        .from(usersToRollups)
-        .innerJoin(users, eq(usersToRollups.B, users.id))
-        .where(eq(usersToRollups.A, rollup.id)),
-      db.select().from(deals).where(eq(deals.rollupId, rollup.id)),
-    ]);
-
-    return {
-      ...rollup,
-      users: rollupUsers,
-      deals: rollupDeals,
-    };
-  } catch (error) {
-    console.error("Error fetching rollup by id", error);
-    return null;
-  }
-}
 
 /**
  * Get a company by id
@@ -464,9 +383,11 @@ export async function getCompanyById(id: string) {
       db.select().from(founders).where(eq(founders.companyId, id)),
       db
         .select()
-        .from(files)
-        .where(eq(files.companyId, id))
-        .orderBy(desc(files.createdAt)),
+        .from(documents)
+        .where(
+          and(eq(documents.entityType, "COMPANY"), eq(documents.entityId, id))
+        )
+        .orderBy(desc(documents.createdAt)),
       db
         .select()
         .from(dueDiligenceSections)
@@ -515,8 +436,10 @@ export async function getCompanyById(id: string) {
       Promise.all([
         db
           .select({ count: count() })
-          .from(files)
-          .where(eq(files.companyId, id)),
+          .from(documents)
+          .where(
+            and(eq(documents.entityType, "COMPANY"), eq(documents.entityId, id))
+          ),
         db
           .select({ count: count() })
           .from(dueDiligenceSections)
@@ -602,9 +525,11 @@ export async function getCompanyDueDiligenceData(id: string) {
         .orderBy(desc(dueDiligenceSections.createdAt)),
       db
         .select()
-        .from(files)
-        .where(eq(files.companyId, id))
-        .orderBy(desc(files.createdAt)),
+        .from(documents)
+        .where(
+          and(eq(documents.entityType, "COMPANY"), eq(documents.entityId, id))
+        )
+        .orderBy(desc(documents.createdAt)),
       db
         .select({
           review: reviews,
@@ -626,8 +551,10 @@ export async function getCompanyDueDiligenceData(id: string) {
       Promise.all([
         db
           .select({ count: count() })
-          .from(files)
-          .where(eq(files.companyId, id)),
+          .from(documents)
+          .where(
+            and(eq(documents.entityType, "COMPANY"), eq(documents.entityId, id))
+          ),
         db
           .select({ count: count() })
           .from(dueDiligenceSections)
@@ -827,9 +754,14 @@ export default async function GetCompanies({
               .where(eq(founders.companyId, company.id)),
             db
               .select()
-              .from(files)
-              .where(eq(files.companyId, company.id))
-              .orderBy(desc(files.createdAt))
+              .from(documents)
+              .where(
+                and(
+                  eq(documents.entityType, "COMPANY"),
+                  eq(documents.entityId, company.id)
+                )
+              )
+              .orderBy(desc(documents.createdAt))
               .limit(3),
             db
               .select()
@@ -840,8 +772,13 @@ export default async function GetCompanies({
             Promise.all([
               db
                 .select({ count: count() })
-                .from(files)
-                .where(eq(files.companyId, company.id)),
+                .from(documents)
+                .where(
+                  and(
+                    eq(documents.entityType, "COMPANY"),
+                    eq(documents.entityId, company.id)
+                  )
+                ),
               db
                 .select({ count: count() })
                 .from(dueDiligenceSections)
@@ -857,10 +794,16 @@ export default async function GetCompanies({
             ]),
           ]);
 
+        // Map documents to File type by adding companyId
+        const filesWithCompanyId = companyFiles.map((doc) => ({
+          ...doc,
+          companyId: company.id,
+        }));
+
         return {
           ...company,
           founders: companyFounders,
-          files: companyFiles,
+          files: filesWithCompanyId,
           sections: companySections,
           _count: {
             files: counts[0][0]?.count ?? 0,
@@ -905,8 +848,8 @@ export const getDealDocuments = async (dealId: string) => {
   try {
     return await db
       .select()
-      .from(dealDocuments)
-      .where(eq(dealDocuments.dealId, dealId));
+      .from(documents)
+      .where(and(eq(documents.entityType, "DEAL"), eq(documents.entityId, dealId)));
   } catch (error) {
     console.error("Error fetching deal documents", error);
     throw error;
@@ -922,7 +865,10 @@ export const GetDealWithAllRelations = async (id: string) => {
   try {
     const results = await Promise.allSettled([
       db.select().from(deals).where(eq(deals.id, id)),
-      db.select().from(dealDocuments).where(eq(dealDocuments.dealId, id)),
+      db
+        .select()
+        .from(documents)
+        .where(and(eq(documents.entityType, "DEAL"), eq(documents.entityId, id))),
       db
         .select()
         .from(aiScreenings)
@@ -946,7 +892,7 @@ export const GetDealWithAllRelations = async (id: string) => {
     }
 
     // Handle other queries - log errors but don't fail completely
-    const documents =
+    const dealDocumentsData =
       documentsResult.status === "fulfilled"
         ? documentsResult.value
         : (console.error("Error fetching documents:", documentsResult.reason),
@@ -966,7 +912,7 @@ export const GetDealWithAllRelations = async (id: string) => {
 
     return {
       deal: dealData,
-      documents,
+      documents: dealDocumentsData,
       aiScreenings: aiScreeningsData,
       pocs: pocsData,
     };

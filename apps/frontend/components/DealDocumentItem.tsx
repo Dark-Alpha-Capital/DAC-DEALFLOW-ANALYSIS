@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, FileIcon, Download } from "lucide-react";
-import { DealDocumentCategory } from "db/schema";
+import { DocumentCategory } from "db/schema";
 
 const DealDocumentItem = ({
   title,
@@ -19,7 +19,7 @@ const DealDocumentItem = ({
   title: string;
   description: string;
   caption?: string | null;
-  category: DealDocumentCategory;
+  category: DocumentCategory;
   fileUrl: string;
   tags?: string[];
   fileName?: string | null;

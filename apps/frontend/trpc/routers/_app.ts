@@ -6,6 +6,7 @@ import { screenersRouter } from "./screeners";
 import { screeningsRouter } from "./screenings";
 import { usersRouter } from "./users";
 import { miscRouter } from "./misc";
+import { filesRouter } from "./files";
 
 export const appRouter = createTRPCRouter({
   companies: companiesRouter,
@@ -15,6 +16,7 @@ export const appRouter = createTRPCRouter({
   screenings: screeningsRouter,
   users: usersRouter,
   misc: miscRouter,
+  files: filesRouter,
 });
 
 export type AppRouter = typeof appRouter;

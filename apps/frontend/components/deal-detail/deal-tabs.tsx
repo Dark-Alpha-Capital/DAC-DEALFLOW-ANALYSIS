@@ -17,7 +17,7 @@ import {
   Mail,
   User,
 } from "lucide-react";
-import { Deal, DealDocument, AiScreening, POC } from "db/schema";
+import { Deal, Document, AiScreening, POC } from "db/schema";
 import { DealMetricCard } from "./deal-metric-card";
 import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
 import FetchDealDocuments from "@/components/fetch-deal-documents";
@@ -27,7 +27,7 @@ import DealDocumentUploadDialog from "@/components/Dialogs/deal-document-upload-
 interface DealTabsProps {
   deal: Deal;
   uid: string;
-  documents: DealDocument[];
+  documents: Document[];
   aiScreenings: AiScreening[];
   pocs: POC[];
 }

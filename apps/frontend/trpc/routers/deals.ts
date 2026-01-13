@@ -6,11 +6,19 @@ import db, {
   DealType,
   DealStatus,
   dealDocuments,
+  documents,
+  and,
   DealDocumentCategory,
+  DocumentCategory,
 } from "db";
 import { DeleteDealById, BulkDeleteDeals } from "db/mutations";
 import { revalidatePath, updateTag } from "next/cache";
 import { uploadFileToNextCloud } from "@/lib/storage";
+import {
+  createConvertDealToCompanyJob,
+  type ConvertDealToCompanyJobData,
+} from "@/lib/queue-client";
+import crypto from "crypto";
 
 const createDealSchema = z.object({
   first_name: z.string().optional(),
@@ -210,7 +218,7 @@ export const dealsRouter = createTRPCRouter({
 
   uploadDocument: protectedProcedure
     .input(uploadDealDocumentSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       // Convert base64 to buffer
       const base64Data = input.fileData.split(",")[1] || input.fileData;
       const buffer = Buffer.from(base64Data, "base64");
@@ -226,23 +234,62 @@ export const dealsRouter = createTRPCRouter({
         throw new Error("Failed to upload file to Nextcloud");
       }
 
-      // Save document metadata to database
-      const [dealDocument] = await db
-        .insert(dealDocuments)
+      // Map DealDocumentCategory to DocumentCategory (they share most values)
+      const category = (input.category as DocumentCategory) || "OTHER";
+
+      // Save document metadata to unified documents table
+      const [document] = await db
+        .insert(documents)
         .values({
+          entityType: "DEAL",
+          entityId: input.dealId,
           title: input.title,
           description: input.description,
-          category: input.category,
-          documentUrl: downloadUrl,
+          category: category,
+          fileUrl: downloadUrl,
           fileName: input.fileName,
-          fileType: input.fileType,
+          mimeType: input.fileType,
           tags: input.tags || [],
-          dealId: input.dealId,
+          uploadedById: ctx.session.user.id,
+          version: "1.0",
+          isLatest: true,
         })
         .returning();
 
       revalidatePath(`/raw-deals/${input.dealId}`);
 
-      return { success: true, dealDocument };
+      return { success: true, document };
+    }),
+
+  convertToCompany: protectedProcedure
+    .input(z.object({ dealId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      // Generate unique job ID
+      const jobId = crypto.randomUUID();
+
+      // Create job data
+      const jobData: ConvertDealToCompanyJobData = {
+        jobId,
+        dealId: input.dealId,
+        userId: ctx.session.user.id,
+      };
+
+      // Enqueue background job
+      const job = await createConvertDealToCompanyJob(jobData);
+
+      console.log(
+        `[convert-deal] Queued conversion job ${job.jobId} for deal ${input.dealId}`,
+      );
+
+      // Revalidate paths (job will complete in background)
+      revalidatePath("/raw-deals");
+      revalidatePath("/companies");
+
+      // Return job ID for progress tracking (not company ID - will be available when job completes)
+      return {
+        success: true,
+        jobId: job.jobId,
+        queueName: job.queueName,
+      };
     }),
 });

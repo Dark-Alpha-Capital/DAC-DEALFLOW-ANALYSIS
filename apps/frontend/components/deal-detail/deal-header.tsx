@@ -14,7 +14,7 @@ import {
 import { Deal, DealStatus, DealType } from "db/schema";
 import { DealActionsDropdown } from "./deal-actions-dropdown";
 import { DealSpecificationsDialog } from "@/components/Dialogs/DealSpecificationsDialog";
-import { PerformRollup } from "@/components/Dialogs/perform-rollup-dialog";
+import ConvertDealToCompanyDialog from "@/components/Dialogs/convert-deal-to-company-dialog";
 import { cn } from "@/lib/utils";
 
 interface DealHeaderProps {
@@ -188,22 +188,39 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
       )}
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Button asChild>
-          <Link href={`/raw-deals/${uid}/edit`}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Deal
-          </Link>
-        </Button>
-        <DealSpecificationsDialog
-          dealUid={uid}
-          dealStatus={status}
-          dealReviewed={isReviewed}
-          dealPublished={isPublished}
-          dealSeen={seen}
-        />
-        <PerformRollup />
-        <DealActionsDropdown deal={deal} uid={uid} />
+      <div className="space-y-4">
+        {/* Prominent Convert to Company Button */}
+        <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-1">
+                Ready to move forward?
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Convert this deal to a company to begin due diligence
+              </p>
+            </div>
+            <ConvertDealToCompanyDialog deal={deal} dealId={uid} />
+          </div>
+        </div>
+
+        {/* Other Action Buttons */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button asChild>
+            <Link href={`/raw-deals/${uid}/edit`}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Deal
+            </Link>
+          </Button>
+          <DealSpecificationsDialog
+            dealUid={uid}
+            dealStatus={status}
+            dealReviewed={isReviewed}
+            dealPublished={isPublished}
+            dealSeen={seen}
+          />
+          <DealActionsDropdown deal={deal} uid={uid} />
+        </div>
       </div>
     </div>
   );

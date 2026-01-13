@@ -1,6 +1,6 @@
 import React from "react";
 import { AlertTriangle } from "lucide-react";
-import { DealDocument } from "db/schema";
+import { Document } from "db/schema";
 import DealDocumentItem from "./DealDocumentItem";
 
 const FetchDealDocuments = ({
@@ -8,22 +8,22 @@ const FetchDealDocuments = ({
   documents,
 }: {
   dealId: string;
-  documents: DealDocument[];
+  documents: Document[];
 }) => {
   return (
     <div>
       {documents.length > 0 ? (
-        documents.map((dealDocument) => (
+        documents.map((document) => (
           <DealDocumentItem
-            key={dealDocument.id}
-            title={dealDocument.title}
-            description={dealDocument.description || ""}
-            caption={dealDocument.caption}
-            category={dealDocument.category}
-            fileUrl={dealDocument.documentUrl}
-            tags={dealDocument.tags || []}
-            fileName={dealDocument.fileName}
-            fileType={dealDocument.fileType}
+            key={document.id}
+            title={document.title}
+            description={document.description || ""}
+            caption={document.caption}
+            category={document.category}
+            fileUrl={document.fileUrl}
+            tags={document.tags || []}
+            fileName={document.fileName}
+            fileType={document.mimeType}
           />
         ))
       ) : (

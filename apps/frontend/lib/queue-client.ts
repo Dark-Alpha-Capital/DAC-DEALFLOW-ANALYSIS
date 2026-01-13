@@ -19,6 +19,7 @@ connection.on("error", (err) => {
 export const QUEUE_NAMES = {
   SCREEN_DEAL: "screen-deal",
   FILE_UPLOAD: "file-upload",
+  DEAL_TO_COMPANY: "deal-to-company",
 } as const;
 
 // Screen deal queue - for AI screening jobs
@@ -45,6 +46,20 @@ export const fileUploadQueue = new Queue(QUEUE_NAMES.FILE_UPLOAD, {
     backoff: {
       type: "exponential",
       delay: 1000,
+    },
+  },
+});
+
+// Deal-to-company conversion queue
+export const dealToCompanyQueue = new Queue(QUEUE_NAMES.DEAL_TO_COMPANY, {
+  connection,
+  defaultJobOptions: {
+    removeOnComplete: 100,
+    removeOnFail: 100,
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 2000, // Longer delay for conversion jobs
     },
   },
 });
@@ -81,6 +96,21 @@ export interface FileUploadJobData {
   fileDescription?: string;
 }
 
+export interface ConvertDealToCompanyJobData {
+  jobId: string;
+  dealId: string;
+  userId: string;
+  // Step state - persisted via job.updateData() for resume on retry
+  step?: string;
+  // Intermediate results cached for resume
+  companyResult?: {
+    companyId: string;
+  };
+  documentsUpdated?: number;
+  pocsMigrated?: number;
+  filesMoved?: number;
+}
+
 // Progress types
 export interface JobProgressData {
   step: string;
@@ -95,8 +125,17 @@ export interface JobProgressData {
  * Gets the status of a job including progress and result
  */
 export async function getJobStatus(queueName: string, jobId: string) {
-  const queue =
-    queueName === QUEUE_NAMES.SCREEN_DEAL ? screenDealQueue : fileUploadQueue;
+  let queue: Queue;
+  if (queueName === QUEUE_NAMES.SCREEN_DEAL) {
+    queue = screenDealQueue;
+  } else if (queueName === QUEUE_NAMES.FILE_UPLOAD) {
+    queue = fileUploadQueue;
+  } else if (queueName === QUEUE_NAMES.DEAL_TO_COMPANY) {
+    queue = dealToCompanyQueue;
+  } else {
+    throw new Error(`Unknown queue name: ${queueName}`);
+  }
+
   const job = await queue.getJob(jobId);
 
   if (!job) {
@@ -144,5 +183,23 @@ export async function createFileUploadJob(data: FileUploadJobData) {
   return {
     jobId: job.id,
     queueName: QUEUE_NAMES.FILE_UPLOAD,
+  };
+}
+
+/**
+ * Creates a deal-to-company conversion job.
+ * The job uses the "Process Step Jobs" pattern for idempotent processing.
+ * If the job fails, it will resume from the last completed step on retry.
+ */
+export async function createConvertDealToCompanyJob(
+  data: ConvertDealToCompanyJobData,
+) {
+  const job = await dealToCompanyQueue.add("convert", data, {
+    jobId: data.jobId, // Use provided jobId for deduplication
+  });
+
+  return {
+    jobId: job.id,
+    queueName: QUEUE_NAMES.DEAL_TO_COMPANY,
   };
 }

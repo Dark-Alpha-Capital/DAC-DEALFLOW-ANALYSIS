@@ -5,7 +5,13 @@ import {
   googleGenAI,
 } from "../lib/ai/available-models";
 import { db } from "db";
-import { files, type FileCategory } from "db/schema";
+import {
+  files,
+  documents,
+  type FileCategory,
+  type DocumentCategory,
+  type EntityType,
+} from "db/schema";
 
 export enum FileUploadStep {
   Validate = "validate",
@@ -16,9 +22,10 @@ export enum FileUploadStep {
 }
 
 /**
- * Company metadata for file organization and search indexing
+ * Entity metadata for file organization and search indexing
+ * Supports both deals and companies
  */
-export interface CompanyMetadata {
+export interface EntityMetadata {
   name: string;
   sector: string | null;
   stage: string | null;
@@ -37,9 +44,12 @@ export interface FileUploadJobData {
   fileSize: number; // File size in bytes
   mimeType: string; // MIME type of the file
   userId: string; // Required - user who uploaded the file
-  // Company context
-  companyId: string;
-  companyMetadata: CompanyMetadata;
+  // Entity context (polymorphic - supports both deals and companies)
+  entityType: "DEAL" | "COMPANY";
+  entityId: string; // References deals.id or companies.id
+  entityMetadata: EntityMetadata;
+  // Vector store embedding control
+  embedInVectorStore?: boolean; // Default: true for companies, false for deals (but can be overridden)
   // Optional file metadata
   fileCategory?: string;
   fileDescription?: string;
@@ -164,19 +174,29 @@ export async function fileUploadHandler(
     fileSize,
     mimeType,
     jobId,
-    companyId,
-    companyMetadata,
+    entityType,
+    entityId,
+    entityMetadata,
     userId,
+    embedInVectorStore,
   } = jobData;
 
   let step = jobData.step ?? FileUploadStep.Validate;
 
+  // Default embedInVectorStore: true for companies, false for deals (but can be overridden)
+  const shouldEmbedInVectorStore =
+    embedInVectorStore !== undefined
+      ? embedInVectorStore
+      : entityType === "COMPANY";
+
   console.log(`[file-upload] Extracted values:`, {
     userId: userId || "UNDEFINED",
-    companyId: companyId || "UNDEFINED",
-    companyMetadata: companyMetadata || "UNDEFINED",
+    entityType: entityType || "UNDEFINED",
+    entityId: entityId || "UNDEFINED",
+    entityMetadata: entityMetadata || "UNDEFINED",
     fileName: fileName || "UNDEFINED",
     jobId: jobId || "UNDEFINED",
+    embedInVectorStore: shouldEmbedInVectorStore,
     step,
     validateResult: jobData.validateResult,
     nextcloudResult: jobData.nextcloudResult,
@@ -190,15 +210,23 @@ export async function fileUploadHandler(
     );
   }
 
-  if (!companyId || companyId.trim() === "") {
+  if (!entityType || (entityType !== "DEAL" && entityType !== "COMPANY")) {
     throw new Error(
-      `[file-upload] ${jobId}: companyId is required but was not provided or is empty`
+      `[file-upload] ${jobId}: entityType must be "DEAL" or "COMPANY"`
     );
   }
 
-  console.log("company metadata", companyMetadata);
+  if (!entityId || entityId.trim() === "") {
+    throw new Error(
+      `[file-upload] ${jobId}: entityId is required but was not provided or is empty`
+    );
+  }
+
+  console.log("entity metadata", entityMetadata);
   console.log(`[file-upload] Starting job ${jobId} at step: ${step}`);
-  console.log(`[file-upload] Company: ${companyMetadata.name} (${companyId})`);
+  console.log(
+    `[file-upload] ${entityType}: ${entityMetadata.name} (${entityId})`
+  );
   console.log(`[file-upload] User ID: ${userId}`);
 
   while (step !== FileUploadStep.Done) {
@@ -238,8 +266,11 @@ export async function fileUploadHandler(
           throw new Error("Missing validateResult - job state corrupted");
         }
 
-        // Create simple path: Diligence/{companyId}/{filename}
-        const destPath = `Diligence/${companyId}/${fileName}`;
+        // Create path based on entity type
+        const destPath =
+          entityType === "COMPANY"
+            ? `Diligence/${entityId}/${fileName}`
+            : `dealflow/raw-deals/${entityId}/${fileName}`;
 
         console.log(
           `[file-upload] ${jobId}: Uploading to Nextcloud at ${destPath}`
@@ -248,7 +279,10 @@ export async function fileUploadHandler(
         const client = createNextcloudClient();
 
         // Ensure the directory exists
-        const dirPath = `Diligence/${companyId}`;
+        const dirPath =
+          entityType === "COMPANY"
+            ? `Diligence/${entityId}`
+            : `dealflow/raw-deals/${entityId}`;
         try {
           await client.createDirectory(dirPath, { recursive: true });
         } catch (err) {
@@ -305,8 +339,11 @@ export async function fileUploadHandler(
 
         let documentName: string | null = null;
 
-        // Only upload to Google if the store is configured
-        if (COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME) {
+        // Upload to Google File Search Store if configured and enabled
+        if (
+          shouldEmbedInVectorStore &&
+          COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME
+        ) {
           console.log(
             `[file-upload] ${jobId}: Uploading to Google File Search Store`
           );
@@ -314,16 +351,20 @@ export async function fileUploadHandler(
           try {
             // Create custom metadata for the file (Google API expects array of key-value pairs)
             const customMetadata = [
-              { key: "companyId", stringValue: companyId },
-              { key: "companyName", stringValue: companyMetadata.name },
-              { key: "sector", stringValue: companyMetadata.sector ?? "" },
-              { key: "stage", stringValue: companyMetadata.stage ?? "" },
+              { key: "entityType", stringValue: entityType },
+              { key: "entityId", stringValue: entityId },
+              {
+                key: entityType === "COMPANY" ? "companyName" : "dealName",
+                stringValue: entityMetadata.name,
+              },
+              { key: "sector", stringValue: entityMetadata.sector ?? "" },
+              { key: "stage", stringValue: entityMetadata.stage ?? "" },
               {
                 key: "headquarters",
-                stringValue: companyMetadata.headquarters ?? "",
+                stringValue: entityMetadata.headquarters ?? "",
               },
-              { key: "revenue", numericValue: companyMetadata.revenue ?? 0 },
-              { key: "ebitda", numericValue: companyMetadata.ebitda ?? 0 },
+              { key: "revenue", numericValue: entityMetadata.revenue ?? 0 },
+              { key: "ebitda", numericValue: entityMetadata.ebitda ?? 0 },
               { key: "uploadedAt", stringValue: new Date().toISOString() },
               { key: "fileName", stringValue: fileName },
             ];
@@ -414,9 +455,15 @@ export async function fileUploadHandler(
             // Don't fail the job - continue without Google indexing
           }
         } else {
-          console.log(
-            `[file-upload] ${jobId}: Skipping Google upload - store not configured`
-          );
+          if (!shouldEmbedInVectorStore) {
+            console.log(
+              `[file-upload] ${jobId}: Skipping Google upload - vector store embedding disabled for ${entityType}`
+            );
+          } else {
+            console.log(
+              `[file-upload] ${jobId}: Skipping Google upload - store not configured`
+            );
+          }
         }
 
         // Save progress and move to next step
@@ -458,13 +505,14 @@ export async function fileUploadHandler(
         }
 
         // Determine file category (default to OTHER if not specified)
-        const category = (job.data.fileCategory as FileCategory) || "OTHER";
+        // Map FileCategory to DocumentCategory (they share the same values for most categories)
+        const category = (job.data.fileCategory as DocumentCategory) || "OTHER";
 
-        // Insert file record
+        // Insert document record (unified table)
         let insertResult;
         try {
           insertResult = await db
-            .insert(files)
+            .insert(documents)
             .values({
               title: fileName,
               description: job.data.fileDescription || null,
@@ -473,8 +521,13 @@ export async function fileUploadHandler(
               fileName: fileName,
               fileSize: validateResult.fileSize,
               mimeType: validateResult.mimeType,
-              companyId: companyId,
+              entityType: entityType as EntityType,
+              entityId: entityId,
               uploadedById: userId,
+              vectorStoreDocumentName: googleResult?.documentName || null,
+              // Versioning defaults (can be updated later if needed)
+              version: "1.0",
+              isLatest: true,
             })
             .returning();
         } catch (dbError: any) {
@@ -484,24 +537,25 @@ export async function fileUploadHandler(
             detail: dbError.detail,
             constraint: dbError.constraint,
             fileName,
-            companyId,
+            entityType,
+            entityId,
             userId,
           });
           throw new Error(
             `Database insert failed: ${dbError.message || "Unknown error"}. ` +
-              `Check that userId (${userId}) and companyId (${companyId}) are valid.`
+              `Check that userId (${userId}) and ${entityType}Id (${entityId}) are valid.`
           );
         }
 
-        const fileRecord = insertResult[0];
-        if (!fileRecord) {
+        const documentRecord = insertResult[0];
+        if (!documentRecord) {
           throw new Error(
-            "Failed to insert file record into database - no record returned"
+            "Failed to insert document record into database - no record returned"
           );
         }
 
         console.log(
-          `[file-upload] ${jobId}: File record saved with ID: ${fileRecord.id}`
+          `[file-upload] ${jobId}: Document record saved with ID: ${documentRecord.id}`
         );
 
         // Clean up temporary file (if it still exists)
@@ -540,7 +594,7 @@ export async function fileUploadHandler(
           fileName,
           nextcloudUrl: nextcloudResult.publicUrl,
           googleDocumentName: googleResult?.documentName,
-          fileId: fileRecord.id,
+          fileId: documentRecord.id,
           message: "File uploaded successfully",
         };
       }

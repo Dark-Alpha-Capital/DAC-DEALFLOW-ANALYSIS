@@ -103,6 +103,30 @@ export const riskLevelEnum = pgEnum("RiskLevel", [
   "CRITICAL",
 ]);
 
+// Unified document category enum (merges FileCategory and DealDocumentCategory)
+export const documentCategoryEnum = pgEnum("DocumentCategory", [
+  // From FileCategory
+  "FINANCIALS",
+  "LEGAL",
+  "TAX",
+  "TECHNICAL",
+  "COMMERCIAL",
+  "ESG",
+  "MARKETING",
+  "OPERATIONS",
+  // From DealDocumentCategory (merged/renamed)
+  "DOCUMENTATION",
+  "INVESTOR_RELATIONSHIPS",
+  "TOOLS",
+  "LEGISLATION",
+  "RESEARCH",
+  "PROSPECTUS",
+  "OTHER",
+]);
+
+// Entity type enum for polymorphic association
+export const entityTypeEnum = pgEnum("EntityType", ["DEAL", "COMPANY"]);
+
 // ============================================================================
 // TABLES
 // ============================================================================
@@ -183,21 +207,6 @@ export const verifications = pgTable("Verification", {
     .$onUpdate(() => new Date()),
 });
 
-// Rollup table (defined before Deal due to reference)
-export const rollups = pgTable("Rollup", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  name: text("name").notNull(),
-  description: text("description"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-  summary: text("summary"),
-});
-
 // Deal table
 export const deals = pgTable("Deal", {
   id: text("id")
@@ -237,10 +246,9 @@ export const deals = pgTable("Deal", {
   seen: boolean("seen").default(false).notNull(),
   chunk_text: text("chunk_text"),
   description: text("description"),
-  rollupId: text("rollupId").references(() => rollups.id),
 });
 
-// DealDocument table
+// DealDocument table (deprecated - use documents table instead)
 export const dealDocuments = pgTable("DealDocument", {
   id: text("id")
     .primaryKey()
@@ -272,6 +280,9 @@ export const pocs = pgTable("POC", {
   workPhone: text("workPhone"),
   email: text("email").notNull(),
   dealId: text("dealId").references(() => deals.id, { onDelete: "cascade" }),
+  companyId: text("companyId").references(() => companies.id, {
+    onDelete: "cascade",
+  }), // Added to support company POCs (for deal-to-company conversion)
 });
 
 // Questionnaire table
@@ -370,7 +381,7 @@ export const companies = pgTable("Company", {
   revenue: decimal("revenue", { precision: 10, scale: 2 }),
   ebitda: decimal("ebitda", { precision: 10, scale: 2 }),
   growthRate: decimal("growthRate", { precision: 10, scale: 2 }),
-  employees: integer("employees").notNull(),
+  employees: integer("employees"), // Made optional to support deal-to-company conversion
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
@@ -397,7 +408,7 @@ export const founders = pgTable("Founder", {
     .$onUpdate(() => new Date()),
 });
 
-// File table
+// File table (deprecated - use documents table instead)
 export const files = pgTable("File", {
   id: text("id")
     .primaryKey()
@@ -419,6 +430,49 @@ export const files = pgTable("File", {
     .notNull()
     .references(() => users.id),
   comments: text("comments"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
+// Unified Document table (replaces both dealDocuments and files)
+export const documents = pgTable("Document", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  // Polymorphic association
+  entityType: entityTypeEnum("entityType").notNull(),
+  entityId: text("entityId").notNull(), // References deals.id or companies.id
+
+  // Core file metadata
+  title: text("title").notNull(),
+  description: text("description"),
+  caption: text("caption"), // From dealDocuments
+  category: documentCategoryEnum("category").default("OTHER").notNull(),
+  tags: text("tags").array().default([]),
+
+  // File storage
+  fileUrl: text("fileUrl").notNull(),
+  fileName: text("fileName").notNull(),
+  fileSize: integer("fileSize"),
+  mimeType: text("mimeType"), // Replaces fileType from dealDocuments
+
+  // Vector store integration (optional)
+  vectorStoreDocumentName: text("vectorStoreDocumentName"), // Google File Search Store reference
+
+  // Versioning (optional, primarily for companies)
+  version: text("version").default("1.0").notNull(),
+  isLatest: boolean("isLatest").default(true).notNull(),
+
+  // Upload tracking
+  uploadedById: text("uploadedById").references(() => users.id),
+
+  // Additional metadata
+  comments: text("comments"), // From files
+
+  // Timestamps
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
@@ -502,16 +556,6 @@ export const tasks = pgTable("Task", {
     .$onUpdate(() => new Date()),
 });
 
-// Many-to-many: User <-> Rollup (UserRollups)
-export const usersToRollups = pgTable("_UserRollups", {
-  A: text("A")
-    .notNull()
-    .references(() => rollups.id, { onDelete: "cascade" }),
-  B: text("B")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-});
-
 // ============================================================================
 // RELATIONS
 // ============================================================================
@@ -520,12 +564,12 @@ export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
   deals: many(deals),
-  files: many(files),
+  files: many(files), // Deprecated - use documents instead
+  documents: many(documents),
   reviews: many(reviews),
   assignedTasks: many(tasks, { relationName: "TaskAssignee" }),
   createdTasks: many(tasks, { relationName: "TaskCreator" }),
   userActionLogs: many(userActionLogs),
-  rollups: many(usersToRollups),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -542,22 +586,14 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   }),
 }));
 
-export const rollupsRelations = relations(rollups, ({ many }) => ({
-  deals: many(deals),
-  users: many(usersToRollups),
-}));
-
 export const dealsRelations = relations(deals, ({ one, many }) => ({
   user: one(users, {
     fields: [deals.userId],
     references: [users.id],
   }),
-  rollup: one(rollups, {
-    fields: [deals.rollupId],
-    references: [rollups.id],
-  }),
   aiScreenings: many(aiScreenings),
-  dealDocuments: many(dealDocuments),
+  dealDocuments: many(dealDocuments), // Deprecated - use documents instead
+  documents: many(documents),
   employees: many(employees),
   pocs: many(pocs),
 }));
@@ -573,6 +609,10 @@ export const pocsRelations = relations(pocs, ({ one }) => ({
   deal: one(deals, {
     fields: [pocs.dealId],
     references: [deals.id],
+  }),
+  company: one(companies, {
+    fields: [pocs.companyId],
+    references: [companies.id],
   }),
 }));
 
@@ -607,7 +647,9 @@ export const employeesRelations = relations(employees, ({ one }) => ({
 
 export const companiesRelations = relations(companies, ({ many }) => ({
   founders: many(founders),
-  files: many(files),
+  files: many(files), // Deprecated - use documents instead
+  documents: many(documents),
+  pocs: many(pocs), // Added to support company POCs
   sections: many(dueDiligenceSections),
   reviews: many(reviews),
   tasks: many(tasks),
@@ -627,6 +669,13 @@ export const filesRelations = relations(files, ({ one }) => ({
   }),
   uploadedBy: one(users, {
     fields: [files.uploadedById],
+    references: [users.id],
+  }),
+}));
+
+export const documentsRelations = relations(documents, ({ one }) => ({
+  uploadedBy: one(users, {
+    fields: [documents.uploadedById],
     references: [users.id],
   }),
 }));
@@ -676,17 +725,6 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
     fields: [tasks.createdById],
     references: [users.id],
     relationName: "TaskCreator",
-  }),
-}));
-
-export const usersToRollupsRelations = relations(usersToRollups, ({ one }) => ({
-  rollup: one(rollups, {
-    fields: [usersToRollups.A],
-    references: [rollups.id],
-  }),
-  user: one(users, {
-    fields: [usersToRollups.B],
-    references: [users.id],
   }),
 }));
 
@@ -799,6 +837,32 @@ export const RiskLevel = {
 } as const;
 export type RiskLevel = (typeof RiskLevel)[keyof typeof RiskLevel];
 
+export const DocumentCategory = {
+  FINANCIALS: "FINANCIALS",
+  LEGAL: "LEGAL",
+  TAX: "TAX",
+  TECHNICAL: "TECHNICAL",
+  COMMERCIAL: "COMMERCIAL",
+  ESG: "ESG",
+  MARKETING: "MARKETING",
+  OPERATIONS: "OPERATIONS",
+  DOCUMENTATION: "DOCUMENTATION",
+  INVESTOR_RELATIONSHIPS: "INVESTOR_RELATIONSHIPS",
+  TOOLS: "TOOLS",
+  LEGISLATION: "LEGISLATION",
+  RESEARCH: "RESEARCH",
+  PROSPECTUS: "PROSPECTUS",
+  OTHER: "OTHER",
+} as const;
+export type DocumentCategory =
+  (typeof DocumentCategory)[keyof typeof DocumentCategory];
+
+export const EntityType = {
+  DEAL: "DEAL",
+  COMPANY: "COMPANY",
+} as const;
+export type EntityType = (typeof EntityType)[keyof typeof EntityType];
+
 // Model type exports (inferred from tables)
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -811,9 +875,6 @@ export type NewSession = typeof sessions.$inferInsert;
 
 export type Verification = typeof verifications.$inferSelect;
 export type NewVerification = typeof verifications.$inferInsert;
-
-export type Rollup = typeof rollups.$inferSelect;
-export type NewRollup = typeof rollups.$inferInsert;
 
 export type Deal = typeof deals.$inferSelect;
 export type NewDeal = typeof deals.$inferInsert;
@@ -856,3 +917,6 @@ export type NewReview = typeof reviews.$inferInsert;
 
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
+
+export type Document = typeof documents.$inferSelect;
+export type NewDocument = typeof documents.$inferInsert;

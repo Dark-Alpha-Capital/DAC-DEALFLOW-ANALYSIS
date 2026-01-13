@@ -3,6 +3,8 @@ import { getSession } from "@/lib/auth-server";
 import {
   screenDealQueue,
   fileUploadQueue,
+  dealToCompanyQueue,
+  QUEUE_NAMES,
   type JobProgressData,
 } from "@/lib/queue-client";
 
@@ -50,13 +52,18 @@ export async function GET(
         if (!isActive) return;
 
         try {
-          // Try both queues since we might not know which one the job is in
+          // Try all queues since we might not know which one the job is in
           let job = await screenDealQueue.getJob(jobId);
-          let queueType = "screen-deal";
+          let queueType = QUEUE_NAMES.SCREEN_DEAL;
 
           if (!job) {
             job = await fileUploadQueue.getJob(jobId);
-            queueType = "file-upload";
+            queueType = QUEUE_NAMES.FILE_UPLOAD;
+          }
+
+          if (!job) {
+            job = await dealToCompanyQueue.getJob(jobId);
+            queueType = QUEUE_NAMES.DEAL_TO_COMPANY;
           }
 
           if (job) {

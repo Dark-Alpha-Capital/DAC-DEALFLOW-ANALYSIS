@@ -23,6 +23,7 @@ import { getCompanyById } from "db/queries";
 import { getSession } from "@/lib/auth-server";
 import { cacheLife, cacheTag } from "next/cache";
 import CompanyDetailLoadingSkeleton from "./loading";
+import CompanyFilesList from "@/components/company-files-list";
 
 interface CompanyDetailPageProps {
   params: Promise<{
@@ -353,49 +354,11 @@ async function FetchAndDisplayCompanyDetailData({
 
           {/* Files Tab */}
           <TabsContent value="files" className="mt-6">
-            <section>
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                  Files ({company._count.files})
-                </h2>
-                <BulkFileUploadDialog companyId={company.id} />
-              </div>
-              <div className="border border-border">
-                {company.files.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <FileText className="h-8 w-8 text-muted-foreground" />
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      No files uploaded yet
-                    </p>
-                    <BulkFileUploadDialog companyId={company.id} />
-                  </div>
-                ) : (
-                  <div className="divide-y divide-border">
-                    {company.files.map((file) => (
-                      <div
-                        key={file.id}
-                        className="flex items-center justify-between p-4"
-                      >
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">{file.title}</p>
-                            {file.category && (
-                              <p className="text-xs text-muted-foreground">
-                                {file.category}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(file.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
+            <CompanyFilesList
+              files={company.files}
+              companyId={company.id}
+              fileCount={company._count.files}
+            />
           </TabsContent>
 
           {/* Reviews Tab */}
