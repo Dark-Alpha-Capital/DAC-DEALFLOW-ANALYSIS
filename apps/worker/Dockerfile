@@ -1,32 +1,44 @@
-# Use the official Bun image
-FROM oven/bun:1.1.13
+FROM oven/bun:1 AS base
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y curl && \
-    rm -rf /var/lib/apt/lists/*
-
-# Set the working directory inside the container
 WORKDIR /app
 
-# Copy package files and workspace packages
-COPY package.json bun.lock* ./
-COPY packages/db ./packages/db/
-COPY packages/types ./packages/types/
-COPY apps/worker/package.json ./apps/worker/
-
-# Install dependencies
-RUN bun install --frozen-lockfile
-
-# Copy the rest of your application code
+# 1) Prune the monorepo down to just the worker app + its deps
+FROM base AS prune
+# Pin turbo version to match package.json
+RUN bun add -g turbo@^2
 COPY . .
+RUN turbo prune worker --docker
 
-# Expose the port
-EXPOSE 8080
+# 2) Install dependencies in the pruned workspace and build the worker
+FROM base AS builder
+WORKDIR /app
 
-# Set environment variable for port
-ENV PORT=8080
+COPY --from=prune /app/out/json/ .
+RUN bun install
+
+COPY --from=prune /app/out/full/ .
+COPY turbo.json turbo.json
+
+# Remote caching support (optional, pass as build args)
+ARG TURBO_TEAM
+ENV TURBO_TEAM=$TURBO_TEAM
+ARG TURBO_TOKEN
+ENV TURBO_TOKEN=$TURBO_TOKEN
+
+# Build only the worker app and its internal dependencies
+RUN bunx turbo run build --filter=worker
+
+# 3) Runtime image: Bun running the built worker bundle
+FROM oven/bun:1 AS runner
+WORKDIR /app
+
+# Use the non-root bun user already provided by the base image
+USER bun
+
 ENV NODE_ENV=production
 
-WORKDIR /app/apps/worker
+COPY --from=builder --chown=bun:bun /app .
 
-CMD ["bun", "index.ts"]
+EXPOSE 8080
+
+CMD ["bun", "apps/worker/dist/index.js"]

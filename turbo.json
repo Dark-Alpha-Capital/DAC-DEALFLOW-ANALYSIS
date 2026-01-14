@@ -4,10 +4,11 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-     "env":["DATABASE_URL", "DIRECT_URL", "AUTH_SECRET", "REDIS_URL", "GCLOUD_PROJECT_ID", "GCLOUD_BUCKET", "GCS_CLIENT_EMAIL", "GCS_PRIVATE_KEY", "AI_API_KEY"],  
+     "env":["DATABASE_URL", "DIRECT_URL", "AUTH_SECRET", "REDIS_URL", "AI_API_KEY", "RESEND_API_KEY", "NEXTCLOUD_URL", "NEXTCLOUD_USER", "NEXTCLOUD_PASSWORD", "BITRIX_SECRET_KEY", "GOOGLE_AI_API_KEY"],  
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**"]
     },
+    
     "lint": {
       "dependsOn": ["^lint"]
     },
@@ -17,6 +18,11 @@
     "dev": {
       "cache": false,
       "persistent": true
-    }
+    }, "start": {
+        "cache": false,
+        "persistent": true,
+        "dependsOn": ["build"]
+      }
+    
   }
 }

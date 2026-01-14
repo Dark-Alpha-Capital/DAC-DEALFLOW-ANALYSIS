@@ -1,43 +1,26 @@
-version: "3.8"
-
 services:
   frontend:
+    container_name: frontend
     build:
       context: .
       dockerfile: ./apps/frontend/Dockerfile
       args:
-        # ============================================
-        # BUILD-TIME VARIABLES (NEXT_PUBLIC_*)
-        # ============================================
-        # These are embedded into the JavaScript bundles during build.
-        # They are "baked" into the image and cannot be changed without rebuilding.
-        #
-        # How it works:
-        # 1. Define in your .env file (root directory) or shell: NEXT_PUBLIC_APP_URL=...
-        # 2. Docker Compose reads ${VARIABLE} and passes as ARG to Dockerfile
-        # 3. Dockerfile converts ARG to ENV for Next.js build process
-        # 4. Next.js hardcodes these values into static JS files
-        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-}
-        - NEXT_PUBLIC_WEBSOCKET_URL=${NEXT_PUBLIC_WEBSOCKET_URL:-}
-    container_name: bitrix-frontend
+        # DATABASE_URL: ${DATABASE_URL}
+        # DIRECT_URL: ${DIRECT_URL}
+        # AUTH_SECRET: ${AUTH_SECRET}
+        # REDIS_URL: ${REDIS_URL}
+        # RESEND_API_KEY: ${RESEND_API_KEY}
+        # AI_API_KEY: ${AI_API_KEY}
+        # OPENAI_API_KEY: ${OPENAI_API_KEY}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-}
+
+    restart: unless-stopped
     ports:
-      - "3000:3000"
-    # ============================================
-    # RUNTIME VARIABLES (Server-side & Secrets)
-    # ============================================
-    # These are injected into the container at startup and can be changed
-    # without rebuilding the image.
-    #
-    # The env_file directive loads ALL variables from ./apps/frontend/.env
-    # into the container. No need to list them individually.
-    #
-    # Create ./apps/frontend/.env with your variables:
-    # DATABASE_URL=postgresql://...
-    # BETTER_AUTH_SECRET=your-secret
-    # AUTH_GOOGLE_ID=...
-    # AUTH_GOOGLE_SECRET=...
-    # REDIS_URL=redis://redis:6379
-    # etc.
+      - 3000:3000
+    networks:
+      - app_network
+    # Load environment variables from frontend's .env file for runtime
+    # Note: Build args are read from shell environment or root .env file
     env_file:
       - ./apps/frontend/.env
     environment:
@@ -45,17 +28,8 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
-      # Override REDIS_URL to use docker service name
-      - REDIS_URL=redis://redis:6379
       # All other variables (DATABASE_URL, BETTER_AUTH_SECRET, etc.)
-      # are loaded from ./apps/frontend/.env via env_file above
-    restart: unless-stopped
-    networks:
-      - bitrix-network
-    depends_on:
-      redis:
-        condition: service_healthy
-    # Health check to ensure the application is running
+      # are loaded from ./apps/web/.env via env_file above
     healthcheck:
       test:
         [
@@ -70,67 +44,31 @@ services:
       start_period: 40s
 
   worker:
+    container_name: worker
     build:
       context: .
       dockerfile: ./apps/worker/Dockerfile
-    container_name: bitrix-worker
+    restart: always
     ports:
-      - "8080:8080"
-    # ============================================
-    # RUNTIME VARIABLES (Server-side & Secrets)
-    # ============================================
-    # The env_file directive loads ALL variables from ./apps/worker/.env
-    # into the container.
-    #
-    # Create ./apps/worker/.env with your variables:
-    # REDIS_URL=redis://redis:6379
-    # DATABASE_URL=postgresql://...
-    # AI_API_KEY=...
-    # etc.
+      - 8080:8080
+    networks:
+      - app_network
+    # Load environment variables from worker's .env file
     env_file:
       - ./apps/worker/.env
-    environment:
-      # Core runtime configuration (always set)
-      - NODE_ENV=production
-      - PORT=8080
-      # Override REDIS_URL to use docker service name
-      - REDIS_URL=redis://redis:6379
-      # All other variables are loaded from ./apps/worker/.env via env_file above
-    restart: unless-stopped
-    networks:
-      - bitrix-network
-    depends_on:
-      redis:
-        condition: service_healthy
-    # Health check to ensure the worker is running
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    # Option 2: Define environment variables directly (alternative)
+    # environment:
+    #   - REDIS_URL=${REDIS_URL}
+    #   - DATABASE_URL=${DATABASE_URL}
+    #   - DIRECT_URL=${DIRECT_URL}
+    #   - AI_API_KEY=${AI_API_KEY}
+    #   - GCLOUD_PROJECT_ID=${GCLOUD_PROJECT_ID}
+    #   - GCLOUD_BUCKET=${GCLOUD_BUCKET}
+    #   - GCS_CLIENT_EMAIL=${GCS_CLIENT_EMAIL}
+    #   - GCS_PRIVATE_KEY=${GCS_PRIVATE_KEY}
 
-  redis:
-    image: redis:7-alpine
-    container_name: bitrix-redis
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
-    networks:
-      - bitrix-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  redis-data:
-    driver: local
-
+# Define a network, which allows containers to communicate
+# with each other, by using their container name as a hostname
 networks:
-  bitrix-network:
-    driver: bridge
+  app_network:
+    external: true

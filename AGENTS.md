@@ -24,7 +24,7 @@ From the repo root (Bun workspace + Turborepo):
 
 Run a single package with Turbo filters (examples):
 
-- `bun run dev -- --filter=bitrix-deal-sourcing` (frontend)
+- `bun run dev -- --filter=frontend` (frontend)
 - `bun run dev -- --filter=worker` (worker)
 
 Database utilities (Drizzle):

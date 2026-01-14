@@ -134,7 +134,7 @@ export interface ConvertDealToCompanyJobData {
   filesMoved?: number;
 }
 
-// Re-export types from queue-types for backward compatibility
+// Re-export types and constants from queue-types for backward compatibility
 // Client components should import from queue-types.ts directly to avoid pulling in BullMQ
 export type {
   JobStatus,
@@ -142,6 +142,9 @@ export type {
   JobProgressData,
   JobWithMetadata,
 } from "./queue-types";
+
+// Re-export QUEUE_NAMES for convenience
+export { QUEUE_NAMES } from "./queue-types";
 
 // ============================================================================
 // Helper Functions

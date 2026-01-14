@@ -45,7 +45,7 @@ bun install
 bun run dev
 
 # Development - run specific app
-bun run dev --filter=bitrix-deal-sourcing  # frontend
+bun run dev --filter=frontend  # frontend
 bun run dev --filter=backend
 bun run dev --filter=worker
 bun run dev --filter=ws
@@ -54,7 +54,7 @@ bun run dev --filter=ws
 bun run build
 
 # Build specific app
-bun run build --filter=bitrix-deal-sourcing
+bun run build --filter=frontend
 
 # Linting
 bun run lint

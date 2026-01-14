@@ -13,7 +13,7 @@ This is a Next.js application for deal sourcing and management. Follow the instr
 
 ```bash
 git clone <repository-url>
-cd bitrix-deal-sourcing
+cd frontend
 ```
 
 2. Set up environment variables:

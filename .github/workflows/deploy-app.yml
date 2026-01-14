@@ -1,0 +1,41 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main # Runs every time you push to the 'main' branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Execute remote SSH commands
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            cd hr-automation
+            git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git || true
+            git pull origin main
+
+            # Stop and remove old containers/images
+            docker compose down || true
+            docker image prune -f
+
+            # Build without cache (docker-compose.yml handles all build args automatically)
+            docker compose build --no-cache
+
+            # Start containers
+            docker compose up -d --force-recreate
+
+            # Show status
+            sleep 3
+            docker compose ps
+            docker compose logs --tail=30

@@ -5,6 +5,8 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
+    "start": "turbo run start",
+    
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
   },
@@ -17,7 +19,7 @@
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "bun@1.2.22",
+  "packageManager": "bun@1.1.13",
   "workspaces": [
     "apps/*",
     "packages/*"

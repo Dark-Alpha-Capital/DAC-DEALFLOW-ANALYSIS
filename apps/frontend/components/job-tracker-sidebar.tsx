@@ -45,11 +45,11 @@ export function JobTrackerSidebar() {
     const handleNewJobs = () => {
       // Invalidate React Query cache for latest jobs
       queryClient.invalidateQueries({
-        queryKey: trpc.jobs.getLatest.getQueryKey({ limit: 5 }),
+        queryKey: trpc.jobs.getLatest.queryKey({ limit: 5 }),
       });
       // Also invalidate all jobs query
       queryClient.invalidateQueries({
-        queryKey: trpc.jobs.getAll.getQueryKey(),
+        queryKey: trpc.jobs.getAll.queryKey(),
       });
       // Trigger immediate refetch
       refetch();
@@ -71,12 +71,7 @@ export function JobTrackerSidebar() {
     <SidebarGroup>
       <div className="flex items-center justify-between px-2">
         <SidebarGroupLabel>Recent Jobs</SidebarGroupLabel>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-xs"
-          asChild
-        >
+        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" asChild>
           <Link href="/jobs">
             View All
             <ChevronRight className="ml-1 h-3 w-3" />

@@ -19,7 +19,7 @@ interface UseJobPollingOptions {
 export function useJobPolling(
   jobId: string | null,
   queueName: string | null,
-  options: UseJobPollingOptions = {}
+  options: UseJobPollingOptions = {},
 ) {
   const { enabled = true, interval, onUpdate } = options;
   const { job, refetch } = useJob(jobId, queueName);
@@ -67,7 +67,7 @@ export function useJobPolling(
 
     // Call onUpdate callback
     if (onUpdate && job) {
-      onUpdate(job);
+      onUpdate(job as JobWithMetadata);
     }
 
     const pollInterval = getInterval();
