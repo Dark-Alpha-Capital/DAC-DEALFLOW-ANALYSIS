@@ -4,17 +4,15 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  ArrowLeft,
-  FileText,
-  CheckSquare,
-  MessageSquare,
-  Calendar,
-  Plus,
-  LayoutDashboard,
-  Clock,
-  Bot,
-} from "lucide-react";
+import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import CheckSquare from "lucide-react/dist/esm/icons/check-square";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import Bot from "lucide-react/dist/esm/icons/bot";
 import Link from "next/link";
 import { getCompanyDueDiligenceData } from "db/queries";
 import { getSession } from "@/lib/auth-server";
@@ -34,7 +32,6 @@ export async function generateMetadata({
   params,
 }: DueDiligencePageProps): Promise<Metadata> {
   const { id } = await params;
-
   const company = await getCompanyDueDiligenceData(id);
 
   if (!company) {
@@ -51,12 +48,10 @@ export async function generateMetadata({
 }
 
 const DueDiligencePage = async ({ params }: DueDiligencePageProps) => {
-  const { id } = await params;
-
   return (
     <section className="big-container block-space-mini group min-h-screen">
       <Suspense fallback={<DueDiligenceLoadingSkeleton />}>
-        <ShowDueDiligenceComponent companyId={id} />
+        <ShowDueDiligenceComponent params={params} />
       </Suspense>
     </section>
   );
@@ -64,13 +59,21 @@ const DueDiligencePage = async ({ params }: DueDiligencePageProps) => {
 
 export default DueDiligencePage;
 
-async function ShowDueDiligenceComponent({ companyId }: { companyId: string }) {
-  const userSession = await getSession();
+async function ShowDueDiligenceComponent({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const [resolvedParams, userSession] = await Promise.all([
+    params,
+    getSession(),
+  ]);
+
   if (!userSession?.user) {
     redirect("/auth/login");
   }
 
-  return <FetchAndDisplayDueDiligenceData companyId={companyId} />;
+  return <FetchAndDisplayDueDiligenceData companyId={resolvedParams.id} />;
 }
 
 async function FetchAndDisplayDueDiligenceData({

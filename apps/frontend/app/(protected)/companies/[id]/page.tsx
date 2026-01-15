@@ -4,8 +4,8 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft } from "lucide-react";
 import {
-  ArrowLeft,
   ExternalLink,
   FileText,
   CheckSquare,
@@ -35,7 +35,6 @@ export async function generateMetadata({
   params,
 }: CompanyDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-
   const company = await getCompanyById(id);
 
   if (!company) {
@@ -49,16 +48,10 @@ export async function generateMetadata({
 }
 
 const CompanyDetailPage = async ({ params }: CompanyDetailPageProps) => {
-  const { id } = await params;
-  const userSession = await getSession();
-  if (!userSession?.user) {
-    redirect("/auth/login");
-  }
-
   return (
     <section className="big-container block-space-mini group min-h-screen">
       <Suspense fallback={<CompanyDetailLoadingSkeleton />}>
-        <ShowCompanyDetailComponent companyId={id} />
+        <ShowCompanyDetailComponent params={params} />
       </Suspense>
     </section>
   );
@@ -67,11 +60,20 @@ const CompanyDetailPage = async ({ params }: CompanyDetailPageProps) => {
 export default CompanyDetailPage;
 
 async function ShowCompanyDetailComponent({
-  companyId,
+  params,
 }: {
-  companyId: string;
+  params: Promise<{ id: string }>;
 }) {
-  return <FetchAndDisplayCompanyDetailData companyId={companyId} />;
+  const [resolvedParams, userSession] = await Promise.all([
+    params,
+    getSession(),
+  ]);
+
+  if (!userSession?.user) {
+    redirect("/auth/login");
+  }
+
+  return <FetchAndDisplayCompanyDetailData companyId={resolvedParams.id} />;
 }
 
 async function FetchAndDisplayCompanyDetailData({

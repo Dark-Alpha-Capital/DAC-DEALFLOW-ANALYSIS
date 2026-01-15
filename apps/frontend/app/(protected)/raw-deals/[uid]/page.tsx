@@ -12,15 +12,6 @@ import { getSession } from "@/lib/auth-server";
 
 type Params = Promise<{ uid: string }>;
 
-async function DealContent(props: { params: Params }) {
-  const { uid } = await props.params;
-  const userSession = await getSession();
-  if (!userSession?.user) {
-    redirect("/auth/login");
-  }
-  return <CachedDealContent uid={uid} />;
-}
-
 async function CachedDealContent({ uid }: { uid: string }) {
   "use cache";
   cacheTag(`deal-${uid}`);
@@ -98,10 +89,27 @@ async function CachedDealContent({ uid }: { uid: string }) {
   );
 }
 
+async function AuthedDealContent(props: {
+  params: Params;
+  sessionPromise: ReturnType<typeof getSession>;
+}) {
+  const [params, userSession] = await Promise.all([
+    props.params,
+    props.sessionPromise,
+  ]);
+  if (!userSession?.user) {
+    redirect("/auth/login");
+  }
+  return (
+    <CachedDealContent uid={params.uid} />
+  );
+}
+
 export default function ManualDealSpecificPage(props: { params: Params }) {
+  const sessionPromise = getSession();
   return (
     <Suspense fallback={<DealPageSkeleton />}>
-      <DealContent params={props.params} />
+      <AuthedDealContent params={props.params} sessionPromise={sessionPromise} />
     </Suspense>
   );
 }

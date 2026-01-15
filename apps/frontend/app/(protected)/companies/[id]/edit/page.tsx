@@ -2,7 +2,8 @@ import { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { Pencil } from "lucide-react";
 import Link from "next/link";
 import { getCompanyById } from "db/queries";
 import { getSession } from "@/lib/auth-server";
@@ -65,12 +66,10 @@ function EditCompanyLoadingSkeleton() {
 }
 
 const EditCompanyPage = async ({ params }: EditCompanyPageProps) => {
-  const { id } = await params;
-
   return (
     <section className="big-container block-space-mini group min-h-screen">
       <Suspense fallback={<EditCompanyLoadingSkeleton />}>
-        <ShowEditCompanyComponent companyId={id} />
+        <ShowEditCompanyComponent params={params} />
       </Suspense>
     </section>
   );
@@ -78,13 +77,21 @@ const EditCompanyPage = async ({ params }: EditCompanyPageProps) => {
 
 export default EditCompanyPage;
 
-async function ShowEditCompanyComponent({ companyId }: { companyId: string }) {
-  const userSession = await getSession();
+async function ShowEditCompanyComponent({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const [resolvedParams, userSession] = await Promise.all([
+    params,
+    getSession(),
+  ]);
+
   if (!userSession?.user) {
     redirect("/auth/login");
   }
 
-  return <FetchAndDisplayEditCompanyData companyId={companyId} />;
+  return <FetchAndDisplayEditCompanyData companyId={resolvedParams.id} />;
 }
 
 async function FetchAndDisplayEditCompanyData({
@@ -105,7 +112,7 @@ async function FetchAndDisplayEditCompanyData({
   return (
     <>
       <div className="mb-8">
-        <Button variant="ghost" asChild size="sm" className="mb-6 -ml-2">
+        <Button variant="ghost" asChild size="sm" className="-ml-2 mb-6">
           <Link href={`/companies/${company.id}`}>
             <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
             Back
@@ -182,9 +189,7 @@ async function FetchAndDisplayEditCompanyData({
               <div>
                 <label className="text-xs text-muted-foreground">EBITDA</label>
                 <p className="mt-1 text-sm">
-                  {company.ebitda
-                    ? `$${company.ebitda.toLocaleString()}`
-                    : "—"}
+                  {company.ebitda ? `$${company.ebitda.toLocaleString()}` : "—"}
                 </p>
               </div>
               <div>

@@ -8,7 +8,7 @@ import CompanyList from "@/components/company-list";
 import CompaniesLoadingSkeleton from "./loading";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
-import { cacheLife, cacheTag } from "next/cache";
+import { cacheTag } from "next/cache";
 import {
   Accordion,
   AccordionContent,
@@ -157,12 +157,15 @@ const CompaniesPage = async (props: { searchParams: SearchParams }) => {
 export default CompaniesPage;
 
 async function ShowCompaniesComponent(props: { searchParams: SearchParams }) {
-  const userSession = await getSession();
+  // Parallelize session check and searchParams resolution
+  const [userSession, searchParams] = await Promise.all([
+    getSession(),
+    props.searchParams,
+  ]);
+
   if (!userSession?.user) {
     redirect("/auth/login");
   }
-
-  const searchParams = await props.searchParams;
   const search = searchParams?.search || "";
   const sector = searchParams?.sector || "";
   const headquarters = searchParams?.headquarters || "";
@@ -226,7 +229,6 @@ async function FetchAndDisplayCompanies({
   "use cache";
 
   cacheTag("companies");
-  cacheLife("hours");
 
   const { companies, totalCount, totalPages } = await GetCompanies({
     search: search || undefined,

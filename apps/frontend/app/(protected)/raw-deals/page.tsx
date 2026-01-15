@@ -1,8 +1,8 @@
-import React, { Suspense } from "react";
-import { Metadata } from "next";
+import { Suspense } from "react";
+import type { Metadata } from "next";
 import Pagination from "@/components/pagination";
 import DealTypeFilter from "@/components/DealTypeFilter";
-import { DealStatus, DealType } from "db/schema";
+import type { DealStatus, DealType } from "db/schema";
 import SearchDealsSkeleton from "@/components/skeletons/SearchDealsSkeleton";
 import DealTypeFilterSkeleton from "@/components/skeletons/DealTypeFilterSkeleton";
 import DealCardGridSkeleton from "@/components/skeletons/DealCardGridSkeleton";
@@ -49,9 +49,85 @@ export const metadata: Metadata = {
   description: "View the raw deals",
 };
 
-type SearchParams = Promise<{ [key: string]: string | undefined }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-const RawDealsPage = async (props: { searchParams: SearchParams }) => {
+const DEFAULT_OPEN_FILTER_SECTIONS = [
+  "search",
+  "financials",
+  "status-tags",
+  "flags",
+];
+
+function RawDealsAuthedSkeleton() {
+  return (
+    <div className="mb-6 flex flex-col gap-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex w-full flex-col gap-4 md:w-auto md:flex-row">
+          <DealTypeFilterSkeleton />
+          <DealTypeFilterSkeleton />
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-card">
+        <div className="flex flex-col gap-3 p-6 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <div className="h-6 w-20 rounded bg-muted" />
+            <div className="h-4 w-80 max-w-full rounded bg-muted" />
+          </div>
+          <div className="h-9 w-36 rounded bg-muted" />
+        </div>
+
+        <div className="space-y-8 px-6 pb-6">
+          <div className="space-y-3">
+            <div className="h-5 w-24 rounded bg-muted" />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <SearchDealsSkeleton />
+              <SearchDealsSkeleton />
+              <SearchDealsSkeleton />
+              <SearchDealsSkeleton />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="h-5 w-28 rounded bg-muted" />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <SearchDealsSkeleton />
+              <SearchDealsSkeleton />
+              <SearchDealsSkeleton />
+              <SearchDealsSkeleton />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="h-5 w-32 rounded bg-muted" />
+            <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center">
+              <SearchDealsSkeleton />
+              <SearchDealsSkeleton />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DealCardGridSkeleton />
+    </div>
+  );
+}
+
+function asString(value: string | string[] | undefined) {
+  return typeof value === "string" ? value : value?.[0];
+}
+
+function asStringArray(value: string | string[] | undefined) {
+  return typeof value === "string" ? [value] : value ?? [];
+}
+
+function asNumber(value: string | string[] | undefined, fallback: number) {
+  const parsed = Number(asString(value));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+const RawDealsPage = (props: { searchParams: SearchParams }) => {
+  const sessionPromise = getSession();
   return (
     <section className="block-space group container">
       <div className="mb-8 text-center">
@@ -63,6 +139,29 @@ const RawDealsPage = async (props: { searchParams: SearchParams }) => {
         </p>
       </div>
 
+      <Suspense fallback={<RawDealsAuthedSkeleton />}>
+        <AuthedRawDeals
+          searchParams={props.searchParams}
+          sessionPromise={sessionPromise}
+        />
+      </Suspense>
+    </section>
+  );
+};
+
+export default RawDealsPage;
+
+async function AuthedRawDeals(props: {
+  searchParams: SearchParams;
+  sessionPromise: ReturnType<typeof getSession>;
+}) {
+  const userSession = await props.sessionPromise;
+  if (!userSession?.user) {
+    redirect("/auth/login");
+  }
+
+  return (
+    <>
       <div className="mb-6 flex flex-col gap-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex w-full flex-col gap-4 md:w-auto md:flex-row">
@@ -91,7 +190,7 @@ const RawDealsPage = async (props: { searchParams: SearchParams }) => {
           <CardContent className="pt-0">
             <Accordion
               type="multiple"
-              defaultValue={["search", "financials", "status-tags", "flags"]}
+              defaultValue={DEFAULT_OPEN_FILTER_SECTIONS}
               className="w-full"
             >
               <AccordionItem value="search">
@@ -174,77 +273,62 @@ const RawDealsPage = async (props: { searchParams: SearchParams }) => {
           </CardContent>
         </Card>
       </div>
+
       <Suspense fallback={<DealCardGridSkeleton />}>
         <ShowDealsComponent searchParams={props.searchParams} />
       </Suspense>
-    </section>
+    </>
   );
-};
-
-export default RawDealsPage;
+}
 
 async function ShowDealsComponent(props: { searchParams: SearchParams }) {
-  const userSession = await getSession();
-  if (!userSession?.user) {
-    redirect("/auth/login");
-  }
-
   const searchParams = await props.searchParams;
-  const search = searchParams?.query || "";
-  const revenue = searchParams?.revenue || "";
-  const location = searchParams?.location || "";
-  const maxRevenue = searchParams?.maxRevenue || "";
-  const maxEbitda = searchParams?.maxEbitda || "";
-  const brokerage = searchParams?.brokerage || "";
-  const industry = searchParams?.industry || "";
-  const ebitdaMargin = searchParams?.ebitdaMargin || "";
-  const currentPage = Number(searchParams?.page) || 1;
-  const limit = Number(searchParams?.limit) || 50;
+  const search = asString(searchParams.query) ?? "";
+  const revenue = asString(searchParams.revenue) ?? "";
+  const location = asString(searchParams.location) ?? "";
+  const maxRevenue = asString(searchParams.maxRevenue) ?? "";
+  const maxEbitda = asString(searchParams.maxEbitda) ?? "";
+  const brokerage = asString(searchParams.brokerage) ?? "";
+  const industry = asString(searchParams.industry) ?? "";
+  const ebitdaMargin = asString(searchParams.ebitdaMargin) ?? "";
+  const currentPage = Math.max(1, asNumber(searchParams.page, 1));
+  const limit = Math.max(1, asNumber(searchParams.limit, 50));
   const offset = (currentPage - 1) * limit;
-  const ebitda = searchParams?.ebitda || "";
-  const userId = searchParams?.userId || "";
-  const showSeen = searchParams?.seen === "true" ? true : false;
-  const showRecent = searchParams?.recent === "true" ? true : false;
-  const showReviewed = searchParams?.reviewed === "true" ? true : false;
-  const showPublished = searchParams?.published === "true" ? true : false;
+  const ebitda = asString(searchParams.ebitda) ?? "";
+  const userId = asString(searchParams.userId) ?? "";
+  const showSeen = asString(searchParams.seen) === "true";
+  const showRecent = asString(searchParams.recent) === "true";
+  const showReviewed = asString(searchParams.reviewed) === "true";
+  const showPublished = asString(searchParams.published) === "true";
 
-  const status = searchParams?.status || "";
+  const status = asString(searchParams.status) ?? "";
 
-  const dealTypes =
-    typeof searchParams?.dealType === "string"
-      ? [searchParams.dealType]
-      : searchParams?.dealType || [];
-
-  const tags =
-    typeof searchParams?.tags === "string"
-      ? [searchParams.tags]
-      : searchParams?.tags || [];
+  const dealTypes = asStringArray(searchParams.dealType) as DealType[];
+  const tags = asStringArray(searchParams.tags);
 
   return (
-    <div>
-      <FetchAndDisplayDeals
-        search={search}
-        offset={offset}
-        limit={limit}
-        dealTypes={dealTypes as DealType[]}
-        ebitda={ebitda}
-        userId={userId}
-        currentPage={currentPage}
-        revenue={revenue}
-        location={location}
-        maxRevenue={maxRevenue}
-        maxEbitda={maxEbitda}
-        brokerage={brokerage}
-        industry={industry}
-        ebitdaMargin={ebitdaMargin}
-        showSeen={showSeen}
-        showRecent={showRecent}
-        showReviewed={showReviewed}
-        showPublished={showPublished}
-        status={status as DealStatus}
-        tags={tags as string[]}
-      />
-    </div>
+    <FetchAndDisplayDeals
+      search={search}
+      offset={offset}
+      limit={limit}
+      dealTypes={dealTypes}
+      ebitda={ebitda}
+      userId={userId}
+      currentPage={currentPage}
+      revenue={revenue}
+      location={location}
+      maxRevenue={maxRevenue}
+      maxEbitda={maxEbitda}
+      brokerage={brokerage}
+      industry={industry}
+      ebitdaMargin={ebitdaMargin}
+      showSeen={showSeen}
+      showRecent={showRecent}
+      showReviewed={showReviewed}
+      showPublished={showPublished}
+      status={status as DealStatus}
+      tags={tags}
+    />
   );
 }
 
@@ -299,7 +383,7 @@ async function FetchAndDisplayDeals({
     search,
     offset,
     limit,
-    dealTypes: dealTypes as DealType[],
+    dealTypes,
     ebitda,
     userId,
     revenue,
@@ -313,8 +397,8 @@ async function FetchAndDisplayDeals({
     showRecent,
     showReviewed,
     showPublished,
-    status: status as DealStatus,
-    tags: tags as string[],
+    status,
+    tags,
   });
 
   return (
