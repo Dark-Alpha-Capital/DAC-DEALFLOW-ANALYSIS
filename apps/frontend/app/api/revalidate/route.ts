@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 
 /**
  * API route to revalidate Next.js cache tags
@@ -20,10 +20,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Revalidate each tag
+    // Using "max" profile for stale-while-revalidate behavior
     for (const tag of tags) {
       if (typeof tag === "string") {
-        updateTag(tag);
-        console.log(`[revalidate] Updated cache tag: ${tag}`);
+        revalidateTag(tag, "max");
+        console.log(`[revalidate] Revalidated cache tag: ${tag}`);
       }
     }
 

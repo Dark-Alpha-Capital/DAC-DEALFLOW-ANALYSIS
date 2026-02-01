@@ -12,7 +12,7 @@ import db, {
   DocumentCategory,
 } from "db";
 import { DeleteDealById, BulkDeleteDeals } from "db/mutations";
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { uploadFileToNextCloud } from "@/lib/storage";
 import {
   createConvertDealToCompanyJob,
@@ -131,7 +131,7 @@ export const dealsRouter = createTRPCRouter({
         .returning();
 
       revalidatePath("/manual-deals");
-      updateTag("deals");
+      revalidateTag("deals", "max");
 
       return { dealId: addedDeal?.id };
     }),
@@ -372,7 +372,7 @@ export const dealsRouter = createTRPCRouter({
         fileName: input.fileName,
       });
 
-      updateTag(`deal-${input.dealId}`);
+      revalidateTag(`deal-${input.dealId}`, "max");
       revalidatePath(`/raw-deals/${input.dealId}`);
 
       return {

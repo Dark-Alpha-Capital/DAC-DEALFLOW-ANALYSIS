@@ -5,21 +5,12 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-
-  transpilePackages: ["db", "types", "better-auth"],
-
-  reactCompiler: true,
+  transpilePackages: ["db", "types"],
   cacheComponents: true,
   output: "standalone",
-
-  // Explicitly set Turbopack root to avoid lockfile confusion (dev only)
-  // Turbopack is experimental and can cause issues in Docker builds
-  turbopack:
-    process.env.NODE_ENV === "development"
-      ? {
-          root: process.env.TURBOPACK_ROOT || path.resolve(__dirname, "../.."),
-        }
-      : undefined,
+  turbopack: {
+    root: process.env.TURBOPACK_ROOT || path.resolve(__dirname, "../.."),
+  },
   images: {
     remotePatterns: [
       {

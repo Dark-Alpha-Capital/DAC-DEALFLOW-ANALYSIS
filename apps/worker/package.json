@@ -25,14 +25,14 @@
     "@types/multer": "^2.0.0",
     "ai": "^6.0.7",
     "bullmq": "^5.66.4",
-    "db": "file:../../packages/db",
+    "db": "workspace:*",
     "drizzle-orm": "^0.45.1",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "ioredis": "^5.8.2",
     "multer": "^2.0.2",
     "openai": "^6.15.0",
-    "types": "file:../../packages/types",
+    "types": "workspace:*",
     "webdav": "^5.8.0",
     "zod": "^4.3.5"
   }

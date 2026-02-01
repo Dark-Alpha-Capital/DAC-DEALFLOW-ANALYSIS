@@ -1,44 +1,44 @@
-FROM oven/bun:1 AS base
-
+# Use Bun official image (matching packageManager version)
+FROM oven/bun:1.2.22 AS base
 WORKDIR /app
 
-# 1) Prune the monorepo down to just the worker app + its deps
-FROM base AS prune
-# Pin turbo version to match package.json
-RUN bun add -g turbo@^2
-COPY . .
-RUN turbo prune worker --docker
-
-# 2) Install dependencies in the pruned workspace and build the worker
-FROM base AS builder
-WORKDIR /app
-
-COPY --from=prune /app/out/json/ .
+# Install dependencies
+FROM base AS deps
+# Copy root package files for workspace setup
+COPY package.json bun.lock* ./
+# Copy workspace packages (needed for workspace dependencies)
+COPY packages/db/package.json ./packages/db/
+COPY packages/types/package.json ./packages/types/
+COPY packages/typescript-config/package.json ./packages/typescript-config/
+# Copy worker package.json
+COPY apps/worker/package.json ./apps/worker/
+# Install all dependencies
 RUN bun install
 
-COPY --from=prune /app/out/full/ .
-COPY turbo.json turbo.json
-
-# Remote caching support (optional, pass as build args)
-ARG TURBO_TEAM
-ENV TURBO_TEAM=$TURBO_TEAM
-ARG TURBO_TOKEN
-ENV TURBO_TOKEN=$TURBO_TOKEN
-
-# Build only the worker app and its internal dependencies
-RUN bunx turbo run build --filter=worker
-
-# 3) Runtime image: Bun running the built worker bundle
-FROM oven/bun:1 AS runner
+# Production stage
+FROM base AS production
 WORKDIR /app
 
-# Use the non-root bun user already provided by the base image
-USER bun
+# Copy dependencies (Bun workspaces install to root node_modules)
+COPY --from=deps /app/node_modules ./node_modules
 
-ENV NODE_ENV=production
+# Copy application code
+COPY package.json bun.lock* ./
+# Copy workspace packages (needed at runtime)
+COPY packages/db ./packages/db
+COPY packages/types ./packages/types
+COPY packages/typescript-config ./packages/typescript-config
+COPY apps/worker ./apps/worker
 
-COPY --from=builder --chown=bun:bun /app .
+# Set working directory to worker
+WORKDIR /app/apps/worker
 
-EXPOSE 8080
+# Expose port (Cloud Run requires a port, even for background services)
+# Using 8081 to avoid conflict with server (8080)
+EXPOSE 8081
 
-CMD ["bun", "apps/worker/dist/index.js"]
+# Set default port if not provided
+ENV PORT=8081
+
+# Run the worker (long-running process)
+CMD ["bun", "run", "index.ts"]

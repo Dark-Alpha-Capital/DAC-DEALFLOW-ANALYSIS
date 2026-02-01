@@ -3,26 +3,52 @@
   "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-     "env":["DATABASE_URL", "DIRECT_URL", "AUTH_SECRET", "REDIS_URL", "AI_API_KEY", "RESEND_API_KEY", "NEXTCLOUD_URL", "NEXTCLOUD_USER", "NEXTCLOUD_PASSWORD", "BITRIX_SECRET_KEY", "GOOGLE_AI_API_KEY"],  
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "DATABASE_URL",
+        "DIRECT_URL",
+        "AUTH_SECRET",
+        "REDIS_URL",
+        "AI_API_KEY",
+        "RESEND_API_KEY",
+        "NEXTCLOUD_URL",
+        "NEXTCLOUD_USER",
+        "NEXTCLOUD_PASSWORD",
+        "BITRIX_SECRET_KEY",
+        "GOOGLE_AI_API_KEY"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**"
+      ]
     },
-    
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": [
+        "^check-types"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true
-    }, "start": {
-        "cache": false,
-        "persistent": true,
-        "dependsOn": ["build"]
-      }
-    
+    },
+    "start": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": [
+        "build"
+      ]
+    }
   }
 }

@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "next-auth/react";
-import { raleway, bitter } from "@/app/fonts";
 import {
   SidebarInset,
   SidebarProvider,
@@ -22,11 +21,7 @@ export const metadata: Metadata = {
 
 const layout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html
-      lang="en"
-      className={cn(raleway.variable, bitter.variable)}
-      suppressHydrationWarning
-    >
+    <html lang="en" suppressHydrationWarning>
       <body className={`antialiased`}>
         <ThemeProvider
           attribute="class"
@@ -39,10 +34,10 @@ const layout = ({ children }: { children: React.ReactNode }) => {
               <SidebarProvider>
                 <ChatSidebar />
                 <SidebarInset>
-                  <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                  <header className="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b px-4 backdrop-blur">
                     <SidebarTrigger className="-ml-1" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">
+                      <p className="text-foreground truncate text-sm font-medium">
                         Chat
                       </p>
                     </div>

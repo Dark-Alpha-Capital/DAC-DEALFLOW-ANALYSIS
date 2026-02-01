@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents, and, eq } from "db";
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { TRPCError } from "@trpc/server";
 import { deleteFileFromNextCloud, getFileDownloadUrl } from "@/lib/storage";
 import {
@@ -316,8 +316,9 @@ export const filesRouter = createTRPCRouter({
 
       // Revalidate cache tags for company page
       // This ensures the page shows updated file count immediately
-      updateTag(`company-${input.companyId}`);
-      updateTag("companies");
+      // Using "max" profile for stale-while-revalidate behavior
+      revalidateTag(`company-${input.companyId}`, "max");
+      revalidateTag("companies", "max");
 
       console.log(
         `[bulk-upload] Cache tags revalidated: company-${input.companyId}, companies`,
