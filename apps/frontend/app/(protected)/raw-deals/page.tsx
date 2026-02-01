@@ -78,11 +78,6 @@ const RawDealsPage = (props: { searchParams: SearchParams }) => {
     <section className="block-space group container">
       <div className="mb-8 text-center">
         <h1 className="mb-4 text-4xl font-bold md:mb-6 lg:mb-8">Raw Deals</h1>
-        <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-          Browse through our collection of unprocessed deals gathered from
-          various sources including manual entries, bulk uploads, external
-          website scraping, and AI-inferred opportunities.
-        </p>
       </div>
 
       <Suspense fallback={<RawDealsAuthedSkeleton />}>
@@ -357,7 +352,7 @@ async function FetchAndDisplayDeals({
       <div className="group-has-[[data-pending]]:animate-pulse">
         {data.length === 0 ? (
           <div className="mt-12 text-center">
-            <p className="text-xl text-muted-foreground">
+            <p className="text-muted-foreground text-xl">
               No deals found matching your criteria.
             </p>
           </div>

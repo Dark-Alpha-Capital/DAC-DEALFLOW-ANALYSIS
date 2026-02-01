@@ -6,9 +6,9 @@ import {
   CardContent,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import {
   DollarSign,
@@ -16,13 +16,13 @@ import {
   Trash2,
   MapPin,
   Briefcase,
-  Type,
   Building2,
-  Percent,
-  CheckCircle,
-  Circle,
-  Check,
+  TrendingUp,
+  Eye,
+  Zap,
+  CheckCircle2,
   Clock,
+  ExternalLink,
 } from "lucide-react";
 import {
   Tooltip,
@@ -30,7 +30,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Deal, UserRole } from "db";
+import { Deal } from "db";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -59,7 +59,7 @@ const DealCard = ({
   const { toast } = useToast();
   const trpc = useTRPC();
 
-  const { mutate: deleteDeal } = useMutation(
+  const { mutate: deleteDeal, isPending: isDeleting } = useMutation(
     trpc.deals.delete.mutationOptions({
       onSuccess: () => {
         toast({
@@ -77,165 +77,194 @@ const DealCard = ({
     }),
   );
 
-  const handleDelete = () => {
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     deleteDeal({ id: deal.id, dealType: deal.dealType });
   };
+
+  const ebitdaMargin = calculateEbitdaMargin(deal.ebitda, deal.revenue);
 
   return (
     <Card
       className={cn(
-        "group w-full transition-all duration-300 hover:scale-[1.02] hover:shadow-xl",
+        "group relative flex h-full cursor-pointer flex-col overflow-hidden border-border/50 bg-gradient-to-br from-card to-card/80 transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5",
         className,
       )}
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="line-clamp-2 text-lg font-bold text-foreground group-hover:text-primary">
-            {deal.dealCaption}
-          </CardTitle>
+      {/* Accent line */}
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-primary/80 to-primary/60 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+
+      <CardHeader className="space-y-3 pb-2">
+        {/* Top row: Status badges + Actions */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            <Badge
+              variant={deal.isPublished ? "default" : "secondary"}
+              className={cn(
+                "text-xs font-medium",
+                deal.isPublished
+                  ? "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {deal.isPublished ? (
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+              ) : null}
+              {deal.isPublished ? "Published" : "Draft"}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs font-medium",
+                deal.isReviewed
+                  ? "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400"
+                  : "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+              )}
+            >
+              {deal.isReviewed ? (
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+              ) : (
+                <Clock className="mr-1 h-3 w-3" />
+              )}
+              {deal.isReviewed ? "Reviewed" : "Pending"}
+            </Badge>
+          </div>
+
           {showActions && (
-            <div className="flex space-x-2">
-              <TooltipProvider>
+            <div className="flex gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+              <TooltipProvider delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-primary/10"
+                      className="h-7 w-7 text-muted-foreground hover:bg-primary/10 hover:text-primary"
                       asChild
                     >
                       <Link href={editLink}>
-                        <Edit className="h-4 w-4 text-primary" />
+                        <Edit className="h-3.5 w-3.5" />
                       </Link>
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Edit Deal</p>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Edit Deal
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
 
-              <TooltipProvider>
+              <TooltipProvider delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-destructive/10"
+                      className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       onClick={handleDelete}
+                      disabled={isDeleting}
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Delete Deal</p>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Delete Deal
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
           )}
         </div>
+
+        {/* Title */}
+        <h3 className="line-clamp-2 text-base font-semibold leading-snug tracking-tight text-foreground transition-colors duration-200 group-hover:text-primary">
+          {deal.dealCaption}
+        </h3>
+
+        {/* Brokerage + Deal Type */}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Building2 className="h-3.5 w-3.5 text-primary/70" />
+            <span className="font-medium text-foreground/80">
+              {deal.brokerage}
+            </span>
+          </span>
+          <span className="text-border">•</span>
+          <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium">
+            {deal.dealType}
+          </Badge>
+        </div>
       </CardHeader>
-      <CardContent className="grid gap-3">
-        <div className="whitespace-nowrap">
-          <InfoItem
-            icon={<Building2 className="h-4 w-4 text-primary" />}
-            label="Brokerage"
-            value={deal.brokerage}
-            className="whitespace-nowrap font-semibold text-primary"
-          />
-          <InfoItem
-            icon={<Type className="h-4 w-4 text-info" />}
-            label="Status"
-            value={deal.status}
-            className="whitespace-nowrap"
-          />
 
-          <InfoItem
-            icon={
-              deal.isPublished ? (
-                <CheckCircle className="h-4 w-4 text-success" />
-              ) : (
-                <Circle className="h-4 w-4 text-muted-foreground" />
-              )
-            }
-            label="Published"
-            value={deal.isPublished ? "Yes" : "No"}
-            className="whitespace-nowrap"
-          />
-
-          <InfoItem
-            icon={
-              deal.isReviewed ? (
-                <Check className="h-4 w-4 text-info" />
-              ) : (
-                <Clock className="h-4 w-4 text-warning" />
-              )
-            }
-            label="Reviewed"
-            value={deal.isReviewed ? "Yes" : "No"}
-            className="whitespace-nowrap"
-          />
-
-          <InfoItem
-            icon={<DollarSign className="h-4 w-4 text-success" />}
+      <CardContent className="flex-1 space-y-4 pt-2">
+        {/* Key Financial Metrics */}
+        <div className="grid grid-cols-2 gap-3">
+          <MetricCard
             label="Revenue"
             value={formatCurrency(deal.revenue)}
-            className="whitespace-nowrap"
+            icon={<DollarSign className="h-4 w-4" />}
+            variant="success"
           />
-
-          <InfoItem
-            icon={<Type className="h-4 w-4 text-success" />}
-            label="DealType"
-            value={deal.dealType}
-          />
-          <InfoItem
-            icon={<DollarSign className="h-4 w-4 text-info" />}
+          <MetricCard
             label="EBITDA"
             value={formatCurrency(deal.ebitda)}
+            icon={<TrendingUp className="h-4 w-4" />}
+            variant="info"
           />
+        </div>
 
-          <InfoItem
-            icon={<Percent className="h-4 w-4 text-info" />}
-            label="EBITDA Margin"
-            value={formatPercent(
-              calculateEbitdaMargin(deal.ebitda, deal.revenue),
-            )}
-          />
-          <InfoItem
-            icon={<Briefcase className="h-4 w-4 text-primary" />}
-            label="Industry"
-            value={deal.industry}
+        {/* Secondary Metrics */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+          <InfoRow
+            label="Margin"
+            value={formatPercent(ebitdaMargin)}
+            highlight={ebitdaMargin > 20}
           />
           {deal.askingPrice && (
-            <InfoItem
-              icon={<DollarSign className="h-4 w-4 text-warning" />}
-              label="Asking Price"
+            <InfoRow
+              label="Asking"
               value={formatCurrency(deal.askingPrice)}
             />
           )}
-          {deal.companyLocation && (
-            <InfoItem
-              icon={<MapPin className="h-4 w-4 text-destructive" />}
-              label="Location"
-              value={deal.companyLocation}
-              className="flex-col items-start"
-            />
-          )}
+          <InfoRow
+            label="Industry"
+            value={deal.industry || "—"}
+            icon={<Briefcase className="h-3 w-3" />}
+          />
+          <InfoRow label="Status" value={deal.status} />
         </div>
+
+        {/* Location */}
+        {deal.companyLocation && (
+          <div className="flex items-start gap-1.5 rounded-md bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
+            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/60" />
+            <span className="line-clamp-2">{deal.companyLocation}</span>
+          </div>
+        )}
       </CardContent>
-      <CardFooter className="flex flex-col gap-2 pt-3">
-        <Button className="w-full bg-primary/90 hover:bg-primary" asChild>
-          <Link href={detailLink}>View Details</Link>
+
+      <CardFooter className="flex gap-2 border-t border-border/50 bg-muted/30 px-4 py-3">
+        <Button
+          className="flex-1 gap-1.5 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+          size="sm"
+          asChild
+        >
+          <Link href={detailLink}>
+            <Eye className="h-3.5 w-3.5" />
+            View Details
+          </Link>
         </Button>
 
         {showScreenButton && (
           <Button
-            className="w-full border-primary/20 hover:bg-primary/10 hover:text-primary"
-            asChild
             variant="outline"
+            size="sm"
+            className="flex-1 gap-1.5 border-primary/20 hover:border-primary/40 hover:bg-primary/5"
+            asChild
           >
-            <Link href={screenLink}>Screen Deal</Link>
+            <Link href={screenLink}>
+              <Zap className="h-3.5 w-3.5" />
+              Screen
+            </Link>
           </Button>
         )}
       </CardFooter>
@@ -243,23 +272,75 @@ const DealCard = ({
   );
 };
 
-const InfoItem = ({
-  icon,
+const MetricCard = ({
   label,
   value,
-  className,
+  icon,
+  variant = "default",
 }: {
+  label: string;
+  value: string;
   icon: React.ReactNode;
+  variant?: "default" | "success" | "info" | "warning";
+}) => {
+  const variantStyles = {
+    default: "bg-muted/50 text-foreground",
+    success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    info: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+    warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  };
+
+  const iconStyles = {
+    default: "text-muted-foreground",
+    success: "text-emerald-500/70",
+    info: "text-sky-500/70",
+    warning: "text-amber-500/70",
+  };
+
+  return (
+    <div
+      className={cn(
+        "rounded-lg px-3 py-2.5 transition-colors duration-200",
+        variantStyles[variant],
+      )}
+    >
+      <div className="flex items-center gap-1.5">
+        <span className={iconStyles[variant]}>{icon}</span>
+        <span className="text-[10px] font-medium uppercase tracking-wider opacity-70">
+          {label}
+        </span>
+      </div>
+      <p className="mt-0.5 text-lg font-bold tabular-nums tracking-tight">
+        {value}
+      </p>
+    </div>
+  );
+};
+
+const InfoRow = ({
+  label,
+  value,
+  icon,
+  highlight = false,
+}: {
   label: string;
   value: string | number;
-  className?: string;
+  icon?: React.ReactNode;
+  highlight?: boolean;
 }) => (
-  <div className={cn("flex items-center text-sm", className)}>
-    <div className="flex items-center">
+  <div className="flex items-center justify-between gap-2">
+    <span className="flex items-center gap-1 text-xs text-muted-foreground">
       {icon}
-      <span className="ml-2 font-medium text-foreground">{label}:</span>
-    </div>
-    <span className="ml-1 truncate whitespace-normal break-words text-justify text-muted-foreground group-hover:text-foreground">
+      {label}
+    </span>
+    <span
+      className={cn(
+        "truncate text-xs font-medium",
+        highlight
+          ? "text-emerald-600 dark:text-emerald-400"
+          : "text-foreground/80",
+      )}
+    >
       {value}
     </span>
   </div>
