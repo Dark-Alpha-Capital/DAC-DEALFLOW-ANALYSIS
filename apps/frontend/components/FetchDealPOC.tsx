@@ -14,14 +14,14 @@ const FetchDealPOC = ({
       <AddPocDialog dealId={dealId} />
 
       {pocs.length > 0 ? (
-        <ul className="space-y-3 p-4">
+        <ul className="space-y-0">
           {pocs.map((poc) => (
             <li
               key={poc.id}
-              className="flex items-center justify-between rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+              className="flex items-center justify-between gap-4 border-b border-border py-4 transition-colors hover:bg-muted/40"
             >
-              <div className="flex-grow space-y-1.5 pr-4">
-                <p className="text-sm font-semibold leading-tight">
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="text-sm font-medium text-foreground">
                   {poc.name}
                 </p>
                 <p className="text-xs text-muted-foreground">{poc.email}</p>
@@ -36,9 +36,9 @@ const FetchDealPOC = ({
           ))}
         </ul>
       ) : (
-        <div className="text-center text-sm text-muted-foreground">
+        <p className="py-4 text-sm text-muted-foreground">
           No points of contact found for this deal.
-        </div>
+        </p>
       )}
     </div>
   );

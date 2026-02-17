@@ -75,7 +75,7 @@ function asNumber(value: string | string[] | undefined, fallback: number) {
 const RawDealsPage = (props: { searchParams: SearchParams }) => {
   const sessionPromise = getSession();
   return (
-    <section className="block-space group container">
+    <section className="block-space-mini group container">
       <div className="mb-8 text-center">
         <h1 className="mb-4 text-4xl font-bold md:mb-6 lg:mb-8">Raw Deals</h1>
       </div>

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -13,9 +12,6 @@ import {
   TrendingUp,
   Percent,
   CreditCard,
-  Phone,
-  Mail,
-  User,
 } from "lucide-react";
 import { Deal, Document, AiScreening, POC } from "db/schema";
 import { DealMetricCard } from "./deal-metric-card";
@@ -75,24 +71,24 @@ export function DealTabs({
       </TabsList>
 
       {/* Overview Tab */}
-      <TabsContent value="overview" className="mt-6 space-y-6">
+      <TabsContent value="overview" className="mt-6 space-y-8">
         {dealCaption && (
-          <Card className="shadow-md">
-            <CardHeader>
-              <CardTitle className="text-lg">Deal Description</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
-                {dealCaption}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="border-b border-border pb-6">
+            <h2 className="mb-2 text-sm font-medium text-muted-foreground">
+              Deal description
+            </h2>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+              {dealCaption}
+            </p>
+          </div>
         )}
 
         {/* Financial Metrics */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Financial Metrics</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Financial metrics
+          </h2>
+          <div className="grid gap-0 sm:grid-cols-2 lg:grid-cols-3">
             <DealMetricCard
               label="Revenue"
               value={revenue}
@@ -128,111 +124,94 @@ export function DealTabs({
 
         {/* Contact Information */}
         {(firstName || lastName || workPhone || email) && (
-          <Card className="shadow-md">
-            <CardHeader>
-              <CardTitle className="text-lg">Contact Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {(firstName || lastName) && (
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-muted p-2">
-                      <User className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Name</p>
-                      <p className="font-medium">
-                        {[firstName, lastName].filter(Boolean).join(" ") ||
-                          "N/A"}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {workPhone && (
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-muted p-2">
-                      <Phone className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Phone</p>
-                      <p className="font-medium">{workPhone}</p>
-                    </div>
-                  </div>
-                )}
-                {email && (
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-muted p-2">
-                      <Mail className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
-                      <p className="font-medium">{email}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="border-b border-border pb-6">
+            <h2 className="mb-4 text-sm font-medium text-muted-foreground">
+              Contact information
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {(firstName || lastName) && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Name</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {[firstName, lastName].filter(Boolean).join(" ") || "N/A"}
+                  </p>
+                </div>
+              )}
+              {workPhone && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Phone</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {workPhone}
+                  </p>
+                </div>
+              )}
+              {email && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {email}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </TabsContent>
 
       {/* AI Analysis Tab */}
       <TabsContent value="ai-analysis" className="mt-6 space-y-6">
-        <Card className="shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg">AI Reasoning</CardTitle>
+        <div className="flex flex-col gap-4 border-b border-border pb-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-muted-foreground">
+              AI reasoning
+            </h2>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/raw-deals/${uid}/reasonings`}>View All</Link>
+                <Link href={`/raw-deals/${uid}/reasonings`}>View all</Link>
               </Button>
               <Button size="sm" asChild>
                 <Link href={`/raw-deals/${uid}/screen`}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Analysis
+                  Add analysis
                 </Link>
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[500px] pr-4">
-              <FetchDealAIScreenings
-                dealId={uid}
-                dealType={dealType}
-                aiScreenings={aiScreenings}
-              />
-            </ScrollArea>
-          </CardContent>
-        </Card>
+          </div>
+          <ScrollArea className="h-[500px] pr-4">
+            <FetchDealAIScreenings
+              dealId={uid}
+              dealType={dealType}
+              aiScreenings={aiScreenings}
+            />
+          </ScrollArea>
+        </div>
       </TabsContent>
 
       {/* Documents Tab */}
       <TabsContent value="documents" className="mt-6 space-y-6">
-        {/* Deal Documents */}
-        <Card className="shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg">Deal Documents</CardTitle>
+        <div className="flex flex-col gap-4 border-b border-border pb-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-muted-foreground">
+              Deal documents
+            </h2>
             <DealDocumentUploadDialog dealId={uid} dealType={dealType} />
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[600px] pr-4">
-              <FetchDealDocuments dealId={uid} documents={documents} />
-            </ScrollArea>
-          </CardContent>
-        </Card>
+          </div>
+          <ScrollArea className="h-[600px] pr-4">
+            <FetchDealDocuments dealId={uid} documents={documents} />
+          </ScrollArea>
+        </div>
       </TabsContent>
 
       {/* Contacts Tab */}
       <TabsContent value="contacts" className="mt-6 space-y-6">
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle className="text-lg">Points of Contact</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[400px] pr-4">
-              <FetchDealPOC dealId={uid} pocs={pocs} />
-            </ScrollArea>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-4 border-b border-border pb-6">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Points of contact
+          </h2>
+          <ScrollArea className="h-[400px] pr-4">
+            <FetchDealPOC dealId={uid} pocs={pocs} />
+          </ScrollArea>
+        </div>
       </TabsContent>
     </Tabs>
   );

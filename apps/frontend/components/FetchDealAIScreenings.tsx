@@ -28,15 +28,16 @@ const FetchDealAIScreenings = ({
             />
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center text-center">
-            <AlertTriangle className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-semibold">No AI Reasoning Available</h3>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <AlertTriangle className="mb-4 h-10 w-10 text-muted-foreground" />
+            <h3 className="text-sm font-medium text-foreground">
+              No AI reasoning available
+            </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              AI analysis for this deal has not been generated yet. Check back
-              later or request an analysis.
+              AI analysis for this deal has not been generated yet.
             </p>
-            <Button className="mt-4" variant="outline">
-              Request AI Analysis
+            <Button className="mt-4" variant="outline" size="sm">
+              Request analysis
             </Button>
           </div>
         )}

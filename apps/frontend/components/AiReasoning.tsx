@@ -1,13 +1,5 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { DealType, Sentiment } from "db/schema";
@@ -47,27 +39,27 @@ export default function AIReasoning({
   );
 
   return (
-    <Card className="mb-4 bg-muted">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Badge
-          className={cn({
-            "bg-positive text-positive-foreground": sentiment === "POSITIVE",
-            "bg-negative text-negative-foreground": sentiment === "NEGATIVE",
-            "bg-neutral-status text-neutral-status-foreground": sentiment === "NEUTRAL",
-          })}
+    <div className="mb-4 border-b border-border pb-4">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <span
+          className={cn(
+            "text-xs font-medium",
+            sentiment === "POSITIVE" && "text-foreground",
+            sentiment === "NEGATIVE" && "text-destructive",
+            sentiment === "NEUTRAL" && "text-muted-foreground",
+          )}
         >
           {sentiment}
-        </Badge>
-      </CardHeader>
-      <CardContent>
-        <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-          {explanation}
-        </p>
-      </CardContent>
-      <CardFooter className="space-x-2">
+        </span>
+      </div>
+      <p className="mb-4 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+        {explanation}
+      </p>
+      <div className="flex gap-2">
         <Button
-          variant="destructive"
+          variant="outline"
+          size="sm"
           onClick={() => deleteScreening({ screeningId, dealId })}
           disabled={isPending}
           aria-label="Delete AI Screening"
@@ -82,7 +74,7 @@ export default function AIReasoning({
           dealId={dealId}
           dealType={dealType}
         />
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

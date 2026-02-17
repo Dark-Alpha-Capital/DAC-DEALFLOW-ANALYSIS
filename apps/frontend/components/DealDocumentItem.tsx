@@ -1,8 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ExternalLink, FileIcon, Download } from "lucide-react";
 import { DocumentCategory } from "db/schema";
 
@@ -26,58 +24,60 @@ const DealDocumentItem = ({
   fileType?: string | null;
 }) => {
   return (
-    <Card className="mb-4 transition-all hover:shadow-md">
-      <CardContent className="pt-6">
-        <div className="flex items-start justify-between">
-          <div className="space-y-2 flex-1">
-            <div className="flex items-center gap-2">
-              <FileIcon className="h-5 w-5 text-primary" />
-              <h3 className="text-lg font-semibold">{title}</h3>
-            </div>
-            {caption && (
-              <p className="text-sm text-muted-foreground italic">{caption}</p>
-            )}
-            {description && (
-              <p className="text-sm text-muted-foreground">{description}</p>
-            )}
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              <Badge variant="secondary">
-                {category.toLowerCase()}
-              </Badge>
-              {tags && tags.length > 0 && (
-                <>
-                  {tags.map((tag, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </>
-              )}
-            </div>
-            {(fileName || fileType) && (
-              <div className="text-xs text-muted-foreground mt-1">
-                {fileName && <span>{fileName}</span>}
-                {fileName && fileType && <span className="mx-1">•</span>}
-                {fileType && <span>{fileType}</span>}
-              </div>
+    <div className="mb-4 border-b border-border pb-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex items-center gap-2">
+            <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          </div>
+          {caption && (
+            <p className="text-xs italic text-muted-foreground">{caption}</p>
+          )}
+          {description && (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-xs text-muted-foreground">
+              {category.toLowerCase()}
+            </span>
+            {tags && tags.length > 0 && (
+              <>
+                <span className="text-border">·</span>
+                {tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="text-xs text-muted-foreground"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </>
             )}
           </div>
+          {(fileName || fileType) && (
+            <p className="text-xs text-muted-foreground">
+              {fileName}
+              {fileName && fileType && " · "}
+              {fileType}
+            </p>
+          )}
         </div>
-      </CardContent>
-      <CardFooter className="flex gap-2 border-t bg-muted/50 px-6 py-3">
+      </div>
+      <div className="mt-3 flex gap-2">
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="flex-1"
+          className="h-8 gap-1.5 text-xs"
           onClick={() => window.open(fileUrl, "_blank")}
         >
-          <ExternalLink className="mr-2 h-4 w-4" />
-          View Document
+          <ExternalLink className="h-3.5 w-3.5" />
+          View
         </Button>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="flex-1"
+          className="h-8 gap-1.5 text-xs"
           onClick={() => {
             const link = document.createElement("a");
             link.href = fileUrl;
@@ -87,11 +87,11 @@ const DealDocumentItem = ({
             document.body.removeChild(link);
           }}
         >
-          <Download className="mr-2 h-4 w-4" />
+          <Download className="h-3.5 w-3.5" />
           Download
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 };
 

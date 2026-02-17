@@ -32,17 +32,17 @@ function StatusIndicator({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 rounded-lg border bg-card p-3 shadow-sm">
+    <div className="flex flex-col items-center gap-1.5 border-b border-border py-3">
       <Icon
         className={cn(
           "h-5 w-5",
-          active ? "text-success" : "text-muted-foreground",
+          active ? "text-foreground" : "text-muted-foreground",
         )}
       />
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <Badge variant={active ? "default" : "secondary"} className="text-xs">
+      <span className="text-xs text-foreground">
         {active ? "Yes" : "No"}
-      </Badge>
+      </span>
     </div>
   );
 }
@@ -63,11 +63,11 @@ function getDealTypeLabel(dealType: DealType): string {
 function getStatusColor(status: DealStatus): string {
   switch (status) {
     case "AVAILABLE":
-      return "bg-success-muted text-success";
+      return "bg-primary/10 text-primary";
     case "SOLD":
       return "bg-destructive/10 text-destructive";
     case "UNDER_CONTRACT":
-      return "bg-warning-muted text-warning-foreground";
+      return "bg-muted text-muted-foreground";
     default:
       return "bg-muted text-muted-foreground";
   }
@@ -150,22 +150,19 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
           active={isPublished}
           icon={isPublished ? Send : Circle}
         />
-        <div className="flex flex-col items-center gap-1.5 rounded-lg border bg-card p-3 shadow-sm">
+        <div className="flex flex-col items-center gap-1.5 border-b border-border py-3">
           <LinkIcon
             className={cn(
               "h-5 w-5",
-              bitrixId ? "text-success" : "text-muted-foreground",
+              bitrixId ? "text-foreground" : "text-muted-foreground",
             )}
           />
           <span className="text-xs font-medium text-muted-foreground">
             Bitrix
           </span>
-          <Badge
-            variant={bitrixId ? "default" : "secondary"}
-            className="text-xs"
-          >
-            {bitrixId ? "Linked" : "Not Linked"}
-          </Badge>
+          <span className="text-xs text-foreground">
+            {bitrixId ? "Linked" : "Not linked"}
+          </span>
         </div>
       </div>
 
@@ -185,19 +182,17 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
 
       {/* Action Buttons */}
       <div className="space-y-4">
-        {/* Prominent Convert to Company Button */}
-        <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="mb-1 text-sm font-semibold text-foreground">
-                Ready to move forward?
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Convert this deal to a company to begin due diligence
-              </p>
-            </div>
-            <ConvertDealToCompanyDialog deal={deal} dealId={uid} />
+        {/* Convert to Company */}
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Ready to move forward?
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Convert this deal to a company to begin due diligence
+            </p>
           </div>
+          <ConvertDealToCompanyDialog deal={deal} dealId={uid} />
         </div>
 
         {/* Other Action Buttons */}

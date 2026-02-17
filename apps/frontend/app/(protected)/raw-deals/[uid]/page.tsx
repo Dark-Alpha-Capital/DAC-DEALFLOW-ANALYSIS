@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DealHeader } from "@/components/deal-detail/deal-header";
 import { DealTabs } from "@/components/deal-detail/deal-tabs";
 import DealPageSkeleton from "@/components/skeletons/deal-page-skeleton";
@@ -30,24 +29,20 @@ async function CachedDealContent({ uid }: { uid: string }) {
   if (error) {
     return (
       <section className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full max-w-md text-center shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-destructive">
-              Error Loading Deal
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground">
-              There was an error loading the deal. Please try again later.
-            </p>
-            {process.env.NODE_ENV === "development" && (
-              <p className="text-xs text-muted-foreground">{error.message}</p>
-            )}
-            <Button asChild>
-              <Link href="/raw-deals">Back to Raw Deals</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-md space-y-4 border-b border-border pb-8 text-center">
+          <h1 className="text-xl font-semibold text-foreground">
+            Error loading deal
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            There was an error loading the deal. Please try again later.
+          </p>
+          {process.env.NODE_ENV === "development" && (
+            <p className="text-xs text-muted-foreground">{error.message}</p>
+          )}
+          <Button asChild>
+            <Link href="/raw-deals">Back to Raw Deals</Link>
+          </Button>
+        </div>
       </section>
     );
   }
@@ -55,19 +50,17 @@ async function CachedDealContent({ uid }: { uid: string }) {
   if (!dealData || !dealData.deal) {
     return (
       <section className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full max-w-md text-center shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">Deal Not Found</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground">
-              The deal you are looking for does not exist or has been removed.
-            </p>
-            <Button asChild>
-              <Link href="/raw-deals">Back to Raw Deals</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-md space-y-4 border-b border-border pb-8 text-center">
+          <h1 className="text-xl font-semibold text-foreground">
+            Deal not found
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            The deal you are looking for does not exist or has been removed.
+          </p>
+          <Button asChild>
+            <Link href="/raw-deals">Back to Raw Deals</Link>
+          </Button>
+        </div>
       </section>
     );
   }
