@@ -5,7 +5,6 @@ import db, {
   eq,
   DealType,
   DealStatus,
-  dealDocuments,
   documents,
   and,
   DealDocumentCategory,
@@ -15,13 +14,10 @@ import { DeleteDealById, BulkDeleteDeals } from "db/mutations";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { uploadFileToNextCloud } from "@/lib/storage";
 import {
-  createConvertDealToCompanyJob,
-  type ConvertDealToCompanyJobData,
   fileUploadQueue,
   type FileUploadJobData,
   type EntityMetadata,
 } from "@/lib/queue-client";
-import crypto from "crypto";
 import { randomUUID } from "crypto";
 import { GetDealById } from "db/queries";
 import { createClient } from "webdav";
@@ -380,38 +376,6 @@ export const dealsRouter = createTRPCRouter({
         message: "File upload queued",
         jobId: job.id,
         fileName: input.fileName,
-      };
-    }),
-
-  convertToCompany: protectedProcedure
-    .input(z.object({ dealId: z.string() }))
-    .mutation(async ({ input, ctx }) => {
-      // Generate unique job ID
-      const jobId = crypto.randomUUID();
-
-      // Create job data
-      const jobData: ConvertDealToCompanyJobData = {
-        jobId,
-        dealId: input.dealId,
-        userId: ctx.session.user.id,
-      };
-
-      // Enqueue background job
-      const job = await createConvertDealToCompanyJob(jobData);
-
-      console.log(
-        `[convert-deal] Queued conversion job ${job.jobId} for deal ${input.dealId}`,
-      );
-
-      // Revalidate paths (job will complete in background)
-      revalidatePath("/raw-deals");
-      revalidatePath("/companies");
-
-      // Return job ID for progress tracking (not company ID - will be available when job completes)
-      return {
-        success: true,
-        jobId: job.jobId,
-        queueName: job.queueName,
       };
     }),
 });

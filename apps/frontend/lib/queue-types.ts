@@ -12,7 +12,7 @@ export type JobStatus =
   | "delayed";
 
 // Job type
-export type JobType = "screen-deal" | "file-upload" | "deal-to-company";
+export type JobType = "screen-deal" | "file-upload";
 
 // Progress data
 export interface JobProgressData {
@@ -43,7 +43,6 @@ export interface JobWithMetadata {
 export const QUEUE_NAMES = {
   SCREEN_DEAL: "screen-deal",
   FILE_UPLOAD: "file-upload",
-  DEAL_TO_COMPANY: "deal-to-company",
 } as const;
 
 /**
@@ -55,8 +54,6 @@ export function getJobTypeLabel(queueName: string): string {
       return "Screen Deal";
     case QUEUE_NAMES.FILE_UPLOAD:
       return "File Upload";
-    case QUEUE_NAMES.DEAL_TO_COMPANY:
-      return "Convert Deal to Company";
     default:
       return queueName;
   }

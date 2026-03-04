@@ -1,10 +1,4 @@
-import type {
-  UserRole,
-  Company,
-  Founder,
-  File,
-  DueDiligenceSection,
-} from "./schema";
+import type { UserRole } from "./schema";
 
 export type AdminUser = {
   id: string;
@@ -14,14 +8,5 @@ export type AdminUser = {
   isBlocked: boolean;
 };
 
-export type CompanyWithRelationsForList = Company & {
-  founders: Founder[];
-  files: File[];
-  sections: DueDiligenceSection[];
-  _count: {
-    files: number;
-    sections: number;
-    reviews: number;
-    tasks: number;
-  };
-};
+// Company-related types have been removed as the app now focuses
+// solely on deal sourcing and screening.

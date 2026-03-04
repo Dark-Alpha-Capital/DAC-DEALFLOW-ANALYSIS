@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiPlus, FiList, FiHome, FiBriefcase } from "react-icons/fi";
+import { FiPlus, FiList, FiBriefcase } from "react-icons/fi";
 import { FaScrewdriver } from "react-icons/fa";
 import {
   SidebarGroup,
@@ -23,7 +23,6 @@ const navItems: NavItem[] = [
   { title: "New Deal", url: "/new-deal", icon: FiPlus },
   { title: "Raw Deals", url: "/raw-deals", icon: FiList },
   { title: "Screeners", url: "/screeners", icon: FaScrewdriver },
-  { title: "Companies", url: "/companies", icon: FiHome },
   { title: "Jobs", url: "/jobs", icon: FiBriefcase },
 ];
 

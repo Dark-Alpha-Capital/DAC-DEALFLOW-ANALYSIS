@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Percent,
   CreditCard,
+  BarChart3,
 } from "lucide-react";
 import { Deal, Document, AiScreening, POC } from "db/schema";
 import { DealMetricCard } from "./deal-metric-card";
@@ -47,14 +48,19 @@ export function DealTabs({
     workPhone,
     email,
     dealType,
+    title,
   } = deal;
 
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="grid w-full grid-cols-4 lg:inline-flex lg:w-auto">
+      <TabsList className="grid w-full grid-cols-5 lg:inline-flex lg:w-auto">
         <TabsTrigger value="overview" className="gap-2">
           <LayoutDashboard className="hidden h-4 w-4 sm:block" />
           Overview
+        </TabsTrigger>
+        <TabsTrigger value="financials" className="gap-2">
+          <BarChart3 className="hidden h-4 w-4 sm:block" />
+          Financials
         </TabsTrigger>
         <TabsTrigger value="ai-analysis" className="gap-2">
           <Brain className="hidden h-4 w-4 sm:block" />
@@ -73,19 +79,62 @@ export function DealTabs({
       {/* Overview Tab */}
       <TabsContent value="overview" className="mt-6 space-y-8">
         {dealCaption && (
-          <div className="border-b border-border pb-6">
-            <h2 className="mb-2 text-sm font-medium text-muted-foreground">
+          <div className="border-border pb-6">
+            <div>
+              {title && (
+                <h2 className="text-muted-foreground mb-2 text-sm font-medium">
+                  {title}
+                </h2>
+              )}
+            </div>
+
+            <h2 className="text-muted-foreground mb-2 text-sm font-medium">
               Deal description
             </h2>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">
               {dealCaption}
             </p>
           </div>
         )}
 
-        {/* Financial Metrics */}
+        {/* Contact Information */}
+        {(firstName || lastName || workPhone || email) && (
+          <div className="border-border border-b pb-6">
+            <h2 className="text-muted-foreground mb-4 text-sm font-medium">
+              Contact information
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {(firstName || lastName) && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Name</p>
+                  <p className="text-foreground text-sm font-medium">
+                    {[firstName, lastName].filter(Boolean).join(" ") || "N/A"}
+                  </p>
+                </div>
+              )}
+              {workPhone && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Phone</p>
+                  <p className="text-foreground text-sm font-medium">
+                    {workPhone}
+                  </p>
+                </div>
+              )}
+              {email && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Email</p>
+                  <p className="text-foreground text-sm font-medium">{email}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </TabsContent>
+
+      {/* Financials Tab */}
+      <TabsContent value="financials" className="mt-6 space-y-6">
         <div className="space-y-2">
-          <h2 className="text-sm font-medium text-muted-foreground">
+          <h2 className="text-muted-foreground text-sm font-medium">
             Financial metrics
           </h2>
           <div className="grid gap-0 sm:grid-cols-2 lg:grid-cols-3">
@@ -121,48 +170,13 @@ export function DealTabs({
             />
           </div>
         </div>
-
-        {/* Contact Information */}
-        {(firstName || lastName || workPhone || email) && (
-          <div className="border-b border-border pb-6">
-            <h2 className="mb-4 text-sm font-medium text-muted-foreground">
-              Contact information
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(firstName || lastName) && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Name</p>
-                  <p className="text-sm font-medium text-foreground">
-                    {[firstName, lastName].filter(Boolean).join(" ") || "N/A"}
-                  </p>
-                </div>
-              )}
-              {workPhone && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Phone</p>
-                  <p className="text-sm font-medium text-foreground">
-                    {workPhone}
-                  </p>
-                </div>
-              )}
-              {email && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="text-sm font-medium text-foreground">
-                    {email}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </TabsContent>
 
       {/* AI Analysis Tab */}
       <TabsContent value="ai-analysis" className="mt-6 space-y-6">
-        <div className="flex flex-col gap-4 border-b border-border pb-6">
+        <div className="border-border flex flex-col gap-4 border-b pb-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">
+            <h2 className="text-muted-foreground text-sm font-medium">
               AI reasoning
             </h2>
             <div className="flex items-center gap-2">
@@ -189,9 +203,9 @@ export function DealTabs({
 
       {/* Documents Tab */}
       <TabsContent value="documents" className="mt-6 space-y-6">
-        <div className="flex flex-col gap-4 border-b border-border pb-6">
+        <div className="border-border flex flex-col gap-4 border-b pb-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">
+            <h2 className="text-muted-foreground text-sm font-medium">
               Deal documents
             </h2>
             <DealDocumentUploadDialog dealId={uid} dealType={dealType} />
@@ -204,8 +218,8 @@ export function DealTabs({
 
       {/* Contacts Tab */}
       <TabsContent value="contacts" className="mt-6 space-y-6">
-        <div className="flex flex-col gap-4 border-b border-border pb-6">
-          <h2 className="text-sm font-medium text-muted-foreground">
+        <div className="border-border flex flex-col gap-4 border-b pb-6">
+          <h2 className="text-muted-foreground text-sm font-medium">
             Points of contact
           </h2>
           <ScrollArea className="h-[400px] pr-4">

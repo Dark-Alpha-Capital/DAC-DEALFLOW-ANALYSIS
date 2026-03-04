@@ -14,7 +14,6 @@ import {
 import { Deal, DealStatus, DealType } from "db/schema";
 import { DealActionsDropdown } from "./deal-actions-dropdown";
 import { DealSpecificationsDialog } from "@/components/Dialogs/DealSpecificationsDialog";
-import ConvertDealToCompanyDialog from "@/components/Dialogs/convert-deal-to-company-dialog";
 import { cn } from "@/lib/utils";
 
 interface DealHeaderProps {
@@ -32,17 +31,15 @@ function StatusIndicator({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 border-b border-border py-3">
+    <div className="border-border flex flex-col items-center gap-1.5 border-b py-3">
       <Icon
         className={cn(
           "h-5 w-5",
           active ? "text-foreground" : "text-muted-foreground",
         )}
       />
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <span className="text-xs text-foreground">
-        {active ? "Yes" : "No"}
-      </span>
+      <span className="text-muted-foreground text-xs font-medium">{label}</span>
+      <span className="text-foreground text-xs">{active ? "Yes" : "No"}</span>
     </div>
   );
 }
@@ -120,14 +117,9 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
           )}
         </div>
 
-        {/* Title */}
-        <h1 className="text-3xl font-bold tracking-tight">
-          {title || "Untitled Deal"}
-        </h1>
-
         {/* Subtitle */}
         {(brokerage || companyLocation || industry) && (
-          <p className="text-lg text-muted-foreground">
+          <p className="text-muted-foreground text-lg">
             {[brokerage, companyLocation, industry].filter(Boolean).join(" • ")}
           </p>
         )}
@@ -150,17 +142,17 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
           active={isPublished}
           icon={isPublished ? Send : Circle}
         />
-        <div className="flex flex-col items-center gap-1.5 border-b border-border py-3">
+        <div className="border-border flex flex-col items-center gap-1.5 border-b py-3">
           <LinkIcon
             className={cn(
               "h-5 w-5",
               bitrixId ? "text-foreground" : "text-muted-foreground",
             )}
           />
-          <span className="text-xs font-medium text-muted-foreground">
+          <span className="text-muted-foreground text-xs font-medium">
             Bitrix
           </span>
-          <span className="text-xs text-foreground">
+          <span className="text-foreground text-xs">
             {bitrixId ? "Linked" : "Not linked"}
           </span>
         </div>
@@ -169,7 +161,7 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
       {/* Tags */}
       {tags && tags.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Tags</p>
+          <p className="text-muted-foreground text-sm font-medium">Tags</p>
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => (
               <Badge key={tag} variant="outline">
@@ -182,21 +174,7 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
 
       {/* Action Buttons */}
       <div className="space-y-4">
-        {/* Convert to Company */}
-        <div className="flex items-center justify-between border-b border-border pb-4">
-          <div>
-            <p className="text-sm font-medium text-foreground">
-              Ready to move forward?
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Convert this deal to a company to begin due diligence
-            </p>
-          </div>
-          <ConvertDealToCompanyDialog deal={deal} dealId={uid} />
-        </div>
-
-        {/* Other Action Buttons */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 border-border border-b pb-4">
           <Button asChild>
             <Link href={`/raw-deals/${uid}/edit`}>
               <Edit className="mr-2 h-4 w-4" />

@@ -24,20 +24,6 @@ export const dealStatusEnum = pgEnum("DealStatus", [
   "NOT_SPECIFIED",
 ]);
 
-export const dealDocumentCategoryEnum = pgEnum("DealDocumentCategory", [
-  "LEGAL",
-  "DOCUMENTATION",
-  "MARKETING",
-  "INVESTOR_RELATIONSHIPS",
-  "TECHNICAL",
-  "TOOLS",
-  "LEGISLATION",
-  "RESEARCH",
-  "PROSPECTUS",
-  "FINANCIALS",
-  "OTHER",
-]);
-
 export const dealTypeEnum = pgEnum("DealType", [
   "SCRAPED",
   "MANUAL",
@@ -48,59 +34,6 @@ export const sentimentEnum = pgEnum("Sentiment", [
   "POSITIVE",
   "NEUTRAL",
   "NEGATIVE",
-]);
-
-export const companyStageEnum = pgEnum("CompanyStage", [
-  "STARTUP",
-  "GROWTH",
-  "MATURE",
-  "TURNAROUND",
-  "DISTRESSED",
-]);
-
-export const fileCategoryEnum = pgEnum("FileCategory", [
-  "FINANCIALS",
-  "LEGAL",
-  "TAX",
-  "TECHNICAL",
-  "COMMERCIAL",
-  "ESG",
-  "MARKETING",
-  "OPERATIONS",
-  "OTHER",
-]);
-
-export const dueDiligenceSectionTypeEnum = pgEnum("DueDiligenceSectionType", [
-  "FINANCIAL",
-  "LEGAL",
-  "TAX",
-  "TECHNICAL",
-  "COMMERCIAL",
-  "ESG",
-  "OPERATIONAL",
-  "MARKET",
-  "MANAGEMENT",
-]);
-
-export const sectionStatusEnum = pgEnum("SectionStatus", [
-  "PENDING",
-  "IN_REVIEW",
-  "DONE",
-  "BLOCKED",
-]);
-
-export const taskStatusEnum = pgEnum("TaskStatus", [
-  "ASSIGNED",
-  "IN_PROGRESS",
-  "COMPLETED",
-  "CANCELLED",
-]);
-
-export const riskLevelEnum = pgEnum("RiskLevel", [
-  "LOW",
-  "MEDIUM",
-  "HIGH",
-  "CRITICAL",
 ]);
 
 // Unified document category enum (merges FileCategory and DealDocumentCategory)
@@ -248,29 +181,6 @@ export const deals = pgTable("Deal", {
   description: text("description"),
 });
 
-// DealDocument table (deprecated - use documents table instead)
-export const dealDocuments = pgTable("DealDocument", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  dealId: text("dealId")
-    .notNull()
-    .references(() => deals.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  description: text("description"),
-  caption: text("caption"),
-  category: dealDocumentCategoryEnum("category").default("OTHER").notNull(),
-  documentUrl: text("documentUrl").notNull(),
-  fileName: text("fileName"),
-  fileType: text("fileType"),
-  tags: text("tags").array().default([]),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-});
-
 // POC table
 export const pocs = pgTable("POC", {
   id: text("id")
@@ -280,9 +190,6 @@ export const pocs = pgTable("POC", {
   workPhone: text("workPhone"),
   email: text("email").notNull(),
   dealId: text("dealId").references(() => deals.id, { onDelete: "cascade" }),
-  companyId: text("companyId").references(() => companies.id, {
-    onDelete: "cascade",
-  }), // Added to support company POCs (for deal-to-company conversion)
 });
 
 // Questionnaire table
@@ -358,85 +265,6 @@ export const userActionLogs = pgTable("UserActionLog", {
     .$onUpdate(() => new Date()),
 });
 
-// Employee table
-export const employees = pgTable("Employee", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  name: text("name").notNull(),
-  dealId: text("dealId").references(() => deals.id),
-});
-
-// Company table
-export const companies = pgTable("Company", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  name: text("name").notNull(),
-  website: text("website"),
-  sector: text("sector"),
-  stage: companyStageEnum("stage"),
-  headquarters: text("headquarters"),
-  description: text("description"),
-  revenue: decimal("revenue", { precision: 10, scale: 2 }),
-  ebitda: decimal("ebitda", { precision: 10, scale: 2 }),
-  growthRate: decimal("growthRate", { precision: 10, scale: 2 }),
-  employees: integer("employees"), // Made optional to support deal-to-company conversion
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-});
-
-// Founder table
-export const founders = pgTable("Founder", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  name: text("name").notNull(),
-  title: text("title"),
-  email: text("email"),
-  linkedin: text("linkedin"),
-  companyId: text("companyId")
-    .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-});
-
-// File table (deprecated - use documents table instead)
-export const files = pgTable("File", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  title: text("title").notNull(),
-  description: text("description"),
-  category: fileCategoryEnum("category").notNull(),
-  tags: text("tags").array().default([]),
-  fileUrl: text("fileUrl").notNull(),
-  fileName: text("fileName").notNull(),
-  fileSize: integer("fileSize"),
-  mimeType: text("mimeType"),
-  version: text("version").default("1.0").notNull(),
-  isLatest: boolean("isLatest").default(true).notNull(),
-  companyId: text("companyId")
-    .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
-  uploadedById: text("uploadedById")
-    .notNull()
-    .references(() => users.id),
-  comments: text("comments"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-});
-
 // Unified Document table (replaces both dealDocuments and files)
 export const documents = pgTable("Document", {
   id: text("id")
@@ -462,7 +290,7 @@ export const documents = pgTable("Document", {
   // Vector store integration (optional)
   vectorStoreDocumentName: text("vectorStoreDocumentName"), // Google File Search Store reference
 
-  // Versioning (optional, primarily for companies)
+  // Versioning (optional)
   version: text("version").default("1.0").notNull(),
   isLatest: boolean("isLatest").default(true).notNull(),
 
@@ -480,81 +308,6 @@ export const documents = pgTable("Document", {
     .$onUpdate(() => new Date()),
 });
 
-// DueDiligenceSection table
-export const dueDiligenceSections = pgTable("DueDiligenceSection", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  title: text("title").notNull(),
-  description: text("description"),
-  type: dueDiligenceSectionTypeEnum("type").notNull(),
-  status: sectionStatusEnum("status").default("PENDING").notNull(),
-  notes: text("notes"),
-  findings: text("findings"),
-  companyId: text("companyId")
-    .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-});
-
-// Review table
-export const reviews = pgTable("Review", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  title: text("title").notNull(),
-  content: text("content").notNull(),
-  riskLevel: riskLevelEnum("riskLevel").default("MEDIUM").notNull(),
-  confidence: integer("confidence"),
-  companyId: text("companyId")
-    .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
-  sectionId: text("sectionId").references(() => dueDiligenceSections.id, {
-    onDelete: "cascade",
-  }),
-  reviewerId: text("reviewerId")
-    .notNull()
-    .references(() => users.id),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-});
-
-// Task table
-export const tasks = pgTable("Task", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  title: text("title").notNull(),
-  description: text("description"),
-  status: taskStatusEnum("status").default("ASSIGNED").notNull(),
-  priority: integer("priority").default(3),
-  dueDate: timestamp("dueDate"),
-  completedAt: timestamp("completedAt"),
-  companyId: text("companyId")
-    .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
-  sectionId: text("sectionId").references(() => dueDiligenceSections.id, {
-    onDelete: "cascade",
-  }),
-  assignedToId: text("assignedToId")
-    .notNull()
-    .references(() => users.id),
-  createdById: text("createdById")
-    .notNull()
-    .references(() => users.id),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-});
 
 // ============================================================================
 // RELATIONS
@@ -564,11 +317,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
   deals: many(deals),
-  files: many(files), // Deprecated - use documents instead
-  // documents: many(documents), // Removed - polymorphic relation, handled manually in queries
-  reviews: many(reviews),
-  assignedTasks: many(tasks, { relationName: "TaskAssignee" }),
-  createdTasks: many(tasks, { relationName: "TaskCreator" }),
   userActionLogs: many(userActionLogs),
 }));
 
@@ -592,27 +340,13 @@ export const dealsRelations = relations(deals, ({ one, many }) => ({
     references: [users.id],
   }),
   aiScreenings: many(aiScreenings),
-  dealDocuments: many(dealDocuments), // Deprecated - use documents instead
-  // documents: many(documents), // Removed - polymorphic relation, handled manually in queries
-  employees: many(employees),
   pocs: many(pocs),
-}));
-
-export const dealDocumentsRelations = relations(dealDocuments, ({ one }) => ({
-  deal: one(deals, {
-    fields: [dealDocuments.dealId],
-    references: [deals.id],
-  }),
 }));
 
 export const pocsRelations = relations(pocs, ({ one }) => ({
   deal: one(deals, {
     fields: [pocs.dealId],
     references: [deals.id],
-  }),
-  company: one(companies, {
-    fields: [pocs.companyId],
-    references: [companies.id],
   }),
 }));
 
@@ -638,41 +372,6 @@ export const userActionLogsRelations = relations(userActionLogs, ({ one }) => ({
   }),
 }));
 
-export const employeesRelations = relations(employees, ({ one }) => ({
-  deal: one(deals, {
-    fields: [employees.dealId],
-    references: [deals.id],
-  }),
-}));
-
-export const companiesRelations = relations(companies, ({ many }) => ({
-  founders: many(founders),
-  files: many(files), // Deprecated - use documents instead
-  // documents: many(documents), // Removed - polymorphic relation, handled manually in queries
-  pocs: many(pocs), // Added to support company POCs
-  sections: many(dueDiligenceSections),
-  reviews: many(reviews),
-  tasks: many(tasks),
-}));
-
-export const foundersRelations = relations(founders, ({ one }) => ({
-  company: one(companies, {
-    fields: [founders.companyId],
-    references: [companies.id],
-  }),
-}));
-
-export const filesRelations = relations(files, ({ one }) => ({
-  company: one(companies, {
-    fields: [files.companyId],
-    references: [companies.id],
-  }),
-  uploadedBy: one(users, {
-    fields: [files.uploadedById],
-    references: [users.id],
-  }),
-}));
-
 export const documentsRelations = relations(documents, ({ one }) => ({
   uploadedBy: one(users, {
     fields: [documents.uploadedById],
@@ -680,53 +379,6 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   }),
 }));
 
-export const dueDiligenceSectionsRelations = relations(
-  dueDiligenceSections,
-  ({ one, many }) => ({
-    company: one(companies, {
-      fields: [dueDiligenceSections.companyId],
-      references: [companies.id],
-    }),
-    reviews: many(reviews),
-    tasks: many(tasks),
-  })
-);
-
-export const reviewsRelations = relations(reviews, ({ one }) => ({
-  company: one(companies, {
-    fields: [reviews.companyId],
-    references: [companies.id],
-  }),
-  section: one(dueDiligenceSections, {
-    fields: [reviews.sectionId],
-    references: [dueDiligenceSections.id],
-  }),
-  reviewer: one(users, {
-    fields: [reviews.reviewerId],
-    references: [users.id],
-  }),
-}));
-
-export const tasksRelations = relations(tasks, ({ one }) => ({
-  company: one(companies, {
-    fields: [tasks.companyId],
-    references: [companies.id],
-  }),
-  section: one(dueDiligenceSections, {
-    fields: [tasks.sectionId],
-    references: [dueDiligenceSections.id],
-  }),
-  assignedTo: one(users, {
-    fields: [tasks.assignedToId],
-    references: [users.id],
-    relationName: "TaskAssignee",
-  }),
-  createdBy: one(users, {
-    fields: [tasks.createdById],
-    references: [users.id],
-    relationName: "TaskCreator",
-  }),
-}));
 
 // ============================================================================
 // TYPE EXPORTS
@@ -777,68 +429,6 @@ export const Sentiment = {
 } as const;
 export type Sentiment = (typeof Sentiment)[keyof typeof Sentiment];
 
-export const CompanyStage = {
-  STARTUP: "STARTUP",
-  GROWTH: "GROWTH",
-  MATURE: "MATURE",
-  TURNAROUND: "TURNAROUND",
-  DISTRESSED: "DISTRESSED",
-} as const;
-export type CompanyStage = (typeof CompanyStage)[keyof typeof CompanyStage];
-
-export const FileCategory = {
-  FINANCIALS: "FINANCIALS",
-  LEGAL: "LEGAL",
-  TAX: "TAX",
-  TECHNICAL: "TECHNICAL",
-  COMMERCIAL: "COMMERCIAL",
-  ESG: "ESG",
-  MARKETING: "MARKETING",
-  OPERATIONS: "OPERATIONS",
-  OTHER: "OTHER",
-} as const;
-export type FileCategory = (typeof FileCategory)[keyof typeof FileCategory];
-
-export const DueDiligenceSectionType = {
-  FINANCIAL: "FINANCIAL",
-  LEGAL: "LEGAL",
-  TAX: "TAX",
-  TECHNICAL: "TECHNICAL",
-  COMMERCIAL: "COMMERCIAL",
-  ESG: "ESG",
-  OPERATIONAL: "OPERATIONAL",
-  MARKET: "MARKET",
-  MANAGEMENT: "MANAGEMENT",
-} as const;
-export type DueDiligenceSectionType =
-  (typeof DueDiligenceSectionType)[keyof typeof DueDiligenceSectionType];
-
-export const SectionStatus = {
-  PENDING: "PENDING",
-  IN_REVIEW: "IN_REVIEW",
-  DONE: "DONE",
-  BLOCKED: "BLOCKED",
-} as const;
-export type SectionStatus = (typeof SectionStatus)[keyof typeof SectionStatus];
-
-export const TaskStatus = {
-  ASSIGNED: "ASSIGNED",
-  IN_PROGRESS: "IN_PROGRESS",
-  COMPLETED: "COMPLETED",
-  CANCELLED: "CANCELLED",
-} as const;
-export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
-
-export const RiskLevel = {
-  LOW: "LOW",
-  MEDIUM: "MEDIUM",
-  HIGH: "HIGH",
-  CRITICAL: "CRITICAL",
-} as const;
-
-
-export type RiskLevel = (typeof RiskLevel)[keyof typeof RiskLevel];
-
 export const DocumentCategory = {
   FINANCIALS: "FINANCIALS",
   LEGAL: "LEGAL",
@@ -881,9 +471,6 @@ export type NewVerification = typeof verifications.$inferInsert;
 export type Deal = typeof deals.$inferSelect;
 export type NewDeal = typeof deals.$inferInsert;
 
-export type DealDocument = typeof dealDocuments.$inferSelect;
-export type NewDealDocument = typeof dealDocuments.$inferInsert;
-
 export type POC = typeof pocs.$inferSelect;
 export type NewPOC = typeof pocs.$inferInsert;
 
@@ -898,27 +485,6 @@ export type NewAiScreening = typeof aiScreenings.$inferInsert;
 
 export type UserActionLog = typeof userActionLogs.$inferSelect;
 export type NewUserActionLog = typeof userActionLogs.$inferInsert;
-
-export type Employee = typeof employees.$inferSelect;
-export type NewEmployee = typeof employees.$inferInsert;
-
-export type Company = typeof companies.$inferSelect;
-export type NewCompany = typeof companies.$inferInsert;
-
-export type Founder = typeof founders.$inferSelect;
-export type NewFounder = typeof founders.$inferInsert;
-
-export type File = typeof files.$inferSelect;
-export type NewFile = typeof files.$inferInsert;
-
-export type DueDiligenceSection = typeof dueDiligenceSections.$inferSelect;
-export type NewDueDiligenceSection = typeof dueDiligenceSections.$inferInsert;
-
-export type Review = typeof reviews.$inferSelect;
-export type NewReview = typeof reviews.$inferInsert;
-
-export type Task = typeof tasks.$inferSelect;
-export type NewTask = typeof tasks.$inferInsert;
 
 export type Document = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;

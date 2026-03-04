@@ -52,20 +52,6 @@ export const fileUploadQueue = new Queue(QUEUE_NAMES.FILE_UPLOAD, {
   },
 });
 
-// Deal-to-company conversion queue
-export const dealToCompanyQueue = new Queue(QUEUE_NAMES.DEAL_TO_COMPANY, {
-  connection,
-  defaultJobOptions: {
-    removeOnComplete: 100,
-    removeOnFail: 100,
-    attempts: 3,
-    backoff: {
-      type: "exponential",
-      delay: 2000, // Longer delay for conversion jobs
-    },
-  },
-});
-
 // Job data types
 export interface ScreenDealJobData {
   jobId: string;
@@ -93,12 +79,12 @@ export interface FileUploadJobData {
   fileSize: number; // File size in bytes
   mimeType: string; // MIME type of the file
   userId: string; // Required - user who uploaded the file
-  // Entity context (polymorphic - supports both deals and companies)
-  entityType: "DEAL" | "COMPANY";
-  entityId: string; // References deals.id or companies.id
+  // Entity context (deal-only)
+  entityType: "DEAL";
+  entityId: string; // References deals.id
   entityMetadata: EntityMetadata;
   // Vector store embedding control
-  embedInVectorStore?: boolean; // Default: true for companies, false for deals (but can be overridden)
+  embedInVectorStore?: boolean;
   // Optional file metadata
   fileCategory?: string;
   fileDescription?: string;
@@ -117,21 +103,6 @@ export interface FileUploadJobData {
   googleFileSearchResult?: {
     documentName: string | null;
   };
-}
-
-export interface ConvertDealToCompanyJobData {
-  jobId: string;
-  dealId: string;
-  userId: string;
-  // Step state - persisted via job.updateData() for resume on retry
-  step?: string;
-  // Intermediate results cached for resume
-  companyResult?: {
-    companyId: string;
-  };
-  documentsUpdated?: number;
-  pocsMigrated?: number;
-  filesMoved?: number;
 }
 
 // Re-export types and constants from queue-types for backward compatibility
@@ -159,8 +130,6 @@ export async function getJobStatus(queueName: string, jobId: string) {
     queue = screenDealQueue;
   } else if (queueName === QUEUE_NAMES.FILE_UPLOAD) {
     queue = fileUploadQueue;
-  } else if (queueName === QUEUE_NAMES.DEAL_TO_COMPANY) {
-    queue = dealToCompanyQueue;
   } else {
     throw new Error(`Unknown queue name: ${queueName}`);
   }
@@ -220,19 +189,6 @@ export async function createFileUploadJob(data: FileUploadJobData) {
  * The job uses the "Process Step Jobs" pattern for idempotent processing.
  * If the job fails, it will resume from the last completed step on retry.
  */
-export async function createConvertDealToCompanyJob(
-  data: ConvertDealToCompanyJobData,
-) {
-  const job = await dealToCompanyQueue.add("convert", data, {
-    jobId: data.jobId, // Use provided jobId for deduplication
-  });
-
-  return {
-    jobId: job.id,
-    queueName: QUEUE_NAMES.DEAL_TO_COMPANY,
-  };
-}
-
 // ============================================================================
 // Job Query Helpers
 // ============================================================================
@@ -253,13 +209,10 @@ export async function getAllUserJobs(
   ];
 
   // Fetch jobs from all queues in parallel
-  const [screenDealJobs, fileUploadJobs, dealToCompanyJobs] = await Promise.all(
-    [
-      screenDealQueue.getJobs(jobStates, 0, 1000),
-      fileUploadQueue.getJobs(jobStates, 0, 1000),
-      dealToCompanyQueue.getJobs(jobStates, 0, 1000),
-    ],
-  );
+  const [screenDealJobs, fileUploadJobs] = await Promise.all([
+    screenDealQueue.getJobs(jobStates, 0, 1000),
+    fileUploadQueue.getJobs(jobStates, 0, 1000),
+  ]);
 
   // Combine and filter by userId
   const allJobs = [
@@ -271,10 +224,6 @@ export async function getAllUserJobs(
       job,
       queueName: QUEUE_NAMES.FILE_UPLOAD,
     })),
-    ...dealToCompanyJobs.map((job) => ({
-      job,
-      queueName: QUEUE_NAMES.DEAL_TO_COMPANY,
-    })),
   ];
 
   // Filter by userId and transform to JobWithMetadata
@@ -283,32 +232,11 @@ export async function getAllUserJobs(
   for (const { job, queueName } of allJobs) {
     const jobData = job.data as
       | ScreenDealJobData
-      | FileUploadJobData
-      | ConvertDealToCompanyJobData;
+      | FileUploadJobData;
 
     if (jobData.userId === userId) {
       const state = (await job.getState()) as JobStatus;
       const progress = (job.progress as JobProgressData | undefined) || null;
-
-      // Extract entityId from FileUploadJobData (supports both old and new format for backward compatibility)
-      let companyId: string | undefined;
-      let dealId: string | undefined;
-
-      // Check if it's FileUploadJobData with new format
-      if ("entityType" in jobData && "entityId" in jobData) {
-        const fileUploadData = jobData as FileUploadJobData;
-        if (fileUploadData.entityType === "COMPANY") {
-          companyId = fileUploadData.entityId;
-        } else if (fileUploadData.entityType === "DEAL") {
-          dealId = fileUploadData.entityId;
-        }
-      } else if (queueName === QUEUE_NAMES.FILE_UPLOAD) {
-        // Old format: companyId (backward compatibility for old jobs)
-        const oldFormatData = jobData as any;
-        if (typeof oldFormatData.companyId === "string") {
-          companyId = oldFormatData.companyId;
-        }
-      }
 
       userJobs.push({
         jobId: job.id!,
@@ -321,8 +249,7 @@ export async function getAllUserJobs(
         failedReason: job.failedReason || null,
         attemptsMade: job.attemptsMade,
         userId: jobData.userId,
-        dealId: "dealId" in jobData ? jobData.dealId : dealId,
-        companyId: companyId,
+        dealId: "dealId" in jobData ? jobData.dealId : undefined,
         fileName: "fileName" in jobData ? jobData.fileName : undefined,
         screenerId: "screenerId" in jobData ? jobData.screenerId : undefined,
       });

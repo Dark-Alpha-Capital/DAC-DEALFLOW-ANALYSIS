@@ -12,7 +12,7 @@ import { revalidatePath } from "next/cache";
 export const jobsRouter = createTRPCRouter({
   /**
    * Get all jobs for the current user
-   * Returns jobs from all queues (screen-deal, file-upload, deal-to-company)
+   * Returns jobs from all queues (screen-deal, file-upload)
    * Sorted by createdAt descending
    */
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -51,7 +51,6 @@ export const jobsRouter = createTRPCRouter({
         queueName: z.enum([
           QUEUE_NAMES.SCREEN_DEAL,
           QUEUE_NAMES.FILE_UPLOAD,
-          QUEUE_NAMES.DEAL_TO_COMPANY,
         ]),
       }),
     )
@@ -95,7 +94,6 @@ export const jobsRouter = createTRPCRouter({
         queueName: z.enum([
           QUEUE_NAMES.SCREEN_DEAL,
           QUEUE_NAMES.FILE_UPLOAD,
-          QUEUE_NAMES.DEAL_TO_COMPANY,
         ]),
       }),
     )
@@ -124,7 +122,6 @@ export const jobsRouter = createTRPCRouter({
             queueName: z.enum([
               QUEUE_NAMES.SCREEN_DEAL,
               QUEUE_NAMES.FILE_UPLOAD,
-              QUEUE_NAMES.DEAL_TO_COMPANY,
             ]),
           }),
         ),

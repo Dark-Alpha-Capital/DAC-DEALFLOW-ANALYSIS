@@ -44,12 +44,12 @@ export interface FileUploadJobData {
   fileSize: number; // File size in bytes
   mimeType: string; // MIME type of the file
   userId: string; // Required - user who uploaded the file
-  // Entity context (polymorphic - supports both deals and companies)
-  entityType: "DEAL" | "COMPANY";
-  entityId: string; // References deals.id or companies.id
+  // Entity context (now deal-only)
+  entityType: "DEAL";
+  entityId: string; // References deals.id
   entityMetadata: EntityMetadata;
   // Vector store embedding control
-  embedInVectorStore?: boolean; // Default: true for companies, false for deals (but can be overridden)
+  embedInVectorStore?: boolean; // Default can be overridden per job
   // Optional file metadata
   fileCategory?: string;
   fileDescription?: string;
@@ -227,11 +227,9 @@ export async function fileUploadHandler(
 
   let step = jobData.step ?? FileUploadStep.Validate;
 
-  // Default embedInVectorStore: true for companies, false for deals (but can be overridden)
+  // Default embedInVectorStore: false for deals unless explicitly enabled
   const shouldEmbedInVectorStore =
-    embedInVectorStore !== undefined
-      ? embedInVectorStore
-      : entityType === "COMPANY";
+    embedInVectorStore !== undefined ? embedInVectorStore : false;
 
   console.log(`[file-upload] Extracted values:`, {
     userId: userId || "UNDEFINED",
@@ -254,10 +252,8 @@ export async function fileUploadHandler(
     );
   }
 
-  if (!entityType || (entityType !== "DEAL" && entityType !== "COMPANY")) {
-    throw new Error(
-      `[file-upload] ${jobId}: entityType must be "DEAL" or "COMPANY"`
-    );
+  if (!entityType || entityType !== "DEAL") {
+    throw new Error(`[file-upload] ${jobId}: entityType must be "DEAL"`);
   }
 
   if (!entityId || entityId.trim() === "") {
@@ -588,11 +584,7 @@ export async function fileUploadHandler(
         // Revalidate cache tags for the entity page
         // This ensures the page shows updated file count and new files immediately
         const cacheTags: string[] = [];
-        if (entityType === "COMPANY") {
-          cacheTags.push(`company-${entityId}`, "companies");
-        } else if (entityType === "DEAL") {
-          cacheTags.push(`deal-${entityId}`, "deals");
-        }
+        cacheTags.push(`deal-${entityId}`, "deals");
 
         if (cacheTags.length > 0) {
           await revalidateCacheTags(cacheTags);

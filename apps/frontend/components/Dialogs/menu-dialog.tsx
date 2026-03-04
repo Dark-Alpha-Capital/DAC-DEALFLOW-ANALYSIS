@@ -12,17 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import {
-  Box,
-  Info,
-  Mail,
-  Home,
-  Lock,
-  Building,
-  List,
-  CheckSquare,
-  Filter,
-} from "lucide-react";
+import { Box, Info, Home, List, CheckSquare, Filter } from "lucide-react";
 
 export default function MenuDialog() {
   const menuItems = [
@@ -53,11 +43,6 @@ export default function MenuDialog() {
           navLink: "/screeners",
           navTitle: "Screeners",
           icon: Filter,
-        },
-        {
-          navLink: "/companies",
-          navTitle: "Companies",
-          icon: Building,
         },
       ],
     },
