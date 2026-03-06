@@ -19,11 +19,29 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
+import {
+  FiUserPlus,
+  FiTrendingUp,
+  FiUsers,
+  FiFileText,
+  FiBarChart2,
+  FiFolderPlus,
+} from "react-icons/fi";
+import { FaPalette } from "react-icons/fa";
+import { FiHome } from "react-icons/fi";
+
 const navItems: NavItem[] = [
-  { title: "New Deal", url: "/new-deal", icon: FiPlus },
-  { title: "Raw Deals", url: "/raw-deals", icon: FiList },
-  { title: "Screeners", url: "/screeners", icon: FaScrewdriver },
+  { title: "Dashboard", url: "/dashboard", icon: FiHome },
+  { title: "Leads", url: "/leads", icon: FiUserPlus },
+  { title: "Deals", url: "/deals", icon: FiTrendingUp },
+  { title: "Screenings", url: "/screenings", icon: FiBriefcase },
+  { title: "Companies", url: "/companies", icon: FiUsers },
   { title: "Jobs", url: "/jobs", icon: FiBriefcase },
+  { title: "Screeners", url: "/screeners", icon: FaScrewdriver },
+  { title: "Themes", url: "/themes", icon: FaPalette },
+  { title: "Documents", url: "/documents", icon: FiFileText },
+  { title: "Analytics", url: "/analytics", icon: FiBarChart2 },
+  { title: "Add", url: "/new", icon: FiFolderPlus },
 ];
 
 export function SidebarNav() {

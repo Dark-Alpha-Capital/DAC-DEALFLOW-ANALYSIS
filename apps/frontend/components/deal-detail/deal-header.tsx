@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 interface DealHeaderProps {
   deal: Deal;
   uid: string;
+  basePath?: "deals" | "raw-deals";
 }
 
 function StatusIndicator({
@@ -70,9 +71,20 @@ function getStatusColor(status: DealStatus): string {
   }
 }
 
-export function DealHeader({ deal, uid }: DealHeaderProps) {
+export function DealHeader({
+  deal,
+  uid,
+  basePath = "raw-deals",
+}: DealHeaderProps) {
+  const backHref = basePath === "deals" ? "/deals" : "/raw-deals";
+  const backLabel =
+    basePath === "deals" ? "Back to Deals" : "Back to Raw Deals";
+  const editHref =
+    basePath === "deals" ? `/deals/${uid}/edit` : `/raw-deals/${uid}/edit`;
+
   const {
     title,
+    dealCaption,
     dealType,
     status,
     brokerage,
@@ -93,9 +105,9 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
         asChild
         className="gap-2 pl-0 transition-all hover:pl-2"
       >
-        <Link href="/raw-deals">
+        <Link href={backHref}>
           <ArrowLeft className="h-4 w-4" />
-          Back to Raw Deals
+          {backLabel}
         </Link>
       </Button>
 
@@ -174,9 +186,9 @@ export function DealHeader({ deal, uid }: DealHeaderProps) {
 
       {/* Action Buttons */}
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3 border-border border-b pb-4">
+        <div className="border-border flex flex-wrap items-center gap-3 border-b pb-4">
           <Button asChild>
-            <Link href={`/raw-deals/${uid}/edit`}>
+            <Link href={editHref}>
               <Edit className="mr-2 h-4 w-4" />
               Edit Deal
             </Link>

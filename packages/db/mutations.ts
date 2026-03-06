@@ -1,5 +1,5 @@
 import { db } from ".";
-import { deals, pocs, screeners, aiScreenings, questionnaires } from "./schema";
+import { deals, screeners, aiScreenings, questionnaires } from "./schema";
 import { eq, inArray } from "drizzle-orm";
 
 export const BulkDeleteDeals = async (dealIds: readonly string[]) => {
@@ -24,15 +24,6 @@ export const DeleteDealById = async (dealId: string) => {
     await db.delete(deals).where(eq(deals.id, dealId));
   } catch (error) {
     console.error("Error deleting deal:", error);
-    throw error;
-  }
-};
-
-export const DeletePOCById = async (pocId: string) => {
-  try {
-    await db.delete(pocs).where(eq(pocs.id, pocId));
-  } catch (error) {
-    console.error("Error deleting poc:", error);
     throw error;
   }
 };

@@ -6,11 +6,9 @@ import {
 } from "../lib/ai/available-models";
 import { db } from "db";
 import {
-  files,
   documents,
   type FileCategory,
   type DocumentCategory,
-  type EntityType,
 } from "db/schema";
 
 export enum FileUploadStep {
@@ -44,9 +42,9 @@ export interface FileUploadJobData {
   fileSize: number; // File size in bytes
   mimeType: string; // MIME type of the file
   userId: string; // Required - user who uploaded the file
-  // Entity context (now deal-only)
-  entityType: "DEAL";
-  entityId: string; // References deals.id
+  // Entity context
+  entityType: "DEAL" | "DEAL_OPPORTUNITY";
+  entityId: string; // References deals.id or dealOpportunities.id
   entityMetadata: EntityMetadata;
   // Vector store embedding control
   embedInVectorStore?: boolean; // Default can be overridden per job
@@ -252,8 +250,10 @@ export async function fileUploadHandler(
     );
   }
 
-  if (!entityType || entityType !== "DEAL") {
-    throw new Error(`[file-upload] ${jobId}: entityType must be "DEAL"`);
+  if (!entityType || entityType !== "DEAL_OPPORTUNITY") {
+    throw new Error(
+      `[file-upload] ${jobId}: entityType must be "DEAL_OPPORTUNITY" (run migration first)`
+    );
   }
 
   if (!entityId || entityId.trim() === "") {
@@ -377,7 +377,7 @@ export async function fileUploadHandler(
               { key: "entityType", stringValue: entityType },
               { key: "entityId", stringValue: entityId },
               {
-                key: entityType === "COMPANY" ? "companyName" : "dealName",
+                key: "dealName",
                 stringValue: entityMetadata.name,
               },
               { key: "sector", stringValue: entityMetadata.sector ?? "" },
@@ -544,13 +544,9 @@ export async function fileUploadHandler(
               fileName: fileName,
               fileSize: validateResult.fileSize,
               mimeType: validateResult.mimeType,
-              entityType: entityType as EntityType,
+              entityType: "DEAL_OPPORTUNITY",
               entityId: entityId,
               uploadedById: userId,
-              vectorStoreDocumentName: googleResult?.documentName || null,
-              // Versioning defaults (can be updated later if needed)
-              version: "1.0",
-              isLatest: true,
             })
             .returning();
         } catch (dbError: any) {
@@ -566,7 +562,7 @@ export async function fileUploadHandler(
           });
           throw new Error(
             `Database insert failed: ${dbError.message || "Unknown error"}. ` +
-              `Check that userId (${userId}) and ${entityType}Id (${entityId}) are valid.`
+            `Check that userId (${userId}) and ${entityType}Id (${entityId}) are valid.`
           );
         }
 

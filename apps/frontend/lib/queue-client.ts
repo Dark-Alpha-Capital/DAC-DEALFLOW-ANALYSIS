@@ -297,8 +297,6 @@ export async function deleteUserJob(
     queue = screenDealQueue;
   } else if (queueName === QUEUE_NAMES.FILE_UPLOAD) {
     queue = fileUploadQueue;
-  } else if (queueName === QUEUE_NAMES.DEAL_TO_COMPANY) {
-    queue = dealToCompanyQueue;
   } else {
     throw new Error(`Unknown queue name: ${queueName}`);
   }

@@ -14,11 +14,10 @@ import {
   CreditCard,
   BarChart3,
 } from "lucide-react";
-import { Deal, Document, AiScreening, POC } from "db/schema";
+import { Deal, Document, AiScreening } from "db/schema";
 import { DealMetricCard } from "./deal-metric-card";
 import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
 import FetchDealDocuments from "@/components/fetch-deal-documents";
-import FetchDealPOC from "@/components/FetchDealPOC";
 import DealDocumentUploadDialog from "@/components/Dialogs/deal-document-upload-dialog";
 
 interface DealTabsProps {
@@ -26,7 +25,6 @@ interface DealTabsProps {
   uid: string;
   documents: Document[];
   aiScreenings: AiScreening[];
-  pocs: POC[];
 }
 
 export function DealTabs({
@@ -34,7 +32,6 @@ export function DealTabs({
   uid,
   documents,
   aiScreenings,
-  pocs,
 }: DealTabsProps) {
   const {
     dealCaption,
@@ -220,11 +217,11 @@ export function DealTabs({
       <TabsContent value="contacts" className="mt-6 space-y-6">
         <div className="border-border flex flex-col gap-4 border-b pb-6">
           <h2 className="text-muted-foreground text-sm font-medium">
-            Points of contact
+            Contacts
           </h2>
-          <ScrollArea className="h-[400px] pr-4">
-            <FetchDealPOC dealId={uid} pocs={pocs} />
-          </ScrollArea>
+          <p className="text-muted-foreground text-sm">
+            Contacts are managed via the deal schema.
+          </p>
         </div>
       </TabsContent>
     </Tabs>

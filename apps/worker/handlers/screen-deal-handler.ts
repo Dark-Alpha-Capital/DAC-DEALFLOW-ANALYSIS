@@ -1,7 +1,16 @@
 import { Job } from "bullmq";
 import { generateText, generateObject } from "ai";
 import { z } from "zod";
-import db, { Sentiment, deals, screeners, aiScreenings, eq, and } from "db";
+import db, {
+  Sentiment,
+  deals,
+  dealOpportunities,
+  companies,
+  screeners,
+  aiScreenings,
+  eq,
+  and,
+} from "db";
 import { openai } from "../lib/ai/available-models";
 import { splitContentIntoChunks } from "../lib/utils";
 
@@ -29,6 +38,7 @@ export interface ScreenDealJobData {
   dealId: string;
   screenerId: string;
   userId: string;
+  dealOpportunityIdForSave?: string;
   // Step state - persisted via job.updateData() for resume on retry
   step?: ScreenDealStep;
   // Intermediate results cached for resume
@@ -100,28 +110,45 @@ export async function screenDealHandler(
         await job.updateProgress({ step: "Fetching deal information", percentage: 5 });
         console.log(`[screen-deal] ${jobId}: Fetching data`);
 
-        // Fetch deal
-        const [fetchedDeal] = await db
-          .select({
-            id: deals.id,
-            title: deals.title,
-            dealCaption: deals.dealCaption,
-            dealTeaser: deals.dealTeaser,
-            askingPrice: deals.askingPrice,
-            dealType: deals.dealType,
-            grossRevenue: deals.grossRevenue,
-            tags: deals.tags,
-            brokerage: deals.brokerage,
-            ebitdaMargin: deals.ebitdaMargin,
-            ebitda: deals.ebitda,
-            revenue: deals.revenue,
-          })
-          .from(deals)
-          .where(eq(deals.id, dealId));
+        // Resolve dealId to DealOpportunity + Company (or fallback to legacy Deal)
+        const [opp] = await db
+          .select()
+          .from(dealOpportunities)
+          .where(eq(dealOpportunities.legacyDealId, dealId));
 
-        if (!fetchedDeal) {
-          throw new Error(`Deal not found: ${dealId}`);
+        let fetchedDeal: DealInfo;
+        let dealOpportunityIdForSave: string;
+
+        if (opp) {
+          const [company] = await db
+            .select()
+            .from(companies)
+            .where(eq(companies.id, opp.companyId));
+          fetchedDeal = {
+            id: opp.id,
+            title: null,
+            dealCaption: company?.name ?? opp.dealTeaser ?? "",
+            dealTeaser: opp.dealTeaser,
+            askingPrice: opp.askingPrice,
+            dealType: opp.dealType,
+            grossRevenue: company?.revenueEstimate ?? null,
+            tags: opp.tags,
+            brokerage: opp.brokerage,
+            ebitdaMargin: company?.ebitdaMarginEstimate ?? null,
+            ebitda: company?.ebitdaEstimate ?? null,
+            revenue: company?.revenueEstimate ?? null,
+          };
+          dealOpportunityIdForSave = opp.id;
+        } else {
+          throw new Error(
+            `Deal ${dealId} not migrated. Run db:migrate-deals first.`
+          );
         }
+
+        await job.updateData({
+          ...job.data,
+          dealOpportunityIdForSave,
+        });
 
         // Fetch screener
         await job.updateProgress({ step: "Fetching screener", percentage: 10 });
@@ -274,13 +301,23 @@ export async function screenDealHandler(
           throw new Error("Missing summaryResult - job state corrupted");
         }
 
+        const dealOpportunityId =
+          job.data.dealOpportunityIdForSave ??
+          (await db
+            .select({ id: dealOpportunities.id })
+            .from(dealOpportunities)
+            .where(eq(dealOpportunities.legacyDealId, dealId))
+            .then((r) => r[0]?.id));
+        if (!dealOpportunityId)
+          throw new Error(`DealOpportunity not found for deal ${dealId}`);
+
         // Check if already saved (idempotency)
         const existing = await db
           .select({ id: aiScreenings.id })
           .from(aiScreenings)
           .where(
             and(
-              eq(aiScreenings.dealId, dealId),
+              eq(aiScreenings.dealOpportunityId, dealOpportunityId),
               eq(aiScreenings.screenerId, screenerId)
             )
           );
@@ -311,7 +348,7 @@ export async function screenDealHandler(
         const [savedEvaluation] = await db
           .insert(aiScreenings)
           .values({
-            dealId,
+            dealOpportunityId,
             title: summaryResult.title,
             explanation: summaryResult.explanation,
             score: summaryResult.score ? Math.round(summaryResult.score) : null,
