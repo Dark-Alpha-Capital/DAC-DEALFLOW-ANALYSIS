@@ -16,8 +16,9 @@ async function CachedCompanyContent({ uid }: { uid: string }) {
   cacheTag(`company-${uid}`);
   cacheLife("hours");
 
-  let companyData: Awaited<ReturnType<typeof GetCompanyWithAllRelations>> | null =
-    null;
+  let companyData: Awaited<
+    ReturnType<typeof GetCompanyWithAllRelations>
+  > | null = null;
   let error: Error | null = null;
 
   try {

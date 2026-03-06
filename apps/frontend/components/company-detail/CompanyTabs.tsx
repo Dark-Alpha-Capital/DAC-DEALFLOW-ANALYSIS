@@ -42,7 +42,10 @@ export function CompanyTabs({
       </TabsContent>
 
       <TabsContent value="deals">
-        <CompanyDealsList company={company} dealOpportunities={dealOpportunities} />
+        <CompanyDealsList
+          company={company}
+          dealOpportunities={dealOpportunities}
+        />
       </TabsContent>
 
       <TabsContent value="contacts">
@@ -59,4 +62,3 @@ export function CompanyTabs({
     </Tabs>
   );
 }
-

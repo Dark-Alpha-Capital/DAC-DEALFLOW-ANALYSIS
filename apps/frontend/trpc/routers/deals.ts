@@ -13,7 +13,6 @@ import db, {
 } from "db";
 import { DeleteDealById, BulkDeleteDeals } from "db/mutations";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { uploadFileToNextCloud } from "@/lib/storage";
 import {
   fileUploadQueue,
   type FileUploadJobData,
@@ -21,7 +20,7 @@ import {
 } from "@/lib/queue-client";
 import { randomUUID } from "crypto";
 import { GetDealById } from "db/queries";
-import { createClient } from "webdav";
+import { uploadBuffer } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
 
 const createDealSchema = z.object({
@@ -400,23 +399,7 @@ export const dealsRouter = createTRPCRouter({
         };
       }
 
-      // Create Nextcloud client for file uploads
-      const nextcloudClient = createClient(
-        `${process.env.NEXTCLOUD_URL}/remote.php/dav/files/${process.env.NEXTCLOUD_USER}`,
-        {
-          username: process.env.NEXTCLOUD_USER,
-          password: process.env.NEXTCLOUD_PASSWORD,
-        },
-      );
-
-      // Ensure final directory exists
       const finalDir = `dealflow/raw-deals/${input.dealId}`;
-      try {
-        await nextcloudClient.createDirectory(finalDir, { recursive: true });
-      } catch (err) {
-        // Directory might already exist, which is fine
-        console.log("[deal-upload] Final directory may already exist");
-      }
 
       // Generate a unique jobId for this job
       const jobId = randomUUID();
@@ -429,8 +412,7 @@ export const dealsRouter = createTRPCRouter({
       const finalPath = `${finalDir}/${input.fileName}`;
 
       try {
-        await nextcloudClient.putFileContents(finalPath, buffer);
-
+        await uploadBuffer(buffer, finalPath);
         console.log(`[deal-upload] File uploaded to final location`, {
           jobId,
           finalPath,

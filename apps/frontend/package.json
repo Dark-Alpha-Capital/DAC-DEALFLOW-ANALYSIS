@@ -113,9 +113,9 @@
     "use-debounce": "^10.0.4",
     "use-stick-to-bottom": "^1.1.1",
     "vaul": "^1.1.1",
-    "webdav": "^5.8.0",
     "xlsx": "^0.18.5",
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "@repo/nextcloud": "workspace:*"
   },
   "devDependencies": {
     "@clerk/types": "^4.35.0",

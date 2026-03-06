@@ -471,18 +471,14 @@ export const outreach = pgTable("Outreach", {
 
 export const contacts = pgTable("Contact", {
   id: text("id").primaryKey().$defaultFn(() => createId()),
-
   entityType: contactEntityEnum("entityType").notNull(),
   entityId: text("entityId").notNull(),
-
   name: text("name").notNull(),
   title: text("title"),
   email: text("email"),
   phone: text("phone"),
   linkedinUrl: text("linkedinUrl"),
-
   role: text("role"), // Broker, Founder, CFO, Advisor
-
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -895,3 +891,6 @@ export type NewDocument = typeof documents.$inferInsert;
 
 export type Outreach = typeof outreach.$inferSelect;
 export type NewOutreach = typeof outreach.$inferInsert;
+
+export type Contact = typeof contacts.$inferSelect;
+export type NewContact = typeof contacts.$inferInsert;

@@ -1,5 +1,4 @@
 import { Job } from "bullmq";
-import { createClient } from "webdav";
 import {
   COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME,
   googleGenAI,
@@ -10,6 +9,11 @@ import {
   type FileCategory,
   type DocumentCategory,
 } from "db/schema";
+import {
+  fileExists,
+  getFileContents,
+  getNextcloudConfig,
+} from "@repo/nextcloud";
 
 export enum FileUploadStep {
   Validate = "validate",
@@ -124,19 +128,6 @@ const MIME_TYPE_MAP: Record<string, string> = {
 function getMimeType(fileName: string): string {
   const extension = fileName.split(".").pop()?.toLowerCase() || "";
   return MIME_TYPE_MAP[extension] || "application/octet-stream";
-}
-
-/**
- * Create WebDAV client for Nextcloud
- */
-function createNextcloudClient() {
-  return createClient(
-    `${process.env.NEXTCLOUD_URL}/remote.php/dav/files/${process.env.NEXTCLOUD_USER}`,
-    {
-      username: process.env.NEXTCLOUD_USER,
-      password: process.env.NEXTCLOUD_PASSWORD,
-    }
-  );
 }
 
 /**
@@ -314,18 +305,15 @@ export async function fileUploadHandler(
 
         console.log(`[file-upload] ${jobId}: Verifying file at ${filePath}`);
 
-        const client = createNextcloudClient();
-
-        // Verify file exists (will throw if it doesn't)
-        try {
-          await client.stat(filePath);
-        } catch (err) {
+        const exists = await fileExists(filePath);
+        if (!exists) {
           throw new Error(
-            `File not found at ${filePath} - upload may have failed`
+            `File not found at ${filePath} - upload may have failed`,
           );
         }
 
-        const publicUrl = `${process.env.NEXTCLOUD_URL}/remote.php/dav/files/${process.env.NEXTCLOUD_USER}/${filePath}`;
+        const { url, user } = getNextcloudConfig();
+        const publicUrl = `${url}/remote.php/dav/files/${user}/${filePath}`;
 
         console.log(`[file-upload] ${jobId}: File verified at ${filePath}`);
 
@@ -392,13 +380,7 @@ export async function fileUploadHandler(
               { key: "fileName", stringValue: fileName },
             ];
 
-            const nextcloudClient = createNextcloudClient();
-            const fileBuffer = await nextcloudClient.getFileContents(
-              nextcloudResult.destPath,
-              {
-                format: "binary",
-              }
-            );
+            const fileBuffer = await getFileContents(nextcloudResult.destPath);
             // getFileContents with format: "binary" returns a Buffer in Node.js
             // Buffer extends Uint8Array, so we can use it directly with Blob
             const fileBlob = new Blob([fileBuffer as Buffer], {

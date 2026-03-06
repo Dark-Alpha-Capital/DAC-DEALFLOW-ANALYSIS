@@ -1,6 +1,6 @@
 import type { Company } from "db";
 import type { Document } from "db/schema";
-import { BulkFileUploadDialog } from "@/components/Dialogs/bulk-file-upload-dialog";
+import { FileUploadDialog } from "@/components/Dialogs/file-upload-dialog";
 import DealDocumentItem from "@/components/DealDocumentItem";
 import { AlertTriangle } from "lucide-react";
 
@@ -16,7 +16,7 @@ export function CompanyDocuments({ company, documents }: CompanyDocumentsProps) 
         <h2 className="text-muted-foreground text-sm font-medium">
           Company documents
         </h2>
-        <BulkFileUploadDialog companyId={company.id} />
+        <FileUploadDialog entityType="COMPANY" entityId={company.id} />
       </div>
       {documents.length > 0 ? (
         <div className="space-y-3">

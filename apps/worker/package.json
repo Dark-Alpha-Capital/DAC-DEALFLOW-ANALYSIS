@@ -33,7 +33,7 @@
     "multer": "^2.0.2",
     "openai": "^6.15.0",
     "types": "workspace:*",
-    "webdav": "^5.8.0",
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "@repo/nextcloud": "workspace:*"
   }
 }
