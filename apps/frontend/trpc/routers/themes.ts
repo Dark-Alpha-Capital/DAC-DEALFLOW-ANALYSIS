@@ -37,7 +37,7 @@ export const themesRouter = createTRPCRouter({
         .returning();
 
       revalidatePath("/themes");
-      revalidateTag("themes");
+      revalidateTag("themes", "max");
       return { themeId: added?.id };
     }),
 
@@ -60,8 +60,8 @@ export const themesRouter = createTRPCRouter({
       revalidatePath("/themes");
       revalidatePath(`/themes/${id}`);
       revalidatePath(`/themes/${id}/edit`);
-      revalidateTag("themes");
-      revalidateTag(`theme-${id}`);
+      revalidateTag("themes", "max");
+      revalidateTag(`theme-${id}`, "max");
       return { themeId: id };
     }),
 
@@ -70,8 +70,8 @@ export const themesRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await db.delete(themes).where(eq(themes.id, input.id));
       revalidatePath("/themes");
-      revalidateTag("themes");
-      revalidateTag(`theme-${input.id}`);
+      revalidateTag("themes", "max");
+      revalidateTag(`theme-${input.id}`, "max");
       return { success: true };
     }),
 });
