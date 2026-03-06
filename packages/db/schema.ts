@@ -245,9 +245,6 @@ export const companies = pgTable(
       .default("UNCONTACTED")
       .notNull(),
 
-    // Internal notes for coverage / relationship context
-    notes: text("notes"),
-
     firstSeenAt: timestamp("firstSeenAt"),
     lastSeenAt: timestamp("lastSeenAt"),
     firstSeenFromLeadId: text("firstSeenFromLeadId").references(() => leads.id),
@@ -261,6 +258,34 @@ export const companies = pgTable(
   (table) => ({
     companyDedupIdx: index("company_dedup_idx").on(table.normalizedName, table.location),
     companyThemeIdx: index("company_theme_idx").on(table.themeId),
+  })
+);
+
+export const companyNotes = pgTable(
+  "CompanyNote",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+
+    companyId: text("companyId")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+
+    title: text("title"),
+    content: text("content").notNull(),
+
+    createdById: text("createdById").references(() => users.id),
+
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    companyNotesCompanyIdx: index("company_notes_company_idx").on(table.companyId),
+    companyNotesCreatedAtIdx: index("company_notes_created_at_idx").on(table.createdAt),
   })
 );
 
@@ -702,7 +727,19 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
     relationName: "firstSeenFromLead",
   }),
   dealOpportunities: many(dealOpportunities),
+  notes: many(companyNotes),
   outreach: many(outreach),
+}));
+
+export const companyNotesRelations = relations(companyNotes, ({ one }) => ({
+  company: one(companies, {
+    fields: [companyNotes.companyId],
+    references: [companies.id],
+  }),
+  createdBy: one(users, {
+    fields: [companyNotes.createdById],
+    references: [users.id],
+  }),
 }));
 
 export const screenersRelations = relations(screeners, ({ many }) => ({
@@ -876,6 +913,9 @@ export type NewDealOpportunity = typeof dealOpportunities.$inferInsert;
 
 export type Company = typeof companies.$inferSelect;
 export type NewCompany = typeof companies.$inferInsert;
+
+export type CompanyNote = typeof companyNotes.$inferSelect;
+export type NewCompanyNote = typeof companyNotes.$inferInsert;
 
 export type Theme = typeof themes.$inferSelect;
 export type NewTheme = typeof themes.$inferInsert;

@@ -25,7 +25,6 @@ const companySchema = z.object({
     "CLOSED",
     "PASSED",
   ]).optional(),
-  notes: z.string().optional(),
 });
 
 const createCompanySchema = companySchema;
@@ -57,7 +56,6 @@ export const companiesRouter = createTRPCRouter({
           themeId: input.themeId || null,
           attractivenessScore: input.attractivenessScore ?? null,
           coverageStatus: input.coverageStatus ?? "UNCONTACTED",
-          notes: input.notes || null,
         })
         .returning();
 
@@ -86,7 +84,6 @@ export const companiesRouter = createTRPCRouter({
           themeId: data.themeId || null,
           attractivenessScore: data.attractivenessScore ?? null,
           coverageStatus: data.coverageStatus ?? "UNCONTACTED",
-          notes: data.notes || null,
         })
         .where(eq(companies.id, id));
 
@@ -108,27 +105,4 @@ export const companiesRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  updateNotes: protectedProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        notes: z.string().optional(),
-      }),
-    )
-    .mutation(async ({ input }) => {
-      const { id, notes } = input;
-
-      await db
-        .update(companies)
-        .set({
-          notes: notes || null,
-        })
-        .where(eq(companies.id, id));
-
-      revalidatePath(`/companies/${id}`);
-      revalidateTag("companies", "max");
-      revalidateTag(`company-${id}`, "max");
-
-      return { companyId: id };
-    }),
 });

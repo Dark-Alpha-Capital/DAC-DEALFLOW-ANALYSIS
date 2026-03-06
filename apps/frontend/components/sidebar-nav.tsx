@@ -11,6 +11,7 @@ import {
   FiFolderPlus,
   FiHome,
   FiBriefcase,
+  FiBookOpen,
 } from "react-icons/fi";
 import { FaPalette, FaScrewdriver } from "react-icons/fa";
 import {
@@ -36,6 +37,7 @@ const navItems: NavItem[] = [
   { title: "Jobs", url: "/jobs", icon: FiBriefcase },
   { title: "Themes", url: "/themes", icon: FaPalette },
   { title: "Add", url: "/new", icon: FiFolderPlus },
+  { title: "Docs", url: "/docs", icon: FiBookOpen },
 ];
 
 const adminNavItems: NavItem[] = [
