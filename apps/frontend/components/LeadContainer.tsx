@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { Lead } from "db";
 import Pagination from "@/components/pagination";
-import LeadTable from "@/components/LeadTable";
+import { LeadsDataTable } from "@/app/(protected)/leads/data-table";
+import { columns } from "@/app/(protected)/leads/columns";
 import LeadDetailsDrawer from "@/components/LeadDetailsDrawer";
 
 interface LeadContainerProps {
@@ -15,9 +16,7 @@ interface LeadContainerProps {
 
 export default function LeadContainer({
   data,
-  currentPage,
   totalPages,
-  totalCount,
 }: LeadContainerProps) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -30,7 +29,11 @@ export default function LeadContainer({
   return (
     <div>
       <div className="group-has-data-pending:animate-pulse">
-        <LeadTable data={data} onSelectLead={handleSelectLead} />
+        <LeadsDataTable
+          columns={columns}
+          data={data}
+          onSelectLead={handleSelectLead}
+        />
       </div>
       <div className="mt-8 flex justify-center">
         <Pagination totalPages={totalPages} />

@@ -4,7 +4,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
 import { GetDealOpportunitiesByStages } from "db/queries";
-import DealPipelineBoard from "@/components/DealPipelineBoard";
+import { DealsDataTable } from "./data-table";
+import { columns } from "./columns";
 import DealsAuthedSkeleton from "@/components/skeletons/DealsAuthedSkeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -63,7 +64,5 @@ async function FetchAndDisplayDeals() {
   cacheLife("hours");
   const data = await GetDealOpportunitiesByStages();
 
-  console.log("deal opportunities", data);
-
-  return <DealPipelineBoard data={data} />;
+  return <DealsDataTable columns={columns} data={data} />;
 }

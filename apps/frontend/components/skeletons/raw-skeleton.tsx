@@ -12,7 +12,7 @@ export default function RawDealsAuthedSkeleton() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border bg-background">
         <div className="flex flex-col gap-3 p-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
             <div className="h-6 w-20 rounded bg-muted" />

@@ -11,7 +11,7 @@ export function BitrixDealCardSkeleton({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border bg-card shadow-sm",
+        "overflow-hidden rounded-lg border bg-background shadow-sm",
         className,
       )}
     >
