@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { deals, eq, DealType } from "db";
-import { DeleteQuestionnaireById, DeleteReasoningById } from "db/mutations";
+import db, { deals, eq, DealType } from "@repo/db";
+import { DeleteQuestionnaireById, DeleteReasoningById } from "@repo/db/mutations";
 import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 

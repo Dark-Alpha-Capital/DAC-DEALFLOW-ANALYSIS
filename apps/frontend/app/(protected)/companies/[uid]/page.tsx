@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { GetCompanyWithAllRelations } from "db/queries";
+import { GetCompanyWithAllRelations } from "@repo/db/queries";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { Skeleton } from "@/components/ui/skeleton";

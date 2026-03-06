@@ -12,7 +12,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import type { Lead } from "db";
+import type { Lead } from "@repo/db";
 import {
   Table,
   TableBody,

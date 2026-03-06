@@ -2,8 +2,8 @@ import EditDealForm from "@/components/forms/edit-deal-form";
 import PreviousPageButton from "@/components/PreviousPageButton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Metadata } from "next";
-import { GetDealById } from "db/queries";
-import type { Deal } from "db";
+import { GetDealById } from "@repo/db/queries";
+import type { Deal } from "@repo/db";
 
 type Params = Promise<{ uid: string }>;
 

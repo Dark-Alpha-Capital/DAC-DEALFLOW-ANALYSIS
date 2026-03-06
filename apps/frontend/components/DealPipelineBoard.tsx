@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import DealDetailsPanel from "@/components/DealDetailsPanel";
 
 type DealOppRow = {
-  opp: import("db").DealOpportunity;
+  opp: import("@repo/db").DealOpportunity;
   company: {
     name: string;
     industry: string | null;

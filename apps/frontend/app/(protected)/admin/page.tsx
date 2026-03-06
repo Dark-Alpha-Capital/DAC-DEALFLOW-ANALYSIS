@@ -2,7 +2,7 @@ import getCurrentUserRole from "@/lib/data/current-user-role";
 import { redirect } from "next/navigation";
 import { DataTable } from "./data-table";
 import { columns } from "./columns";
-import { getUsersForAdminTable } from "db/queries";
+import { getUsersForAdminTable } from "@repo/db/queries";
 
 export const metadata = {
   title: "Admin Dashboard",

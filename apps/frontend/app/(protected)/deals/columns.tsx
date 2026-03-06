@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 
 export type DealOppRow = {
-  opp: import("db").DealOpportunity;
+  opp: import("@repo/db").DealOpportunity;
   company: {
     name: string;
     industry: string | null;

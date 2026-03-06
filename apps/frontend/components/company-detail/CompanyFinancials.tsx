@@ -1,4 +1,4 @@
-import type { Company } from "db";
+import type { Company } from "@repo/db";
 import { formatCurrency } from "@/lib/utils";
 
 interface CompanyFinancialsProps {

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
-import { GetAllDocuments } from "db/queries";
+import { GetAllDocuments } from "@repo/db/queries";
 import { DocumentsDataTable } from "./data-table";
 import { columns } from "./columns";
 import DocumentsTableSkeleton from "@/components/skeletons/DocumentsTableSkeleton";

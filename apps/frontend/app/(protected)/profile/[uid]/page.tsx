@@ -1,5 +1,5 @@
 import ProfileForm from "@/components/forms/profile-form";
-import db, { users, accounts, eq } from "db";
+import db, { users, accounts, eq } from "@repo/db";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import React from "react";

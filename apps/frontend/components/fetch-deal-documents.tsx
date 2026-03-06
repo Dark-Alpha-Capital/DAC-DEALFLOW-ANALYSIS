@@ -1,6 +1,6 @@
 import React from "react";
 import { AlertTriangle } from "lucide-react";
-import { Document } from "db/schema";
+import { Document } from "@repo/db/schema";
 import DealDocumentItem from "./DealDocumentItem";
 
 const FetchDealDocuments = ({

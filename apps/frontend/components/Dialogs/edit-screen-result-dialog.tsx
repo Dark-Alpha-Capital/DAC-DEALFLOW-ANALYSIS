@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
 import EditScreeningResultForm from "../forms/edit-screening-result-form";
-import { DealType, Sentiment } from "db/schema";
+import { DealType, Sentiment } from "@repo/db/schema";
 
 const EditScreeningResultDialog = ({
   screeningId,

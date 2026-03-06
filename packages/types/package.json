@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "db": "file:../db"
+    "@repo/db": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest"

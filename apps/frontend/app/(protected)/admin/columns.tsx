@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { AdminUser } from "db/types";
+import { AdminUser } from "@repo/db/types";
 import { UserActions } from "./user-actions";
 
 export const columns: ColumnDef<AdminUser>[] = [

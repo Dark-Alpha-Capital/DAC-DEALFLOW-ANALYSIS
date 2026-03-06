@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-import type { Lead } from "db";
+import type { Lead } from "@repo/db";
 
 const EditLeadFormSchema = z.object({
   sourceWebsite: z.string().min(1, "Source website is required"),

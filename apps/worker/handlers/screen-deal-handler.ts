@@ -10,7 +10,7 @@ import db, {
   aiScreenings,
   eq,
   and,
-} from "db";
+} from "@repo/db";
 import { openai } from "../lib/ai/available-models";
 import { splitContentIntoChunks } from "../lib/utils";
 

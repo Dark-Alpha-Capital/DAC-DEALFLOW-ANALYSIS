@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ExternalLink, FileIcon, Download } from "lucide-react";
-import { DocumentCategory } from "db/schema";
+import { DocumentCategory } from "@repo/db/schema";
 
 const DealDocumentItem = ({
   title,

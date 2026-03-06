@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { contacts, eq, and } from "db";
+import db, { contacts, eq, and } from "@repo/db";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 const entityTypeEnum = z.enum(["LEAD", "COMPANY", "DEAL_OPPORTUNITY"]);

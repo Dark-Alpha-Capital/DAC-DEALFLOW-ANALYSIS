@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { Questionnaire } from "db";
+import type { Questionnaire } from "@repo/db";
 import {
   CalendarIcon,
   LinkIcon,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Palette, Pencil } from "lucide-react";
-import { GetThemeWithAnalytics, GetCompaniesByThemeId } from "db/queries";
+import { GetThemeWithAnalytics, GetCompaniesByThemeId } from "@repo/db/queries";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { Skeleton } from "@/components/ui/skeleton";

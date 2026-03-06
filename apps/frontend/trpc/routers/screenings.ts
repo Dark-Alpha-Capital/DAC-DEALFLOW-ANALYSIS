@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { aiScreenings, eq, DealType, Sentiment } from "db";
-import { DeleteReasoningById } from "db/mutations";
+import db, { aiScreenings, eq, DealType, Sentiment } from "@repo/db";
+import { DeleteReasoningById } from "@repo/db/mutations";
 import { revalidatePath } from "next/cache";
 import { screenDealQueue, type ScreenDealJobData } from "@/lib/queue-client";
 import { redisClient } from "@/lib/redis";

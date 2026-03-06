@@ -6,8 +6,8 @@ import db, {
   leads,
   themes,
   eq,
-  isNotNull,
-} from "db";
+} from "@repo/db";
+import { isNotNull } from "drizzle-orm";
 
 export const analyticsRouter = createTRPCRouter({
   /**

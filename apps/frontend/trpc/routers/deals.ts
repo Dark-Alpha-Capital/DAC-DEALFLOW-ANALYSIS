@@ -3,6 +3,7 @@ import { createTRPCRouter, protectedProcedure, adminProcedure } from "../init";
 import db, {
   deals,
   dealOpportunities,
+  companies,
   eq,
   DealType,
   DealStatus,
@@ -10,8 +11,8 @@ import db, {
   and,
   DealDocumentCategory,
   DocumentCategory,
-} from "db";
-import { DeleteDealById, BulkDeleteDeals } from "db/mutations";
+} from "@repo/db";
+import { DeleteDealById, BulkDeleteDeals } from "@repo/db/mutations";
 import { revalidatePath, revalidateTag } from "next/cache";
 import {
   fileUploadQueue,
@@ -19,7 +20,7 @@ import {
   type EntityMetadata,
 } from "@/lib/queue-client";
 import { randomUUID } from "crypto";
-import { GetDealById } from "db/queries";
+import { GetDealById, GetDealOpportunityByLegacyDealId } from "@repo/db/queries";
 import { uploadBuffer } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
 
@@ -362,7 +363,6 @@ export const dealsRouter = createTRPCRouter({
       }
 
       // Resolve to DealOpportunity (or fallback to legacy Deal)
-      const { GetDealOpportunityByLegacyDealId } = await import("db/queries");
       const opp = await GetDealOpportunityByLegacyDealId(input.dealId);
       const deal = !opp ? await GetDealById(input.dealId) : null;
 
@@ -378,9 +378,6 @@ export const dealsRouter = createTRPCRouter({
 
       let entityMetadata: EntityMetadata;
       {
-        const { db } = await import("db");
-        const { companies } = await import("db/schema");
-        const { eq } = await import("drizzle-orm");
         const [company] = await db
           .select()
           .from(companies)

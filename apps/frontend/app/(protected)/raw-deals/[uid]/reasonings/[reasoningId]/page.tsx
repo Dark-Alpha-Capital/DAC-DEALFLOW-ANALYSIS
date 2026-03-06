@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getCompleteAiReasoningById } from "db/queries";
+import { getCompleteAiReasoningById } from "@repo/db/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";

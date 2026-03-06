@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InfinityIcon } from "lucide-react";
 import DealSpecificationsForm from "../forms/deal-specifications-form";
-import { DealStatus } from "db/schema";
+import { DealStatus } from "@repo/db/schema";
 
 export function DealSpecificationsDialog({
   dealUid,

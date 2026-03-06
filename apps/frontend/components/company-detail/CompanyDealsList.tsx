@@ -1,4 +1,4 @@
-import type { DealOpportunity, Company } from "db";
+import type { DealOpportunity, Company } from "@repo/db";
 import DealOppCard from "@/components/DealOppCard";
 
 interface CompanyDealsListProps {

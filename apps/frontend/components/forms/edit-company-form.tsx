@@ -30,7 +30,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-import type { Company } from "db";
+import type { Company } from "@repo/db";
 
 const COVERAGE_STATUSES = ["UNCONTACTED", "CONTACTED", "IN_DISCUSSION", "UNDER_LOI", "CLOSED", "PASSED"] as const;
 

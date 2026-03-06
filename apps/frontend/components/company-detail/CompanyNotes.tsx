@@ -1,7 +1,7 @@
 "use client";
 
-import type { Company } from "db";
-import type { CompanyNote } from "db/schema";
+import type { Company } from "@repo/db";
+import type { CompanyNote } from "@repo/db/schema";
 import { useTRPC } from "@/trpc/client";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";

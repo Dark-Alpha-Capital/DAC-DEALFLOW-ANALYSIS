@@ -4,7 +4,7 @@ import Link from "next/link";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
-import { GetAllThemes } from "db/queries";
+import { GetAllThemes } from "@repo/db/queries";
 import ThemeContainer from "@/components/ThemeContainer";
 import ThemesAuthedSkeleton from "@/components/skeletons/ThemesAuthedSkeleton";
 import ThemeCardGridSkeleton from "@/components/skeletons/ThemeCardGridSkeleton";

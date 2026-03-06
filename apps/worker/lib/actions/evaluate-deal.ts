@@ -3,7 +3,7 @@ import { splitContentIntoChunks } from "../utils";
 import { openai } from "../ai/available-models";
 import { z } from "zod";
 import { generateObject } from "ai";
-import db, { Sentiment, deals, screeners, aiScreenings, eq } from "db";
+import db, { Sentiment, deals, screeners, aiScreenings, eq } from "@repo/db";
 
 /**
  * Progress callback type for tracking job progress

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { documents } from "db";
+import db, { documents } from "@repo/db";
 import { uploadBuffer } from "@repo/nextcloud";
 import { revalidateTag, updateTag } from "next/cache";
 

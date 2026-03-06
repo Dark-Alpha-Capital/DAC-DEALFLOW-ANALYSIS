@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { leads, companies, dealOpportunities, eq } from "db";
+import db, { leads, companies, dealOpportunities, eq } from "@repo/db";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 const leadSchema = z.object({

@@ -31,7 +31,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-import type { DealOpportunity } from "db";
+import type { DealOpportunity } from "@repo/db";
 
 const EditDealFormSchema = z.object({
   companyId: z.string().min(1, "Company is required"),

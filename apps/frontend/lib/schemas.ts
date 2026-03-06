@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { DealDocumentCategory, DealStatus } from "db/schema";
+import { DealDocumentCategory, DealStatus } from "@repo/db/schema";
 
 export const dealSpecificationsFormSchema = z.object({
   isReviewed: z.boolean().default(false),

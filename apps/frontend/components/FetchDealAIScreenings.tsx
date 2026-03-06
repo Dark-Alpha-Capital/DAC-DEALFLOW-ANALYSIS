@@ -1,6 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import { Button } from "./ui/button";
-import { DealType, AiScreening } from "db/schema";
+import { DealType, AiScreening } from "@repo/db/schema";
 import AIReasoning from "./AiReasoning";
 
 const FetchDealAIScreenings = ({

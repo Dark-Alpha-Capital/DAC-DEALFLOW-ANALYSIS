@@ -11,7 +11,7 @@ import {
   Send,
   Link as LinkIcon,
 } from "lucide-react";
-import { Deal, DealStatus, DealType } from "db/schema";
+import { Deal, DealStatus, DealType } from "@repo/db/schema";
 import { DealActionsDropdown } from "./deal-actions-dropdown";
 import { DealSpecificationsDialog } from "@/components/Dialogs/DealSpecificationsDialog";
 import { cn } from "@/lib/utils";

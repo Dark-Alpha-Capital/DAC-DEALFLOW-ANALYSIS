@@ -1,7 +1,7 @@
 import { createClient } from "redis";
 import http from "http";
 
-import db, { aiScreenings } from "db";
+import db, { aiScreenings } from "@repo/db";
 import { splitContentIntoChunks } from "./lib/utils";
 import { generateObject, generateText } from "ai";
 import { openai } from "./lib/ai/available-models";

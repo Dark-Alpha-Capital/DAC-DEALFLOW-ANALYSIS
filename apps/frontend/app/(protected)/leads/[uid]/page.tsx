@@ -12,7 +12,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import LeadPageSkeleton from "@/components/skeletons/lead-page-skeleton";
-import { GetLeadById } from "db/queries";
+import { GetLeadById } from "@repo/db/queries";
 import { formatCurrency } from "@/lib/utils";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";

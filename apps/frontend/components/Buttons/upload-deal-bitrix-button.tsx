@@ -3,7 +3,7 @@
 import { Upload, Loader2 } from "lucide-react";
 import React, { useTransition } from "react";
 import { Button } from "../ui/button";
-import type { Deal } from "db";
+import type { Deal } from "@repo/db";
 import { exportDealToBitrix } from "@/lib/actions/upload-bitrix";
 import { toast } from "sonner";
 

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Pagination from "@/components/pagination";
 import DealTypeFilter from "@/components/DealTypeFilter";
-import type { DealStatus, DealType } from "db/schema";
+import type { DealStatus, DealType } from "@repo/db/schema";
 import SearchDealsSkeleton from "@/components/skeletons/SearchDealsSkeleton";
 import DealTypeFilterSkeleton from "@/components/skeletons/DealTypeFilterSkeleton";
 import DealCardGridSkeleton from "@/components/skeletons/DealCardGridSkeleton";
@@ -39,7 +39,7 @@ import {
   SearchStatusDeals,
   SearchTagsDeals,
 } from "@/components/raw-deals-filters";
-import { GetAllDeals } from "db/queries";
+import { GetAllDeals } from "@repo/db/queries";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";

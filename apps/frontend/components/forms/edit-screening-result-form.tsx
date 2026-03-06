@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { screenDealSchema, screenDealSchemaType } from "@/lib/schemas";
-import { DealType, Sentiment } from "db/schema";
+import { DealType, Sentiment } from "@repo/db/schema";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";

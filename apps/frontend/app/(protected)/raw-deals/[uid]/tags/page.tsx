@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import db, { deals, eq } from "db";
+import db, { deals, eq } from "@repo/db";
 import { Metadata } from "next";
 import AddTagsForm from "./add-tags-form";
 import { getSession } from "@/lib/auth-server";

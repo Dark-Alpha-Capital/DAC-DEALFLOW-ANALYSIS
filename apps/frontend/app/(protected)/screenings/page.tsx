@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth-server";
-import { GetDealOpportunitiesWithScreenings } from "db/queries";
+import { GetDealOpportunitiesWithScreenings } from "@repo/db/queries";
 import ScreeningScoreCard from "@/components/ScreeningScoreCard";
 import ScreenerResultsList from "@/components/ScreenerResultsList";
 

@@ -1,5 +1,5 @@
-import type { Company } from "db";
-import type { DealOpportunity, Document, Contact } from "db/schema";
+import type { Company } from "@repo/db";
+import type { DealOpportunity, Document, Contact } from "@repo/db/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyOverview } from "./CompanyOverview";
 import { CompanyFinancials } from "./CompanyFinancials";

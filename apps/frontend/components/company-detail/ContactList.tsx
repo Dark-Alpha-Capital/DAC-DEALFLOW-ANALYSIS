@@ -1,4 +1,4 @@
-import type { Contact } from "db";
+import type { Contact } from "@repo/db";
 
 interface ContactListProps {
   contacts: Contact[];

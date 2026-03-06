@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DealHeader } from "@/components/deal-detail/deal-header";
 import DealPageSkeleton from "@/components/skeletons/deal-page-skeleton";
-import { GetDealWithAllRelations } from "db/queries";
+import { GetDealWithAllRelations } from "@repo/db/queries";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 

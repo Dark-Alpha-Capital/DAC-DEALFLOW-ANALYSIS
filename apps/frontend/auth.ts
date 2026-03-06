@@ -1,8 +1,8 @@
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "db";
-import { users, accounts, sessions, verifications, UserRole } from "db/schema";
+import { db } from "@repo/db";
+import { users, accounts, sessions, verifications, UserRole } from "@repo/db/schema";
 import { eq } from "drizzle-orm";
 import { adminEmails } from "./lib/utils";
 import {

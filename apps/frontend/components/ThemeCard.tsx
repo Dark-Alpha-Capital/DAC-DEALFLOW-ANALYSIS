@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Palette, Eye, Pencil, Trash2 } from "lucide-react";
-import type { Theme } from "db";
+import type { Theme } from "@repo/db";
 import {
   AlertDialog,
   AlertDialogAction,

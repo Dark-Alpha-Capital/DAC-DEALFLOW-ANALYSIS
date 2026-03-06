@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, adminProcedure } from "../init";
-import { db } from "db";
-import { users, UserRole } from "db/schema";
+import { db } from "@repo/db";
+import { users, UserRole } from "@repo/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { TRPCError } from "@trpc/server";

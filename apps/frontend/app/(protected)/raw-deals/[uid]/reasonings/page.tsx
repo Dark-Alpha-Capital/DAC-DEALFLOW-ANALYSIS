@@ -1,4 +1,4 @@
-import { getAllDealReasoningsWithScreenerName } from "db/queries";
+import { getAllDealReasoningsWithScreenerName } from "@repo/db/queries";
 import { Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

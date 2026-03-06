@@ -1,4 +1,4 @@
-import type { Company, Contact } from "db";
+import type { Company, Contact } from "@repo/db";
 import { ContactList } from "./ContactList";
 import { CreateContactForm } from "./CreateContactForm";
 

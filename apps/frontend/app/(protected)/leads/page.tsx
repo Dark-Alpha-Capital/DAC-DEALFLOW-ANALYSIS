@@ -4,7 +4,7 @@ import Link from "next/link";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
-import { GetAllLeads } from "db/queries";
+import { GetAllLeads } from "@repo/db/queries";
 import LeadContainer from "@/components/LeadContainer";
 import LeadsAuthedSkeleton from "@/components/skeletons/LeadsAuthedSkeleton";
 import LeadCardGridSkeleton from "@/components/skeletons/LeadCardGridSkeleton";

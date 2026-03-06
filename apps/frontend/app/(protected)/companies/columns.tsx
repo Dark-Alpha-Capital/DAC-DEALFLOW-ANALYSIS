@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 
-export type CompanyWithTheme = import("db").Company & {
+export type CompanyWithTheme = import("@repo/db").Company & {
   themeName?: string | null;
 };
 

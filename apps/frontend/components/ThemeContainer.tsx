@@ -1,7 +1,7 @@
 "use client";
 
 import ThemeCard from "@/components/ThemeCard";
-import type { Theme } from "db";
+import type { Theme } from "@repo/db";
 import Pagination from "@/components/pagination";
 
 interface ThemeContainerProps {

@@ -4,7 +4,7 @@ import DealOppCard from "@/components/DealOppCard";
 import Pagination from "@/components/pagination";
 
 type DealOppRow = {
-  opp: import("db").DealOpportunity;
+  opp: import("@repo/db").DealOpportunity;
   company: { name: string; industry: string | null; location: string | null } | null;
 };
 

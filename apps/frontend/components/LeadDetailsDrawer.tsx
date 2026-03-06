@@ -1,6 +1,6 @@
 "use client";
 
-import type { Lead } from "db";
+import type { Lead } from "@repo/db";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

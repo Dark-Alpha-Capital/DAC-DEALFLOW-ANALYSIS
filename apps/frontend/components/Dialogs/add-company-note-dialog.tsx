@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { CompanyNote } from "db/schema";
+import type { CompanyNote } from "@repo/db/schema";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Button } from "@/components/ui/button";
 import {

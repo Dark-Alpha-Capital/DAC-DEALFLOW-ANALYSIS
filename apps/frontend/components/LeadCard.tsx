@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Building2, MapPin, Eye, Pencil, Trash2 } from "lucide-react";
-import type { Lead } from "db";
+import type { Lead } from "@repo/db";
 import { formatCurrency } from "@/lib/utils";
 import {
   AlertDialog,

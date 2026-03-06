@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  transpilePackages: ["db", "types"],
+  transpilePackages: ["@repo/db", "types"],
   cacheComponents: true,
   output: "standalone",
   turbopack: {

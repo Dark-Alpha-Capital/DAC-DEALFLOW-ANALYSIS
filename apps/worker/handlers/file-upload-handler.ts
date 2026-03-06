@@ -3,12 +3,12 @@ import {
   COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME,
   googleGenAI,
 } from "../lib/ai/available-models";
-import { db } from "db";
+import { db } from "@repo/db";
 import {
   documents,
   type FileCategory,
   type DocumentCategory,
-} from "db/schema";
+} from "@repo/db/schema";
 import {
   fileExists,
   getFileContents,

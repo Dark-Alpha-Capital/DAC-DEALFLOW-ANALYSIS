@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import DeleteScreenerButton from "./delete-screener-button";
 import AddScreenerDialog from "@/components/Dialogs/create-screener-dialog";
-import { getAllScreeners } from "db/queries";
+import { getAllScreeners } from "@repo/db/queries";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Lead } from "db";
+import type { Lead } from "@repo/db";
 import {
   Table,
   TableBody,

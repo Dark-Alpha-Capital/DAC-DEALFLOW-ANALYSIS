@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
-import { GetDealOpportunitiesByStages } from "db/queries";
+import { GetDealOpportunitiesByStages } from "@repo/db/queries";
 import { DealsDataTable } from "./data-table";
 import { columns } from "./columns";
 import DealsAuthedSkeleton from "@/components/skeletons/DealsAuthedSkeleton";

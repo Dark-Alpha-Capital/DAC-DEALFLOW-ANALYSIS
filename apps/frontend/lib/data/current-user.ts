@@ -1,6 +1,6 @@
 // helper function to get the current User
 
-import db, { users, eq } from "db";
+import db, { users, eq } from "@repo/db";
 
 /**
  * get the current user by using their id

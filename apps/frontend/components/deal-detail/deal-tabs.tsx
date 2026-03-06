@@ -14,7 +14,7 @@ import {
   CreditCard,
   BarChart3,
 } from "lucide-react";
-import { Deal, Document, AiScreening } from "db/schema";
+import { Deal, Document, AiScreening } from "@repo/db/schema";
 import { DealMetricCard } from "./deal-metric-card";
 import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
 import FetchDealDocuments from "@/components/fetch-deal-documents";

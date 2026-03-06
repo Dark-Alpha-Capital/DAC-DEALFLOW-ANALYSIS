@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import type { Deal } from "db";
+import type { Deal } from "@repo/db";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {

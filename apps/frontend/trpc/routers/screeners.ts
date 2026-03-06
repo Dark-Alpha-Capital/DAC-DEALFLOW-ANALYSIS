@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { DeleteScreenerById } from "db/mutations";
-import { getAllScreenersWithContent } from "db/queries";
+import { DeleteScreenerById } from "@repo/db/mutations";
+import { getAllScreenersWithContent } from "@repo/db/queries";
 import { revalidatePath } from "next/cache";
 
 export const screenersRouter = createTRPCRouter({

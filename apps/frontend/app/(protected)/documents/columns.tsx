@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatFileSize } from "@/lib/utils";
-import type { Document } from "db/schema";
+import type { Document } from "@repo/db/schema";
 
 export type DocumentRow = Document;
 

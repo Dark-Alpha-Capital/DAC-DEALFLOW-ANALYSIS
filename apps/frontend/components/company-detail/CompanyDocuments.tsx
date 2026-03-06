@@ -1,5 +1,5 @@
-import type { Company } from "db";
-import type { Document } from "db/schema";
+import type { Company } from "@repo/db";
+import type { Document } from "@repo/db/schema";
 import { FileUploadDialog } from "@/components/Dialogs/file-upload-dialog";
 import DealDocumentItem from "@/components/DealDocumentItem";
 import { AlertTriangle } from "lucide-react";

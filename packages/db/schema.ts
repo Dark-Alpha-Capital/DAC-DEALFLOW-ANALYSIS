@@ -684,6 +684,7 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   }),
 }));
 
+
 export const dealsRelations = relations(deals, ({ one }) => ({
   user: one(users, {
     fields: [deals.userId],

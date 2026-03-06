@@ -16,7 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import { Deal } from "db/schema";
+import { Deal } from "@repo/db/schema";
 import { useTransition, useState } from "react";
 import { exportDealToBitrix } from "@/lib/actions/upload-bitrix";
 import { toast } from "sonner";

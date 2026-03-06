@@ -2,7 +2,7 @@
 
 import { getSession } from "@/lib/auth-server";
 import { openai, openaiClient } from "@/lib/ai/available-models";
-import db, { deals, screeners, eq } from "db";
+import db, { deals, screeners, eq } from "@repo/db";
 import { splitContentIntoChunks } from "@/lib/utils";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";

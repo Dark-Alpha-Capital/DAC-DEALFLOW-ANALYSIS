@@ -4,7 +4,7 @@ import Link from "next/link";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
-import { GetAllCompanies } from "db/queries";
+import { GetAllCompanies } from "@repo/db/queries";
 import CompanyContainer from "@/components/CompanyContainer";
 import CompaniesAuthedSkeleton from "@/components/skeletons/CompaniesAuthedSkeleton";
 import CompanyCardGridSkeleton from "@/components/skeletons/CompanyCardGridSkeleton";

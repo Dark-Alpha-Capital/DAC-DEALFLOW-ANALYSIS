@@ -1,4 +1,4 @@
-import type { Company } from "db";
+import type { Company } from "@repo/db";
 import { Badge } from "@/components/ui/badge";
 import { Building2, MapPin } from "lucide-react";
 

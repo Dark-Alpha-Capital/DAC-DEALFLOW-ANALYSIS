@@ -1,6 +1,6 @@
 "use client";
 
-import type { Company, Contact } from "db";
+import type { Company, Contact } from "@repo/db";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { ZodError } from "zod";

@@ -1,7 +1,7 @@
 "use server";
 
 import { TransformedDeal } from "../../app/types";
-import db, { DealType, deals as dealsTable } from "db";
+import db, { DealType, deals as dealsTable } from "@repo/db";
 import { getSession } from "@/lib/auth-server";
 import { rateLimit } from "@/lib/redis";
 import { headers } from "next/headers";

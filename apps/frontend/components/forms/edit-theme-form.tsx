@@ -30,7 +30,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-import type { Theme } from "db";
+import type { Theme } from "@repo/db";
 
 const THEME_STATUSES = ["ACTIVE", "PAUSED", "RETIRED"] as const;
 

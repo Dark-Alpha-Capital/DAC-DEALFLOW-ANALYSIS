@@ -1,6 +1,6 @@
 "use client";
 
-import type { Company } from "db";
+import type { Company } from "@repo/db";
 import Pagination from "@/components/pagination";
 import { CompaniesDataTable } from "@/app/(protected)/companies/data-table";
 import { columns } from "@/app/(protected)/companies/columns";

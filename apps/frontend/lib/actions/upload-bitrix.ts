@@ -2,9 +2,9 @@
 
 // lib/bitrix.js
 import axios from "axios";
-import { Deal } from "db";
+import { Deal } from "@repo/db";
 import { getSession } from "@/lib/auth-server";
-import db, { deals, eq } from "db";
+import db, { deals, eq } from "@repo/db";
 import { revalidatePath } from "next/cache";
 
 /**

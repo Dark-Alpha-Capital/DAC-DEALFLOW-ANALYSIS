@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { companyNotes, eq } from "db";
+import db, { companyNotes, eq } from "@repo/db";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { desc } from "drizzle-orm";
 

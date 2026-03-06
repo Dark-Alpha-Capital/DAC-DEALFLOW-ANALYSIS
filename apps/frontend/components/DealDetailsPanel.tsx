@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import DealScreeningSummary from "@/components/DealScreeningSummary";
 
 type DealOppRow = {
-  opp: import("db").DealOpportunity;
+  opp: import("@repo/db").DealOpportunity;
   company: { name: string; industry: string | null; location: string | null } | null;
 } | null;
 
