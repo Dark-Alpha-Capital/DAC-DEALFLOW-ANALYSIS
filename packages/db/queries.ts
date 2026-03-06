@@ -786,6 +786,43 @@ export const GetCompanyDocuments = async (companyId: string) => {
   }
 };
 
+interface GetAllDocumentsResult {
+  data: (typeof documents.$inferSelect)[];
+  totalCount: number;
+  totalPages: number;
+}
+
+/**
+ * Get all documents across all entities with pagination
+ */
+export const GetAllDocuments = async ({
+  offset = 0,
+  limit = 50,
+}: {
+  offset?: number;
+  limit?: number;
+}): Promise<GetAllDocumentsResult> => {
+  try {
+    const [data, countResult] = await Promise.all([
+      db
+        .select()
+        .from(documents)
+        .orderBy(desc(documents.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: count() }).from(documents),
+    ]);
+
+    const totalCount = countResult[0]?.count ?? 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return { data, totalCount, totalPages };
+  } catch (error) {
+    console.error("Failed query: select all documents", error);
+    throw error;
+  }
+};
+
 /**
  * Get contacts associated with a company
  */

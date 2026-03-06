@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents } from "db";
 import { uploadBuffer } from "@repo/nextcloud";
-import { updateTag } from "next/cache";
+import { revalidateTag, updateTag } from "next/cache";
 
 const uploadFileSchema = z.object({
   entityType: z.enum(["LEAD", "COMPANY", "DEAL_OPPORTUNITY"]),
@@ -66,6 +66,7 @@ export const filesRouter = createTRPCRouter({
           tags.push(`lead-${input.entityId}`, "leads");
           break;
       }
+      tags.push("documents");
       for (const tag of tags) {
         updateTag(tag);
       }
