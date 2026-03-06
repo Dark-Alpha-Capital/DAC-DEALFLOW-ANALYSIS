@@ -31,3 +31,14 @@ export const screenDealSchema = z.object({
 });
 
 export type screenDealSchemaType = z.infer<typeof screenDealSchema>;
+
+export const contactFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  title: z.string().optional(),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  phone: z.string().optional(),
+  linkedinUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
+  role: z.string().optional(),
+});
+
+export type ContactFormValues = z.infer<typeof contactFormSchema>;

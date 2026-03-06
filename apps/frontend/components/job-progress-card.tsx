@@ -9,7 +9,6 @@ import {
   Loader2,
   Clock,
   FileText,
-  Building2,
   Search,
 } from "lucide-react";
 import { getJobTypeLabel, type JobWithMetadata } from "@/lib/queue-types";
@@ -58,8 +57,6 @@ const getJobTypeIcon = (queueName: JobWithMetadata["queueName"]) => {
       return <Search className="h-4 w-4" />;
     case "file-upload":
       return <FileText className="h-4 w-4" />;
-    case "deal-to-company":
-      return <Building2 className="h-4 w-4" />;
     default:
       return <FileText className="h-4 w-4" />;
   }

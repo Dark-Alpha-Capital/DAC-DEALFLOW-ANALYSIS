@@ -1,7 +1,6 @@
 import { Worker } from "bullmq";
 import { fileUploadHandler } from "./handlers/file-upload-handler";
 import { screenDealHandler } from "./handlers/screen-deal-handler";
-import { convertDealToCompanyHandler } from "./handlers/convert-deal-to-company-handler";
 import IORedis from "ioredis";
 
 if (!process.env.REDIS_URL) {
@@ -35,15 +34,6 @@ const screenDealWorker = new Worker("screen-deal", screenDealHandler, {
   concurrency: 10,
 });
 
-const convertDealToCompanyWorker = new Worker(
-  "deal-to-company",
-  convertDealToCompanyHandler,
-  {
-    connection,
-    concurrency: 5, // Lower concurrency for conversion jobs (they're more resource-intensive)
-  }
-);
-
 console.log("Workers are listening for jobs...");
 
 screenDealWorker.on("failed", (job, err) =>
@@ -60,14 +50,6 @@ fileUploadWorker.on("failed", (job, err) =>
 
 fileUploadWorker.on("completed", (job) =>
   console.log(`File Upload Job ${job.id} completed successfully`)
-);
-
-convertDealToCompanyWorker.on("failed", (job, err) =>
-  console.error(`Convert Deal to Company Job failed: ${err.message}`)
-);
-
-convertDealToCompanyWorker.on("completed", (job) =>
-  console.log(`Convert Deal to Company Job ${job.id} completed successfully`)
 );
 
 // Cloud Run requires the container to listen on PORT for health checks

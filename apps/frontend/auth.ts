@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "db";
 import { users, accounts, sessions, verifications, UserRole } from "db/schema";
@@ -18,6 +19,28 @@ function determineRole(userEmail: string): UserRole {
     return UserRole.ADMIN;
   }
   return UserRole.USER;
+}
+
+const ALLOWED_EMAIL_DOMAIN = "darkalphacapital.com";
+
+function assertAllowedDomain(email: string) {
+  const normalized = email.toLowerCase();
+  const domain = normalized.split("@")[1];
+
+  if (!domain) {
+    throw new APIError("BAD_REQUEST", { message: "Invalid email address" });
+  }
+
+  if (domain !== ALLOWED_EMAIL_DOMAIN) {
+    throw new APIError("UNPROCESSABLE_ENTITY", {
+      message: "Only darkalphacapital.com emails are allowed.",
+    });
+  }
+}
+
+function isAllowedEmail(email: string | null | undefined) {
+  if (!email) return false;
+  return email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
 }
 
 export const auth: ReturnType<typeof betterAuth> = betterAuth({
@@ -85,12 +108,33 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
       },
     },
   },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/sign-in/email") {
+        const rawEmail = (ctx.body?.email as string | undefined) ?? "";
+        const email = rawEmail.toLowerCase();
+
+        if (!email.endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) {
+          throw new APIError("UNAUTHORIZED", {
+            message: "Only darkalphacapital.com emails are allowed.",
+          });
+        }
+      }
+    }),
+  },
   databaseHooks: {
     user: {
       create: {
         before: async (user) => {
+          const email = user.email;
+          if (!email) {
+            throw new APIError("BAD_REQUEST", { message: "Invalid email address" });
+          }
+
+          assertAllowedDomain(email);
+
           // Determine role based on email (admin emails get ADMIN role)
-          const role = determineRole(user.email);
+          const role = determineRole(email.toLowerCase());
           return {
             data: {
               ...user,
@@ -106,11 +150,15 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
     session: async ({ session, user }: { session: any; user: any }) => {
       // Check if user is blocked
       const [dbUser] = await db
-        .select({ isBlocked: users.isBlocked, role: users.role })
+        .select({
+          isBlocked: users.isBlocked,
+          role: users.role,
+          email: users.email,
+        })
         .from(users)
         .where(eq(users.id, user.id));
 
-      if (dbUser?.isBlocked) {
+      if (dbUser?.isBlocked || !isAllowedEmail(dbUser?.email)) {
         // Return null to invalidate the session for blocked users
         return null;
       }
@@ -127,6 +175,9 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
     },
   },
   trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
+  onAPIError: {
+    errorURL: "/auth/error",
+  },
 });
 
 // Export types for use in components

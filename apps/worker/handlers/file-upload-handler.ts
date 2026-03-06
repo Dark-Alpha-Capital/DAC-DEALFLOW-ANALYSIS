@@ -1,17 +1,19 @@
 import { Job } from "bullmq";
-import { createClient } from "webdav";
 import {
   COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME,
   googleGenAI,
 } from "../lib/ai/available-models";
 import { db } from "db";
 import {
-  files,
   documents,
   type FileCategory,
   type DocumentCategory,
-  type EntityType,
 } from "db/schema";
+import {
+  fileExists,
+  getFileContents,
+  getNextcloudConfig,
+} from "@repo/nextcloud";
 
 export enum FileUploadStep {
   Validate = "validate",
@@ -44,12 +46,12 @@ export interface FileUploadJobData {
   fileSize: number; // File size in bytes
   mimeType: string; // MIME type of the file
   userId: string; // Required - user who uploaded the file
-  // Entity context (polymorphic - supports both deals and companies)
-  entityType: "DEAL" | "COMPANY";
-  entityId: string; // References deals.id or companies.id
+  // Entity context
+  entityType: "DEAL" | "DEAL_OPPORTUNITY";
+  entityId: string; // References deals.id or dealOpportunities.id
   entityMetadata: EntityMetadata;
   // Vector store embedding control
-  embedInVectorStore?: boolean; // Default: true for companies, false for deals (but can be overridden)
+  embedInVectorStore?: boolean; // Default can be overridden per job
   // Optional file metadata
   fileCategory?: string;
   fileDescription?: string;
@@ -126,19 +128,6 @@ const MIME_TYPE_MAP: Record<string, string> = {
 function getMimeType(fileName: string): string {
   const extension = fileName.split(".").pop()?.toLowerCase() || "";
   return MIME_TYPE_MAP[extension] || "application/octet-stream";
-}
-
-/**
- * Create WebDAV client for Nextcloud
- */
-function createNextcloudClient() {
-  return createClient(
-    `${process.env.NEXTCLOUD_URL}/remote.php/dav/files/${process.env.NEXTCLOUD_USER}`,
-    {
-      username: process.env.NEXTCLOUD_USER,
-      password: process.env.NEXTCLOUD_PASSWORD,
-    }
-  );
 }
 
 /**
@@ -227,11 +216,9 @@ export async function fileUploadHandler(
 
   let step = jobData.step ?? FileUploadStep.Validate;
 
-  // Default embedInVectorStore: true for companies, false for deals (but can be overridden)
+  // Default embedInVectorStore: false for deals unless explicitly enabled
   const shouldEmbedInVectorStore =
-    embedInVectorStore !== undefined
-      ? embedInVectorStore
-      : entityType === "COMPANY";
+    embedInVectorStore !== undefined ? embedInVectorStore : false;
 
   console.log(`[file-upload] Extracted values:`, {
     userId: userId || "UNDEFINED",
@@ -254,9 +241,9 @@ export async function fileUploadHandler(
     );
   }
 
-  if (!entityType || (entityType !== "DEAL" && entityType !== "COMPANY")) {
+  if (!entityType || entityType !== "DEAL_OPPORTUNITY") {
     throw new Error(
-      `[file-upload] ${jobId}: entityType must be "DEAL" or "COMPANY"`
+      `[file-upload] ${jobId}: entityType must be "DEAL_OPPORTUNITY" (run migration first)`
     );
   }
 
@@ -318,18 +305,15 @@ export async function fileUploadHandler(
 
         console.log(`[file-upload] ${jobId}: Verifying file at ${filePath}`);
 
-        const client = createNextcloudClient();
-
-        // Verify file exists (will throw if it doesn't)
-        try {
-          await client.stat(filePath);
-        } catch (err) {
+        const exists = await fileExists(filePath);
+        if (!exists) {
           throw new Error(
-            `File not found at ${filePath} - upload may have failed`
+            `File not found at ${filePath} - upload may have failed`,
           );
         }
 
-        const publicUrl = `${process.env.NEXTCLOUD_URL}/remote.php/dav/files/${process.env.NEXTCLOUD_USER}/${filePath}`;
+        const { url, user } = getNextcloudConfig();
+        const publicUrl = `${url}/remote.php/dav/files/${user}/${filePath}`;
 
         console.log(`[file-upload] ${jobId}: File verified at ${filePath}`);
 
@@ -381,7 +365,7 @@ export async function fileUploadHandler(
               { key: "entityType", stringValue: entityType },
               { key: "entityId", stringValue: entityId },
               {
-                key: entityType === "COMPANY" ? "companyName" : "dealName",
+                key: "dealName",
                 stringValue: entityMetadata.name,
               },
               { key: "sector", stringValue: entityMetadata.sector ?? "" },
@@ -396,13 +380,7 @@ export async function fileUploadHandler(
               { key: "fileName", stringValue: fileName },
             ];
 
-            const nextcloudClient = createNextcloudClient();
-            const fileBuffer = await nextcloudClient.getFileContents(
-              nextcloudResult.destPath,
-              {
-                format: "binary",
-              }
-            );
+            const fileBuffer = await getFileContents(nextcloudResult.destPath);
             // getFileContents with format: "binary" returns a Buffer in Node.js
             // Buffer extends Uint8Array, so we can use it directly with Blob
             const fileBlob = new Blob([fileBuffer as Buffer], {
@@ -548,13 +526,9 @@ export async function fileUploadHandler(
               fileName: fileName,
               fileSize: validateResult.fileSize,
               mimeType: validateResult.mimeType,
-              entityType: entityType as EntityType,
+              entityType: "DEAL_OPPORTUNITY",
               entityId: entityId,
               uploadedById: userId,
-              vectorStoreDocumentName: googleResult?.documentName || null,
-              // Versioning defaults (can be updated later if needed)
-              version: "1.0",
-              isLatest: true,
             })
             .returning();
         } catch (dbError: any) {
@@ -570,7 +544,7 @@ export async function fileUploadHandler(
           });
           throw new Error(
             `Database insert failed: ${dbError.message || "Unknown error"}. ` +
-              `Check that userId (${userId}) and ${entityType}Id (${entityId}) are valid.`
+            `Check that userId (${userId}) and ${entityType}Id (${entityId}) are valid.`
           );
         }
 
@@ -588,11 +562,7 @@ export async function fileUploadHandler(
         // Revalidate cache tags for the entity page
         // This ensures the page shows updated file count and new files immediately
         const cacheTags: string[] = [];
-        if (entityType === "COMPANY") {
-          cacheTags.push(`company-${entityId}`, "companies");
-        } else if (entityType === "DEAL") {
-          cacheTags.push(`deal-${entityId}`, "deals");
-        }
+        cacheTags.push(`deal-${entityId}`, "deals");
 
         if (cacheTags.length > 0) {
           await revalidateCacheTags(cacheTags);

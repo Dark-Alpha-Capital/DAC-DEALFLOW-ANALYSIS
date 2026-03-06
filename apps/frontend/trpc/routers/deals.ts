@@ -2,10 +2,10 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, adminProcedure } from "../init";
 import db, {
   deals,
+  dealOpportunities,
   eq,
   DealType,
   DealStatus,
-  dealDocuments,
   documents,
   and,
   DealDocumentCategory,
@@ -13,18 +13,14 @@ import db, {
 } from "db";
 import { DeleteDealById, BulkDeleteDeals } from "db/mutations";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { uploadFileToNextCloud } from "@/lib/storage";
 import {
-  createConvertDealToCompanyJob,
-  type ConvertDealToCompanyJobData,
   fileUploadQueue,
   type FileUploadJobData,
   type EntityMetadata,
 } from "@/lib/queue-client";
-import crypto from "crypto";
 import { randomUUID } from "crypto";
 import { GetDealById } from "db/queries";
-import { createClient } from "webdav";
+import { uploadBuffer } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
 
 const createDealSchema = z.object({
@@ -91,6 +87,39 @@ const updateSpecificationsSchema = z.object({
   status: z.nativeEnum(DealStatus),
 });
 
+const createDealOpportunitySchema = z.object({
+  companyId: z.string().min(1, "Company is required"),
+  leadId: z.string().optional(),
+  sourceWebsite: z.string().optional(),
+  brokerage: z.string().optional(),
+  revenue: z.coerce.number().optional(),
+  ebitda: z.coerce.number().optional(),
+  ebitdaMargin: z.coerce.number().optional(),
+  askingPrice: z.coerce.number().optional(),
+  dealTeaser: z.string().optional(),
+  description: z.string().optional(),
+  brokerFirstName: z.string().optional(),
+  brokerLastName: z.string().optional(),
+  brokerEmail: z.union([z.string().email(), z.literal("")]).optional(),
+  brokerPhone: z.string().optional(),
+  brokerLinkedIn: z.string().optional(),
+});
+
+const updateOpportunityStageSchema = z.object({
+  id: z.string(),
+  stage: z.enum([
+    "LISTED",
+    "INITIAL_REVIEW",
+    "SCREENED",
+    "MEETING_HELD",
+    "IOI_SUBMITTED",
+    "LOI_SUBMITTED",
+    "DILIGENCE",
+    "CLOSED",
+    "DEAD",
+  ]),
+});
+
 const uploadDealDocumentSchema = z.object({
   dealId: z.string(),
   title: z.string().min(1, "Title is required"),
@@ -134,6 +163,94 @@ export const dealsRouter = createTRPCRouter({
       revalidateTag("deals", "max");
 
       return { dealId: addedDeal?.id };
+    }),
+
+  createOpportunity: protectedProcedure
+    .input(createDealOpportunitySchema)
+    .mutation(async ({ input, ctx }) => {
+      const [added] = await db
+        .insert(dealOpportunities)
+        .values({
+          companyId: input.companyId,
+          leadId: input.leadId || null,
+          sourceWebsite: input.sourceWebsite || null,
+          brokerage: input.brokerage || null,
+          revenue: input.revenue ?? null,
+          ebitda: input.ebitda ?? null,
+          ebitdaMargin: input.ebitdaMargin ?? null,
+          askingPrice: input.askingPrice ?? null,
+          dealTeaser: input.dealTeaser || null,
+          description: input.description || null,
+          brokerFirstName: input.brokerFirstName || null,
+          brokerLastName: input.brokerLastName || null,
+          brokerEmail: input.brokerEmail || null,
+          brokerPhone: input.brokerPhone || null,
+          brokerLinkedIn: input.brokerLinkedIn || null,
+          userId: ctx.user.id,
+        })
+        .returning();
+
+      revalidatePath("/deals");
+      revalidateTag("deals", "max");
+      return { dealOpportunityId: added?.id };
+    }),
+
+  updateOpportunityStage: protectedProcedure
+    .input(updateOpportunityStageSchema)
+    .mutation(async ({ input }) => {
+      await db
+        .update(dealOpportunities)
+        .set({ stage: input.stage })
+        .where(eq(dealOpportunities.id, input.id));
+
+      revalidatePath("/deals");
+      revalidateTag("deals", "max");
+      revalidateTag(`deal-${input.id}`, "max");
+
+      return { dealOpportunityId: input.id, stage: input.stage };
+    }),
+
+  updateOpportunity: protectedProcedure
+    .input(createDealOpportunitySchema.extend({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db
+        .update(dealOpportunities)
+        .set({
+          companyId: data.companyId,
+          leadId: data.leadId || null,
+          sourceWebsite: data.sourceWebsite || null,
+          brokerage: data.brokerage || null,
+          revenue: data.revenue ?? null,
+          ebitda: data.ebitda ?? null,
+          ebitdaMargin: data.ebitdaMargin ?? null,
+          askingPrice: data.askingPrice ?? null,
+          dealTeaser: data.dealTeaser || null,
+          description: data.description || null,
+          brokerFirstName: data.brokerFirstName || null,
+          brokerLastName: data.brokerLastName || null,
+          brokerEmail: data.brokerEmail || null,
+          brokerPhone: data.brokerPhone || null,
+          brokerLinkedIn: data.brokerLinkedIn || null,
+        })
+        .where(eq(dealOpportunities.id, id));
+
+      revalidatePath("/deals");
+      revalidatePath(`/deals/${id}`);
+      revalidatePath(`/deals/${id}/edit`);
+      revalidateTag("deals", "max");
+      revalidateTag(`deal-${id}`, "max");
+      return { dealOpportunityId: id };
+    }),
+
+  deleteOpportunity: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      await db.delete(dealOpportunities).where(eq(dealOpportunities.id, input.id));
+      revalidatePath("/deals");
+      revalidateTag("deals", "max");
+      revalidateTag(`deal-${input.id}`, "max");
+      return { success: true };
     }),
 
   update: protectedProcedure
@@ -244,42 +361,45 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      // Fetch deal details for entity metadata
-      const deal = await GetDealById(input.dealId);
-      if (!deal) {
+      // Resolve to DealOpportunity (or fallback to legacy Deal)
+      const { GetDealOpportunityByLegacyDealId } = await import("db/queries");
+      const opp = await GetDealOpportunityByLegacyDealId(input.dealId);
+      const deal = !opp ? await GetDealById(input.dealId) : null;
+
+      if (!opp) {
         throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Deal not found",
+          code: "BAD_REQUEST",
+          message: "Deal not migrated. Run db:migrate-deals first.",
         });
       }
 
-      // Extract entity metadata for job data
-      const entityMetadata: EntityMetadata = {
-        name: deal.dealCaption || deal.title || "Unknown Deal",
-        sector: deal.industry || null,
-        stage: null, // Deals don't have stage
-        headquarters: deal.companyLocation || null,
-        revenue: deal.revenue ? parseFloat(String(deal.revenue)) : null,
-        ebitda: deal.ebitda ? parseFloat(String(deal.ebitda)) : null,
-      };
+      const entityId = opp.id;
+      const entityType = "DEAL_OPPORTUNITY" as const;
 
-      // Create Nextcloud client for file uploads
-      const nextcloudClient = createClient(
-        `${process.env.NEXTCLOUD_URL}/remote.php/dav/files/${process.env.NEXTCLOUD_USER}`,
-        {
-          username: process.env.NEXTCLOUD_USER,
-          password: process.env.NEXTCLOUD_PASSWORD,
-        },
-      );
-
-      // Ensure final directory exists
-      const finalDir = `dealflow/raw-deals/${input.dealId}`;
-      try {
-        await nextcloudClient.createDirectory(finalDir, { recursive: true });
-      } catch (err) {
-        // Directory might already exist, which is fine
-        console.log("[deal-upload] Final directory may already exist");
+      let entityMetadata: EntityMetadata;
+      {
+        const { db } = await import("db");
+        const { companies } = await import("db/schema");
+        const { eq } = await import("drizzle-orm");
+        const [company] = await db
+          .select()
+          .from(companies)
+          .where(eq(companies.id, opp.companyId));
+        entityMetadata = {
+          name: company?.name ?? "Unknown Deal",
+          sector: company?.industry ?? null,
+          stage: null,
+          headquarters: company?.location ?? null,
+          revenue: company?.revenueEstimate
+            ? parseFloat(String(company.revenueEstimate))
+            : null,
+          ebitda: company?.ebitdaEstimate
+            ? parseFloat(String(company.ebitdaEstimate))
+            : null,
+        };
       }
+
+      const finalDir = `dealflow/raw-deals/${input.dealId}`;
 
       // Generate a unique jobId for this job
       const jobId = randomUUID();
@@ -292,8 +412,7 @@ export const dealsRouter = createTRPCRouter({
       const finalPath = `${finalDir}/${input.fileName}`;
 
       try {
-        await nextcloudClient.putFileContents(finalPath, buffer);
-
+        await uploadBuffer(buffer, finalPath);
         console.log(`[deal-upload] File uploaded to final location`, {
           jobId,
           finalPath,
@@ -323,8 +442,8 @@ export const dealsRouter = createTRPCRouter({
         fileSize: buffer.length,
         mimeType,
         userId,
-        entityType: "DEAL",
-        entityId: input.dealId,
+        entityType: "DEAL" as const,
+        entityId,
         entityMetadata,
         embedInVectorStore: true, // Enable Google File Search Store for deals
         fileCategory: category,
@@ -380,38 +499,6 @@ export const dealsRouter = createTRPCRouter({
         message: "File upload queued",
         jobId: job.id,
         fileName: input.fileName,
-      };
-    }),
-
-  convertToCompany: protectedProcedure
-    .input(z.object({ dealId: z.string() }))
-    .mutation(async ({ input, ctx }) => {
-      // Generate unique job ID
-      const jobId = crypto.randomUUID();
-
-      // Create job data
-      const jobData: ConvertDealToCompanyJobData = {
-        jobId,
-        dealId: input.dealId,
-        userId: ctx.session.user.id,
-      };
-
-      // Enqueue background job
-      const job = await createConvertDealToCompanyJob(jobData);
-
-      console.log(
-        `[convert-deal] Queued conversion job ${job.jobId} for deal ${input.dealId}`,
-      );
-
-      // Revalidate paths (job will complete in background)
-      revalidatePath("/raw-deals");
-      revalidatePath("/companies");
-
-      // Return job ID for progress tracking (not company ID - will be available when job completes)
-      return {
-        success: true,
-        jobId: job.jobId,
-        queueName: job.queueName,
       };
     }),
 });

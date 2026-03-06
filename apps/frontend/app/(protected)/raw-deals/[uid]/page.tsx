@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DealHeader } from "@/components/deal-detail/deal-header";
-import { DealTabs } from "@/components/deal-detail/deal-tabs";
 import DealPageSkeleton from "@/components/skeletons/deal-page-skeleton";
 import { GetDealWithAllRelations } from "db/queries";
 import { cacheLife, cacheTag } from "next/cache";
@@ -29,15 +28,15 @@ async function CachedDealContent({ uid }: { uid: string }) {
   if (error) {
     return (
       <section className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="w-full max-w-md space-y-4 border-b border-border pb-8 text-center">
-          <h1 className="text-xl font-semibold text-foreground">
+        <div className="border-border w-full max-w-md space-y-4 border-b pb-8 text-center">
+          <h1 className="text-foreground text-xl font-semibold">
             Error loading deal
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             There was an error loading the deal. Please try again later.
           </p>
           {process.env.NODE_ENV === "development" && (
-            <p className="text-xs text-muted-foreground">{error.message}</p>
+            <p className="text-muted-foreground text-xs">{error.message}</p>
           )}
           <Button asChild>
             <Link href="/raw-deals">Back to Raw Deals</Link>
@@ -50,11 +49,11 @@ async function CachedDealContent({ uid }: { uid: string }) {
   if (!dealData || !dealData.deal) {
     return (
       <section className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="w-full max-w-md space-y-4 border-b border-border pb-8 text-center">
-          <h1 className="text-xl font-semibold text-foreground">
+        <div className="border-border w-full max-w-md space-y-4 border-b pb-8 text-center">
+          <h1 className="text-foreground text-xl font-semibold">
             Deal not found
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             The deal you are looking for does not exist or has been removed.
           </p>
           <Button asChild>
@@ -69,15 +68,7 @@ async function CachedDealContent({ uid }: { uid: string }) {
     <section className="container mx-auto max-w-5xl px-4 py-8">
       <DealHeader deal={dealData.deal} uid={uid} />
 
-      <div className="mt-8">
-        <DealTabs
-          deal={dealData.deal}
-          uid={uid}
-          documents={dealData.documents}
-          aiScreenings={dealData.aiScreenings}
-          pocs={dealData.pocs}
-        />
-      </div>
+      <div className="mt-8"></div>
     </section>
   );
 }
@@ -93,16 +84,17 @@ async function AuthedDealContent(props: {
   if (!userSession?.user) {
     redirect("/auth/login");
   }
-  return (
-    <CachedDealContent uid={params.uid} />
-  );
+  return <CachedDealContent uid={params.uid} />;
 }
 
 export default function ManualDealSpecificPage(props: { params: Params }) {
   const sessionPromise = getSession();
   return (
     <Suspense fallback={<DealPageSkeleton />}>
-      <AuthedDealContent params={props.params} sessionPromise={sessionPromise} />
+      <AuthedDealContent
+        params={props.params}
+        sessionPromise={sessionPromise}
+      />
     </Suspense>
   );
 }

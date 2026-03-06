@@ -3,8 +3,6 @@ import { ArrowRight, Search } from "lucide-react";
 import Link from "next/link";
 
 const Home = async () => {
-  console.log("inside home page");
-
   return (
     <div className="min-h-screen">
       <section className="relative overflow-hidden">

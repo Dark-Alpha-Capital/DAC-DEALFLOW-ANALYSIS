@@ -1,12 +1,5 @@
 import { db } from ".";
-import {
-  deals,
-  companies,
-  pocs,
-  screeners,
-  aiScreenings,
-  questionnaires,
-} from "./schema";
+import { deals, screeners, aiScreenings, questionnaires } from "./schema";
 import { eq, inArray } from "drizzle-orm";
 
 export const BulkDeleteDeals = async (dealIds: readonly string[]) => {
@@ -23,24 +16,6 @@ export const BulkDeleteDeals = async (dealIds: readonly string[]) => {
 };
 
 /**
- * Delete a company by id
- * @param companyId - the id of the company to delete
- * @returns { type: "success" | "error"; message: string; code?: string }
- */
-export const DeleteCompanyById = async (companyId: string) => {
-  try {
-    await db.delete(companies).where(eq(companies.id, companyId));
-    return {
-      type: "success",
-      message: "Company deleted successfully",
-    };
-  } catch (error) {
-    console.error("Error deleting company:", error);
-    throw error;
-  }
-};
-
-/**
  * Delete a deal by id
  * @param dealId - the id of the deal to delete
  */
@@ -49,15 +24,6 @@ export const DeleteDealById = async (dealId: string) => {
     await db.delete(deals).where(eq(deals.id, dealId));
   } catch (error) {
     console.error("Error deleting deal:", error);
-    throw error;
-  }
-};
-
-export const DeletePOCById = async (pocId: string) => {
-  try {
-    await db.delete(pocs).where(eq(pocs.id, pocId));
-  } catch (error) {
-    console.error("Error deleting poc:", error);
     throw error;
   }
 };

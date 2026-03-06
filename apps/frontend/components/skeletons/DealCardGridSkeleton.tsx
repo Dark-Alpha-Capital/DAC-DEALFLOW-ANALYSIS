@@ -1,16 +1,10 @@
 import React from "react";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const DealCardSkeleton = () => {
   return (
-    <Card className="w-full transition-all duration-300">
-      <CardHeader className="pb-3">
+    <div className="w-full rounded-xl border bg-background p-6 shadow transition-all duration-300">
+      <div className="flex flex-col space-y-1.5 pb-3">
         <div className="flex items-center justify-between">
           {/* Title skeleton */}
           <Skeleton className="h-6 w-3/4" />
@@ -20,8 +14,8 @@ const DealCardSkeleton = () => {
             <Skeleton className="h-8 w-8 rounded-md" />
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="grid gap-3">
+      </div>
+      <div className="grid gap-3 pt-0">
         <div className="space-y-3">
           {/* Brokerage InfoItem skeleton */}
           <div className="flex items-center text-sm">
@@ -86,14 +80,14 @@ const DealCardSkeleton = () => {
             <Skeleton className="ml-1 h-4 w-32" />
           </div>
         </div>
-      </CardContent>
-      <CardFooter className="flex flex-col gap-2 pt-3">
+      </div>
+      <div className="flex flex-col gap-2 pt-3">
         {/* View Details button skeleton */}
         <Skeleton className="h-10 w-full rounded-md" />
         {/* Screen Deal button skeleton */}
         <Skeleton className="h-10 w-full rounded-md" />
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 };
 

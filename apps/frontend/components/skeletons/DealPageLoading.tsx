@@ -1,5 +1,4 @@
 import PreviousPageButton from "@/components/PreviousPageButton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function DealPageLoading() {
   return (
@@ -8,18 +7,16 @@ export default function DealPageLoading() {
         <PreviousPageButton />
       </div>
       <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
-        <Card className="w-full max-w-md text-center">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">
-              Loading Deal...
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="w-full max-w-md rounded-xl border bg-background p-6 text-center shadow">
+          <div className="flex flex-col space-y-1.5">
+            <h2 className="text-2xl font-bold">Loading Deal...</h2>
+          </div>
+          <div className="pt-0">
             <p className="text-muted-foreground">
               Please wait while we fetch the deal information.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </section>
   );

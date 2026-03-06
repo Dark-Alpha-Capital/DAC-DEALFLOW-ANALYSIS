@@ -19,8 +19,8 @@ const JobsPage = async (props: { searchParams: SearchParams }) => {
       <div className="mb-8 text-center">
         <h1 className="mb-4 text-4xl font-bold md:mb-6 lg:mb-8">Jobs</h1>
         <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-          Track the progress of your background jobs including deal screening,
-          file uploads, and deal-to-company conversions.
+          Track the progress of your background jobs including deal screening
+          and file uploads.
         </p>
       </div>
 

@@ -1,102 +1,108 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { companies } from "db";
-import { DeleteCompanyById } from "db/mutations";
-import { revalidatePath } from "next/cache";
-import { TRPCError } from "@trpc/server";
+import db, { companies, eq } from "db";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { asc } from "drizzle-orm";
 
-// Helper to convert empty strings to undefined
-const emptyStringToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
-  z.preprocess((val) => {
-    if (typeof val === "string" && val.trim() === "") return undefined;
-    return val;
-  }, schema);
-
-const createCompanySchema = z.object({
+const companySchema = z.object({
   name: z.string().min(1, "Company name is required"),
-  website: emptyStringToUndefined(z.string().url("Invalid URL").optional()),
-  sector: emptyStringToUndefined(z.string().optional()),
-  stage: z
-    .enum(["STARTUP", "GROWTH", "MATURE", "TURNAROUND", "DISTRESSED"])
-    .optional(),
-  headquarters: emptyStringToUndefined(z.string().optional()),
-  description: emptyStringToUndefined(z.string().optional()),
-  revenue: z.number().positive("Revenue must be a positive number").optional(),
-  ebitda: z.number().optional(),
-  growthRate: z.number().optional(),
-  employees: z
-    .number()
-    .int()
-    .positive("Employees must be a positive integer")
-    .min(1, "Employees must be at least 1"),
+  normalizedName: z.string().min(1, "Normalized name is required"),
+  industry: z.string().optional(),
+  location: z.string().optional(),
+  revenueEstimate: z.coerce.number().optional(),
+  ebitdaEstimate: z.coerce.number().optional(),
+  ebitdaMarginEstimate: z.coerce.number().optional(),
+  recurringRevenuePct: z.coerce.number().optional(),
+  customerConcentrationPct: z.coerce.number().optional(),
+  founderAgeEstimate: z.coerce.number().optional(),
+  themeId: z.string().optional(),
+  attractivenessScore: z.coerce.number().optional(),
+  coverageStatus: z.enum([
+    "UNCONTACTED",
+    "CONTACTED",
+    "IN_DISCUSSION",
+    "UNDER_LOI",
+    "CLOSED",
+    "PASSED",
+  ]).optional(),
 });
 
+const createCompanySchema = companySchema;
+
 export const companiesRouter = createTRPCRouter({
+  listForSelect: protectedProcedure.query(async () => {
+    return db
+      .select({ id: companies.id, name: companies.name })
+      .from(companies)
+      .orderBy(asc(companies.name));
+  }),
+
   create: protectedProcedure
     .input(createCompanySchema)
     .mutation(async ({ input }) => {
-      console.log("inside create company router", input);
+      const [added] = await db
+        .insert(companies)
+        .values({
+          name: input.name,
+          normalizedName: input.normalizedName,
+          industry: input.industry || null,
+          location: input.location || null,
+          revenueEstimate: input.revenueEstimate ?? null,
+          ebitdaEstimate: input.ebitdaEstimate ?? null,
+          ebitdaMarginEstimate: input.ebitdaMarginEstimate ?? null,
+          recurringRevenuePct: input.recurringRevenuePct ?? null,
+          customerConcentrationPct: input.customerConcentrationPct ?? null,
+          founderAgeEstimate: input.founderAgeEstimate ?? null,
+          themeId: input.themeId || null,
+          attractivenessScore: input.attractivenessScore ?? null,
+          coverageStatus: input.coverageStatus ?? "UNCONTACTED",
+        })
+        .returning();
 
-      try {
-        const [newCompany] = await db
-          .insert(companies)
-          .values({
-            name: input.name,
-            website: input.website,
-            sector: input.sector,
-            stage: input.stage,
-            headquarters: input.headquarters,
-            description: input.description,
-            revenue: input.revenue?.toString(),
-            ebitda: input.ebitda?.toString(),
-            growthRate: input.growthRate?.toString(),
-            employees: input.employees,
-            updatedAt: new Date(),
-          })
-          .returning();
+      revalidatePath("/companies");
+      revalidateTag("companies", "max");
+      return { companyId: added?.id };
+    }),
 
-        revalidatePath("/companies");
-        revalidatePath("/due-diligence");
+  update: protectedProcedure
+    .input(companySchema.extend({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db
+        .update(companies)
+        .set({
+          name: data.name,
+          normalizedName: data.normalizedName,
+          industry: data.industry || null,
+          location: data.location || null,
+          revenueEstimate: data.revenueEstimate ?? null,
+          ebitdaEstimate: data.ebitdaEstimate ?? null,
+          ebitdaMarginEstimate: data.ebitdaMarginEstimate ?? null,
+          recurringRevenuePct: data.recurringRevenuePct ?? null,
+          customerConcentrationPct: data.customerConcentrationPct ?? null,
+          founderAgeEstimate: data.founderAgeEstimate ?? null,
+          themeId: data.themeId || null,
+          attractivenessScore: data.attractivenessScore ?? null,
+          coverageStatus: data.coverageStatus ?? "UNCONTACTED",
+        })
+        .where(eq(companies.id, id));
 
-        return { company: newCompany };
-      } catch (error) {
-        console.error("error creating company", error);
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create company",
-        });
-      }
+      revalidatePath("/companies");
+      revalidatePath(`/companies/${id}`);
+      revalidatePath(`/companies/${id}/edit`);
+      revalidateTag("companies", "max");
+      revalidateTag(`company-${id}`, "max");
+      return { companyId: id };
     }),
 
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      await DeleteCompanyById(input.id);
-
+      await db.delete(companies).where(eq(companies.id, input.id));
       revalidatePath("/companies");
-      revalidatePath("/due-diligence");
-
+      revalidateTag("companies", "max");
+      revalidateTag(`company-${input.id}`, "max");
       return { success: true };
     }),
 
-  askDueDiligenceQuestion: protectedProcedure
-    .input(
-      z.object({
-        companyId: z.string(),
-        question: z.string().min(1, "Question is required"),
-      }),
-    )
-    .mutation(async ({ input }) => {
-      // TODO: Implement the actual AI due diligence question processing
-      // This should:
-      // 1. Fetch company data and related documents/files
-      // 2. Process the question using AI (e.g., via worker API)
-      // 3. Return the answer
-
-      // Placeholder implementation - replace with actual logic
-      return {
-        answer: `This is a placeholder response for the question: "${input.question}". Implement the actual AI processing logic here.`,
-        sources: [],
-      };
-    }),
 });

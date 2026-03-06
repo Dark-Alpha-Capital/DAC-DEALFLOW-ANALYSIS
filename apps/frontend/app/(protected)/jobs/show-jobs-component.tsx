@@ -161,9 +161,6 @@ export function ShowJobsComponent({ focusedJobId }: ShowJobsComponentProps) {
     if (job.dealId) {
       return `/raw-deals/${job.dealId}`;
     }
-    if (job.companyId) {
-      return `/companies/${job.companyId}`;
-    }
     return null;
   };
 
@@ -303,7 +300,6 @@ export function ShowJobsComponent({ focusedJobId }: ShowJobsComponentProps) {
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="screen-deal">Screen Deal</SelectItem>
             <SelectItem value="file-upload">File Upload</SelectItem>
-            <SelectItem value="deal-to-company">Convert Deal</SelectItem>
           </SelectContent>
         </Select>
 

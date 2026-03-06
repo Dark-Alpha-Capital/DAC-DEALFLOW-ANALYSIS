@@ -1,21 +1,18 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AIReasoningSkeleton() {
   return (
-    <Card className="mb-4">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">
-          <Skeleton className="h-4 w-[150px]" />
-        </CardTitle>
+    <div className="mb-4 rounded-xl border bg-background p-6 shadow">
+      <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Skeleton className="h-4 w-[150px]" />
         <Skeleton className="h-5 w-16" />
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="pt-0">
         <Skeleton className="mb-2 h-4 w-full" />
         <Skeleton className="mb-2 h-4 w-[90%]" />
         <Skeleton className="mb-2 h-4 w-[95%]" />
         <Skeleton className="h-4 w-[80%]" />
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

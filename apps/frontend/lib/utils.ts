@@ -4,13 +4,11 @@ import { UserRole } from "db/schema";
 import { ImageIcon } from "lucide-react";
 
 export const adminEmails = [
-  "rg5353070@gmail.com",
   "rahul@darkalphacapital.com",
   "destiny@darkalphacapital.com",
   "daigbe@darkalphacapital.com",
   "diligence@darkalphacapital.com",
   "da@darkalphacapital.com",
-  "daigbe@gmail.com",
 ];
 
 export const formatPercent = (value: number) => {

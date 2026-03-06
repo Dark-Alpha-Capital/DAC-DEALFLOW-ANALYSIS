@@ -3,358 +3,313 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-
 import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  FieldGroup,
+  FieldLegend,
+  FieldSet,
+  FieldSeparator,
+} from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useRouter } from "next/navigation";
-import type { Deal } from "db";
-import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
+import type { DealOpportunity } from "db";
 
-export const EditDealFormSchema = z.object({
-  first_name: z.optional(z.string()),
-  last_name: z.optional(z.string()),
-  email: z.optional(z.string()),
-  linkedinurl: z.optional(z.string()),
-  deal_caption: z
-    .string()
-    .min(5, { message: "Title should be at least 5 characters long" }),
-  title: z
-    .string()
-    .min(5, { message: "Title should be at least 5 characters long" }),
-  work_phone: z.optional(z.string()),
-  revenue: z.optional(z.coerce.number()),
-  ebitda: z.optional(z.coerce.number()),
-  ebitda_margin: z.optional(z.coerce.number()),
-  gross_revenue: z.optional(z.coerce.number()),
-  company_location: z.optional(z.string()),
-  brokerage: z.optional(z.string()),
-  source_website: z.optional(z.string()),
-  inventory: z.optional(z.coerce.number()),
-  industry: z.optional(z.string()),
-  asking_price: z.optional(z.coerce.number()),
+const EditDealFormSchema = z.object({
+  companyId: z.string().min(1, "Company is required"),
+  sourceWebsite: z.string().optional(),
+  brokerage: z.string().optional(),
+  revenue: z.coerce.number().optional(),
+  ebitda: z.coerce.number().optional(),
+  ebitdaMargin: z.coerce.number().optional(),
+  askingPrice: z.coerce.number().optional(),
+  dealTeaser: z.string().optional(),
+  description: z.string().optional(),
+  brokerFirstName: z.string().optional(),
+  brokerLastName: z.string().optional(),
+  brokerEmail: z.union([z.string().email(), z.literal("")]).optional(),
+  brokerPhone: z.string().optional(),
+  brokerLinkedIn: z.string().optional(),
 });
 
-// infer type of formSchema
 export type EditDealFormSchemaType = z.infer<typeof EditDealFormSchema>;
 
-type EditDealFormProps = {
-  deal: Deal;
-};
-
-const EditDealForm = ({ deal }: EditDealFormProps) => {
-  const {
-    brokerage,
-    firstName,
-    lastName,
-    email,
-    linkedinUrl,
-    workPhone,
-    dealCaption,
-    revenue,
-    ebitda,
-    title,
-    sourceWebsite,
-    ebitdaMargin,
-    grossRevenue,
-    askingPrice,
-    industry,
-  } = deal;
-  const { toast } = useToast();
+export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
   const router = useRouter();
   const trpc = useTRPC();
 
+  const { data: companies = [] } = useQuery(trpc.companies.listForSelect.queryOptions());
+
   const { mutate: updateDeal, isPending } = useMutation(
-    trpc.deals.update.mutationOptions({
+    trpc.deals.updateOpportunity.mutationOptions({
       onSuccess: () => {
-        toast({
-          title: "Deal Updated",
-          description: "Deal updated successfully",
-        });
-        router.push(`/raw-deals/${deal.id}`);
+        toast.success("Deal updated successfully");
+        router.push(`/deals/${opp.id}`);
       },
       onError: (error) => {
-        toast({
-          title: "Error editing deal",
-          description: error.message || "Error editing deal",
-          variant: "destructive",
-        });
+        toast.error(error.message || "Failed to update deal");
       },
-    })
+    }),
   );
 
   const form = useForm<EditDealFormSchemaType>({
     resolver: zodResolver(EditDealFormSchema),
     defaultValues: {
-      brokerage: brokerage || "",
-      first_name: firstName || "",
-      last_name: lastName || "",
-      email: email || "",
-      linkedinurl: linkedinUrl || "",
-      work_phone: workPhone || "",
-      deal_caption: dealCaption || "",
-      revenue: revenue || 0,
-      ebitda: ebitda || 0,
-      title: title || "",
-      gross_revenue: grossRevenue || 0,
-      asking_price: askingPrice || 0,
-      ebitda_margin: ebitdaMargin || 0,
-      industry: industry || "",
-      source_website: sourceWebsite || "",
+      companyId: opp.companyId,
+      sourceWebsite: opp.sourceWebsite ?? "",
+      brokerage: opp.brokerage ?? "",
+      revenue: opp.revenue ?? undefined,
+      ebitda: opp.ebitda ?? undefined,
+      ebitdaMargin: opp.ebitdaMargin ?? undefined,
+      askingPrice: opp.askingPrice ?? undefined,
+      dealTeaser: opp.dealTeaser ?? "",
+      description: opp.description ?? "",
+      brokerFirstName: opp.brokerFirstName ?? "",
+      brokerLastName: opp.brokerLastName ?? "",
+      brokerEmail: opp.brokerEmail ?? "",
+      brokerPhone: opp.brokerPhone ?? "",
+      brokerLinkedIn: opp.brokerLinkedIn ?? "",
     },
   });
 
   function onSubmit(values: EditDealFormSchemaType) {
-    updateDeal({ id: deal.id, ...values });
+    updateDeal({ ...values, id: opp.id });
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="first_name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>First Name</FormLabel>
-              <FormControl>
-                <Input placeholder="first_name..." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="last_name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Last Name</FormLabel>
-              <FormControl>
-                <Input placeholder="last_name..." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <FieldSet>
+          <FieldLegend>Deal Information</FieldLegend>
+          <FieldGroup className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+            <FormField
+              control={form.control}
+              name="companyId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={companies.length === 0}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={companies.length === 0 ? "Add a company first" : "Select company"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {companies.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="sourceWebsite"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Source Website</FormLabel>
+                  <FormControl>
+                    <Input type="url" placeholder="https://example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="brokerage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Brokerage</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Brokerage name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="dealTeaser"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Deal Teaser</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Brief teaser..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Deal description..." className="min-h-[100px]" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="revenue"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Revenue</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="e.g., 1500000" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="ebitda"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>EBITDA</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="e.g., 300000" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="ebitdaMargin"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>EBITDA Margin (0–1)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" placeholder="e.g., 0.2 for 20%" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="askingPrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Asking Price</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="e.g., 5000000" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </FieldGroup>
 
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input placeholder="email..." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="linkedinurl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Linkedin Url</FormLabel>
-              <FormControl>
-                <Input placeholder="Linkedin Url..." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="deal_caption"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Deal Caption</FormLabel>
-              <FormControl>
-                <Input placeholder="shadcn" {...field} />
-              </FormControl>
-              <FormDescription>This is your deal title.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title</FormLabel>
-              <FormControl>
-                <Input placeholder="shadcn" {...field} />
-              </FormControl>
-              <FormDescription>This is your deal title.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="work_phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Work Phone</FormLabel>
-              <FormControl>
-                <Input placeholder="work_phone..." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="revenue"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Revenue</FormLabel>
-              <FormControl>
-                <Input placeholder="$200000" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FieldSeparator>Broker / Contact</FieldSeparator>
+          <FieldLegend variant="label">Broker Information</FieldLegend>
+          <FieldGroup className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+            <FormField
+              control={form.control}
+              name="brokerFirstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>First Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="brokerLastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="brokerEmail"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="broker@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="brokerPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone</FormLabel>
+                  <FormControl>
+                    <Input type="tel" placeholder="123-456-7890" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="brokerLinkedIn"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>LinkedIn URL</FormLabel>
+                  <FormControl>
+                    <Input type="url" placeholder="https://linkedin.com/in/..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </FieldGroup>
 
-        <FormField
-          control={form.control}
-          name="ebitda"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Ebitda</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="ebitda_margin"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Ebitda Margin</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="gross_revenue"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Gross Revenue</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="company_location"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Company Location</FormLabel>
-              <FormControl>
-                <Input placeholder="name...." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="brokerage"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Brokerage</FormLabel>
-              <FormControl>
-                <Input placeholder="name...." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="source_website"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Source Website</FormLabel>
-              <FormControl>
-                <Input placeholder="name...." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="inventory"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Inventory</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="industry"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Industry</FormLabel>
-              <FormControl>
-                <Input placeholder="asking_price...." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="asking_price"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Asking Price</FormLabel>
-              <FormControl>
-                <Input placeholder="asking_price...." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "Submitting" : "Submit"}
-        </Button>
+          <div className="mt-6 flex gap-3">
+            <Button type="button" variant="outline" size="sm" onClick={() => router.back()}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending || companies.length === 0}>
+              {isPending ? "Saving..." : "Update Deal"}
+            </Button>
+          </div>
+        </FieldSet>
       </form>
     </Form>
   );
-};
-
-export default EditDealForm;
+}
