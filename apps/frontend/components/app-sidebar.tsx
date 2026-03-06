@@ -20,7 +20,7 @@ async function AppSidebarContent() {
   return (
     <>
       <SidebarContent>
-        <SidebarNav />
+        <SidebarNav session={session as { user?: { role?: string } } | null} />
       </SidebarContent>
       <SidebarFooter>
         <SidebarUser session={session} />
