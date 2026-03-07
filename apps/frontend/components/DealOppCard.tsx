@@ -64,6 +64,16 @@ export default function DealOppCard({ opp, company }: DealOppCardProps) {
               </>
             )}
           </p>
+          {(opp.sourceWebsite || opp.dealType) && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Source: {opp.sourceWebsite ?? (opp.dealType === "MANUAL" ? "Direct outreach" : opp.dealType)}
+            </p>
+          )}
+          {opp.createdAt && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Created {new Date(opp.createdAt).toLocaleDateString()}
+            </p>
+          )}
         </div>
       </div>
 

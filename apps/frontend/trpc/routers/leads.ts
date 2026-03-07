@@ -1,29 +1,21 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { leads, companies, dealOpportunities, eq } from "@repo/db";
+import { GetCompanyByFirstSeenFromLeadId } from "@repo/db/queries";
+import { leadFormSchema } from "@/lib/schemas";
 import { revalidatePath, revalidateTag } from "next/cache";
 
-const leadSchema = z.object({
-  sourceWebsite: z.string().min(1, "Source website is required"),
-  externalListingId: z.string().optional(),
-  rawTitle: z.string().min(1, "Title is required"),
-  rawDescription: z.string().optional(),
-  rawIndustry: z.string().optional(),
-  revenue: z.coerce.number().optional(),
-  ebitda: z.coerce.number().optional(),
-  askingPrice: z.coerce.number().optional(),
-  brokerage: z.string().optional(),
-  brokerFirstName: z.string().optional(),
-  brokerLastName: z.string().optional(),
-  brokerEmail: z
-    .union([z.string().email("Invalid email"), z.literal("")])
-    .optional(),
-  brokerPhone: z.string().optional(),
-  normalizedCompanyName: z.string().optional(),
-  companyLocation: z.string().optional(),
+const convertToCompanySchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Company name is required"),
+  normalizedName: z.string().min(1, "Normalized name is required"),
+  industry: z.string().optional(),
+  location: z.string().optional(),
+  revenueEstimate: z.coerce.number().optional(),
+  ebitdaEstimate: z.coerce.number().optional(),
 });
 
-const createLeadSchema = leadSchema;
+const createLeadSchema = leadFormSchema;
 
 export const leadsRouter = createTRPCRouter({
   /**
@@ -62,7 +54,7 @@ export const leadsRouter = createTRPCRouter({
    * Update an existing lead
    */
   update: protectedProcedure
-    .input(leadSchema.extend({ id: z.string() }))
+    .input(leadFormSchema.extend({ id: z.string() }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
       await db
@@ -130,12 +122,32 @@ export const leadsRouter = createTRPCRouter({
     }),
 
   /**
+   * Check if a lead has already been converted to a company.
+   */
+  getConvertedCompany: protectedProcedure
+    .input(z.object({ leadId: z.string() }))
+    .query(async ({ input }) => {
+      const company = await GetCompanyByFirstSeenFromLeadId(input.leadId);
+      return company ? { companyId: company.id } : null;
+    }),
+
+  /**
    * Convert a lead into a company + deal opportunity
    */
   convertToCompany: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(convertToCompanySchema)
     .mutation(async ({ input }) => {
       const leadId = input.id;
+
+      const existingCompany = await GetCompanyByFirstSeenFromLeadId(leadId);
+      if (existingCompany) {
+        return {
+          alreadyConverted: true,
+          companyId: existingCompany.id,
+          leadId,
+          dealOpportunityId: null,
+        };
+      }
 
       const lead = await db.query.leads.findFirst({
         where(fields, operators) {
@@ -147,24 +159,15 @@ export const leadsRouter = createTRPCRouter({
         throw new Error("Lead not found");
       }
 
-      const normalizedNameSource =
-        lead.normalizedCompanyName?.trim() || lead.rawTitle?.trim();
-
-      if (!normalizedNameSource) {
-        throw new Error("Lead is missing a title or normalized company name");
-      }
-
-      const companyName = lead.normalizedCompanyName || lead.rawTitle;
-
       const [createdCompany] = await db
         .insert(companies)
         .values({
-          name: companyName,
-          normalizedName: normalizedNameSource,
-          industry: lead.rawIndustry || null,
-          location: lead.companyLocation || null,
-          revenueEstimate: lead.revenue ?? null,
-          ebitdaEstimate: lead.ebitda ?? null,
+          name: input.name,
+          normalizedName: input.normalizedName,
+          industry: input.industry || lead.rawIndustry || null,
+          location: input.location || lead.companyLocation || null,
+          revenueEstimate: input.revenueEstimate ?? lead.revenue ?? null,
+          ebitdaEstimate: input.ebitdaEstimate ?? lead.ebitda ?? null,
           firstSeenFromLeadId: lead.id,
           coverageStatus: "UNCONTACTED",
         })

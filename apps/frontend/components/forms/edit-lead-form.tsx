@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -25,28 +24,11 @@ import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import type { Lead } from "@repo/db";
-
-const EditLeadFormSchema = z.object({
-  sourceWebsite: z.string().min(1, "Source website is required"),
-  externalListingId: z.string().optional(),
-  rawTitle: z.string().min(1, "Title is required"),
-  rawDescription: z.string().optional(),
-  rawIndustry: z.string().optional(),
-  revenue: z.coerce.number().optional(),
-  ebitda: z.coerce.number().optional(),
-  askingPrice: z.coerce.number().optional(),
-  brokerage: z.string().optional(),
-  brokerFirstName: z.string().optional(),
-  brokerLastName: z.string().optional(),
-  brokerEmail: z
-    .union([z.string().email("Invalid email"), z.literal("")])
-    .optional(),
-  brokerPhone: z.string().optional(),
-  normalizedCompanyName: z.string().optional(),
-  companyLocation: z.string().optional(),
-});
-
-export type EditLeadFormSchemaType = z.infer<typeof EditLeadFormSchema>;
+import {
+  leadFormSchema,
+  type LeadFormValues,
+} from "@/lib/schemas";
+import { formatNumberWithCommas } from "@/lib/utils";
 
 export default function EditLeadForm({ lead }: { lead: Lead }) {
   const router = useRouter();
@@ -64,8 +46,8 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
     }),
   );
 
-  const form = useForm<EditLeadFormSchemaType>({
-    resolver: zodResolver(EditLeadFormSchema),
+  const form = useForm<LeadFormValues>({
+    resolver: zodResolver(leadFormSchema),
     defaultValues: {
       sourceWebsite: lead.sourceWebsite,
       externalListingId: lead.externalListingId ?? "",
@@ -85,7 +67,7 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
     },
   });
 
-  function onSubmit(values: EditLeadFormSchemaType) {
+  function onSubmit(values: LeadFormValues) {
     updateLead({ ...values, id: lead.id });
   }
 
@@ -180,7 +162,25 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                 <FormItem>
                   <FormLabel>Revenue</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 1500000" {...field} />
+                    <Input
+                      type="text"
+                      placeholder="e.g., 1,500,000"
+                      value={
+                        field.value !== undefined && field.value !== null
+                          ? formatNumberWithCommas(String(field.value))
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const rawValue = e.target.value.replace(/,/g, "");
+                        if (!/^\d*\.?\d*$/.test(rawValue)) return;
+                        if (rawValue === "") {
+                          field.onChange(undefined);
+                        } else {
+                          const num = parseFloat(rawValue);
+                          field.onChange(isNaN(num) ? undefined : num);
+                        }
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -193,7 +193,25 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                 <FormItem>
                   <FormLabel>EBITDA</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 300000" {...field} />
+                    <Input
+                      type="text"
+                      placeholder="e.g., 300,000"
+                      value={
+                        field.value !== undefined && field.value !== null
+                          ? formatNumberWithCommas(String(field.value))
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const rawValue = e.target.value.replace(/,/g, "");
+                        if (!/^\d*\.?\d*$/.test(rawValue)) return;
+                        if (rawValue === "") {
+                          field.onChange(undefined);
+                        } else {
+                          const num = parseFloat(rawValue);
+                          field.onChange(isNaN(num) ? undefined : num);
+                        }
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -206,7 +224,25 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                 <FormItem>
                   <FormLabel>Asking Price</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 5000000" {...field} />
+                    <Input
+                      type="text"
+                      placeholder="e.g., 5,000,000"
+                      value={
+                        field.value !== undefined && field.value !== null
+                          ? formatNumberWithCommas(String(field.value))
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const rawValue = e.target.value.replace(/,/g, "");
+                        if (!/^\d*\.?\d*$/.test(rawValue)) return;
+                        if (rawValue === "") {
+                          field.onChange(undefined);
+                        } else {
+                          const num = parseFloat(rawValue);
+                          field.onChange(isNaN(num) ? undefined : num);
+                        }
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

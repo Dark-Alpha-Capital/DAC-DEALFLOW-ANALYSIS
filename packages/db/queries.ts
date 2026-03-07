@@ -10,6 +10,7 @@ import {
   companies,
   themes,
   contacts,
+  outreach,
   industryIntelligence,
   themePerformance,
   type Deal,
@@ -111,6 +112,31 @@ export const GetCompanyWithAllRelations = async (id: string) => {
           ),
       ]);
 
+    const dealOppIds = companyDealOpps.map((o) => o.id);
+    const outreachRows = await db
+      .select({
+        id: outreach.id,
+        dealOpportunityId: outreach.dealOpportunityId,
+        companyId: outreach.companyId,
+        type: outreach.type,
+        notes: outreach.notes,
+        outcome: outreach.outcome,
+        createdById: outreach.createdById,
+        createdAt: outreach.createdAt,
+        createdByName: users.name,
+      })
+      .from(outreach)
+      .leftJoin(users, eq(outreach.createdById, users.id))
+      .where(
+        dealOppIds.length > 0
+          ? or(
+              eq(outreach.companyId, id),
+              inArray(outreach.dealOpportunityId, dealOppIds),
+            )
+          : eq(outreach.companyId, id),
+      )
+      .orderBy(desc(outreach.createdAt));
+
     return {
       company: {
         ...companyRow.company,
@@ -119,6 +145,7 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       dealOpportunities: companyDealOpps,
       documents: companyDocuments,
       contacts: companyContacts,
+      outreach: outreachRows,
     };
   } catch (error) {
     console.error("Error fetching company with relations", error);
@@ -137,6 +164,17 @@ export const GetLeadById = async (id: string) => {
     console.error("Error fetching lead by id", error);
     throw error;
   }
+};
+
+/**
+ * Get company created from a lead (if any). Used to check if lead is already converted.
+ */
+export const GetCompanyByFirstSeenFromLeadId = async (leadId: string) => {
+  const [row] = await db
+    .select()
+    .from(companies)
+    .where(eq(companies.firstSeenFromLeadId, leadId));
+  return row ?? null;
 };
 
 /**
@@ -160,6 +198,26 @@ export const GetDealOpportunityByLegacyDealId = async (legacyDealId: string) => 
     .where(eq(dealOpportunities.legacyDealId, legacyDealId));
   return opp ?? null;
 };
+
+/**
+ * Get DealOpportunities linked to a lead, with company joined for display.
+ */
+export const GetDealOpportunitiesByLeadId = async (leadId: string) => {
+  const rows = await db
+    .select({
+      opp: dealOpportunities,
+      company: companies,
+    })
+    .from(dealOpportunities)
+    .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+    .where(eq(dealOpportunities.leadId, leadId))
+    .orderBy(desc(dealOpportunities.createdAt));
+  return rows.map(({ opp, company }) => ({ ...opp, company: company ?? null }));
+};
+
+export type DealOpportunityWithCompany = Awaited<
+  ReturnType<typeof GetDealOpportunitiesByLeadId>
+>[number];
 
 /**
  * Get deal data for detail page - resolves uid (opp.id, legacyDealId, or legacy deal id) to DealOpportunity + Company.

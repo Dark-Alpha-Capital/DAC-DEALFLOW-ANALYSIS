@@ -7,12 +7,14 @@ import { CompanyDealsList } from "./CompanyDealsList";
 import { CompanyContacts } from "./CompanyContacts";
 import { CompanyDocuments } from "./CompanyDocuments";
 import { CompanyNotes } from "./CompanyNotes";
+import { CompanyOutreach, type OutreachRow } from "./CompanyOutreach";
 
 interface CompanyTabsProps {
   company: Company & { themeName?: string | null };
   dealOpportunities: DealOpportunity[];
   documents: Document[];
   contacts: Contact[];
+  outreach: OutreachRow[];
 }
 
 export function CompanyTabs({
@@ -20,6 +22,7 @@ export function CompanyTabs({
   dealOpportunities,
   documents,
   contacts,
+  outreach,
 }: CompanyTabsProps) {
   return (
     <Tabs defaultValue="overview" className="w-full space-y-6">
@@ -28,6 +31,7 @@ export function CompanyTabs({
         <TabsTrigger value="financials">Financials</TabsTrigger>
         <TabsTrigger value="deals">Deal opportunities</TabsTrigger>
         <TabsTrigger value="contacts">Contacts</TabsTrigger>
+        <TabsTrigger value="outreach">Outreach</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="notes">Notes</TabsTrigger>
       </TabsList>
@@ -50,6 +54,10 @@ export function CompanyTabs({
 
       <TabsContent value="contacts">
         <CompanyContacts company={company} initialContacts={contacts} />
+      </TabsContent>
+
+      <TabsContent value="outreach">
+        <CompanyOutreach outreach={outreach} />
       </TabsContent>
 
       <TabsContent value="documents">

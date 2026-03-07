@@ -42,3 +42,25 @@ export const contactFormSchema = z.object({
 });
 
 export type ContactFormValues = z.infer<typeof contactFormSchema>;
+
+export const leadFormSchema = z.object({
+  sourceWebsite: z.string().min(1, "Source website is required"),
+  externalListingId: z.string().optional(),
+  rawTitle: z.string().min(1, "Title is required"),
+  rawDescription: z.string().optional(),
+  rawIndustry: z.string().optional(),
+  revenue: z.coerce.number().optional(),
+  ebitda: z.coerce.number().optional(),
+  askingPrice: z.coerce.number().optional(),
+  brokerage: z.string().optional(),
+  brokerFirstName: z.string().optional(),
+  brokerLastName: z.string().optional(),
+  brokerEmail: z
+    .union([z.string().email("Invalid email"), z.literal("")])
+    .optional(),
+  brokerPhone: z.string().optional(),
+  normalizedCompanyName: z.string().optional(),
+  companyLocation: z.string().optional(),
+});
+
+export type LeadFormValues = z.infer<typeof leadFormSchema>;

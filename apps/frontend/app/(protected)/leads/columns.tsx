@@ -103,27 +103,6 @@ export const columns: ColumnDef<Lead>[] = [
     meta: { className: "text-right" },
   },
   {
-    accessorKey: "sourceWebsite",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Source
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => (
-      <span className="max-w-[220px] truncate text-muted-foreground text-xs">
-        {(row.getValue("sourceWebsite") as string) || "—"}
-      </span>
-    ),
-    filterFn: (row, id, value) => {
-      const val = row.getValue(id) as string;
-      return !value || val?.toLowerCase().includes(String(value).toLowerCase());
-    },
-  },
-  {
     accessorKey: "status",
     header: ({ column }) => (
       <Button
@@ -159,8 +138,9 @@ export const columns: ColumnDef<Lead>[] = [
     header: () => <span className="text-right">Actions</span>,
     cell: ({ row, table }) => {
       const lead = row.original;
-      const onSelectLead = (table.options.meta as { onSelectLead?: (l: Lead) => void })
-        ?.onSelectLead;
+      const onSelectLead = (
+        table.options.meta as { onSelectLead?: (l: Lead) => void }
+      )?.onSelectLead;
       return (
         <div className="text-right" onClick={(e) => e.stopPropagation()}>
           <LeadActionsMenu
