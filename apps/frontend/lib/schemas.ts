@@ -65,9 +65,9 @@ export type screenDealSchemaType = z.infer<typeof screenDealSchema>;
 export const contactFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   title: z.string().optional(),
-  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  email: z.union([z.literal(""), z.string().email("Invalid email")]).optional(),
   phone: z.string().optional(),
-  linkedinUrl: httpHttpsUrlSchema.optional().or(z.literal("")),
+  linkedinUrl: z.union([z.literal(""), httpHttpsUrlSchema]).optional(),
   role: z.string().optional(),
 });
 

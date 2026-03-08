@@ -10,7 +10,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 
 // ============================================================================
@@ -62,7 +62,11 @@ export const documentCategoryEnum = pgEnum("DocumentCategory", [
 // Entity type enum for polymorphic association
 export const entityTypeEnum = pgEnum("EntityType", ["DEAL", "COMPANY"]);
 
-export const themeStatusEnum = pgEnum("ThemeStatus", ["ACTIVE", "PAUSED", "RETIRED"]);
+export const themeStatusEnum = pgEnum("ThemeStatus", [
+  "ACTIVE",
+  "PAUSED",
+  "RETIRED",
+]);
 
 export const outreachTypeEnum = pgEnum("OutreachType", [
   "EMAIL",
@@ -151,9 +155,10 @@ export const verifications = pgTable("Verification", {
     .$onUpdate(() => new Date()),
 });
 
-
 export const themes = pgTable("Theme", {
-  id: text("id").primaryKey().$defaultFn(() => createId()),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
   name: text("name").notNull(),
   description: text("description").notNull(),
   sector: text("sector").notNull(), // Healthcare, Manufacturing, etc.
@@ -161,51 +166,77 @@ export const themes = pgTable("Theme", {
   capitalPriorityScore: integer("capitalPriorityScore"), // 1–100
   confidenceScore: integer("confidenceScore"), // Conviction level
   createdById: text("createdById").references(() => users.id),
+  deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
-});
-
-
-
-export const theses = pgTable("Thesis", {
-  id: text("id").primaryKey().$defaultFn(() => createId()),
-  themeId: text("themeId")
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
     .notNull()
-    .references(() => themes.id, { onDelete: "cascade" }),
-  summary: text("summary").notNull(),
-  macroDrivers: text("macroDrivers").array(),
-  mispricingHypothesis: text("mispricingHypothesis"),
-  valueCreationLevers: text("valueCreationLevers").array(),
-  exitLogic: text("exitLogic"),
-  riskFactors: text("riskFactors").array(),
-  version: text("version").default("1.0"),
-  isActive: boolean("isActive").default(true),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+    .$onUpdate(() => new Date()),
 });
 
+export const theses = pgTable(
+  "Thesis",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    themeId: text("themeId")
+      .notNull()
+      .references(() => themes.id, { onDelete: "cascade" }),
+    summary: text("summary").notNull(),
+    macroDrivers: text("macroDrivers").array(),
+    mispricingHypothesis: text("mispricingHypothesis"),
+    valueCreationLevers: text("valueCreationLevers").array(),
+    exitLogic: text("exitLogic"),
+    riskFactors: text("riskFactors").array(),
+    version: text("version").default("1.0"),
+    isActive: boolean("isActive").default(true),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    thesisThemeIdx: index("thesis_theme_idx").on(table.themeId),
+    thesisActiveThemeUniqueIdx: uniqueIndex("thesis_active_theme_unique_idx")
+      .on(table.themeId)
+      .where(sql`${table.isActive} = true`),
+  }),
+);
 
-export const industryIntelligence = pgTable("IndustryIntelligence", {
-  id: text("id").primaryKey().$defaultFn(() => createId()),
-  themeId: text("themeId")
-    .notNull()
-    .references(() => themes.id, { onDelete: "cascade" }),
-  tam: doublePrecision("tam"),
-  growthRate: doublePrecision("growthRate"),
-  avgEbitdaMargin: doublePrecision("avgEbitdaMargin"),
-  avgEntryMultiple: doublePrecision("avgEntryMultiple"),
-  avgExitMultiple: doublePrecision("avgExitMultiple"),
-  fragmentationScore: integer("fragmentationScore"),
-  sponsorPenetration: doublePrecision("sponsorPenetration"),
-  cyclicalityScore: integer("cyclicalityScore"),
-  disruptionRiskScore: integer("disruptionRiskScore"),
-  notes: text("notes"),
-  version: text("version").default("1.0"),
-  isActive: boolean("isActive").default(true),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-
+export const industryIntelligence = pgTable(
+  "IndustryIntelligence",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    themeId: text("themeId")
+      .notNull()
+      .references(() => themes.id, { onDelete: "cascade" }),
+    tam: doublePrecision("tam"),
+    growthRate: doublePrecision("growthRate"),
+    avgEbitdaMargin: doublePrecision("avgEbitdaMargin"),
+    avgEntryMultiple: doublePrecision("avgEntryMultiple"),
+    avgExitMultiple: doublePrecision("avgExitMultiple"),
+    fragmentationScore: integer("fragmentationScore"),
+    sponsorPenetration: doublePrecision("sponsorPenetration"),
+    cyclicalityScore: integer("cyclicalityScore"),
+    disruptionRiskScore: integer("disruptionRiskScore"),
+    notes: text("notes"),
+    version: text("version").default("1.0"),
+    isActive: boolean("isActive").default(true),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    industryIntelThemeIdx: index("industry_intel_theme_idx").on(table.themeId),
+    industryIntelActiveThemeUniqueIdx: uniqueIndex(
+      "industry_intel_active_theme_unique_idx",
+    )
+      .on(table.themeId)
+      .where(sql`${table.isActive} = true`),
+  }),
+);
 
 export const companyCoverageStatusEnum = pgEnum("CompanyCoverageStatus", [
   "UNCONTACTED",
@@ -225,7 +256,6 @@ export const companies = pgTable(
 
     name: text("name").notNull(),
     normalizedName: text("normalizedName").notNull(), // dedup via (normalizedName, location) index
-
 
     industry: text("industry"),
     location: text("location"),
@@ -258,12 +288,15 @@ export const companies = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => ({
-    companyDedupIdx: index("company_dedup_idx").on(table.normalizedName, table.location),
+    companyDedupIdx: index("company_dedup_idx").on(
+      table.normalizedName,
+      table.location,
+    ),
     companyThemeIdx: index("company_theme_idx").on(table.themeId),
     companyFirstSeenFromLeadUniqueIdx: uniqueIndex(
       "company_first_seen_from_lead_unique_idx",
     ).on(table.firstSeenFromLeadId),
-  })
+  }),
 );
 
 export const companyNotes = pgTable(
@@ -289,14 +322,55 @@ export const companyNotes = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => ({
-    companyNotesCompanyIdx: index("company_notes_company_idx").on(table.companyId),
-    companyNotesCreatedAtIdx: index("company_notes_created_at_idx").on(table.createdAt),
-  })
+    companyNotesCompanyIdx: index("company_notes_company_idx").on(
+      table.companyId,
+    ),
+    companyNotesCreatedAtIdx: index("company_notes_created_at_idx").on(
+      table.createdAt,
+    ),
+  }),
 );
 
+export const themeCompanyCoverage = pgTable(
+  "ThemeCompanyCoverage",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    themeId: text("themeId")
+      .notNull()
+      .references(() => themes.id, { onDelete: "cascade" }),
+    companyId: text("companyId")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    coverageStatus: companyCoverageStatusEnum("coverageStatus")
+      .default("UNCONTACTED")
+      .notNull(),
+    lastOutreachAt: timestamp("lastOutreachAt"),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    themeCompanyCoverageThemeIdx: index("theme_company_coverage_theme_idx").on(
+      table.themeId,
+    ),
+    themeCompanyCoverageCompanyIdx: index(
+      "theme_company_coverage_company_idx",
+    ).on(table.companyId),
+    themeCompanyCoverageUniqueIdx: uniqueIndex(
+      "theme_company_coverage_unique_idx",
+    ).on(table.themeId, table.companyId),
+  }),
+);
 
 export const themePerformance = pgTable("ThemePerformance", {
-  id: text("id").primaryKey().$defaultFn(() => createId()),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
   themeId: text("themeId").references(() => themes.id),
   dealsSourced: integer("dealsSourced"),
   meetingsHeld: integer("meetingsHeld"),
@@ -304,11 +378,13 @@ export const themePerformance = pgTable("ThemePerformance", {
   dealsClosed: integer("dealsClosed"),
   averageEntryMultiple: doublePrecision("averageEntryMultiple"),
   averageIRR: doublePrecision("averageIRR"),
+  observedAt: timestamp("observedAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
-
-
 
 export const leadStatusEnum = pgEnum("LeadStatus", [
   "NEW",
@@ -317,44 +393,50 @@ export const leadStatusEnum = pgEnum("LeadStatus", [
   "REJECTED",
 ]);
 
-export const leads = pgTable("Lead", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
+export const leads = pgTable(
+  "Lead",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
 
-  // Raw scraped metadata
-  sourceWebsite: text("sourceWebsite").notNull(),
-  externalListingId: text("externalListingId"), // broker listing ID if available
-  rawTitle: text("rawTitle").notNull(),
-  rawDescription: text("rawDescription"),
-  rawIndustry: text("rawIndustry"),
+    // Raw scraped metadata
+    sourceWebsite: text("sourceWebsite").notNull(),
+    externalListingId: text("externalListingId"), // broker listing ID if available
+    rawTitle: text("rawTitle").notNull(),
+    rawDescription: text("rawDescription"),
+    rawIndustry: text("rawIndustry"),
 
-  // Raw financials (before normalization)
-  revenue: doublePrecision("revenue"),
-  ebitda: doublePrecision("ebitda"),
-  askingPrice: doublePrecision("askingPrice"),
+    // Raw financials (before normalization)
+    revenue: doublePrecision("revenue"),
+    ebitda: doublePrecision("ebitda"),
+    askingPrice: doublePrecision("askingPrice"),
 
-  // Broker / contact info
-  brokerage: text("brokerage"),
-  brokerFirstName: text("brokerFirstName"),
-  brokerLastName: text("brokerLastName"),
-  brokerEmail: text("brokerEmail"),
-  brokerPhone: text("brokerPhone"),
+    // Broker / contact info
+    brokerage: text("brokerage"),
+    brokerFirstName: text("brokerFirstName"),
+    brokerLastName: text("brokerLastName"),
+    brokerEmail: text("brokerEmail"),
+    brokerPhone: text("brokerPhone"),
 
-  // Company matching (for dedup)
-  normalizedCompanyName: text("normalizedCompanyName"),
-  companyLocation: text("companyLocation"),
+    // Company matching (for dedup)
+    normalizedCompanyName: text("normalizedCompanyName"),
+    companyLocation: text("companyLocation"),
 
-  // Processing state
-  status: leadStatusEnum("status").default("NEW").notNull(),
-  processedAt: timestamp("processedAt"),
-  deletedAt: timestamp("deletedAt"),
+    // Processing state
+    status: leadStatusEnum("status").default("NEW").notNull(),
+    duplicateCompanyId: text("duplicateCompanyId"),
+    processedAt: timestamp("processedAt"),
+    deletedAt: timestamp("deletedAt"),
 
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-
-
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    leadDuplicateCompanyIdx: index("lead_duplicate_company_idx").on(
+      table.duplicateCompanyId,
+    ),
+  }),
+);
 
 // Deal table
 export const deals = pgTable("Deal", {
@@ -396,7 +478,6 @@ export const deals = pgTable("Deal", {
   chunk_text: text("chunk_text"),
   description: text("description"),
 });
-
 
 export const dealStageEnum = pgEnum("DealStage", [
   "LISTED",
@@ -474,10 +555,8 @@ export const dealOpportunities = pgTable(
     dealOppCompanyIdx: index("deal_opp_company_idx").on(table.companyId),
     dealOppStageIdx: index("deal_opp_stage_idx").on(table.stage),
     dealOppStatusIdx: index("deal_opp_status_idx").on(table.status),
-  })
+  }),
 );
-
-
 
 export const contactEntityEnum = pgEnum("ContactEntityType", [
   "LEAD",
@@ -486,9 +565,13 @@ export const contactEntityEnum = pgEnum("ContactEntityType", [
 ]);
 
 export const outreach = pgTable("Outreach", {
-  id: text("id").primaryKey().$defaultFn(() => createId()),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
 
-  dealOpportunityId: text("dealOpportunityId").references(() => dealOpportunities.id),
+  dealOpportunityId: text("dealOpportunityId").references(
+    () => dealOpportunities.id,
+  ),
   companyId: text("companyId").references(() => companies.id),
 
   type: outreachTypeEnum("type").notNull(),
@@ -501,7 +584,9 @@ export const outreach = pgTable("Outreach", {
 });
 
 export const contacts = pgTable("Contact", {
-  id: text("id").primaryKey().$defaultFn(() => createId()),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
   entityType: contactEntityEnum("entityType").notNull(),
   entityId: text("entityId").notNull(),
   name: text("name").notNull(),
@@ -542,7 +627,6 @@ export const screeners = pgTable("Screener", {
     .$onUpdate(() => new Date()),
   content: text("content").notNull(),
 
-
   fileUrl: text("fileUrl").notNull(),
   name: text("name").notNull(),
   description: text("description"),
@@ -573,8 +657,10 @@ export const aiScreenings = pgTable(
     }),
   },
   (table) => ({
-    aiScreeningDealOppIdx: index("ai_screening_deal_opp_idx").on(table.dealOpportunityId),
-  })
+    aiScreeningDealOppIdx: index("ai_screening_deal_opp_idx").on(
+      table.dealOpportunityId,
+    ),
+  }),
 );
 
 // UserActionLog table
@@ -601,7 +687,9 @@ export const documentEntityEnum = pgEnum("DocumentEntityType", [
 ]);
 
 export const documents = pgTable("Document", {
-  id: text("id").primaryKey().$defaultFn(() => createId()),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
 
   entityType: documentEntityEnum("entityType").notNull(),
   entityId: text("entityId").notNull(),
@@ -648,6 +736,7 @@ export const themesRelations = relations(themes, ({ one, many }) => ({
   industryIntelligence: many(industryIntelligence),
   companies: many(companies),
   themePerformance: many(themePerformance),
+  companyCoverage: many(themeCompanyCoverage),
 }));
 
 export const thesesRelations = relations(theses, ({ one }) => ({
@@ -657,23 +746,48 @@ export const thesesRelations = relations(theses, ({ one }) => ({
   }),
 }));
 
-export const industryIntelligenceRelations = relations(industryIntelligence, ({ one }) => ({
-  theme: one(themes, {
-    fields: [industryIntelligence.themeId],
-    references: [themes.id],
+export const industryIntelligenceRelations = relations(
+  industryIntelligence,
+  ({ one }) => ({
+    theme: one(themes, {
+      fields: [industryIntelligence.themeId],
+      references: [themes.id],
+    }),
   }),
-}));
+);
 
-export const themePerformanceRelations = relations(themePerformance, ({ one }) => ({
-  theme: one(themes, {
-    fields: [themePerformance.themeId],
-    references: [themes.id],
+export const themePerformanceRelations = relations(
+  themePerformance,
+  ({ one }) => ({
+    theme: one(themes, {
+      fields: [themePerformance.themeId],
+      references: [themes.id],
+    }),
   }),
-}));
+);
 
-export const leadsRelations = relations(leads, ({ many }) => ({
+export const themeCompanyCoverageRelations = relations(
+  themeCompanyCoverage,
+  ({ one }) => ({
+    theme: one(themes, {
+      fields: [themeCompanyCoverage.themeId],
+      references: [themes.id],
+    }),
+    company: one(companies, {
+      fields: [themeCompanyCoverage.companyId],
+      references: [companies.id],
+    }),
+  }),
+);
+
+export const leadsRelations = relations(leads, ({ many, one }) => ({
   dealOpportunities: many(dealOpportunities),
   companiesFirstSeen: many(companies, { relationName: "firstSeenFromLead" }),
+  duplicateCompany: one(companies, {
+    fields: [leads.duplicateCompanyId],
+    references: [companies.id],
+    relationName: "duplicateCompany",
+  }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -690,7 +804,6 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   }),
 }));
 
-
 export const dealsRelations = relations(deals, ({ one }) => ({
   user: one(users, {
     fields: [deals.userId],
@@ -702,26 +815,29 @@ export const dealsRelations = relations(deals, ({ one }) => ({
   }),
 }));
 
-export const dealOpportunitiesRelations = relations(dealOpportunities, ({ one, many }) => ({
-  company: one(companies, {
-    fields: [dealOpportunities.companyId],
-    references: [companies.id],
+export const dealOpportunitiesRelations = relations(
+  dealOpportunities,
+  ({ one, many }) => ({
+    company: one(companies, {
+      fields: [dealOpportunities.companyId],
+      references: [companies.id],
+    }),
+    lead: one(leads, {
+      fields: [dealOpportunities.leadId],
+      references: [leads.id],
+    }),
+    user: one(users, {
+      fields: [dealOpportunities.userId],
+      references: [users.id],
+    }),
+    legacyDeal: one(deals, {
+      fields: [dealOpportunities.legacyDealId],
+      references: [deals.id],
+    }),
+    aiScreenings: many(aiScreenings),
+    outreach: many(outreach),
   }),
-  lead: one(leads, {
-    fields: [dealOpportunities.leadId],
-    references: [leads.id],
-  }),
-  user: one(users, {
-    fields: [dealOpportunities.userId],
-    references: [users.id],
-  }),
-  legacyDeal: one(deals, {
-    fields: [dealOpportunities.legacyDealId],
-    references: [deals.id],
-  }),
-  aiScreenings: many(aiScreenings),
-  outreach: many(outreach),
-}));
+);
 
 export const companiesRelations = relations(companies, ({ one, many }) => ({
   theme: one(themes, {
@@ -733,9 +849,11 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
     references: [leads.id],
     relationName: "firstSeenFromLead",
   }),
+  duplicateLeads: many(leads, { relationName: "duplicateCompany" }),
   dealOpportunities: many(dealOpportunities),
   notes: many(companyNotes),
   outreach: many(outreach),
+  themeCoverage: many(themeCompanyCoverage),
 }));
 
 export const companyNotesRelations = relations(companyNotes, ({ one }) => ({
@@ -792,7 +910,6 @@ export const outreachRelations = relations(outreach, ({ one }) => ({
     references: [users.id],
   }),
 }));
-
 
 // ============================================================================
 // TYPE EXPORTS
@@ -926,6 +1043,14 @@ export type NewCompanyNote = typeof companyNotes.$inferInsert;
 
 export type Theme = typeof themes.$inferSelect;
 export type NewTheme = typeof themes.$inferInsert;
+export type Thesis = typeof theses.$inferSelect;
+export type NewThesis = typeof theses.$inferInsert;
+export type IndustryIntelligence = typeof industryIntelligence.$inferSelect;
+export type NewIndustryIntelligence = typeof industryIntelligence.$inferInsert;
+export type ThemePerformance = typeof themePerformance.$inferSelect;
+export type NewThemePerformance = typeof themePerformance.$inferInsert;
+export type ThemeCompanyCoverage = typeof themeCompanyCoverage.$inferSelect;
+export type NewThemeCompanyCoverage = typeof themeCompanyCoverage.$inferInsert;
 
 export type AiScreening = typeof aiScreenings.$inferSelect;
 export type NewAiScreening = typeof aiScreenings.$inferInsert;

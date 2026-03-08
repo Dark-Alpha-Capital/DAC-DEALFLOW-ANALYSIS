@@ -13,29 +13,31 @@ export default function DocsAnalyticsPage() {
       <section className="space-y-3">
         <h3 className="text-xl font-semibold tracking-tight">Current dashboard coverage</h3>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-          <li>Deals by Theme: opportunity concentration across strategic focus areas.</li>
-          <li>Pipeline Conversion: opportunity counts by stage.</li>
-          <li>Source Performance: combined lead and deal volume by source website.</li>
-          <li>Screening Scores: distribution of AI scores by scoring bands.</li>
+          <li>Deals by Stage: opportunity distribution across the pipeline.</li>
+          <li>Lead Flow: NEW, PROCESSED, DUPLICATE, and REJECTED status funnel.</li>
+          <li>New Leads, Processed Leads, Duplicates: headline KPI counters.</li>
+          <li>Active Themes: count of currently active strategic themes.</li>
+          <li>Companies per Theme and Deals per Theme: concentration across themes.</li>
+          <li>Top Deals: ranked by each deal&apos;s latest AI screening score.</li>
         </ul>
       </section>
 
       <section className="space-y-3">
         <h3 className="text-xl font-semibold tracking-tight">Primary decisions supported</h3>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-          <li>Which sourcing channels should be scaled, adjusted, or deprioritized.</li>
           <li>Where pipeline progression is slowing and requires intervention.</li>
-          <li>Whether current deal mix aligns with strategic themes.</li>
-          <li>How strict or flexible screening thresholds should be by strategy segment.</li>
+          <li>How lead intake quality is trending through processing and duplicate control.</li>
+          <li>Whether current company and deal mix aligns with active themes.</li>
+          <li>Which high-scoring deals deserve immediate partner attention.</li>
         </ul>
       </section>
 
       <section className="space-y-3">
         <h3 className="text-xl font-semibold tracking-tight">Recommended review cadence</h3>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-          <li>Weekly: pipeline conversion and source performance.</li>
-          <li>Bi-weekly: screening score distribution and deal triage behavior.</li>
-          <li>Monthly or quarterly: theme concentration against strategy priorities.</li>
+          <li>Weekly: deals by stage, lead flow, and top deals ranking.</li>
+          <li>Bi-weekly: theme concentration and active-theme coverage balance.</li>
+          <li>Monthly or quarterly: score thresholds and stage velocity operating rules.</li>
         </ul>
       </section>
 

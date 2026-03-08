@@ -18,20 +18,22 @@ export default function ThemeContainer({
   totalCount,
 }: ThemeContainerProps) {
   return (
-    <div>
-      <div className="group-has-[[data-pending]]:animate-pulse">
-        {data.length === 0 ? (
-          <div className="mt-12 text-center">
-            <p className="text-muted-foreground text-xl">No themes found.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            {data.map((theme) => (
-              <ThemeCard key={theme.id} theme={theme} />
-            ))}
-          </div>
-        )}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <p className="text-muted-foreground text-sm">
+          Showing{" "}
+          <span className="font-medium text-foreground">{data.length}</span> of{" "}
+          <span className="font-medium text-foreground">{totalCount}</span>{" "}
+          themes
+        </p>
       </div>
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {data.map((theme) => (
+          <ThemeCard key={theme.id} theme={theme} />
+        ))}
+      </div>
+
       <div className="mt-8 flex justify-center">
         <Pagination totalPages={totalPages} />
       </div>

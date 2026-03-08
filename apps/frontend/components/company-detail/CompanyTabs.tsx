@@ -64,7 +64,15 @@ export function CompanyTabs({
       </TabsContent>
 
       <TabsContent value="outreach">
-        <CompanyOutreach outreach={outreach} />
+        <CompanyOutreach
+          outreach={outreach}
+          companyId={company.id}
+          dealOpportunities={dealOpportunities.map((deal) => ({
+            id: deal.id,
+            stage: deal.stage,
+            createdAt: deal.createdAt,
+          }))}
+        />
       </TabsContent>
 
       <TabsContent value="documents">
