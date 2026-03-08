@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { companies, eq, and, isNull } from "@repo/db";
+import db, { companies, themes, eq, and, isNull } from "@repo/db";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { asc } from "drizzle-orm";
 
@@ -17,14 +18,16 @@ const companySchema = z.object({
   founderAgeEstimate: z.coerce.number().optional(),
   themeId: z.string().optional(),
   attractivenessScore: z.coerce.number().optional(),
-  coverageStatus: z.enum([
-    "UNCONTACTED",
-    "CONTACTED",
-    "IN_DISCUSSION",
-    "UNDER_LOI",
-    "CLOSED",
-    "PASSED",
-  ]).optional(),
+  coverageStatus: z
+    .enum([
+      "UNCONTACTED",
+      "CONTACTED",
+      "IN_DISCUSSION",
+      "UNDER_LOI",
+      "CLOSED",
+      "PASSED",
+    ])
+    .optional(),
 });
 
 const createCompanySchema = companySchema;
@@ -96,6 +99,50 @@ export const companiesRouter = createTRPCRouter({
       return { companyId: id };
     }),
 
+  assignTheme: protectedProcedure
+    .input(
+      z.object({
+        companyId: z.string().min(1, "Company ID is required"),
+        themeId: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const normalizedThemeId = input.themeId?.trim() || null;
+
+      if (normalizedThemeId) {
+        const [theme] = await db
+          .select({ id: themes.id })
+          .from(themes)
+          .where(
+            and(eq(themes.id, normalizedThemeId), isNull(themes.deletedAt)),
+          )
+          .limit(1);
+
+        if (!theme) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected theme does not exist",
+          });
+        }
+      }
+
+      await db
+        .update(companies)
+        .set({
+          themeId: normalizedThemeId,
+        })
+        .where(
+          and(eq(companies.id, input.companyId), isNull(companies.deletedAt)),
+        );
+
+      revalidatePath("/companies");
+      revalidatePath(`/companies/${input.companyId}`);
+      revalidateTag("companies", "max");
+      revalidateTag(`company-${input.companyId}`, "max");
+
+      return { companyId: input.companyId, themeId: normalizedThemeId };
+    }),
+
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
@@ -108,5 +155,4 @@ export const companiesRouter = createTRPCRouter({
       revalidateTag(`company-${input.id}`, "max");
       return { success: true };
     }),
-
 });

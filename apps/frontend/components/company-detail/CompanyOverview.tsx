@@ -1,6 +1,7 @@
 import type { Company } from "@repo/db";
 import { Badge } from "@/components/ui/badge";
 import { Building2, MapPin } from "lucide-react";
+import { AssignThemeControl } from "./AssignThemeControl";
 
 interface CompanyOverviewProps {
   company: Company & { themeName?: string | null };
@@ -26,7 +27,8 @@ function getStatusColor(status: string): string {
 }
 
 export function CompanyOverview({ company }: CompanyOverviewProps) {
-  const { name, industry, location, coverageStatus, themeName } = company;
+  const { id, name, industry, location, coverageStatus, themeName, themeId } =
+    company;
 
   return (
     <div className="space-y-3">
@@ -58,7 +60,7 @@ export function CompanyOverview({ company }: CompanyOverviewProps) {
           )}
         </div>
       )}
+      <AssignThemeControl companyId={id} currentThemeId={themeId} />
     </div>
   );
 }
-

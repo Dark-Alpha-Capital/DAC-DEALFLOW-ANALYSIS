@@ -14,6 +14,8 @@ import {
   outreach,
   industryIntelligence,
   themePerformance,
+  theses,
+  themeCompanyCoverage,
   type Deal,
   type Lead,
   type Company,
@@ -83,44 +85,45 @@ export const GetCompanyWithAllRelations = async (id: string) => {
         themeName: themes.name,
       })
       .from(companies)
-      .leftJoin(themes, eq(companies.themeId, themes.id))
+      .leftJoin(
+        themes,
+        and(eq(companies.themeId, themes.id), isNull(themes.deletedAt)),
+      )
       .where(and(eq(companies.id, id), isNull(companies.deletedAt)));
 
     if (!companyRow) {
       return null;
     }
 
-    const [companyDealOpps, companyDocuments, companyContacts, companyNotesRows] =
-      await Promise.all([
-        db
-          .select()
-          .from(dealOpportunities)
-          .where(eq(dealOpportunities.companyId, id))
-          .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id)),
-        db
-          .select()
-          .from(documents)
-          .where(
-            and(
-              eq(documents.entityType, "COMPANY"),
-              eq(documents.entityId, id),
-            ),
-          ),
-        db
-          .select()
-          .from(contacts)
-          .where(
-            and(
-              eq(contacts.entityType, "COMPANY"),
-              eq(contacts.entityId, id),
-            ),
-          ),
-        db
-          .select()
-          .from(companyNotes)
-          .where(eq(companyNotes.companyId, id))
-          .orderBy(desc(companyNotes.createdAt)),
-      ]);
+    const [
+      companyDealOpps,
+      companyDocuments,
+      companyContacts,
+      companyNotesRows,
+    ] = await Promise.all([
+      db
+        .select()
+        .from(dealOpportunities)
+        .where(eq(dealOpportunities.companyId, id))
+        .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id)),
+      db
+        .select()
+        .from(documents)
+        .where(
+          and(eq(documents.entityType, "COMPANY"), eq(documents.entityId, id)),
+        ),
+      db
+        .select()
+        .from(contacts)
+        .where(
+          and(eq(contacts.entityType, "COMPANY"), eq(contacts.entityId, id)),
+        ),
+      db
+        .select()
+        .from(companyNotes)
+        .where(eq(companyNotes.companyId, id))
+        .orderBy(desc(companyNotes.createdAt)),
+    ]);
 
     const dealOppIds = companyDealOpps.map((o) => o.id);
     const outreachRows = await db
@@ -140,9 +143,9 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       .where(
         dealOppIds.length > 0
           ? or(
-            eq(outreach.companyId, id),
-            inArray(outreach.dealOpportunityId, dealOppIds),
-          )
+              eq(outreach.companyId, id),
+              inArray(outreach.dealOpportunityId, dealOppIds),
+            )
           : eq(outreach.companyId, id),
       )
       .orderBy(desc(outreach.createdAt));
@@ -212,7 +215,9 @@ export const GetDealOpportunityById = async (id: string) => {
 /**
  * Get DealOpportunity by legacy Deal id (for post-migration resolution)
  */
-export const GetDealOpportunityByLegacyDealId = async (legacyDealId: string) => {
+export const GetDealOpportunityByLegacyDealId = async (
+  legacyDealId: string,
+) => {
   const [opp] = await db
     .select()
     .from(dealOpportunities)
@@ -248,10 +253,7 @@ export const GetDealOpportunitiesByLeadId = async (leadId: string) => {
     .from(dealOpportunities)
     .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
     .where(
-      and(
-        eq(dealOpportunities.leadId, leadId),
-        isNull(companies.deletedAt),
-      ),
+      and(eq(dealOpportunities.leadId, leadId), isNull(companies.deletedAt)),
     )
     .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id));
   return rows.map(({ opp, company }) => ({
@@ -259,10 +261,10 @@ export const GetDealOpportunitiesByLeadId = async (leadId: string) => {
     company:
       company && company.name
         ? {
-          name: company.name,
-          industry: company.industry,
-          location: company.location,
-        }
+            name: company.name,
+            industry: company.industry,
+            location: company.location,
+          }
         : null,
   }));
 };
@@ -286,7 +288,9 @@ export const GetDealWithAllRelations = async (uid: string) => {
     return {
       deal: deal as Deal & { id: string },
       documents: [] as Awaited<ReturnType<typeof getDealDocuments>>,
-      aiScreenings: [] as Awaited<ReturnType<typeof getAllDealReasoningsWithScreenerName>>,
+      aiScreenings: [] as Awaited<
+        ReturnType<typeof getAllDealReasoningsWithScreenerName>
+      >,
     };
   }
 
@@ -424,8 +428,8 @@ async function getDealDocuments(dealOpportunityId: string) {
     .where(
       and(
         eq(documents.entityType, "DEAL_OPPORTUNITY"),
-        eq(documents.entityId, dealOpportunityId)
-      )
+        eq(documents.entityId, dealOpportunityId),
+      ),
     );
 }
 
@@ -647,7 +651,7 @@ export async function getAllScreenersWithContent() {
  * Get all deal reasonings with screener name (by dealOpportunityId)
  */
 export async function getAllDealReasoningsWithScreenerNameByOpportunityId(
-  dealOpportunityId: string
+  dealOpportunityId: string,
 ) {
   try {
     const results = await db
@@ -676,7 +680,7 @@ export async function getAllDealReasoningsWithScreenerNameByOpportunityId(
   } catch (error) {
     console.error(
       "Error fetching all deal reasonings with screener name",
-      error
+      error,
     );
     return null;
   }
@@ -728,7 +732,6 @@ export async function getCompleteAiReasoningById(reasoningId: string) {
     return null;
   }
 }
-
 
 export async function getUsersForAdminTable(): Promise<AdminUser[]> {
   try {
@@ -813,7 +816,11 @@ export const GetAllLeads = async ({
 interface GetDealOpportunitiesResult {
   data: Array<{
     opp: typeof dealOpportunities.$inferSelect;
-    company: { name: string; industry: string | null; location: string | null } | null;
+    company: {
+      name: string;
+      industry: string | null;
+      location: string | null;
+    } | null;
   }>;
   totalCount: number;
   totalPages: number;
@@ -917,7 +924,10 @@ export const GetAllCompanies = async ({
           themeName: themes.name,
         })
         .from(companies)
-        .leftJoin(themes, eq(companies.themeId, themes.id))
+        .leftJoin(
+          themes,
+          and(eq(companies.themeId, themes.id), isNull(themes.deletedAt)),
+        )
         .where(isNull(companies.deletedAt))
         .orderBy(desc(companies.createdAt), desc(companies.id))
         .limit(limit)
@@ -1050,7 +1060,10 @@ export const GetCompanyContacts = async (companyId: string) => {
  */
 export const GetThemeById = async (id: string) => {
   try {
-    const [theme] = await db.select().from(themes).where(eq(themes.id, id));
+    const [theme] = await db
+      .select()
+      .from(themes)
+      .where(and(eq(themes.id, id), isNull(themes.deletedAt)));
     return theme ?? null;
   } catch (error) {
     console.error("Error fetching theme by id", error);
@@ -1064,25 +1077,84 @@ interface GetThemesResult {
   totalPages: number;
 }
 
+type ThemeStatus = "ACTIVE" | "PAUSED" | "RETIRED";
+
 /**
- * Get all themes with pagination
+ * Get all themes with pagination and filters
  */
 export const GetAllThemes = async ({
   offset = 0,
   limit = 50,
+  search = "",
+  sector = "",
+  status,
+  minCapitalPriorityScore,
+  maxCapitalPriorityScore,
+  minConfidenceScore,
+  maxConfidenceScore,
 }: {
   offset?: number;
   limit?: number;
+  search?: string;
+  sector?: string;
+  status?: ThemeStatus;
+  minCapitalPriorityScore?: number;
+  maxCapitalPriorityScore?: number;
+  minConfidenceScore?: number;
+  maxConfidenceScore?: number;
 }): Promise<GetThemesResult> => {
   try {
+    const conditions = [isNull(themes.deletedAt)];
+
+    if (search.trim()) {
+      const term = `%${search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(themes.name, term),
+          ilike(themes.description, term),
+          ilike(themes.sector, term),
+        )!,
+      );
+    }
+    if (sector.trim()) {
+      conditions.push(ilike(themes.sector, `%${sector.trim()}%`));
+    }
+    if (status) {
+      conditions.push(eq(themes.status, status));
+    }
+    if (
+      minCapitalPriorityScore != null &&
+      Number.isFinite(minCapitalPriorityScore)
+    ) {
+      conditions.push(gte(themes.capitalPriorityScore, minCapitalPriorityScore));
+    }
+    if (
+      maxCapitalPriorityScore != null &&
+      Number.isFinite(maxCapitalPriorityScore)
+    ) {
+      conditions.push(lte(themes.capitalPriorityScore, maxCapitalPriorityScore));
+    }
+    if (minConfidenceScore != null && Number.isFinite(minConfidenceScore)) {
+      conditions.push(gte(themes.confidenceScore, minConfidenceScore));
+    }
+    if (maxConfidenceScore != null && Number.isFinite(maxConfidenceScore)) {
+      conditions.push(lte(themes.confidenceScore, maxConfidenceScore));
+    }
+
+    const whereClause = and(...conditions);
+
     const [data, countResult] = await Promise.all([
       db
         .select()
         .from(themes)
+        .where(whereClause)
         .orderBy(desc(themes.createdAt))
         .limit(limit)
         .offset(offset),
-      db.select({ count: count() }).from(themes),
+      db
+        .select({ count: count() })
+        .from(themes)
+        .where(whereClause),
     ]);
 
     const totalCount = countResult[0]?.count ?? 0;
@@ -1100,35 +1172,50 @@ export const GetAllThemes = async ({
  */
 export const GetThemeWithAnalytics = async (id: string) => {
   try {
-    const [theme] = await db.select().from(themes).where(eq(themes.id, id));
+    const [theme] = await db
+      .select()
+      .from(themes)
+      .where(and(eq(themes.id, id), isNull(themes.deletedAt)));
     if (!theme) {
       return null;
     }
 
-    const [latestIntelligence, latestPerformance, companyCountResult, dealOppCountResult] =
-      await Promise.all([
-        db
-          .select()
-          .from(industryIntelligence)
-          .where(eq(industryIntelligence.themeId, id))
-          .orderBy(desc(industryIntelligence.createdAt))
-          .limit(1),
-        db
-          .select()
-          .from(themePerformance)
-          .where(eq(themePerformance.themeId, id))
-          .orderBy(desc(themePerformance.createdAt))
-          .limit(1),
-        db
-          .select({ count: count() })
-          .from(companies)
-          .where(and(eq(companies.themeId, id), isNull(companies.deletedAt))),
-        db
-          .select({ count: count() })
-          .from(dealOpportunities)
-          .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-          .where(and(eq(companies.themeId, id), isNull(companies.deletedAt))),
-      ]);
+    const [
+      latestIntelligence,
+      latestPerformance,
+      companyCountResult,
+      dealOppCountResult,
+    ] = await Promise.all([
+      db
+        .select()
+        .from(industryIntelligence)
+        .where(
+          and(
+            eq(industryIntelligence.themeId, id),
+            eq(industryIntelligence.isActive, true),
+          ),
+        )
+        .orderBy(desc(industryIntelligence.createdAt))
+        .limit(1),
+      db
+        .select()
+        .from(themePerformance)
+        .where(eq(themePerformance.themeId, id))
+        .orderBy(
+          desc(themePerformance.observedAt),
+          desc(themePerformance.createdAt),
+        )
+        .limit(1),
+      db
+        .select({ count: count() })
+        .from(companies)
+        .where(and(eq(companies.themeId, id), isNull(companies.deletedAt))),
+      db
+        .select({ count: count() })
+        .from(dealOpportunities)
+        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+        .where(and(eq(companies.themeId, id), isNull(companies.deletedAt))),
+    ]);
 
     const companyCount = companyCountResult[0]?.count ?? 0;
     const dealOpportunityCount = dealOppCountResult[0]?.count ?? 0;
@@ -1176,7 +1263,9 @@ export const GetCompaniesByThemeId = async ({
       db
         .select({ count: count() })
         .from(companies)
-        .where(and(eq(companies.themeId, themeId), isNull(companies.deletedAt))),
+        .where(
+          and(eq(companies.themeId, themeId), isNull(companies.deletedAt)),
+        ),
     ]);
 
     const totalCount = countResult[0]?.count ?? 0;
@@ -1201,81 +1290,189 @@ export const GetDealOpportunitiesByThemeId = async (themeId: string) => {
       })
       .from(dealOpportunities)
       .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-      .where(and(eq(companies.themeId, themeId), isNull(companies.deletedAt)))
+      .leftJoin(
+        themes,
+        and(eq(companies.themeId, themes.id), isNull(themes.deletedAt)),
+      )
+      .where(
+        and(
+          eq(companies.themeId, themeId),
+          isNull(companies.deletedAt),
+          isNull(themes.deletedAt),
+        ),
+      )
       .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id));
 
     return rows;
   } catch (error) {
-    console.error(
-      "Failed query: select deal opportunities by themeId",
-      error,
-    );
+    console.error("Failed query: select deal opportunities by themeId", error);
     throw error;
   }
 };
 
 export interface ScreenedDealOpportunity {
   opportunity: typeof dealOpportunities.$inferSelect;
-  company: { name: string; industry: string | null; location: string | null } | null;
+  company: {
+    name: string;
+    industry: string | null;
+    location: string | null;
+  } | null;
   screenings: (typeof aiScreenings.$inferSelect)[];
 }
 
 /**
  * Get all deal opportunities that have AI screenings attached
  */
-export const GetDealOpportunitiesWithScreenings =
-  async (): Promise<ScreenedDealOpportunity[]> => {
-    try {
-      const rows = await db
-        .select({
-          opp: dealOpportunities,
-          companyName: companies.name,
-          companyIndustry: companies.industry,
-          companyLocation: companies.location,
-          screening: aiScreenings,
-        })
-        .from(dealOpportunities)
-        .innerJoin(
-          aiScreenings,
-          eq(aiScreenings.dealOpportunityId, dealOpportunities.id),
-        )
-        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-        .where(isNull(companies.deletedAt))
-        .orderBy(
-          desc(dealOpportunities.createdAt),
-          desc(dealOpportunities.id),
-          desc(aiScreenings.createdAt),
-        );
+export const GetDealOpportunitiesWithScreenings = async (): Promise<
+  ScreenedDealOpportunity[]
+> => {
+  try {
+    const rows = await db
+      .select({
+        opp: dealOpportunities,
+        companyName: companies.name,
+        companyIndustry: companies.industry,
+        companyLocation: companies.location,
+        screening: aiScreenings,
+      })
+      .from(dealOpportunities)
+      .innerJoin(
+        aiScreenings,
+        eq(aiScreenings.dealOpportunityId, dealOpportunities.id),
+      )
+      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+      .where(isNull(companies.deletedAt))
+      .orderBy(
+        desc(dealOpportunities.createdAt),
+        desc(dealOpportunities.id),
+        desc(aiScreenings.createdAt),
+      );
 
-      const byOpp = new Map<string, ScreenedDealOpportunity>();
+    const byOpp = new Map<string, ScreenedDealOpportunity>();
 
-      for (const row of rows) {
-        const existing = byOpp.get(row.opp.id);
-        const company = row.companyName
-          ? {
+    for (const row of rows) {
+      const existing = byOpp.get(row.opp.id);
+      const company = row.companyName
+        ? {
             name: row.companyName,
             industry: row.companyIndustry,
             location: row.companyLocation,
           }
-          : null;
+        : null;
 
-        if (!existing) {
-          byOpp.set(row.opp.id, {
-            opportunity: row.opp,
-            company,
-            screenings: row.screening ? [row.screening] : [],
-          });
-        } else if (row.screening) {
-          existing.screenings.push(row.screening);
-        }
+      if (!existing) {
+        byOpp.set(row.opp.id, {
+          opportunity: row.opp,
+          company,
+          screenings: row.screening ? [row.screening] : [],
+        });
+      } else if (row.screening) {
+        existing.screenings.push(row.screening);
       }
-
-      return Array.from(byOpp.values());
-    } catch (error) {
-      console.error(
-        "Failed query: select deal opportunities with screenings",
-        error,
-      );
-      throw error;
     }
-  };
+
+    return Array.from(byOpp.values());
+  } catch (error) {
+    console.error(
+      "Failed query: select deal opportunities with screenings",
+      error,
+    );
+    throw error;
+  }
+};
+
+export const GetThemeWorkspaceById = async (id: string) => {
+  try {
+    const [theme] = await db
+      .select()
+      .from(themes)
+      .where(and(eq(themes.id, id), isNull(themes.deletedAt)));
+
+    if (!theme) {
+      return null;
+    }
+
+    const [
+      thesisHistory,
+      intelligenceHistory,
+      performanceHistory,
+      companyCountResult,
+      dealOppCountResult,
+      coverageRows,
+    ] = await Promise.all([
+      db
+        .select()
+        .from(theses)
+        .where(eq(theses.themeId, id))
+        .orderBy(desc(theses.createdAt)),
+      db
+        .select()
+        .from(industryIntelligence)
+        .where(eq(industryIntelligence.themeId, id))
+        .orderBy(desc(industryIntelligence.createdAt)),
+      db
+        .select()
+        .from(themePerformance)
+        .where(eq(themePerformance.themeId, id))
+        .orderBy(
+          desc(themePerformance.observedAt),
+          desc(themePerformance.createdAt),
+        ),
+      db
+        .select({ count: count() })
+        .from(companies)
+        .where(and(eq(companies.themeId, id), isNull(companies.deletedAt))),
+      db
+        .select({ count: count() })
+        .from(dealOpportunities)
+        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+        .where(and(eq(companies.themeId, id), isNull(companies.deletedAt))),
+      db
+        .select({
+          id: themeCompanyCoverage.id,
+          themeId: themeCompanyCoverage.themeId,
+          companyId: themeCompanyCoverage.companyId,
+          coverageStatus: themeCompanyCoverage.coverageStatus,
+          lastOutreachAt: themeCompanyCoverage.lastOutreachAt,
+          notes: themeCompanyCoverage.notes,
+          createdAt: themeCompanyCoverage.createdAt,
+          updatedAt: themeCompanyCoverage.updatedAt,
+          companyName: companies.name,
+          companyIndustry: companies.industry,
+          companyLocation: companies.location,
+        })
+        .from(themeCompanyCoverage)
+        .innerJoin(companies, eq(themeCompanyCoverage.companyId, companies.id))
+        .where(
+          and(
+            eq(themeCompanyCoverage.themeId, id),
+            isNull(companies.deletedAt),
+          ),
+        )
+        .orderBy(desc(themeCompanyCoverage.updatedAt)),
+    ]);
+
+    const activeThesis = thesisHistory.find((item) => item.isActive) ?? null;
+    const activeIndustryIntelligence =
+      intelligenceHistory.find((item) => item.isActive) ?? null;
+    const latestPerformance = performanceHistory[0] ?? null;
+    const companyCount = companyCountResult[0]?.count ?? 0;
+    const dealOpportunityCount = dealOppCountResult[0]?.count ?? 0;
+
+    return {
+      theme,
+      activeThesis,
+      thesisHistory,
+      activeIndustryIntelligence,
+      industryIntelligenceHistory: intelligenceHistory,
+      latestPerformance,
+      performanceHistory,
+      companyCount,
+      dealOpportunityCount,
+      coverage: coverageRows,
+    };
+  } catch (error) {
+    console.error("Error fetching theme workspace by id", error);
+    throw error;
+  }
+};

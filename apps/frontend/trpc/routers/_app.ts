@@ -12,6 +12,7 @@ import { contactsRouter } from "./contacts";
 import { analyticsRouter } from "./analytics";
 import { filesRouter } from "./files";
 import { companyNotesRouter } from "./companyNotes";
+import { outreachRouter } from "./outreach";
 
 export const appRouter = createTRPCRouter({
   companies: companiesRouter,
@@ -27,6 +28,7 @@ export const appRouter = createTRPCRouter({
   analytics: analyticsRouter,
   files: filesRouter,
   companyNotes: companyNotesRouter,
+  outreach: outreachRouter,
 });
 
 export type AppRouter = typeof appRouter;
