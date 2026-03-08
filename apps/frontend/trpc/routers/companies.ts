@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { companies, eq } from "@repo/db";
+import db, { companies, eq, and, isNull } from "@repo/db";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { asc } from "drizzle-orm";
 
@@ -34,6 +34,7 @@ export const companiesRouter = createTRPCRouter({
     return db
       .select({ id: companies.id, name: companies.name })
       .from(companies)
+      .where(isNull(companies.deletedAt))
       .orderBy(asc(companies.name));
   }),
 
@@ -85,7 +86,7 @@ export const companiesRouter = createTRPCRouter({
           attractivenessScore: data.attractivenessScore ?? null,
           coverageStatus: data.coverageStatus ?? "UNCONTACTED",
         })
-        .where(eq(companies.id, id));
+        .where(and(eq(companies.id, id), isNull(companies.deletedAt)));
 
       revalidatePath("/companies");
       revalidatePath(`/companies/${id}`);
@@ -98,7 +99,10 @@ export const companiesRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      await db.delete(companies).where(eq(companies.id, input.id));
+      await db
+        .update(companies)
+        .set({ deletedAt: new Date() })
+        .where(and(eq(companies.id, input.id), isNull(companies.deletedAt)));
       revalidatePath("/companies");
       revalidateTag("companies", "max");
       revalidateTag(`company-${input.id}`, "max");

@@ -2,34 +2,32 @@
 
 import type { Company } from "@repo/db";
 import type { CompanyNote } from "@repo/db/schema";
+import { useRouter } from "next/navigation";
 import { useTRPC } from "@/trpc/client";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AddCompanyNoteDialog } from "@/components/Dialogs/add-company-note-dialog";
 
 interface CompanyNotesProps {
   company: Company;
+  notes: CompanyNote[];
+  /** When provided, revalidates deal cache on mutation */
+  dealUid?: string;
 }
 
-export function CompanyNotes({ company }: CompanyNotesProps) {
+export function CompanyNotes({ company, notes, dealUid }: CompanyNotesProps) {
+  const router = useRouter();
   const trpc = useTRPC();
-
-  const notesQuery = useQuery(
-    trpc.companyNotes.listByCompany.queryOptions({
-      companyId: company.id,
-    }),
-  );
 
   const { mutate: deleteNote, isPending: isDeleting } = useMutation(
     trpc.companyNotes.delete.mutationOptions({
       onSuccess: () => {
         toast.success("Note deleted");
-        void notesQuery.refetch();
+        router.refresh();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to delete note");
@@ -38,20 +36,21 @@ export function CompanyNotes({ company }: CompanyNotesProps) {
   );
 
   const handleDeleted = (note: CompanyNote) => {
-    deleteNote({ id: note.id });
+    deleteNote({ id: note.id, dealUid });
   };
 
   const handleSaved = () => {
-    void notesQuery.refetch();
+    router.refresh();
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-medium text-foreground">Notes</h2>
-          <p className="text-xs text-muted-foreground">
-            Capture coverage context, conversations, and ongoing insights for this company.
+          <h2 className="text-foreground text-sm font-medium">Notes</h2>
+          <p className="text-muted-foreground text-xs">
+            Capture coverage context, conversations, and ongoing insights for
+            this company.
           </p>
         </div>
         <AddCompanyNoteDialog
@@ -59,34 +58,30 @@ export function CompanyNotes({ company }: CompanyNotesProps) {
           onSaved={handleSaved}
           triggerLabel="Add note"
           variant="outline"
+          dealUid={dealUid}
         />
       </div>
 
-      {notesQuery.isLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-      ) : !notesQuery.data || notesQuery.data.length === 0 ? (
-        <Card className="border-dashed p-4 text-center text-sm text-muted-foreground">
+      {notes.length === 0 ? (
+        <Card className="text-muted-foreground border-dashed p-4 text-center text-sm">
           <p>No notes yet.</p>
           <p className="mt-1">
-            Use <span className="font-medium">Add note</span> to create your first note for this
-            company.
+            Use <span className="font-medium">Add note</span> to create your
+            first note for this company.
           </p>
         </Card>
       ) : (
         <div className="space-y-3">
-          {notesQuery.data.map((note) => (
+          {notes.map((note) => (
             <Card key={note.id} className="space-y-2 p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   {note.title && (
-                    <h3 className="text-sm font-semibold text-foreground">
+                    <h3 className="text-foreground text-sm font-semibold">
                       {note.title}
                     </h3>
                   )}
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-muted-foreground text-[11px]">
                     {note.createdAt
                       ? `Created ${new Date(note.createdAt).toLocaleString()}`
                       : "Created"}
@@ -100,6 +95,7 @@ export function CompanyNotes({ company }: CompanyNotesProps) {
                     triggerLabel="Edit"
                     variant="ghost"
                     size="sm"
+                    dealUid={dealUid}
                   />
                   <Button
                     variant="ghost"
@@ -124,5 +120,3 @@ export function CompanyNotes({ company }: CompanyNotesProps) {
     </div>
   );
 }
-
-

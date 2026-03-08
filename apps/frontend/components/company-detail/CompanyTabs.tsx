@@ -1,5 +1,10 @@
 import type { Company } from "@repo/db";
-import type { DealOpportunity, Document, Contact } from "@repo/db/schema";
+import type {
+  DealOpportunity,
+  Document,
+  Contact,
+  CompanyNote,
+} from "@repo/db/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyOverview } from "./CompanyOverview";
 import { CompanyFinancials } from "./CompanyFinancials";
@@ -7,12 +12,15 @@ import { CompanyDealsList } from "./CompanyDealsList";
 import { CompanyContacts } from "./CompanyContacts";
 import { CompanyDocuments } from "./CompanyDocuments";
 import { CompanyNotes } from "./CompanyNotes";
+import { CompanyOutreach, type OutreachRow } from "./CompanyOutreach";
 
 interface CompanyTabsProps {
   company: Company & { themeName?: string | null };
   dealOpportunities: DealOpportunity[];
   documents: Document[];
   contacts: Contact[];
+  outreach: OutreachRow[];
+  notes: CompanyNote[];
 }
 
 export function CompanyTabs({
@@ -20,6 +28,8 @@ export function CompanyTabs({
   dealOpportunities,
   documents,
   contacts,
+  outreach,
+  notes,
 }: CompanyTabsProps) {
   return (
     <Tabs defaultValue="overview" className="w-full space-y-6">
@@ -28,6 +38,7 @@ export function CompanyTabs({
         <TabsTrigger value="financials">Financials</TabsTrigger>
         <TabsTrigger value="deals">Deal opportunities</TabsTrigger>
         <TabsTrigger value="contacts">Contacts</TabsTrigger>
+        <TabsTrigger value="outreach">Outreach</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="notes">Notes</TabsTrigger>
       </TabsList>
@@ -52,12 +63,16 @@ export function CompanyTabs({
         <CompanyContacts company={company} initialContacts={contacts} />
       </TabsContent>
 
+      <TabsContent value="outreach">
+        <CompanyOutreach outreach={outreach} />
+      </TabsContent>
+
       <TabsContent value="documents">
         <CompanyDocuments company={company} documents={documents} />
       </TabsContent>
 
       <TabsContent value="notes">
-        <CompanyNotes company={company} />
+        <CompanyNotes company={company} notes={notes} />
       </TabsContent>
     </Tabs>
   );

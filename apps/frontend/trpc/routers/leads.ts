@@ -1,29 +1,18 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { leads, companies, dealOpportunities, eq } from "@repo/db";
+import db, {
+  leads,
+  companies,
+  dealOpportunities,
+  eq,
+  and,
+  isNull,
+  desc,
+} from "@repo/db";
+import { convertLeadToCompanySchema, leadFormSchema } from "@/lib/schemas";
 import { revalidatePath, revalidateTag } from "next/cache";
 
-const leadSchema = z.object({
-  sourceWebsite: z.string().min(1, "Source website is required"),
-  externalListingId: z.string().optional(),
-  rawTitle: z.string().min(1, "Title is required"),
-  rawDescription: z.string().optional(),
-  rawIndustry: z.string().optional(),
-  revenue: z.coerce.number().optional(),
-  ebitda: z.coerce.number().optional(),
-  askingPrice: z.coerce.number().optional(),
-  brokerage: z.string().optional(),
-  brokerFirstName: z.string().optional(),
-  brokerLastName: z.string().optional(),
-  brokerEmail: z
-    .union([z.string().email("Invalid email"), z.literal("")])
-    .optional(),
-  brokerPhone: z.string().optional(),
-  normalizedCompanyName: z.string().optional(),
-  companyLocation: z.string().optional(),
-});
-
-const createLeadSchema = leadSchema;
+const createLeadSchema = leadFormSchema;
 
 export const leadsRouter = createTRPCRouter({
   /**
@@ -62,7 +51,7 @@ export const leadsRouter = createTRPCRouter({
    * Update an existing lead
    */
   update: protectedProcedure
-    .input(leadSchema.extend({ id: z.string() }))
+    .input(leadFormSchema.extend({ id: z.string() }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
       await db
@@ -84,7 +73,7 @@ export const leadsRouter = createTRPCRouter({
           normalizedCompanyName: data.normalizedCompanyName || null,
           companyLocation: data.companyLocation || null,
         })
-        .where(eq(leads.id, id));
+        .where(and(eq(leads.id, id), isNull(leads.deletedAt)));
 
       revalidatePath("/leads");
       revalidatePath(`/leads/${id}`);
@@ -95,12 +84,15 @@ export const leadsRouter = createTRPCRouter({
     }),
 
   /**
-   * Hard delete a lead
+   * Soft delete a lead
    */
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      await db.delete(leads).where(eq(leads.id, input.id));
+      await db
+        .update(leads)
+        .set({ deletedAt: new Date() })
+        .where(and(eq(leads.id, input.id), isNull(leads.deletedAt)));
       revalidatePath("/leads");
       revalidateTag("leads", "max");
       revalidateTag(`lead-${input.id}`, "max");
@@ -119,7 +111,7 @@ export const leadsRouter = createTRPCRouter({
           status: "REJECTED",
           processedAt: new Date(),
         })
-        .where(eq(leads.id, input.id));
+        .where(and(eq(leads.id, input.id), isNull(leads.deletedAt)));
 
       revalidatePath("/leads");
       revalidatePath(`/leads/${input.id}`);
@@ -133,83 +125,115 @@ export const leadsRouter = createTRPCRouter({
    * Convert a lead into a company + deal opportunity
    */
   convertToCompany: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(convertLeadToCompanySchema)
     .mutation(async ({ input }) => {
       const leadId = input.id;
+      const result = await db.transaction(async (tx) => {
+        const [lead] = await tx
+          .select()
+          .from(leads)
+          .where(and(eq(leads.id, leadId), isNull(leads.deletedAt)))
+          .limit(1);
 
-      const lead = await db.query.leads.findFirst({
-        where(fields, operators) {
-          return operators.eq(fields.id, leadId);
-        },
-      });
+        if (!lead) {
+          throw new Error("Lead not found");
+        }
 
-      if (!lead) {
-        throw new Error("Lead not found");
-      }
+        const [insertedCompany] = await tx
+          .insert(companies)
+          .values({
+            name: input.name,
+            normalizedName: input.normalizedName,
+            industry: input.industry || lead.rawIndustry || null,
+            location: input.location || lead.companyLocation || null,
+            revenueEstimate: input.revenueEstimate ?? lead.revenue ?? null,
+            ebitdaEstimate: input.ebitdaEstimate ?? lead.ebitda ?? null,
+            firstSeenFromLeadId: lead.id,
+            coverageStatus: "UNCONTACTED",
+          })
+          .onConflictDoNothing({ target: companies.firstSeenFromLeadId })
+          .returning();
 
-      const normalizedNameSource =
-        lead.normalizedCompanyName?.trim() || lead.rawTitle?.trim();
+        const [company] = insertedCompany
+          ? [insertedCompany]
+          : await tx
+            .select()
+            .from(companies)
+            .where(eq(companies.firstSeenFromLeadId, lead.id))
+            .orderBy(desc(companies.createdAt), desc(companies.id))
+            .limit(1);
 
-      if (!normalizedNameSource) {
-        throw new Error("Lead is missing a title or normalized company name");
-      }
+        if (!company) {
+          throw new Error("Failed to resolve company from lead conversion");
+        }
 
-      const companyName = lead.normalizedCompanyName || lead.rawTitle;
+        if (company.deletedAt) {
+          const [restoredCompany] = await tx
+            .update(companies)
+            .set({ deletedAt: null })
+            .where(eq(companies.id, company.id))
+            .returning();
+          if (!restoredCompany) {
+            throw new Error("Failed to restore previously soft-deleted company");
+          }
+        }
 
-      const [createdCompany] = await db
-        .insert(companies)
-        .values({
-          name: companyName,
-          normalizedName: normalizedNameSource,
-          industry: lead.rawIndustry || null,
-          location: lead.companyLocation || null,
-          revenueEstimate: lead.revenue ?? null,
-          ebitdaEstimate: lead.ebitda ?? null,
-          firstSeenFromLeadId: lead.id,
-          coverageStatus: "UNCONTACTED",
-        })
-        .returning();
+        const [existingOpp] = await tx
+          .select({ id: dealOpportunities.id })
+          .from(dealOpportunities)
+          .where(
+            and(
+              eq(dealOpportunities.companyId, company.id),
+              eq(dealOpportunities.leadId, lead.id),
+            ),
+          )
+          .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id))
+          .limit(1);
 
-      if (!createdCompany) {
-        throw new Error("Failed to create company from lead");
-      }
+        const [createdOpp] = existingOpp
+          ? [null]
+          : await tx
+            .insert(dealOpportunities)
+            .values({
+              companyId: company.id,
+              leadId: lead.id,
+              sourceWebsite: lead.sourceWebsite,
+              brokerage: lead.brokerage,
+              revenue: lead.revenue ?? null,
+              ebitda: lead.ebitda ?? null,
+              askingPrice: lead.askingPrice ?? null,
+              dealTeaser: lead.rawTitle,
+              description: lead.rawDescription,
+              dealType: "MANUAL",
+            })
+            .returning();
 
-      const [createdOpp] = await db
-        .insert(dealOpportunities)
-        .values({
-          companyId: createdCompany.id,
+        if (lead.status !== "PROCESSED" || !lead.processedAt) {
+          await tx
+            .update(leads)
+            .set({
+              status: "PROCESSED",
+              processedAt: lead.processedAt ?? new Date(),
+            })
+            .where(eq(leads.id, lead.id));
+        }
+
+        return {
           leadId: lead.id,
-          sourceWebsite: lead.sourceWebsite,
-          brokerage: lead.brokerage,
-          revenue: lead.revenue ?? null,
-          ebitda: lead.ebitda ?? null,
-          askingPrice: lead.askingPrice ?? null,
-          dealTeaser: lead.rawTitle,
-          description: lead.rawDescription,
-          dealType: "MANUAL",
-        })
-        .returning();
-
-      await db
-        .update(leads)
-        .set({
-          status: "PROCESSED",
-          processedAt: new Date(),
-        })
-        .where(eq(leads.id, lead.id));
+          companyId: company.id,
+          dealOpportunityId: existingOpp?.id ?? createdOpp?.id ?? null,
+          alreadyConverted: !insertedCompany,
+        };
+      });
 
       revalidatePath("/leads");
       revalidatePath("/companies");
-      revalidatePath(`/companies/${createdCompany.id}`);
+      revalidatePath(`/companies/${result.companyId}`);
       revalidateTag("leads", "max");
-      revalidateTag(`lead-${lead.id}`, "max");
+      revalidateTag(`lead-${result.leadId}`, "max");
       revalidateTag("companies", "max");
-      revalidateTag(`company-${createdCompany.id}`, "max");
+      revalidateTag(`company-${result.companyId}`, "max");
 
-      return {
-        leadId: lead.id,
-        companyId: createdCompany.id,
-        dealOpportunityId: createdOpp?.id ?? null,
-      };
+      return result;
     }),
 });

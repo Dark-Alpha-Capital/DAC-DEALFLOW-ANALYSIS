@@ -1,84 +1,119 @@
 import Link from "next/link";
 
+const sections = [
+  {
+    href: "/docs/getting-started",
+    title: "Getting started",
+    body: "How new team members should begin using the platform in their first week.",
+  },
+  {
+    href: "/docs/leads",
+    title: "Leads",
+    body: "How incoming opportunities are captured, reviewed, and triaged.",
+  },
+  {
+    href: "/docs/deals",
+    title: "Deals pipeline",
+    body: "How opportunities move from listed to screened, discussed, and closed or declined.",
+  },
+  {
+    href: "/docs/companies",
+    title: "Companies",
+    body: "The canonical company record and how deal history, contacts, and notes are organized.",
+  },
+  {
+    href: "/docs/themes",
+    title: "Themes",
+    body: "Investment theses, sector focus, and strategy-level performance tracking.",
+  },
+  {
+    href: "/docs/documents",
+    title: "Documents",
+    body: "How files are attached to leads, companies, and deals for diligence and collaboration.",
+  },
+  {
+    href: "/docs/screenings",
+    title: "Screenings",
+    body: "AI-led evaluation outputs, scores, sentiment, and supporting rationale.",
+  },
+  {
+    href: "/docs/analytics",
+    title: "Analytics",
+    body: "Portfolio-level views across themes, pipeline progression, sources, and screening results.",
+  },
+  {
+    href: "/docs/jobs",
+    title: "Jobs",
+    body: "Operational tracking for background tasks such as screening and file processing.",
+  },
+  {
+    href: "/docs/admin",
+    title: "Admin access",
+    body: "Admin-only controls and who should use them.",
+  },
+  {
+    href: "/docs/faq",
+    title: "FAQ",
+    body: "Common usage questions and operating conventions for the team.",
+  },
+];
+
 export default function DocsOverviewPage() {
   return (
     <div className="space-y-8">
-      <header className="space-y-2">
-        <p className="text-sm font-medium uppercase text-primary">
-          Dark Alpha Capital
-        </p>
-        <h2 className="text-3xl font-semibold tracking-tight">
-          Product documentation
-        </h2>
+      <header className="space-y-3">
+        <p className="text-sm font-medium uppercase text-primary">Dark Alpha Capital</p>
+        <h2 className="text-3xl font-semibold tracking-tight">Platform documentation</h2>
         <p className="max-w-2xl text-muted-foreground">
-          High-level overview of how the Dark Alpha Capital deal sourcing
-          platform is structured. These docs will eventually cover concepts,
-          workflows, and key screens in detail.
+          This platform supports end-to-end deal sourcing and early-stage evaluation.
+          It helps teams capture inbound opportunities, normalize them into a clean
+          pipeline, evaluate fit against investment themes, and preserve decision context.
         </p>
       </header>
 
       <section className="space-y-3">
-        <h3 className="text-xl font-semibold tracking-tight">What to expect</h3>
-        <p className="text-muted-foreground">
-          For now this page contains placeholder content. Over time it will be
-          expanded to explain how we:
-        </p>
+        <h3 className="text-xl font-semibold tracking-tight">What this application is built to do</h3>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-          <li>Organize companies, raw deals, and deals.</li>
-          <li>Ingest and manage documents for each company.</li>
-          <li>Capture notes, tags, screenings, and analytics.</li>
-          <li>Use AI-powered tools to streamline sourcing and review.</li>
+          <li>Create a single source of truth for leads, companies, and deal opportunities.</li>
+          <li>Standardize screening and pipeline progression across the investment team.</li>
+          <li>Centralize documents, notes, contacts, and outreach history for each target.</li>
+          <li>Expose portfolio-level intelligence through analytics and theme performance.</li>
+          <li>Reduce manual overhead with AI-assisted screening and background processing.</li>
         </ul>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-xl font-semibold tracking-tight">Key sections</h3>
+        <h3 className="text-xl font-semibold tracking-tight">How the core objects connect</h3>
+        <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+          <p>
+            <span className="font-semibold text-foreground">Lead</span> is the inbound listing.
+            A lead can be converted into a <span className="font-semibold text-foreground">Company</span>.
+            A company can have one or more <span className="font-semibold text-foreground">Deal Opportunities</span>
+            across time. Documents, contacts, outreach, screenings, and notes attach to these records
+            so decisions are transparent and auditable.
+          </p>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-xl font-semibold tracking-tight">Documentation map</h3>
         <p className="text-muted-foreground">
-          Use the sidebar or the links below to jump into the main sections:
+          Use these sections as an operating guide. Each page explains business intent,
+          workflow, and practical decision points.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Link
-            href="/docs/getting-started"
-            className="rounded-lg border bg-card p-4 text-sm hover:bg-accent hover:text-accent-foreground"
-          >
-            <h4 className="font-semibold">Getting started</h4>
-            <p className="mt-1 text-muted-foreground">
-              A future guide to logging in, navigating the app, and the primary
-              workflows.
-            </p>
-          </Link>
-          <Link
-            href="/docs/companies"
-            className="rounded-lg border bg-card p-4 text-sm hover:bg-accent hover:text-accent-foreground"
-          >
-            <h4 className="font-semibold">Companies</h4>
-            <p className="mt-1 text-muted-foreground">
-              Placeholder for a deep dive into company profiles, tabs, and
-              related data.
-            </p>
-          </Link>
-          <Link
-            href="/docs/documents"
-            className="rounded-lg border bg-card p-4 text-sm hover:bg-accent hover:text-accent-foreground"
-          >
-            <h4 className="font-semibold">Documents</h4>
-            <p className="mt-1 text-muted-foreground">
-              Will eventually describe how documents are uploaded, organized,
-              and reviewed.
-            </p>
-          </Link>
-          <Link
-            href="/docs/faq"
-            className="rounded-lg border bg-card p-4 text-sm hover:bg-accent hover:text-accent-foreground"
-          >
-            <h4 className="font-semibold">FAQ</h4>
-            <p className="mt-1 text-muted-foreground">
-              Space for common questions about how the platform behaves.
-            </p>
-          </Link>
+          {sections.map((section) => (
+            <Link
+              key={section.href}
+              href={section.href}
+              className="rounded-lg border bg-card p-4 text-sm hover:bg-accent hover:text-accent-foreground"
+            >
+              <h4 className="font-semibold">{section.title}</h4>
+              <p className="mt-1 text-muted-foreground">{section.body}</p>
+            </Link>
+          ))}
         </div>
       </section>
     </div>
   );
 }
-

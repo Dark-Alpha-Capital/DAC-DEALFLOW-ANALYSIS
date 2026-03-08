@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DealHeader } from "@/components/deal-detail/deal-header";
+import { DealDetailTabs } from "@/components/deal-detail/DealDetailTabs";
 import DealPageSkeleton from "@/components/skeletons/deal-page-skeleton";
+import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
+import type { AiScreening } from "@repo/db/schema";
 import { GetDealWithAllRelations } from "@repo/db/queries";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
@@ -66,7 +69,19 @@ async function CachedDealContent({ uid }: { uid: string }) {
 
   return (
     <section className="container mx-auto max-w-5xl px-4 py-8">
-      <DealHeader deal={dealData.deal} uid={uid} basePath="deals" />
+      <DealDetailTabs
+        deal={dealData.deal}
+        uid={uid}
+        company={dealData.company ?? null}
+        dealOpportunities={dealData.dealOpportunities ?? []}
+        companyContacts={dealData.companyContacts ?? []}
+        dealContacts={dealData.dealContacts ?? []}
+        outreach={dealData.outreach ?? []}
+        companyDocuments={dealData.companyDocuments ?? []}
+        dealDocuments={dealData.dealDocuments ?? []}
+        aiScreenings={(dealData.aiScreenings ?? []) as unknown as AiScreening[]}
+        companyNotes={dealData.companyNotes ?? []}
+      />
     </section>
   );
 }
@@ -87,6 +102,7 @@ async function AuthedDealContent(props: {
 
 export default function DealDetailPage(props: { params: Params }) {
   const sessionPromise = getSession();
+
   return (
     <Suspense fallback={<DealPageSkeleton />}>
       <AuthedDealContent

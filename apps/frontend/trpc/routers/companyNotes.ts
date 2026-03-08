@@ -25,6 +25,7 @@ export const companyNotesRouter = createTRPCRouter({
         companyId: z.string(),
         title: z.string().min(1).optional(),
         content: z.string().min(1, "Note content is required"),
+        dealUid: z.string().optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -41,6 +42,7 @@ export const companyNotesRouter = createTRPCRouter({
       revalidatePath(`/companies/${input.companyId}`);
       revalidateTag("companies", "max");
       revalidateTag(`company-${input.companyId}`, "max");
+      if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
 
       return note;
     }),
@@ -51,6 +53,7 @@ export const companyNotesRouter = createTRPCRouter({
         id: z.string(),
         title: z.string().optional(),
         content: z.string().min(1, "Note content is required"),
+        dealUid: z.string().optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -67,6 +70,7 @@ export const companyNotesRouter = createTRPCRouter({
         revalidatePath(`/companies/${updated.companyId}`);
         revalidateTag("companies", "max");
         revalidateTag(`company-${updated.companyId}`, "max");
+        if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
       }
 
       return updated;
@@ -76,6 +80,7 @@ export const companyNotesRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
+        dealUid: z.string().optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -88,6 +93,7 @@ export const companyNotesRouter = createTRPCRouter({
         revalidatePath(`/companies/${deleted.companyId}`);
         revalidateTag("companies", "max");
         revalidateTag(`company-${deleted.companyId}`, "max");
+        if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
       }
 
       return { success: true };

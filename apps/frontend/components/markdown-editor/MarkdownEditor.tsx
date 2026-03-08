@@ -3,6 +3,7 @@
 import "@mdxeditor/editor/style.css";
 
 import * as React from "react";
+import { useTheme } from "next-themes";
 import {
   MDXEditor,
   BlockTypeSelect,
@@ -33,6 +34,9 @@ export function MarkdownEditor({
   placeholder,
   rows,
 }: MarkdownEditorProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
   return (
     <div className={cn("flex h-full flex-col gap-2", className)}>
       <MDXEditor
@@ -40,7 +44,8 @@ export function MarkdownEditor({
         onChange={onChange}
         placeholder={placeholder}
         className={cn(
-          "rounded-md border bg-background",
+          "bg-background rounded-md border",
+          isDark && "dark-theme",
           rows ? `min-h-[${rows * 24}px]` : "min-h-[260px]",
         )}
         plugins={[

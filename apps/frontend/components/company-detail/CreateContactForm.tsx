@@ -25,11 +25,30 @@ import {
 } from "@/components/ui/field";
 import { contactFormSchema, type ContactFormValues } from "@/lib/schemas";
 
-interface CreateContactFormProps {
-  company: Company;
+type ContactEntity = "LEAD" | "COMPANY" | "DEAL_OPPORTUNITY";
+
+interface CreateContactFormPropsBase {
+  entityType: ContactEntity;
+  entityId: string;
+  triggerLabel?: string;
+  emptyLabel?: string;
 }
 
-export function CreateContactForm({ company }: CreateContactFormProps) {
+interface CreateContactFormPropsCompany {
+  company: Company;
+  entityType?: never;
+  entityId?: never;
+  triggerLabel?: string;
+  emptyLabel?: string;
+}
+
+export function CreateContactForm(
+  props: CreateContactFormPropsBase | CreateContactFormPropsCompany,
+) {
+  const entityType: ContactEntity =
+    "company" in props ? "COMPANY" : props.entityType;
+  const entityId: string = "company" in props ? props.company.id : props.entityId;
+  const triggerLabel = props.triggerLabel ?? "Add contact";
   const trpc = useTRPC();
   const [open, setOpen] = useState(false);
 
@@ -62,8 +81,8 @@ export function CreateContactForm({ company }: CreateContactFormProps) {
 
   const onSubmit = (values: ContactFormValues) => {
     createContact({
-      entityType: "COMPANY",
-      entityId: company.id,
+      entityType,
+      entityId,
       name: values.name,
       title: values.title,
       email: values.email || undefined,
@@ -77,7 +96,7 @@ export function CreateContactForm({ company }: CreateContactFormProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
-          Add contact
+          {triggerLabel}
         </Button>
       </DialogTrigger>
       <DialogContent>

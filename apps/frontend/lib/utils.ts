@@ -68,6 +68,69 @@ export function formatCurrency(value: number): string {
     compactDisplay: "short",
   }).format(value);
 }
+
+const ALLOWED_HTTP_PROTOCOLS = new Set(["http:", "https:"]);
+const STABLE_DATE_LOCALE = "en-US";
+const STABLE_DATE_TIME_ZONE = "UTC";
+
+type DateInput = Date | string | number;
+
+function toValidDate(value: DateInput | null | undefined): Date | null {
+  if (value == null) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function sanitizeHttpUrl(value?: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (!ALLOWED_HTTP_PROTOCOLS.has(parsed.protocol)) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function formatDateStable(
+  value: DateInput | null | undefined,
+  fallback: string = "—",
+): string {
+  const date = toValidDate(value);
+  if (!date) return fallback;
+
+  return new Intl.DateTimeFormat(STABLE_DATE_LOCALE, {
+    timeZone: STABLE_DATE_TIME_ZONE,
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  }).format(date);
+}
+
+export function formatDateTimeStable(
+  value: DateInput | null | undefined,
+  fallback: string = "—",
+): string {
+  const date = toValidDate(value);
+  if (!date) return fallback;
+
+  return new Intl.DateTimeFormat(STABLE_DATE_LOCALE, {
+    timeZone: STABLE_DATE_TIME_ZONE,
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 export function calculateEbitdaMargin(ebitda: number, revenue: number) {
   if (revenue === 0) return 0;
   return ebitda / revenue;

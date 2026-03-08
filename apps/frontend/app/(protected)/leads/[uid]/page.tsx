@@ -7,30 +7,18 @@ import {
   ArrowLeft,
   Building2,
   MapPin,
-  Mail,
-  Phone,
   ExternalLink,
 } from "lucide-react";
 import LeadPageSkeleton from "@/components/skeletons/lead-page-skeleton";
-import { GetLeadById } from "@repo/db/queries";
-import { formatCurrency } from "@/lib/utils";
+import {
+  GetLeadById,
+  GetDealOpportunitiesByLeadId,
+  GetCompanyByFirstSeenFromLeadId,
+} from "@repo/db/queries";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
-
-function getStatusColor(status: string): string {
-  switch (status) {
-    case "NEW":
-      return "bg-primary/10 text-primary";
-    case "PROCESSED":
-      return "bg-green-500/10 text-green-600 dark:text-green-400";
-    case "DUPLICATE":
-      return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
-    case "REJECTED":
-      return "bg-destructive/10 text-destructive";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
-}
+import { LeadDetailTabs } from "@/components/lead-detail/LeadDetailTabs";
+import { getLeadStatusClassName } from "@/lib/lead-status";
 
 type Params = Promise<{ uid: string }>;
 
@@ -88,28 +76,10 @@ async function CachedLeadContent({ uid }: { uid: string }) {
     );
   }
 
-  const {
-    rawTitle,
-    rawDescription,
-    rawIndustry,
-    sourceWebsite,
-    externalListingId,
-    revenue,
-    ebitda,
-    askingPrice,
-    brokerage,
-    brokerFirstName,
-    brokerLastName,
-    brokerEmail,
-    brokerPhone,
-    normalizedCompanyName,
-    companyLocation,
-    status,
-    createdAt,
-  } = lead;
-  const brokerName = [brokerFirstName, brokerLastName]
-    .filter(Boolean)
-    .join(" ");
+  const [dealOpportunities, convertedCompany] = await Promise.all([
+    GetDealOpportunitiesByLeadId(lead.id),
+    GetCompanyByFirstSeenFromLeadId(lead.id),
+  ]);
 
   return (
     <section className="container mx-auto max-w-5xl px-4 py-8">
@@ -126,118 +96,60 @@ async function CachedLeadContent({ uid }: { uid: string }) {
         </Button>
 
         <div className="space-y-3">
-          <Badge className={getStatusColor(status)}>{status}</Badge>
-          <h1 className="text-2xl font-semibold tracking-tight">{rawTitle}</h1>
-          {(brokerage || companyLocation || rawIndustry) && (
+          <Badge className={getLeadStatusClassName(lead.status)}>{lead.status}</Badge>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {lead.rawTitle}
+          </h1>
+          {(lead.brokerage || lead.companyLocation || lead.rawIndustry) && (
             <p className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
-              {brokerage && (
+              {lead.brokerage && (
                 <span className="flex items-center gap-1.5">
                   <Building2 className="h-4 w-4" />
-                  {brokerage}
+                  {lead.brokerage}
                 </span>
               )}
-              {companyLocation && (
+              {lead.companyLocation && (
                 <span className="flex items-center gap-1.5">
                   <MapPin className="h-4 w-4" />
-                  {companyLocation}
+                  {lead.companyLocation}
                 </span>
               )}
-              {rawIndustry && <span>{rawIndustry}</span>}
+              {lead.rawIndustry && <span>{lead.rawIndustry}</span>}
             </p>
           )}
         </div>
-
-        {rawDescription && (
-          <div className="border-border space-y-2 border-b pb-6">
-            <h2 className="text-muted-foreground text-sm font-medium">
-              Description
-            </h2>
-            <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">
-              {rawDescription}
-            </p>
-          </div>
-        )}
-
-        {(revenue != null || ebitda != null || askingPrice != null) && (
-          <div className="border-border space-y-3 border-b pb-6">
-            <h2 className="text-muted-foreground text-sm font-medium">
-              Financials
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {revenue != null && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Revenue</p>
-                  <p className="text-foreground font-medium tabular-nums">
-                    {formatCurrency(revenue)}
-                  </p>
-                </div>
-              )}
-              {ebitda != null && (
-                <div>
-                  <p className="text-muted-foreground text-xs">EBITDA</p>
-                  <p className="text-foreground font-medium tabular-nums">
-                    {formatCurrency(ebitda)}
-                  </p>
-                </div>
-              )}
-              {askingPrice != null && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Asking Price</p>
-                  <p className="text-foreground font-medium tabular-nums">
-                    {formatCurrency(askingPrice)}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {(brokerName || brokerEmail || brokerPhone) && (
-          <div className="border-border space-y-3 border-b pb-6">
-            <h2 className="text-muted-foreground text-sm font-medium">
-              Broker / Contact
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {brokerName && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Name</p>
-                  <p className="text-foreground text-sm">{brokerName}</p>
-                </div>
-              )}
-              {brokerEmail && (
-                <div className="flex items-center gap-2">
-                  <Mail className="text-muted-foreground h-4 w-4" />
-                  <a
-                    href={`mailto:${brokerEmail}`}
-                    className="text-primary hover:underline"
-                  >
-                    {brokerEmail}
-                  </a>
-                </div>
-              )}
-              {brokerPhone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="text-muted-foreground h-4 w-4" />
-                  <a
-                    href={`tel:${brokerPhone}`}
-                    className="text-primary hover:underline"
-                  >
-                    {brokerPhone}
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <Button asChild variant="outline" size="sm">
             <Link href={`/leads/${lead.id}/edit`}>Edit Lead</Link>
           </Button>
-          {sourceWebsite && (
+          {convertedCompany ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                title="Lead already converted to company"
+              >
+                Convert to company
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/companies/${convertedCompany.id}`}>
+                  View company
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <Button asChild size="sm">
+              <Link href={`/leads/${lead.id}/convert`}>
+                Convert to company
+              </Link>
+            </Button>
+          )}
+          {lead.sourceWebsite && (
             <Button asChild variant="outline" size="sm">
               <a
-                href={sourceWebsite}
+                href={lead.sourceWebsite}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="gap-2"
@@ -249,15 +161,7 @@ async function CachedLeadContent({ uid }: { uid: string }) {
           )}
         </div>
 
-        {normalizedCompanyName && (
-          <p className="text-muted-foreground text-xs">
-            Normalized: {normalizedCompanyName}
-            {externalListingId && ` • ID: ${externalListingId}`}
-          </p>
-        )}
-        <p className="text-muted-foreground text-xs">
-          Added {new Date(createdAt).toLocaleDateString()}
-        </p>
+        <LeadDetailTabs lead={lead} dealOpportunities={dealOpportunities} />
       </div>
     </section>
   );

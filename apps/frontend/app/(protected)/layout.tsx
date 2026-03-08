@@ -22,7 +22,7 @@ export default async function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
+      <body className={`antialiased ${fontSans.variable} ${fontMono.variable}`}>
         <Providers>
           <SidebarProvider>
             <AppSidebar />

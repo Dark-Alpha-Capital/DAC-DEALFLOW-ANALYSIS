@@ -1,15 +1,93 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTRPC } from "@/trpc/client";
+import { toast } from "sonner";
+import DeleteEntityDialog from "@/components/DeleteEntityDialog";
 
 export type CompanyWithTheme = import("@repo/db").Company & {
   themeName?: string | null;
 };
+
+function CompanyActionsCell({ company }: { company: CompanyWithTheme }) {
+  const trpc = useTRPC();
+  const router = useRouter();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { mutate: deleteCompany, isPending: isDeleting } = useMutation(
+    trpc.companies.delete.mutationOptions({
+      onSuccess: () => {
+        toast.success("Company deleted");
+        router.refresh();
+        setDeleteDialogOpen(false);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to delete company");
+      },
+    }),
+  );
+  return (
+    <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">Actions</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuItem asChild>
+            <Link
+              href={`/companies/${company.id}`}
+              className="flex items-center"
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              View
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link
+              href={`/companies/${company.id}/edit`}
+              className="flex items-center"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive flex items-center"
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={isDeleting}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DeleteEntityDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete company?"
+        description={`This will permanently delete "${company.name}". This action cannot be undone.`}
+        isPending={isDeleting}
+        onConfirm={() => deleteCompany({ id: company.id })}
+      />
+    </div>
+  );
+}
 
 export const coverageStatusLabels: Record<string, string> = {
   UNCONTACTED: "Uncontacted",
@@ -108,7 +186,11 @@ export const columns: ColumnDef<CompanyWithTheme>[] = [
       const status = row.original.coverageStatus;
       const label = coverageStatusLabels[status] ?? status;
       const variant =
-        status === "CLOSED" ? "default" : status === "PASSED" ? "secondary" : "outline";
+        status === "CLOSED"
+          ? "default"
+          : status === "PASSED"
+            ? "secondary"
+            : "outline";
       return (
         <Badge variant={variant} className="text-xs font-medium">
           {label}
@@ -124,16 +206,7 @@ export const columns: ColumnDef<CompanyWithTheme>[] = [
   {
     id: "actions",
     header: () => <span className="block w-full text-center">Actions</span>,
-    cell: ({ row }) => {
-      const id = row.original.id;
-      return (
-        <div className="flex justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <Button asChild size="sm" variant="outline">
-            <Link href={`/companies/${id}`}>View</Link>
-          </Button>
-        </div>
-      );
-    },
+    cell: ({ row }) => <CompanyActionsCell company={row.original} />,
     enableSorting: false,
     enableHiding: false,
     meta: { className: "text-center" },

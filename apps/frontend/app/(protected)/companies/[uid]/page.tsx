@@ -67,7 +67,8 @@ async function CachedCompanyContent({ uid }: { uid: string }) {
     );
   }
 
-  const { company, dealOpportunities, documents, contacts } = companyData;
+  const { company, dealOpportunities, documents, contacts, outreach, notes } =
+    companyData;
 
   return (
     <section className="container mx-auto max-w-5xl px-4 py-8">
@@ -88,6 +89,8 @@ async function CachedCompanyContent({ uid }: { uid: string }) {
           dealOpportunities={dealOpportunities}
           documents={documents}
           contacts={contacts}
+          outreach={outreach}
+          notes={notes ?? []}
         />
 
         <p className="text-muted-foreground text-xs">

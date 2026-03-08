@@ -5,10 +5,12 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
 import { TRPCReactProvider } from "@/trpc/client";
+import { fontSans, fontMono } from "@/app/fonts";
 
 export const metadata: Metadata = {
   title: "Documentation | Dark Alpha Capital Deal Sourcing Organization",
-  description: "Product documentation for Dark Alpha Capital Deal Sourcing Organization.",
+  description:
+    "Product documentation for Dark Alpha Capital Deal Sourcing Organization.",
 };
 
 export default function DocsLayout({
@@ -18,7 +20,7 @@ export default function DocsLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
+      <body className={`antialiased ${fontSans.variable} ${fontMono.variable}`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -26,20 +28,20 @@ export default function DocsLayout({
           disableTransitionOnChange
         >
           <TRPCReactProvider>
-            <main className="min-h-screen bg-background">
-              <div className="absolute left-4 top-4">
+            <main className="bg-background min-h-screen">
+              <div className="absolute top-4 left-4">
                 <Link
                   href="/dashboard"
-                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
                 >
                   <span aria-hidden>←</span>
                   <span>Back to app</span>
                 </Link>
               </div>
-              <div className="absolute right-4 top-4">
+              <div className="absolute top-4 right-4">
                 <ModeToggle />
               </div>
-              <div className="mx-auto flex min-h-screen max-w-6xl gap-8 px-4 pb-12 pt-20">
+              <div className="mx-auto flex min-h-screen max-w-6xl gap-8 px-4 pt-20 pb-12">
                 <aside className="hidden w-64 shrink-0 border-r pr-4 md:block">
                   <h1 className="mb-4 text-lg font-semibold tracking-tight">
                     Documentation
@@ -47,31 +49,73 @@ export default function DocsLayout({
                   <nav className="space-y-1 text-sm">
                     <Link
                       href="/docs"
-                      className="block rounded px-2 py-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
                     >
                       Overview
                     </Link>
                     <Link
                       href="/docs/getting-started"
-                      className="block rounded px-2 py-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
                     >
                       Getting started
                     </Link>
                     <Link
                       href="/docs/companies"
-                      className="block rounded px-2 py-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
                     >
                       Companies
                     </Link>
                     <Link
+                      href="/docs/leads"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Leads
+                    </Link>
+                    <Link
+                      href="/docs/deals"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Deals pipeline
+                    </Link>
+                    <Link
+                      href="/docs/themes"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Themes
+                    </Link>
+                    <Link
                       href="/docs/documents"
-                      className="block rounded px-2 py-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
                     >
                       Documents
                     </Link>
                     <Link
+                      href="/docs/screenings"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Screenings
+                    </Link>
+                    <Link
+                      href="/docs/analytics"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Analytics
+                    </Link>
+                    <Link
+                      href="/docs/jobs"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Jobs
+                    </Link>
+                    <Link
+                      href="/docs/admin"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Admin access
+                    </Link>
+                    <Link
                       href="/docs/faq"
-                      className="block rounded px-2 py-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
                     >
                       FAQ
                     </Link>
@@ -91,4 +135,3 @@ export default function DocsLayout({
     </html>
   );
 }
-

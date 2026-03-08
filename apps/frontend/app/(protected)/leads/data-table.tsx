@@ -95,16 +95,6 @@ export function LeadsDataTable({
           }
           className="max-w-[200px]"
         />
-        <Input
-          placeholder="Filter by source..."
-          value={
-            (table.getColumn("sourceWebsite")?.getFilterValue() as string) ?? ""
-          }
-          onChange={(e) =>
-            table.getColumn("sourceWebsite")?.setFilterValue(e.target.value)
-          }
-          className="max-w-[200px]"
-        />
         <Select
           value={
             (table.getColumn("status")?.getFilterValue() as string) ?? "all"

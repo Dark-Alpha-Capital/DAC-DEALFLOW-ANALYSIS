@@ -10,6 +10,9 @@ export function CompanyFinancials({ company }: CompanyFinancialsProps) {
     revenueEstimate,
     ebitdaEstimate,
     ebitdaMarginEstimate,
+    recurringRevenuePct,
+    customerConcentrationPct,
+    founderAgeEstimate,
     attractivenessScore,
   } = company;
 
@@ -17,6 +20,9 @@ export function CompanyFinancials({ company }: CompanyFinancialsProps) {
     revenueEstimate == null &&
     ebitdaEstimate == null &&
     ebitdaMarginEstimate == null &&
+    recurringRevenuePct == null &&
+    customerConcentrationPct == null &&
+    founderAgeEstimate == null &&
     attractivenessScore == null
   ) {
     return null;
@@ -49,6 +55,30 @@ export function CompanyFinancials({ company }: CompanyFinancialsProps) {
             <p className="text-muted-foreground text-xs">EBITDA Margin</p>
             <p className="text-foreground font-medium tabular-nums">
               {(ebitdaMarginEstimate * 100).toFixed(1)}%
+            </p>
+          </div>
+        )}
+        {recurringRevenuePct != null && (
+          <div>
+            <p className="text-muted-foreground text-xs">Recurring Revenue %</p>
+            <p className="text-foreground font-medium tabular-nums">
+              {(recurringRevenuePct * 100).toFixed(1)}%
+            </p>
+          </div>
+        )}
+        {customerConcentrationPct != null && (
+          <div>
+            <p className="text-muted-foreground text-xs">Customer Concentration %</p>
+            <p className="text-foreground font-medium tabular-nums">
+              {(customerConcentrationPct * 100).toFixed(1)}%
+            </p>
+          </div>
+        )}
+        {founderAgeEstimate != null && (
+          <div>
+            <p className="text-muted-foreground text-xs">Founder Age</p>
+            <p className="text-foreground font-medium tabular-nums">
+              {founderAgeEstimate}
             </p>
           </div>
         )}

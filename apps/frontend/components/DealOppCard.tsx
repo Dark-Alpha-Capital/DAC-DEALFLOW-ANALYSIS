@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Building2, MapPin, Eye, Pencil, Trash2 } from "lucide-react";
-import type { DealOpportunity } from "@repo/db";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDateStable } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,11 +21,33 @@ import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
 
 type DealOppCardProps = {
-  opp: DealOpportunity;
-  company: { name: string; industry: string | null; location: string | null } | null;
+  opp?: DealOppCardOpportunity;
+  deal?: DealOppCardOpportunity;
+  company: DealOppCardCompanyMeta | null;
 };
 
-export default function DealOppCard({ opp, company }: DealOppCardProps) {
+export type DealOppCardOpportunity = {
+  id: string;
+  stage?: string | null;
+  status?: string | null;
+  dealTeaser?: string | null;
+  brokerage?: string | null;
+  sourceWebsite?: string | null;
+  dealType?: string | null;
+  createdAt?: Date | string | null;
+  revenue?: number | null;
+  ebitda?: number | null;
+  askingPrice?: number | null;
+};
+
+export type DealOppCardCompanyMeta = {
+  name: string;
+  industry?: string | null;
+  location?: string | null;
+};
+
+export default function DealOppCard({ opp, deal, company }: DealOppCardProps) {
+  const resolvedOpp = opp ?? deal;
   const trpc = useTRPC();
   const router = useRouter();
   const { mutate: deleteDeal, isPending: isDeleting } = useMutation(
@@ -41,22 +62,26 @@ export default function DealOppCard({ opp, company }: DealOppCardProps) {
     }),
   );
 
-  const detailLink = `/deals/${opp.id}`;
-  const title = company?.name ?? opp.dealTeaser ?? "Deal";
+  if (!resolvedOpp) {
+    return null;
+  }
+
+  const detailLink = `/deals/${resolvedOpp.id}`;
+  const title = company?.name ?? resolvedOpp.dealTeaser ?? "Deal";
 
   return (
     <div className="flex flex-col border-b border-border bg-background py-5 transition-colors hover:bg-muted/40">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <span className="text-xs font-medium text-muted-foreground">
-            {opp.stage} · {opp.status}
+            {resolvedOpp.stage ?? "—"} · {resolvedOpp.status ?? "—"}
           </span>
           <h3 className="mt-1.5 text-sm font-semibold text-foreground" title={title}>
             {title.length > 60 ? title.slice(0, 60) + "..." : title}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
             <Building2 className="mr-1 inline h-3 w-3" />
-            {opp.brokerage ?? "—"}
+            {resolvedOpp.brokerage ?? "—"}
             {company?.industry && (
               <>
                 <span className="mx-1.5 text-border">·</span>
@@ -64,31 +89,41 @@ export default function DealOppCard({ opp, company }: DealOppCardProps) {
               </>
             )}
           </p>
+          {(resolvedOpp.sourceWebsite || resolvedOpp.dealType) && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Source: {resolvedOpp.sourceWebsite ?? (resolvedOpp.dealType === "MANUAL" ? "Direct outreach" : resolvedOpp.dealType)}
+            </p>
+          )}
+          {resolvedOpp.createdAt && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Created {formatDateStable(resolvedOpp.createdAt)}
+            </p>
+          )}
         </div>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-xs">
-        {opp.revenue != null && (
+        {resolvedOpp.revenue != null && (
           <div>
             <span className="text-muted-foreground">Revenue</span>
             <p className="mt-0.5 font-medium tabular-nums text-foreground">
-              {formatCurrency(opp.revenue)}
+              {formatCurrency(resolvedOpp.revenue)}
             </p>
           </div>
         )}
-        {opp.ebitda != null && (
+        {resolvedOpp.ebitda != null && (
           <div>
             <span className="text-muted-foreground">EBITDA</span>
             <p className="mt-0.5 font-medium tabular-nums text-foreground">
-              {formatCurrency(opp.ebitda)}
+              {formatCurrency(resolvedOpp.ebitda)}
             </p>
           </div>
         )}
-        {opp.askingPrice != null && (
+        {resolvedOpp.askingPrice != null && (
           <div>
             <span className="text-muted-foreground">Asking</span>
             <p className="mt-0.5 font-medium tabular-nums text-foreground">
-              {formatCurrency(opp.askingPrice)}
+              {formatCurrency(resolvedOpp.askingPrice)}
             </p>
           </div>
         )}
@@ -108,7 +143,7 @@ export default function DealOppCard({ opp, company }: DealOppCardProps) {
           </Link>
         </Button>
         <Button size="sm" variant="outline" className="gap-1.5" asChild>
-          <Link href={`/deals/${opp.id}/edit`}>
+          <Link href={`/deals/${resolvedOpp.id}/edit`}>
             <Pencil className="h-3.5 w-3.5" />
             Edit
           </Link>
@@ -129,7 +164,7 @@ export default function DealOppCard({ opp, company }: DealOppCardProps) {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => deleteDeal({ id: opp.id })}
+                onClick={() => deleteDeal({ id: resolvedOpp.id })}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 Delete

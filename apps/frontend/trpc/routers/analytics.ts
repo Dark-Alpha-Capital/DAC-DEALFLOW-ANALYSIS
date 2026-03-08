@@ -7,7 +7,7 @@ import db, {
   themes,
   eq,
 } from "@repo/db";
-import { isNotNull } from "drizzle-orm";
+import { isNotNull, isNull } from "drizzle-orm";
 
 export const analyticsRouter = createTRPCRouter({
   /**
@@ -21,7 +21,8 @@ export const analyticsRouter = createTRPCRouter({
       })
       .from(dealOpportunities)
       .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-      .leftJoin(themes, eq(companies.themeId, themes.id));
+      .leftJoin(themes, eq(companies.themeId, themes.id))
+      .where(isNull(companies.deletedAt));
 
     const counts = new Map<
       string,
@@ -54,7 +55,9 @@ export const analyticsRouter = createTRPCRouter({
       .select({
         stage: dealOpportunities.stage,
       })
-      .from(dealOpportunities);
+      .from(dealOpportunities)
+      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+      .where(isNull(companies.deletedAt));
 
     const counts = new Map<string, number>();
     for (const row of rows) {
@@ -94,12 +97,15 @@ export const analyticsRouter = createTRPCRouter({
         .select({
           source: leads.sourceWebsite,
         })
-        .from(leads),
+        .from(leads)
+        .where(isNull(leads.deletedAt)),
       db
         .select({
           source: dealOpportunities.sourceWebsite,
         })
-        .from(dealOpportunities),
+        .from(dealOpportunities)
+        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+        .where(isNull(companies.deletedAt)),
     ]);
 
     type SourceRow = { source: string; leads: number; deals: number };
@@ -182,4 +188,3 @@ export const analyticsRouter = createTRPCRouter({
     return result;
   }),
 });
-
