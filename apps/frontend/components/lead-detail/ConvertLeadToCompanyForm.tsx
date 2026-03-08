@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,21 +24,14 @@ import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import type { Lead } from "@repo/db";
 import { ArrowLeft } from "lucide-react";
+import {
+  convertLeadToCompanyFormSchema,
+  parseOptionalNumericInput,
+  type ConvertLeadToCompanyFormValues,
+} from "@/lib/schemas";
+import { formatNumberWithCommas } from "@/lib/utils";
 
-const ConvertLeadToCompanyFormSchema = z.object({
-  name: z.string().min(1, "Company name is required"),
-  normalizedName: z.string().min(1, "Normalized name is required"),
-  industry: z.string().optional(),
-  location: z.string().optional(),
-  revenueEstimate: z.coerce.number().optional(),
-  ebitdaEstimate: z.coerce.number().optional(),
-});
-
-type ConvertLeadToCompanyFormSchemaType = z.infer<
-  typeof ConvertLeadToCompanyFormSchema
->;
-
-function getDefaultValues(lead: Lead): ConvertLeadToCompanyFormSchemaType {
+function getDefaultValues(lead: Lead): ConvertLeadToCompanyFormValues {
   const name = lead.normalizedCompanyName?.trim() || lead.rawTitle?.trim() || "";
   return {
     name,
@@ -71,12 +63,12 @@ export default function ConvertLeadToCompanyForm({ lead }: { lead: Lead }) {
     }),
   );
 
-  const form = useForm<ConvertLeadToCompanyFormSchemaType>({
-    resolver: zodResolver(ConvertLeadToCompanyFormSchema),
+  const form = useForm<ConvertLeadToCompanyFormValues>({
+    resolver: zodResolver(convertLeadToCompanyFormSchema),
     defaultValues: getDefaultValues(lead),
   });
 
-  function onSubmit(values: ConvertLeadToCompanyFormSchemaType) {
+  function onSubmit(values: ConvertLeadToCompanyFormValues) {
     convertToCompany({
       id: lead.id,
       name: values.name,
@@ -160,9 +152,18 @@ export default function ConvertLeadToCompanyForm({ lead }: { lead: Lead }) {
                   <FormLabel>Revenue Estimate</FormLabel>
                   <FormControl>
                     <Input
-                      type="number"
-                      placeholder="e.g., 1500000"
-                      {...field}
+                      type="text"
+                      placeholder="e.g., 1,500,000"
+                      value={
+                        field.value !== undefined && field.value !== null
+                          ? formatNumberWithCommas(String(field.value))
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const parsed = parseOptionalNumericInput(e.target.value);
+                        if (parsed === null) return;
+                        field.onChange(parsed);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -177,9 +178,18 @@ export default function ConvertLeadToCompanyForm({ lead }: { lead: Lead }) {
                   <FormLabel>EBITDA Estimate</FormLabel>
                   <FormControl>
                     <Input
-                      type="number"
-                      placeholder="e.g., 300000"
-                      {...field}
+                      type="text"
+                      placeholder="e.g., 300,000"
+                      value={
+                        field.value !== undefined && field.value !== null
+                          ? formatNumberWithCommas(String(field.value))
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const parsed = parseOptionalNumericInput(e.target.value);
+                        if (parsed === null) return;
+                        field.onChange(parsed);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />

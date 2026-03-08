@@ -23,7 +23,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-import { leadFormSchema, type LeadFormValues } from "@/lib/schemas";
+import {
+  leadFormSchema,
+  parseOptionalNumericInput,
+  type LeadFormValues,
+} from "@/lib/schemas";
 import { formatNumberWithCommas } from "@/lib/utils";
 
 export default function AddLeadForm() {
@@ -179,14 +183,9 @@ export default function AddLeadForm() {
                           : ""
                       }
                       onChange={(e) => {
-                        const rawValue = e.target.value.replace(/,/g, "");
-                        if (!/^\d*\.?\d*$/.test(rawValue)) return;
-                        if (rawValue === "") {
-                          field.onChange(undefined);
-                        } else {
-                          const num = parseFloat(rawValue);
-                          field.onChange(isNaN(num) ? undefined : num);
-                        }
+                        const parsed = parseOptionalNumericInput(e.target.value);
+                        if (parsed === null) return;
+                        field.onChange(parsed);
                       }}
                     />
                   </FormControl>
@@ -210,14 +209,9 @@ export default function AddLeadForm() {
                           : ""
                       }
                       onChange={(e) => {
-                        const rawValue = e.target.value.replace(/,/g, "");
-                        if (!/^\d*\.?\d*$/.test(rawValue)) return;
-                        if (rawValue === "") {
-                          field.onChange(undefined);
-                        } else {
-                          const num = parseFloat(rawValue);
-                          field.onChange(isNaN(num) ? undefined : num);
-                        }
+                        const parsed = parseOptionalNumericInput(e.target.value);
+                        if (parsed === null) return;
+                        field.onChange(parsed);
                       }}
                     />
                   </FormControl>
@@ -241,14 +235,9 @@ export default function AddLeadForm() {
                           : ""
                       }
                       onChange={(e) => {
-                        const rawValue = e.target.value.replace(/,/g, "");
-                        if (!/^\d*\.?\d*$/.test(rawValue)) return;
-                        if (rawValue === "") {
-                          field.onChange(undefined);
-                        } else {
-                          const num = parseFloat(rawValue);
-                          field.onChange(isNaN(num) ? undefined : num);
-                        }
+                        const parsed = parseOptionalNumericInput(e.target.value);
+                        if (parsed === null) return;
+                        field.onChange(parsed);
                       }}
                     />
                   </FormControl>

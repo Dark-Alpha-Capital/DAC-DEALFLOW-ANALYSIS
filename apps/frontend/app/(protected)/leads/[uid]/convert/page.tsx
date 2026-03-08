@@ -3,10 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import {
-  GetLeadById,
-  GetCompanyByFirstSeenFromLeadId,
-} from "@repo/db/queries";
+import { GetLeadById, GetCompanyByFirstSeenFromLeadId } from "@repo/db/queries";
 import ConvertLeadToCompanyForm from "@/components/lead-detail/ConvertLeadToCompanyForm";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
@@ -65,7 +62,7 @@ async function CachedConvertContent({ uid }: { uid: string }) {
   }
 
   return (
-    <section className="big-container block-space min-h-screen">
+    <section className="big-container">
       <div className="mb-6">
         <Button variant="ghost" asChild className="gap-2 pl-0">
           <Link href={`/leads/${uid}`}>

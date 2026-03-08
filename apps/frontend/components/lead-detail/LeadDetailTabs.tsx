@@ -1,27 +1,14 @@
 "use client";
 
-import type { Lead } from "@repo/db";
-import type { DealOpportunityWithCompany } from "@repo/db/queries";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Phone } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
-import DealOppCard from "@/components/DealOppCard";
-
-function getStatusColor(status: string): string {
-  switch (status) {
-    case "NEW":
-      return "bg-primary/10 text-primary";
-    case "PROCESSED":
-      return "bg-green-500/10 text-green-600 dark:text-green-400";
-    case "DUPLICATE":
-      return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
-    case "REJECTED":
-      return "bg-destructive/10 text-destructive";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
-}
+import DealOppCard, {
+  type DealOppCardCompanyMeta,
+  type DealOppCardOpportunity,
+} from "@/components/DealOppCard";
+import { formatCurrency, formatDateTimeStable } from "@/lib/utils";
+import { getLeadStatusClassName } from "@/lib/lead-status";
 
 function Field({
   label,
@@ -42,12 +29,12 @@ function Field({
 }
 
 interface LeadDetailTabsProps {
-  lead: Lead;
-  dealOpportunities: DealOpportunityWithCompany[];
+  lead: LeadDetailLead;
+  dealOpportunities: LeadDetailDealOpportunity[];
 }
 
 export function LeadDetailTabs({ lead, dealOpportunities }: LeadDetailTabsProps) {
-  const companyMeta = (opp: DealOpportunityWithCompany) =>
+  const companyMeta = (opp: LeadDetailDealOpportunity): DealOppCardCompanyMeta | null =>
     opp.company
       ? {
           name: opp.company.name,
@@ -160,19 +147,19 @@ export function LeadDetailTabs({ lead, dealOpportunities }: LeadDetailTabsProps)
       <TabsContent value="status" className="space-y-4">
         <div>
           <p className="text-muted-foreground text-xs">Lead Status</p>
-          <Badge className={getStatusColor(lead.status)}>{lead.status}</Badge>
+          <Badge className={getLeadStatusClassName(lead.status)}>{lead.status}</Badge>
         </div>
         <Field
           label="Processed At"
           value={
             lead.processedAt
-              ? new Date(lead.processedAt).toLocaleString()
+              ? formatDateTimeStable(lead.processedAt)
               : undefined
           }
         />
         <Field
           label="Created At"
-          value={new Date(lead.createdAt).toLocaleString()}
+          value={formatDateTimeStable(lead.createdAt)}
         />
       </TabsContent>
 
@@ -196,3 +183,28 @@ export function LeadDetailTabs({ lead, dealOpportunities }: LeadDetailTabsProps)
     </Tabs>
   );
 }
+
+type LeadDetailLead = {
+  status: string;
+  createdAt: Date | string;
+  processedAt?: Date | string | null;
+  rawTitle?: string | null;
+  rawDescription?: string | null;
+  sourceWebsite?: string | null;
+  externalListingId?: string | null;
+  rawIndustry?: string | null;
+  revenue?: number | null;
+  ebitda?: number | null;
+  askingPrice?: number | null;
+  brokerage?: string | null;
+  brokerFirstName?: string | null;
+  brokerLastName?: string | null;
+  brokerEmail?: string | null;
+  brokerPhone?: string | null;
+  normalizedCompanyName?: string | null;
+  companyLocation?: string | null;
+};
+
+type LeadDetailDealOpportunity = DealOppCardOpportunity & {
+  company?: DealOppCardCompanyMeta | null;
+};

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { contacts, eq, and } from "@repo/db";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { httpHttpsUrlSchema } from "@/lib/schemas";
 
 const entityTypeEnum = z.enum(["LEAD", "COMPANY", "DEAL_OPPORTUNITY"]);
 
@@ -12,7 +13,7 @@ const baseContactSchema = z.object({
   title: z.string().optional(),
   email: z.string().email("Invalid email").optional(),
   phone: z.string().optional(),
-  linkedinUrl: z.string().url("Invalid URL").optional(),
+  linkedinUrl: httpHttpsUrlSchema.optional(),
   role: z.string().optional(),
 });
 
@@ -127,4 +128,3 @@ function revalidateForEntity(entityType: string, entityId: string) {
       break;
   }
 }
-

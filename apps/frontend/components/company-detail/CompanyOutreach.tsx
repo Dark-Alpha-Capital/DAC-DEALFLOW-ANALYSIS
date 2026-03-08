@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { formatDateStable } from "@/lib/utils";
 
 export type OutreachRow = {
   id: string;
@@ -41,7 +42,7 @@ export function CompanyOutreach({ outreach }: CompanyOutreachProps) {
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="font-medium text-foreground">{row.type}</span>
               <span className="text-muted-foreground">
-                {new Date(row.createdAt).toLocaleDateString()}
+                {formatDateStable(row.createdAt)}
               </span>
             </div>
             {row.outcome && (

@@ -26,6 +26,7 @@ import { useTRPC } from "@/trpc/client";
 import type { Lead } from "@repo/db";
 import {
   leadFormSchema,
+  parseOptionalNumericInput,
   type LeadFormValues,
 } from "@/lib/schemas";
 import { formatNumberWithCommas } from "@/lib/utils";
@@ -171,14 +172,9 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                           : ""
                       }
                       onChange={(e) => {
-                        const rawValue = e.target.value.replace(/,/g, "");
-                        if (!/^\d*\.?\d*$/.test(rawValue)) return;
-                        if (rawValue === "") {
-                          field.onChange(undefined);
-                        } else {
-                          const num = parseFloat(rawValue);
-                          field.onChange(isNaN(num) ? undefined : num);
-                        }
+                        const parsed = parseOptionalNumericInput(e.target.value);
+                        if (parsed === null) return;
+                        field.onChange(parsed);
                       }}
                     />
                   </FormControl>
@@ -202,14 +198,9 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                           : ""
                       }
                       onChange={(e) => {
-                        const rawValue = e.target.value.replace(/,/g, "");
-                        if (!/^\d*\.?\d*$/.test(rawValue)) return;
-                        if (rawValue === "") {
-                          field.onChange(undefined);
-                        } else {
-                          const num = parseFloat(rawValue);
-                          field.onChange(isNaN(num) ? undefined : num);
-                        }
+                        const parsed = parseOptionalNumericInput(e.target.value);
+                        if (parsed === null) return;
+                        field.onChange(parsed);
                       }}
                     />
                   </FormControl>
@@ -233,14 +224,9 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                           : ""
                       }
                       onChange={(e) => {
-                        const rawValue = e.target.value.replace(/,/g, "");
-                        if (!/^\d*\.?\d*$/.test(rawValue)) return;
-                        if (rawValue === "") {
-                          field.onChange(undefined);
-                        } else {
-                          const num = parseFloat(rawValue);
-                          field.onChange(isNaN(num) ? undefined : num);
-                        }
+                        const parsed = parseOptionalNumericInput(e.target.value);
+                        if (parsed === null) return;
+                        field.onChange(parsed);
                       }}
                     />
                   </FormControl>

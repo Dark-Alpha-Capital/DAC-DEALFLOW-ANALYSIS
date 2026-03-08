@@ -8,6 +8,7 @@ import {
   pgEnum,
   decimal,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
@@ -248,6 +249,7 @@ export const companies = pgTable(
     firstSeenAt: timestamp("firstSeenAt"),
     lastSeenAt: timestamp("lastSeenAt"),
     firstSeenFromLeadId: text("firstSeenFromLeadId").references(() => leads.id),
+    deletedAt: timestamp("deletedAt"),
 
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
@@ -258,6 +260,9 @@ export const companies = pgTable(
   (table) => ({
     companyDedupIdx: index("company_dedup_idx").on(table.normalizedName, table.location),
     companyThemeIdx: index("company_theme_idx").on(table.themeId),
+    companyFirstSeenFromLeadUniqueIdx: uniqueIndex(
+      "company_first_seen_from_lead_unique_idx",
+    ).on(table.firstSeenFromLeadId),
   })
 );
 
@@ -343,6 +348,7 @@ export const leads = pgTable("Lead", {
   // Processing state
   status: leadStatusEnum("status").default("NEW").notNull(),
   processedAt: timestamp("processedAt"),
+  deletedAt: timestamp("deletedAt"),
 
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

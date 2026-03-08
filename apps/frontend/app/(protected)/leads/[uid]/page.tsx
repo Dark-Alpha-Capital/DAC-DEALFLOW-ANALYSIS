@@ -18,21 +18,7 @@ import {
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { LeadDetailTabs } from "@/components/lead-detail/LeadDetailTabs";
-
-function getStatusColor(status: string): string {
-  switch (status) {
-    case "NEW":
-      return "bg-primary/10 text-primary";
-    case "PROCESSED":
-      return "bg-green-500/10 text-green-600 dark:text-green-400";
-    case "DUPLICATE":
-      return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
-    case "REJECTED":
-      return "bg-destructive/10 text-destructive";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
-}
+import { getLeadStatusClassName } from "@/lib/lead-status";
 
 type Params = Promise<{ uid: string }>;
 
@@ -110,7 +96,7 @@ async function CachedLeadContent({ uid }: { uid: string }) {
         </Button>
 
         <div className="space-y-3">
-          <Badge className={getStatusColor(lead.status)}>{lead.status}</Badge>
+          <Badge className={getLeadStatusClassName(lead.status)}>{lead.status}</Badge>
           <h1 className="text-2xl font-semibold tracking-tight">
             {lead.rawTitle}
           </h1>
