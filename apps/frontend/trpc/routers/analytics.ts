@@ -1,4 +1,5 @@
 import { createTRPCRouter, protectedProcedure } from "../init";
+import { z } from "zod";
 import db, {
   aiScreenings,
   companies,
@@ -6,6 +7,7 @@ import db, {
   leads,
   themes,
   eq,
+  desc,
 } from "@repo/db";
 import { isNotNull, isNull } from "drizzle-orm";
 
@@ -187,4 +189,236 @@ export const analyticsRouter = createTRPCRouter({
 
     return result;
   }),
+
+  /**
+   * Pipeline overview for global dashboard.
+   * Includes deals by stage, lead flow by status, and headline lead KPIs.
+   */
+  pipelineOverview: protectedProcedure.query(async () => {
+    const [stageRows, leadRows] = await Promise.all([
+      db
+        .select({
+          stage: dealOpportunities.stage,
+        })
+        .from(dealOpportunities)
+        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+        .where(isNull(companies.deletedAt)),
+      db
+        .select({
+          status: leads.status,
+        })
+        .from(leads)
+        .where(isNull(leads.deletedAt)),
+    ]);
+
+    const stageOrder = [
+      "LISTED",
+      "INITIAL_REVIEW",
+      "SCREENED",
+      "MEETING_HELD",
+      "IOI_SUBMITTED",
+      "LOI_SUBMITTED",
+      "DILIGENCE",
+      "CLOSED",
+      "DEAD",
+      "UNKNOWN",
+    ] as const;
+
+    const leadStatusOrder = [
+      "NEW",
+      "PROCESSED",
+      "DUPLICATE",
+      "REJECTED",
+      "UNKNOWN",
+    ] as const;
+
+    const stageCounts = new Map<string, number>();
+    for (const row of stageRows) {
+      const key = row.stage ?? "UNKNOWN";
+      stageCounts.set(key, (stageCounts.get(key) ?? 0) + 1);
+    }
+
+    const leadCounts = new Map<string, number>();
+    for (const row of leadRows) {
+      const key = row.status ?? "UNKNOWN";
+      leadCounts.set(key, (leadCounts.get(key) ?? 0) + 1);
+    }
+
+    const dealsByStage = stageOrder.map((stage) => ({
+      stage,
+      count: stageCounts.get(stage) ?? 0,
+    }));
+
+    const leadFlow = leadStatusOrder.map((status) => ({
+      status,
+      count: leadCounts.get(status) ?? 0,
+    }));
+
+    return {
+      dealsByStage,
+      leadFlow,
+      kpis: {
+        newLeads: leadCounts.get("NEW") ?? 0,
+        processedLeads: leadCounts.get("PROCESSED") ?? 0,
+        duplicates: leadCounts.get("DUPLICATE") ?? 0,
+      },
+    };
+  }),
+
+  /**
+   * Theme overview for global dashboard.
+   * Includes active themes plus company/deal concentration by theme.
+   */
+  themeOverview: protectedProcedure.query(async () => {
+    const [themeRows, companyRows, dealRows] = await Promise.all([
+      db
+        .select({
+          id: themes.id,
+          status: themes.status,
+          deletedAt: themes.deletedAt,
+        })
+        .from(themes),
+      db
+        .select({
+          themeId: themes.id,
+          themeName: themes.name,
+          themeDeletedAt: themes.deletedAt,
+        })
+        .from(companies)
+        .leftJoin(themes, eq(companies.themeId, themes.id))
+        .where(isNull(companies.deletedAt)),
+      db
+        .select({
+          themeId: themes.id,
+          themeName: themes.name,
+          themeDeletedAt: themes.deletedAt,
+        })
+        .from(dealOpportunities)
+        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+        .leftJoin(themes, eq(companies.themeId, themes.id))
+        .where(isNull(companies.deletedAt)),
+    ]);
+
+    const activeThemes = themeRows.filter((theme) =>
+      theme.status === "ACTIVE" && theme.deletedAt == null
+    ).length;
+
+    const companyCounts = new Map<
+      string,
+      { themeId: string | null; themeName: string; count: number }
+    >();
+    for (const row of companyRows) {
+      const isUnassigned = !row.themeId || row.themeDeletedAt != null;
+      const key = isUnassigned ? "unassigned" : row.themeId;
+      const themeName = isUnassigned ? "Unassigned" : (row.themeName ?? "Unassigned");
+      const current = companyCounts.get(key) ?? {
+        themeId: isUnassigned ? null : row.themeId,
+        themeName,
+        count: 0,
+      };
+      current.count += 1;
+      companyCounts.set(key, current);
+    }
+
+    const dealCounts = new Map<
+      string,
+      { themeId: string | null; themeName: string; count: number }
+    >();
+    for (const row of dealRows) {
+      const isUnassigned = !row.themeId || row.themeDeletedAt != null;
+      const key = isUnassigned ? "unassigned" : row.themeId;
+      const themeName = isUnassigned ? "Unassigned" : (row.themeName ?? "Unassigned");
+      const current = dealCounts.get(key) ?? {
+        themeId: isUnassigned ? null : row.themeId,
+        themeName,
+        count: 0,
+      };
+      current.count += 1;
+      dealCounts.set(key, current);
+    }
+
+    const companiesPerTheme = Array.from(companyCounts.values()).sort(
+      (a, b) => b.count - a.count,
+    );
+    const dealsPerTheme = Array.from(dealCounts.values()).sort(
+      (a, b) => b.count - a.count,
+    );
+
+    return {
+      activeThemes,
+      companiesPerTheme,
+      dealsPerTheme,
+    };
+  }),
+
+  /**
+   * Top deals ranked by latest AI screening score.
+   */
+  topDealsByLatestScreening: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().int().min(1).max(100).default(10),
+      }),
+    )
+    .query(async ({ input }) => {
+      const rows = await db
+        .select({
+          dealOpportunityId: aiScreenings.dealOpportunityId,
+          score: aiScreenings.score,
+          screenedAt: aiScreenings.createdAt,
+          stage: dealOpportunities.stage,
+          companyName: companies.name,
+          companyDeletedAt: companies.deletedAt,
+          themeName: themes.name,
+          themeDeletedAt: themes.deletedAt,
+        })
+        .from(aiScreenings)
+        .leftJoin(
+          dealOpportunities,
+          eq(aiScreenings.dealOpportunityId, dealOpportunities.id),
+        )
+        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+        .leftJoin(themes, eq(companies.themeId, themes.id))
+        .where(isNotNull(aiScreenings.score))
+        .orderBy(desc(aiScreenings.createdAt), desc(aiScreenings.id));
+
+      const latestByDeal = new Map<
+        string,
+        {
+          dealOpportunityId: string;
+          latestScore: number;
+          latestScreenedAt: Date;
+          stage: string;
+          companyName: string;
+          themeName: string | null;
+        }
+      >();
+
+      for (const row of rows) {
+        if (!row.dealOpportunityId || row.score == null || !row.screenedAt) continue;
+        if (!row.companyName) continue;
+        if (row.companyDeletedAt != null) continue;
+        if (row.stage == null) continue;
+        if (latestByDeal.has(row.dealOpportunityId)) continue;
+
+        latestByDeal.set(row.dealOpportunityId, {
+          dealOpportunityId: row.dealOpportunityId,
+          latestScore: row.score,
+          latestScreenedAt: row.screenedAt,
+          stage: row.stage,
+          companyName: row.companyName,
+          themeName: row.themeDeletedAt ? null : row.themeName,
+        });
+      }
+
+      const ranked = Array.from(latestByDeal.values())
+        .sort(
+          (a, b) =>
+            b.latestScore - a.latestScore ||
+            b.latestScreenedAt.getTime() - a.latestScreenedAt.getTime(),
+        )
+        .slice(0, input.limit);
+
+      return ranked;
+    }),
 });

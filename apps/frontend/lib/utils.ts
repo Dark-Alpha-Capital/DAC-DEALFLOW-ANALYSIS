@@ -5,6 +5,7 @@ import { ImageIcon } from "lucide-react";
 
 export const adminEmails = [
   "rahul@darkalphacapital.com",
+  "gaurav@darkalphacapital.com",
   "destiny@darkalphacapital.com",
   "daigbe@darkalphacapital.com",
   "diligence@darkalphacapital.com",
