@@ -8,6 +8,7 @@ import {
   documents,
   dealOpportunities,
   companies,
+  companyNotes,
   themes,
   contacts,
   outreach,
@@ -85,7 +86,7 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       return null;
     }
 
-    const [companyDealOpps, companyDocuments, companyContacts] =
+    const [companyDealOpps, companyDocuments, companyContacts, companyNotesRows] =
       await Promise.all([
         db
           .select()
@@ -110,6 +111,11 @@ export const GetCompanyWithAllRelations = async (id: string) => {
               eq(contacts.entityId, id),
             ),
           ),
+        db
+          .select()
+          .from(companyNotes)
+          .where(eq(companyNotes.companyId, id))
+          .orderBy(desc(companyNotes.createdAt)),
       ]);
 
     const dealOppIds = companyDealOpps.map((o) => o.id);
@@ -130,9 +136,9 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       .where(
         dealOppIds.length > 0
           ? or(
-              eq(outreach.companyId, id),
-              inArray(outreach.dealOpportunityId, dealOppIds),
-            )
+            eq(outreach.companyId, id),
+            inArray(outreach.dealOpportunityId, dealOppIds),
+          )
           : eq(outreach.companyId, id),
       )
       .orderBy(desc(outreach.createdAt));
@@ -146,6 +152,7 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       documents: companyDocuments,
       contacts: companyContacts,
       outreach: outreachRows,
+      notes: companyNotesRows,
     };
   } catch (error) {
     console.error("Error fetching company with relations", error);
@@ -243,9 +250,76 @@ export const GetDealWithAllRelations = async (uid: string) => {
     .from(companies)
     .where(eq(companies.id, opp.companyId));
 
-  const [docs, screenings] = await Promise.all([
+  const [
+    dealDocs,
+    companyDocs,
+    screenings,
+    dealOpportunitiesList,
+    companyContacts,
+    dealContacts,
+    outreachRows,
+    companyNotesRows,
+  ] = await Promise.all([
     getDealDocuments(opp.id),
+    db
+      .select()
+      .from(documents)
+      .where(
+        and(
+          eq(documents.entityType, "COMPANY"),
+          eq(documents.entityId, opp.companyId),
+        ),
+      ),
     getAllDealReasoningsWithScreenerNameByOpportunityId(opp.id),
+    db
+      .select()
+      .from(dealOpportunities)
+      .where(eq(dealOpportunities.companyId, opp.companyId))
+      .orderBy(desc(dealOpportunities.createdAt)),
+    db
+      .select()
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.entityType, "COMPANY"),
+          eq(contacts.entityId, opp.companyId),
+        ),
+      ),
+    db
+      .select()
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.entityType, "DEAL_OPPORTUNITY"),
+          eq(contacts.entityId, opp.id),
+        ),
+      ),
+    db
+      .select({
+        id: outreach.id,
+        dealOpportunityId: outreach.dealOpportunityId,
+        companyId: outreach.companyId,
+        type: outreach.type,
+        notes: outreach.notes,
+        outcome: outreach.outcome,
+        createdById: outreach.createdById,
+        createdAt: outreach.createdAt,
+        createdByName: users.name,
+      })
+      .from(outreach)
+      .leftJoin(users, eq(outreach.createdById, users.id))
+      .where(
+        or(
+          eq(outreach.companyId, opp.companyId),
+          eq(outreach.dealOpportunityId, opp.id),
+        ),
+      )
+      .orderBy(desc(outreach.createdAt)),
+    db
+      .select()
+      .from(companyNotes)
+      .where(eq(companyNotes.companyId, opp.companyId))
+      .orderBy(desc(companyNotes.createdAt)),
   ]);
 
   const dealView: Deal & { id: string } = {
@@ -285,8 +359,16 @@ export const GetDealWithAllRelations = async (uid: string) => {
 
   return {
     deal: dealView,
-    documents: docs ?? [],
+    documents: dealDocs ?? [],
     aiScreenings: screenings ?? [],
+    company: company ?? null,
+    dealOpportunities: dealOpportunitiesList ?? [],
+    companyContacts: companyContacts ?? [],
+    dealContacts: dealContacts ?? [],
+    outreach: outreachRows ?? [],
+    companyDocuments: companyDocs ?? [],
+    dealDocuments: dealDocs ?? [],
+    companyNotes: companyNotesRows ?? [],
   };
 };
 
@@ -1109,10 +1191,10 @@ export const GetDealOpportunitiesWithScreenings =
         const existing = byOpp.get(row.opp.id);
         const company = row.companyName
           ? {
-              name: row.companyName,
-              industry: row.companyIndustry,
-              location: row.companyLocation,
-            }
+            name: row.companyName,
+            industry: row.companyIndustry,
+            location: row.companyLocation,
+          }
           : null;
 
         if (!existing) {

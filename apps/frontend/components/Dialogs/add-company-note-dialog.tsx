@@ -40,6 +40,8 @@ interface AddCompanyNoteDialogProps {
   triggerLabel?: string;
   variant?: "default" | "ghost" | "outline";
   size?: "sm" | "default";
+  /** When provided, revalidates deal cache after mutation */
+  dealUid?: string;
 }
 
 export function AddCompanyNoteDialog({
@@ -49,6 +51,7 @@ export function AddCompanyNoteDialog({
   triggerLabel = note ? "Edit note" : "Add note",
   variant = "default",
   size = "sm",
+  dealUid,
 }: AddCompanyNoteDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [title, setTitle] = React.useState(note?.title ?? "");
@@ -108,12 +111,14 @@ export function AddCompanyNoteDialog({
         id: note.id,
         title: title.trim() || undefined,
         content: trimmedContent,
+        dealUid,
       });
     } else {
       createNote({
         companyId,
         title: title.trim() || undefined,
         content: trimmedContent,
+        dealUid,
       });
     }
   };

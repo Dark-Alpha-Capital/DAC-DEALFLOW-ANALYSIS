@@ -66,10 +66,52 @@ export default function DocsLayout({
                       Companies
                     </Link>
                     <Link
+                      href="/docs/leads"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Leads
+                    </Link>
+                    <Link
+                      href="/docs/deals"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Deals pipeline
+                    </Link>
+                    <Link
+                      href="/docs/themes"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Themes
+                    </Link>
+                    <Link
                       href="/docs/documents"
                       className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
                     >
                       Documents
+                    </Link>
+                    <Link
+                      href="/docs/screenings"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Screenings
+                    </Link>
+                    <Link
+                      href="/docs/analytics"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Analytics
+                    </Link>
+                    <Link
+                      href="/docs/jobs"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Jobs
+                    </Link>
+                    <Link
+                      href="/docs/admin"
+                      className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"
+                    >
+                      Admin access
                     </Link>
                     <Link
                       href="/docs/faq"

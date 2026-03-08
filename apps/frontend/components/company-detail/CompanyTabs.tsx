@@ -1,5 +1,10 @@
 import type { Company } from "@repo/db";
-import type { DealOpportunity, Document, Contact } from "@repo/db/schema";
+import type {
+  DealOpportunity,
+  Document,
+  Contact,
+  CompanyNote,
+} from "@repo/db/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyOverview } from "./CompanyOverview";
 import { CompanyFinancials } from "./CompanyFinancials";
@@ -15,6 +20,7 @@ interface CompanyTabsProps {
   documents: Document[];
   contacts: Contact[];
   outreach: OutreachRow[];
+  notes: CompanyNote[];
 }
 
 export function CompanyTabs({
@@ -23,6 +29,7 @@ export function CompanyTabs({
   documents,
   contacts,
   outreach,
+  notes,
 }: CompanyTabsProps) {
   return (
     <Tabs defaultValue="overview" className="w-full space-y-6">
@@ -65,7 +72,7 @@ export function CompanyTabs({
       </TabsContent>
 
       <TabsContent value="notes">
-        <CompanyNotes company={company} />
+        <CompanyNotes company={company} notes={notes} />
       </TabsContent>
     </Tabs>
   );
