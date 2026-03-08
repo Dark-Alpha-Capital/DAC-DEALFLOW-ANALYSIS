@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { GetLeadById, GetCompanyByFirstSeenFromLeadId } from "@repo/db/queries";
+import { GetLeadById, GetCompanyByFirstSeenFromLeadId, GetCompanyById } from "@repo/db/queries";
 import ConvertLeadToCompanyForm from "@/components/lead-detail/ConvertLeadToCompanyForm";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
@@ -59,6 +59,13 @@ async function CachedConvertContent({ uid }: { uid: string }) {
   const existingCompany = await GetCompanyByFirstSeenFromLeadId(lead.id);
   if (existingCompany) {
     redirect(`/companies/${existingCompany.id}`);
+  }
+
+  if (lead.duplicateCompanyId) {
+    const duplicateCompany = await GetCompanyById(lead.duplicateCompanyId);
+    if (duplicateCompany) {
+      redirect(`/companies/${duplicateCompany.id}`);
+    }
   }
 
   return (

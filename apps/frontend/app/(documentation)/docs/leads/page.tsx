@@ -10,7 +10,7 @@ export default function DocsLeadsPage() {
         </p>
       </header>
 
-      <section className="space-y-3">
+      <section id="lead-entity-model" className="space-y-3">
         <h3 className="text-xl font-semibold tracking-tight">What this module supports</h3>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
           <li>Capture source listing data and broker details.</li>
@@ -21,12 +21,21 @@ export default function DocsLeadsPage() {
         </ul>
       </section>
 
-      <section className="space-y-3">
+      <section id="lead-resolution-actions" className="space-y-3">
         <h3 className="text-xl font-semibold tracking-tight">Primary decisions supported</h3>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-          <li>Is this opportunity in-scope enough to convert into a formal company target?</li>
-          <li>Is this a duplicate of an existing target or an independent opportunity?</li>
-          <li>Do we have enough information to begin outreach or screening?</li>
+          <li id="action-convert-to-company">
+            Convert to company: Is this opportunity in-scope enough to become a formal company target?
+          </li>
+          <li id="action-mark-duplicate">
+            Mark duplicate: Does this lead map to an existing company identity in CRM?
+          </li>
+          <li id="action-reject-lead">
+            Reject lead: Is this out-of-scope based on mandate, quality, or relevance?
+          </li>
+          <li id="action-clear-duplicate">
+            Clear duplicate: Was duplicate mapping incorrect and should this return to triage?
+          </li>
         </ul>
       </section>
 

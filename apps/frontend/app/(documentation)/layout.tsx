@@ -71,6 +71,47 @@ export default function DocsLayout({
                     >
                       Leads
                     </Link>
+                    <div className="space-y-1 pl-3">
+                      <p className="text-muted-foreground px-2 pt-1 text-[11px] font-medium uppercase tracking-wide">
+                        Lead Workflow
+                      </p>
+                      <Link
+                        href="/docs/leads#lead-entity-model"
+                        className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1 text-xs"
+                      >
+                        Lead vs Company
+                      </Link>
+                      <Link
+                        href="/docs/leads#lead-resolution-actions"
+                        className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1 text-xs"
+                      >
+                        Supported actions
+                      </Link>
+                      <Link
+                        href="/docs/leads#action-convert-to-company"
+                        className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1 text-xs"
+                      >
+                        Convert to company
+                      </Link>
+                      <Link
+                        href="/docs/leads#action-mark-duplicate"
+                        className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1 text-xs"
+                      >
+                        Mark duplicate
+                      </Link>
+                      <Link
+                        href="/docs/leads#action-reject-lead"
+                        className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1 text-xs"
+                      >
+                        Reject lead
+                      </Link>
+                      <Link
+                        href="/docs/leads#action-clear-duplicate"
+                        className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1 text-xs"
+                      >
+                        Clear duplicate
+                      </Link>
+                    </div>
                     <Link
                       href="/docs/deals"
                       className="text-muted-foreground hover:bg-accent hover:text-accent-foreground block rounded px-2 py-1"

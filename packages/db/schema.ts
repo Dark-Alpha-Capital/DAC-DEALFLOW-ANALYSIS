@@ -317,10 +317,12 @@ export const leadStatusEnum = pgEnum("LeadStatus", [
   "REJECTED",
 ]);
 
-export const leads = pgTable("Lead", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
+export const leads = pgTable(
+  "Lead",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
 
   // Raw scraped metadata
   sourceWebsite: text("sourceWebsite").notNull(),
@@ -347,11 +349,16 @@ export const leads = pgTable("Lead", {
 
   // Processing state
   status: leadStatusEnum("status").default("NEW").notNull(),
+  duplicateCompanyId: text("duplicateCompanyId"),
   processedAt: timestamp("processedAt"),
   deletedAt: timestamp("deletedAt"),
 
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    leadDuplicateCompanyIdx: index("lead_duplicate_company_idx").on(table.duplicateCompanyId),
+  }),
+);
 
 
 
@@ -671,9 +678,14 @@ export const themePerformanceRelations = relations(themePerformance, ({ one }) =
   }),
 }));
 
-export const leadsRelations = relations(leads, ({ many }) => ({
+export const leadsRelations = relations(leads, ({ many, one }) => ({
   dealOpportunities: many(dealOpportunities),
   companiesFirstSeen: many(companies, { relationName: "firstSeenFromLead" }),
+  duplicateCompany: one(companies, {
+    fields: [leads.duplicateCompanyId],
+    references: [companies.id],
+    relationName: "duplicateCompany",
+  }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -733,6 +745,7 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
     references: [leads.id],
     relationName: "firstSeenFromLead",
   }),
+  duplicateLeads: many(leads, { relationName: "duplicateCompany" }),
   dealOpportunities: many(dealOpportunities),
   notes: many(companyNotes),
   outreach: many(outreach),

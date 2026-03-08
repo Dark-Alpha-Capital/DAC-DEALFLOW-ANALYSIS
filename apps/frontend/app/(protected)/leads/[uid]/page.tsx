@@ -14,11 +14,13 @@ import {
   GetLeadById,
   GetDealOpportunitiesByLeadId,
   GetCompanyByFirstSeenFromLeadId,
+  GetCompanyById,
 } from "@repo/db/queries";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { LeadDetailTabs } from "@/components/lead-detail/LeadDetailTabs";
 import { getLeadStatusClassName } from "@/lib/lead-status";
+import LeadResolutionActions from "@/components/lead-detail/LeadResolutionActions";
 
 type Params = Promise<{ uid: string }>;
 
@@ -76,9 +78,10 @@ async function CachedLeadContent({ uid }: { uid: string }) {
     );
   }
 
-  const [dealOpportunities, convertedCompany] = await Promise.all([
+  const [dealOpportunities, convertedCompany, duplicateCompany] = await Promise.all([
     GetDealOpportunitiesByLeadId(lead.id),
     GetCompanyByFirstSeenFromLeadId(lead.id),
+    lead.duplicateCompanyId ? GetCompanyById(lead.duplicateCompanyId) : Promise.resolve(null),
   ]);
 
   return (
@@ -139,6 +142,22 @@ async function CachedLeadContent({ uid }: { uid: string }) {
                 </Link>
               </Button>
             </>
+          ) : duplicateCompany ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                title="Clear duplicate before converting this lead."
+              >
+                Convert to company
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/companies/${duplicateCompany.id}`}>
+                  View duplicate company
+                </Link>
+              </Button>
+            </>
           ) : (
             <Button asChild size="sm">
               <Link href={`/leads/${lead.id}/convert`}>
@@ -160,6 +179,15 @@ async function CachedLeadContent({ uid }: { uid: string }) {
             </Button>
           )}
         </div>
+
+        <LeadResolutionActions
+          leadId={lead.id}
+          leadStatus={lead.status}
+          hasConvertedCompany={!!convertedCompany}
+          duplicateCompany={
+            duplicateCompany ? { id: duplicateCompany.id, name: duplicateCompany.name } : null
+          }
+        />
 
         <LeadDetailTabs lead={lead} dealOpportunities={dealOpportunities} />
       </div>
