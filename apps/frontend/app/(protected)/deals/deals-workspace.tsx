@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealsDataTable } from "./data-table";
 import { columns } from "./columns";
 import {
@@ -30,20 +29,16 @@ export function DealsWorkspace({
   aiDeals: AIDealRow[];
 }) {
   return (
-    <Tabs defaultValue="screenings" className="space-y-6">
-      <TabsList>
-        <TabsTrigger value="screenings">Screenings</TabsTrigger>
-        <TabsTrigger value="ai-screenings">AI Screenings</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="screenings" className="space-y-4">
+    <div className="space-y-8">
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold">Deterministic Screening</h2>
         <DealsDataTable columns={columns} data={screeningDeals} />
-      </TabsContent>
-
-      <TabsContent value="ai-screenings" className="space-y-4">
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold">AI Screenings</h2>
         <AiScreeningsTable data={aiDeals} />
-      </TabsContent>
-    </Tabs>
+      </section>
+    </div>
   );
 }
 
@@ -96,7 +91,7 @@ function AiScreeningsTable({ data }: { data: AIDealRow[] }) {
                 <TableCell className="text-center">
                   <Button asChild size="sm" variant="outline">
                     <Link
-                      href={`/deals/${row.opportunity.id}?tab=ai-screening`}
+                      href={`/deals/${row.opportunity.id}?tab=screenings`}
                     >
                       Open AI Screening
                     </Link>

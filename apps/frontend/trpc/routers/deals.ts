@@ -4,12 +4,15 @@ import db, {
   deals,
   dealOpportunities,
   dealOpportunityScreenings,
+  aiScreenings,
   companies,
+  leads,
   eq,
+  and,
+  isNull,
   DealType,
   DealStatus,
   documents,
-  and,
   DealDocumentCategory,
   DocumentCategory,
   ReviewState,
@@ -29,7 +32,10 @@ import {
 } from "@repo/db/queries";
 import { uploadBuffer } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
-import { upsertDealOpportunityScreening } from "@repo/deal-screening";
+import {
+  upsertDealOpportunityScreening,
+  runAiQualitativeScreening,
+} from "@repo/deal-screening";
 
 const createDealSchema = z.object({
   first_name: z.string().optional(),
@@ -254,6 +260,169 @@ export const dealsRouter = createTRPCRouter({
       revalidatePath(`/deals/${input.dealOpportunityId}`);
       revalidateTag("deals", "max");
       revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+
+      return { success: true };
+    }),
+
+  runAiScreening: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string() }))
+    .mutation(async ({ input }) => {
+      let opp = await GetDealOpportunityById(input.dealOpportunityId);
+      if (!opp) {
+        opp = await GetDealOpportunityByLegacyDealId(input.dealOpportunityId);
+      }
+      if (!opp) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Deal opportunity not found",
+        });
+      }
+
+      const [company, leadFromOpp] = await Promise.all([
+        db
+          .select()
+          .from(companies)
+          .where(
+            and(eq(companies.id, opp.companyId), isNull(companies.deletedAt)),
+          )
+          .limit(1)
+          .then((r) => r[0] ?? null),
+        opp.leadId
+          ? db.select().from(leads).where(eq(leads.id, opp.leadId)).limit(1)
+          : Promise.resolve([]),
+      ]);
+
+      const leadId = opp.leadId ?? company?.firstSeenFromLeadId ?? null;
+      const leadRow =
+        leadFromOpp[0] ??
+        (leadId
+          ? (
+            await db
+              .select()
+              .from(leads)
+              .where(eq(leads.id, leadId))
+              .limit(1)
+          )[0] ?? null
+          : null);
+
+      const sections: string[] = [];
+
+      if (opp.dealTeaser || opp.description) {
+        sections.push(
+          "## Deal Listing\n" +
+          [opp.dealTeaser, opp.description].filter(Boolean).join("\n\n"),
+        );
+      }
+
+      const oppFields: string[] = [];
+      if (opp.revenue != null) oppFields.push(`Revenue: $${(opp.revenue / 1e6).toFixed(2)}M`);
+      if (opp.ebitda != null) oppFields.push(`EBITDA: $${(opp.ebitda / 1e6).toFixed(2)}M`);
+      if (opp.ebitdaMargin != null) oppFields.push(`EBITDA Margin: ${opp.ebitdaMargin}%`);
+      if (opp.askingPrice != null) oppFields.push(`Asking Price: $${(opp.askingPrice / 1e6).toFixed(2)}M`);
+      if (opp.brokerage) oppFields.push(`Brokerage: ${opp.brokerage}`);
+      if (opp.sourceWebsite) oppFields.push(`Source: ${opp.sourceWebsite}`);
+      if (opp.tags?.length) oppFields.push(`Tags: ${opp.tags.join(", ")}`);
+      if (opp.brokerFirstName || opp.brokerLastName) {
+        oppFields.push(
+          `Broker: ${[opp.brokerFirstName, opp.brokerLastName].filter(Boolean).join(" ")}`,
+        );
+      }
+      if (oppFields.length) {
+        sections.push("## Deal Opportunity\n" + oppFields.join("\n"));
+      }
+
+      if (company) {
+        const companyFields: string[] = [];
+        if (company.name) companyFields.push(`Name: ${company.name}`);
+        if (company.industry) companyFields.push(`Industry: ${company.industry}`);
+        if (company.location) companyFields.push(`Location: ${company.location}`);
+        if (company.revenueEstimate != null)
+          companyFields.push(
+            `Revenue Estimate: $${(company.revenueEstimate / 1e6).toFixed(2)}M`,
+          );
+        if (company.ebitdaEstimate != null)
+          companyFields.push(
+            `EBITDA Estimate: $${(company.ebitdaEstimate / 1e6).toFixed(2)}M`,
+          );
+        if (company.ebitdaMarginEstimate != null)
+          companyFields.push(
+            `EBITDA Margin: ${company.ebitdaMarginEstimate}%`,
+          );
+        if (company.recurringRevenuePct != null)
+          companyFields.push(`Recurring Revenue: ${company.recurringRevenuePct}%`);
+        if (company.customerConcentrationPct != null)
+          companyFields.push(
+            `Customer Concentration: ${company.customerConcentrationPct}%`,
+          );
+        if (company.attractivenessScore != null)
+          companyFields.push(`Attractiveness Score: ${company.attractivenessScore}`);
+        if (companyFields.length) {
+          sections.push("## Company\n" + companyFields.join("\n"));
+        }
+      }
+
+      if (leadRow) {
+        const leadFields: string[] = [];
+        if (leadRow.rawTitle) leadFields.push(`Title: ${leadRow.rawTitle}`);
+        if (leadRow.rawDescription) leadFields.push(`Description: ${leadRow.rawDescription}`);
+        if (leadRow.rawIndustry) leadFields.push(`Industry: ${leadRow.rawIndustry}`);
+        if (leadRow.revenue != null)
+          leadFields.push(`Revenue: $${(leadRow.revenue / 1e6).toFixed(2)}M`);
+        if (leadRow.ebitda != null)
+          leadFields.push(`EBITDA: $${(leadRow.ebitda / 1e6).toFixed(2)}M`);
+        if (leadRow.askingPrice != null)
+          leadFields.push(`Asking Price: $${(leadRow.askingPrice / 1e6).toFixed(2)}M`);
+        if (leadRow.brokerage) leadFields.push(`Brokerage: ${leadRow.brokerage}`);
+        if (leadRow.companyLocation) leadFields.push(`Location: ${leadRow.companyLocation}`);
+        if (leadFields.length) {
+          sections.push("## Raw Lead / Source Listing\n" + leadFields.join("\n"));
+        }
+      }
+
+      const enrichedContext = sections.join("\n\n");
+      if (!enrichedContext.trim()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Deal has no description, teaser, or related data to analyze",
+        });
+      }
+
+      console.log("enrichedContext", enrichedContext);
+
+      const result = await runAiQualitativeScreening(enrichedContext);
+
+      const avg =
+        (result.revenuePredictability +
+          result.marketGrowth +
+          result.competitiveAdvantage +
+          result.keyRisks) /
+        4;
+      const score = Math.round(avg * 20);
+      const sentiment =
+        avg > 3.5 ? "POSITIVE" : avg < 2.5 ? "NEGATIVE" : "NEUTRAL";
+
+      const content = JSON.stringify({
+        revenuePredictability: result.revenuePredictability,
+        marketGrowth: result.marketGrowth,
+        competitiveAdvantage: result.competitiveAdvantage,
+        keyRisks: result.keyRisks,
+      });
+
+      await db.insert(aiScreenings).values({
+        dealOpportunityId: opp.id,
+        title: "Qualitative Analysis",
+        explanation: result.explanation,
+        score,
+        content,
+        sentiment:
+          sentiment as "POSITIVE" | "NEGATIVE" | "NEUTRAL",
+        screenerId: null,
+      });
+
+      revalidatePath("/deals");
+      revalidatePath(`/deals/${opp.id}`);
+      revalidateTag("deals", "max");
+      revalidateTag(`deal-${opp.id}`, "max");
 
       return { success: true };
     }),

@@ -63,24 +63,25 @@ export function DealDetailTabs({
   const hasPipeline = !!currentOpportunity;
 
   const initialTab =
+    defaultTab === "screenings" ||
     defaultTab === "ai-screening" ||
     defaultTab === "financials" ||
     defaultTab === "pipeline" ||
-    defaultTab === "rules" ||
     defaultTab === "outreach" ||
     defaultTab === "documents" ||
     defaultTab === "contacts" ||
     defaultTab === "notes"
-      ? defaultTab
+      ? defaultTab === "ai-screening"
+        ? "screenings"
+        : defaultTab
       : "overview";
 
   return (
     <Tabs defaultValue={initialTab} className="w-full space-y-6">
       <TabsList className="w-full justify-start overflow-x-auto">
         <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="rules">Rules</TabsTrigger>
+        <TabsTrigger value="screenings">Screenings</TabsTrigger>
         <TabsTrigger value="financials">Financials</TabsTrigger>
-        <TabsTrigger value="ai-screening">AI Screening</TabsTrigger>
         {hasPipeline && (
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
         )}
@@ -193,25 +194,25 @@ export function DealDetailTabs({
         )}
       </TabsContent>
 
-      <TabsContent value="rules" className="space-y-6">
+      <TabsContent value="screenings" className="space-y-8">
         <DeterministicScreeningSummary
           screening={deterministicScreening}
           dealOpportunityId={uid}
         />
+        <div className="space-y-3">
+          <h2 className="text-base font-semibold">AI Screening</h2>
+          <FetchDealAIScreenings
+            dealId={uid}
+            dealType={deal.dealType}
+            aiScreenings={aiScreenings}
+          />
+        </div>
       </TabsContent>
 
       <TabsContent value="financials">
         <DealFinancialsSection
           deal={deal}
           currentOpportunity={currentOpportunity ?? undefined}
-        />
-      </TabsContent>
-
-      <TabsContent value="ai-screening">
-        <FetchDealAIScreenings
-          dealId={uid}
-          dealType={deal.dealType}
-          aiScreenings={aiScreenings}
         />
       </TabsContent>
 

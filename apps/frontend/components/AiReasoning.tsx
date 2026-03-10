@@ -8,6 +8,13 @@ import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
 
+type QualitativeScores = {
+  revenuePredictability?: number;
+  marketGrowth?: number;
+  competitiveAdvantage?: number;
+  keyRisks?: number;
+};
+
 interface AIReasoningProps {
   screeningId: string;
   title: string;
@@ -16,6 +23,27 @@ interface AIReasoningProps {
   explanation: string;
   sentiment: Sentiment;
   score?: number | null;
+  content?: string | null;
+}
+
+function parseQualitativeContent(
+  content: string | null | undefined,
+): QualitativeScores | null {
+  if (!content?.trim()) return null;
+  try {
+    const parsed = JSON.parse(content) as QualitativeScores;
+    if (
+      typeof parsed.revenuePredictability === "number" &&
+      typeof parsed.marketGrowth === "number" &&
+      typeof parsed.competitiveAdvantage === "number" &&
+      typeof parsed.keyRisks === "number"
+    ) {
+      return parsed;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }
 
 export default function AIReasoning({
@@ -23,10 +51,12 @@ export default function AIReasoning({
   explanation,
   sentiment,
   score,
+  content,
   screeningId,
   dealId,
   dealType,
 }: AIReasoningProps) {
+  const qualitativeScores = parseQualitativeContent(content);
   const trpc = useTRPC();
 
   const { mutate: deleteScreening, isPending } = useMutation(
@@ -62,6 +92,34 @@ export default function AIReasoning({
           </span>
         </div>
       </div>
+      {qualitativeScores && (
+        <dl className="mb-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+          <div>
+            <dt className="text-xs text-muted-foreground">
+              Revenue predictability
+            </dt>
+            <dd className="font-medium">
+              {qualitativeScores.revenuePredictability}/5
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Market growth</dt>
+            <dd className="font-medium">{qualitativeScores.marketGrowth}/5</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">
+              Competitive advantage
+            </dt>
+            <dd className="font-medium">
+              {qualitativeScores.competitiveAdvantage}/5
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Key risks</dt>
+            <dd className="font-medium">{qualitativeScores.keyRisks}/5</dd>
+          </div>
+        </dl>
+      )}
       <p className="mb-4 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
         {explanation}
       </p>
