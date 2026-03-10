@@ -75,6 +75,13 @@ export const outreachTypeEnum = pgEnum("OutreachType", [
   "MEETING",
 ]);
 
+export const reviewStateEnum = pgEnum("ReviewState", [
+  "NOT_SEEN",
+  "SEEN",
+  "REVIEWED",
+  "PUBLISHED",
+]);
+
 // ============================================================================
 // TABLES
 // ============================================================================
@@ -471,10 +478,8 @@ export const deals = pgTable("Deal", {
   dealTeaser: text("dealTeaser"),
   tags: text("tags").array().default([]),
   bitrixLink: text("bitrixLink"),
-  isPublished: boolean("isPublished").default(false).notNull(),
-  isReviewed: boolean("isReviewed").default(false).notNull(),
+  reviewState: reviewStateEnum("reviewState").default("NOT_SEEN").notNull(),
   status: dealStatusEnum("status").default("NOT_SPECIFIED").notNull(),
-  seen: boolean("seen").default(false).notNull(),
   chunk_text: text("chunk_text"),
   description: text("description"),
 });
@@ -529,9 +534,7 @@ export const dealOpportunities = pgTable(
     status: dealStatusEnum("status").default("AVAILABLE").notNull(),
 
     tags: text("tags").array().default([]),
-    isPublished: boolean("isPublished").default(false).notNull(),
-    isReviewed: boolean("isReviewed").default(false).notNull(),
-    seen: boolean("seen").default(false).notNull(),
+    reviewState: reviewStateEnum("reviewState").default("NOT_SEEN").notNull(),
 
     bitrixId: text("bitrixId"),
     bitrixLink: text("bitrixLink"),
@@ -965,6 +968,14 @@ export const DealType = {
   AI_INFERRED: "AI_INFERRED",
 } as const;
 export type DealType = (typeof DealType)[keyof typeof DealType];
+
+export const ReviewState = {
+  NOT_SEEN: "NOT_SEEN",
+  SEEN: "SEEN",
+  REVIEWED: "REVIEWED",
+  PUBLISHED: "PUBLISHED",
+} as const;
+export type ReviewState = (typeof ReviewState)[keyof typeof ReviewState];
 
 export const Sentiment = {
   POSITIVE: "POSITIVE",

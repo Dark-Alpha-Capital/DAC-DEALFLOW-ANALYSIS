@@ -73,6 +73,7 @@ async function CachedDealContent({ uid }: { uid: string }) {
         deal={dealData.deal}
         uid={uid}
         company={dealData.company ?? null}
+        currentOpportunity={"currentOpportunity" in dealData ? dealData.currentOpportunity : undefined}
         dealOpportunities={dealData.dealOpportunities ?? []}
         companyContacts={dealData.companyContacts ?? []}
         dealContacts={dealData.dealContacts ?? []}

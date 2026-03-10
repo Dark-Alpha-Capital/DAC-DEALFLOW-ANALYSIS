@@ -393,9 +393,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
     linkedinUrl: opp.brokerLinkedIn,
     dealTeaser: opp.dealTeaser,
     tags: opp.tags ?? [],
-    isPublished: opp.isPublished,
-    isReviewed: opp.isReviewed,
-    seen: opp.seen,
+    reviewState: opp.reviewState,
     bitrixId: opp.bitrixId,
     bitrixLink: opp.bitrixLink,
     bitrixCreatedAt: opp.bitrixCreatedAt,
@@ -408,6 +406,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
 
   return {
     deal: dealView,
+    currentOpportunity: opp,
     documents: dealDocs ?? [],
     aiScreenings: screenings ?? [],
     company: company ?? null,
@@ -545,13 +544,17 @@ export const GetAllDeals = async ({
     conditions.push(gte(deals.ebitdaMargin, ebitdaMarginValue));
   }
   if (showSeen) {
-    conditions.push(eq(deals.seen, showSeen));
+    conditions.push(
+      inArray(deals.reviewState, ["SEEN", "REVIEWED", "PUBLISHED"]),
+    );
   }
   if (showReviewed) {
-    conditions.push(eq(deals.isReviewed, showReviewed));
+    conditions.push(
+      inArray(deals.reviewState, ["REVIEWED", "PUBLISHED"]),
+    );
   }
   if (showPublished) {
-    conditions.push(eq(deals.isPublished, showPublished));
+    conditions.push(eq(deals.reviewState, "PUBLISHED"));
   }
   if (status) {
     conditions.push(eq(deals.status, status));

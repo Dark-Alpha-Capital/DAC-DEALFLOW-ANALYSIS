@@ -35,9 +35,7 @@ type Submission = {
   updatedAt: string;
   bitrixLink: string | null;
   status: string;
-  isReviewed: boolean;
-  isPublished: boolean;
-  seen: boolean;
+  reviewState: string;
   bitrixId: string | null;
   bitrixCreatedAt: string | null;
   userId: string;

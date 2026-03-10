@@ -15,12 +15,14 @@ interface AIReasoningProps {
   dealType: DealType;
   explanation: string;
   sentiment: Sentiment;
+  score?: number | null;
 }
 
 export default function AIReasoning({
   title,
   explanation,
   sentiment,
+  score,
   screeningId,
   dealId,
   dealType,
@@ -40,18 +42,25 @@ export default function AIReasoning({
 
   return (
     <div className="mb-4 border-b border-border pb-4">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium text-foreground">{title}</p>
-        <span
-          className={cn(
-            "text-xs font-medium",
-            sentiment === "POSITIVE" && "text-foreground",
-            sentiment === "NEGATIVE" && "text-destructive",
-            sentiment === "NEUTRAL" && "text-muted-foreground",
+        <div className="flex items-center gap-2">
+          {score != null && (
+            <span className="tabular-nums text-xs font-medium text-foreground">
+              Score: {score}
+            </span>
           )}
-        >
-          {sentiment}
-        </span>
+          <span
+            className={cn(
+              "text-xs font-medium",
+              sentiment === "POSITIVE" && "text-foreground",
+              sentiment === "NEGATIVE" && "text-destructive",
+              sentiment === "NEUTRAL" && "text-muted-foreground",
+            )}
+          >
+            Sentiment: {sentiment}
+          </span>
+        </div>
       </div>
       <p className="mb-4 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
         {explanation}

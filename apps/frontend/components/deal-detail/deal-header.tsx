@@ -1,48 +1,18 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Edit,
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  CheckCircle,
-  Circle,
-  Send,
-  Link as LinkIcon,
-} from "lucide-react";
+import { Edit, ArrowLeft, Link as LinkIcon } from "lucide-react";
 import { Deal, DealStatus, DealType } from "@repo/db/schema";
 import { DealActionsDropdown } from "./deal-actions-dropdown";
-import { DealSpecificationsDialog } from "@/components/Dialogs/DealSpecificationsDialog";
+import { DealStatusControls } from "./DealStatusControls";
 import { cn } from "@/lib/utils";
+import { stageLabels } from "@/app/(protected)/deals/columns";
 
 interface DealHeaderProps {
   deal: Deal;
   uid: string;
   basePath?: "deals" | "raw-deals";
-}
-
-function StatusIndicator({
-  label,
-  active,
-  icon: Icon,
-}: {
-  label: string;
-  active: boolean;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <div className="border-border flex flex-col items-center gap-1.5 border-b py-3">
-      <Icon
-        className={cn(
-          "h-5 w-5",
-          active ? "text-foreground" : "text-muted-foreground",
-        )}
-      />
-      <span className="text-muted-foreground text-xs font-medium">{label}</span>
-      <span className="text-foreground text-xs">{active ? "Yes" : "No"}</span>
-    </div>
-  );
+  stage?: string | null;
 }
 
 function getDealTypeLabel(dealType: DealType): string {
@@ -75,6 +45,7 @@ export function DealHeader({
   deal,
   uid,
   basePath = "raw-deals",
+  stage,
 }: DealHeaderProps) {
   const backHref = basePath === "deals" ? "/deals" : "/raw-deals";
   const backLabel =
@@ -83,23 +54,28 @@ export function DealHeader({
     basePath === "deals" ? `/deals/${uid}/edit` : `/raw-deals/${uid}/edit`;
 
   const {
-    title,
     dealCaption,
     dealType,
     status,
     brokerage,
     companyLocation,
     industry,
-    seen,
-    isReviewed,
-    isPublished,
+    sourceWebsite,
+    reviewState,
     bitrixId,
     tags,
+    firstName,
+    lastName,
+    createdAt,
   } = deal;
+
+  const brokerDisplay =
+    brokerage ||
+    [firstName, lastName].filter(Boolean).join(" ") ||
+    null;
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
       <Button
         variant="ghost"
         asChild
@@ -111,13 +87,20 @@ export function DealHeader({
         </Link>
       </Button>
 
-      {/* Title Section */}
       <div className="space-y-3">
-        {/* Badges */}
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          {dealCaption || "Deal"}
+        </h1>
+
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="font-medium">
             {getDealTypeLabel(dealType)}
           </Badge>
+          {stage && (
+            <Badge variant="outline" className="font-medium">
+              {stageLabels[stage] ?? stage.replace(/_/g, " ")}
+            </Badge>
+          )}
           <Badge className={cn("font-medium", getStatusColor(status))}>
             {status.replace("_", " ")}
           </Badge>
@@ -129,48 +112,51 @@ export function DealHeader({
           )}
         </div>
 
-        {/* Subtitle */}
-        {(brokerage || companyLocation || industry) && (
-          <p className="text-muted-foreground text-lg">
-            {[brokerage, companyLocation, industry].filter(Boolean).join(" • ")}
-          </p>
-        )}
+        <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+          {sourceWebsite && (
+            <div key="source">
+              <dt className="text-muted-foreground inline">Source: </dt>
+              <dd className="inline">
+                <a
+                  href={sourceWebsite.startsWith("http") ? sourceWebsite : `https://${sourceWebsite}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {sourceWebsite}
+                </a>
+              </dd>
+            </div>
+          )}
+          {brokerDisplay && (
+            <div key="broker">
+              <dt className="text-muted-foreground inline">Broker: </dt>
+              <dd className="inline">{brokerDisplay}</dd>
+            </div>
+          )}
+          {createdAt && (
+            <div key="created">
+              <dt className="text-muted-foreground inline">Created: </dt>
+              <dd className="inline">
+                {new Date(createdAt).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </dd>
+            </div>
+          )}
+          {(companyLocation || industry) && (
+            <div key="meta">
+              <dt className="text-muted-foreground inline"> </dt>
+              <dd className="inline text-muted-foreground">
+                {[companyLocation, industry].filter(Boolean).join(" • ")}
+              </dd>
+            </div>
+          )}
+        </dl>
       </div>
 
-      {/* Status Indicators */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatusIndicator
-          label="Seen"
-          active={seen}
-          icon={seen ? Eye : EyeOff}
-        />
-        <StatusIndicator
-          label="Reviewed"
-          active={isReviewed}
-          icon={isReviewed ? CheckCircle : Circle}
-        />
-        <StatusIndicator
-          label="Published"
-          active={isPublished}
-          icon={isPublished ? Send : Circle}
-        />
-        <div className="border-border flex flex-col items-center gap-1.5 border-b py-3">
-          <LinkIcon
-            className={cn(
-              "h-5 w-5",
-              bitrixId ? "text-foreground" : "text-muted-foreground",
-            )}
-          />
-          <span className="text-muted-foreground text-xs font-medium">
-            Bitrix
-          </span>
-          <span className="text-foreground text-xs">
-            {bitrixId ? "Linked" : "Not linked"}
-          </span>
-        </div>
-      </div>
-
-      {/* Tags */}
       {tags && tags.length > 0 && (
         <div className="space-y-2">
           <p className="text-muted-foreground text-sm font-medium">Tags</p>
@@ -184,7 +170,6 @@ export function DealHeader({
         </div>
       )}
 
-      {/* Action Buttons */}
       <div className="space-y-4">
         <div className="border-border flex flex-wrap items-center gap-3 border-b pb-4">
           <Button asChild>
@@ -193,15 +178,13 @@ export function DealHeader({
               Edit Deal
             </Link>
           </Button>
-          <DealSpecificationsDialog
-            dealUid={uid}
-            dealStatus={status}
-            dealReviewed={isReviewed}
-            dealPublished={isPublished}
-            dealSeen={seen}
-          />
           <DealActionsDropdown deal={deal} uid={uid} />
         </div>
+        <DealStatusControls
+          dealId={uid}
+          status={status}
+          reviewState={deal.reviewState}
+        />
       </div>
     </div>
   );

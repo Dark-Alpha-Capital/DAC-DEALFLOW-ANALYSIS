@@ -18,10 +18,11 @@ const FetchDealAIScreenings = ({
         {aiScreenings && aiScreenings.length > 0 ? (
           aiScreenings.map((e, index) => (
             <AIReasoning
-              key={index}
+              key={e.id}
               title={e.title}
               explanation={e.explanation}
               sentiment={e.sentiment}
+              score={e.score}
               dealId={dealId}
               dealType={dealType}
               screeningId={e.id}

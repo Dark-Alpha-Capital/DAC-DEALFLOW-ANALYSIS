@@ -95,17 +95,20 @@ export default function DealCard({
             <span
               className={cn(
                 "text-xs font-medium",
-                deal.isPublished ? "text-foreground" : "text-muted-foreground",
+                deal.reviewState === "PUBLISHED"
+                  ? "text-foreground"
+                  : "text-muted-foreground",
               )}
             >
-              {deal.isPublished && (
+              {deal.reviewState === "PUBLISHED" && (
                 <CheckCircle2 className="mr-1 inline h-3 w-3" />
               )}
-              {deal.isPublished ? "Published" : "Draft"}
+              {deal.reviewState === "PUBLISHED" ? "Published" : "Draft"}
             </span>
             <span className="text-border">·</span>
             <span className="text-xs text-muted-foreground">
-              {deal.isReviewed ? (
+              {deal.reviewState === "REVIEWED" ||
+              deal.reviewState === "PUBLISHED" ? (
                 <>
                   <CheckCircle2 className="mr-1 inline h-3 w-3" />
                   Reviewed

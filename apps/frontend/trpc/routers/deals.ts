@@ -11,6 +11,7 @@ import db, {
   and,
   DealDocumentCategory,
   DocumentCategory,
+  ReviewState,
 } from "@repo/db";
 import { DeleteDealById, BulkDeleteDeals } from "@repo/db/mutations";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -20,7 +21,11 @@ import {
   type EntityMetadata,
 } from "@/lib/queue-client";
 import { randomUUID } from "crypto";
-import { GetDealById, GetDealOpportunityByLegacyDealId } from "@repo/db/queries";
+import {
+  GetDealById,
+  GetDealOpportunityById,
+  GetDealOpportunityByLegacyDealId,
+} from "@repo/db/queries";
 import { uploadBuffer } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
 
@@ -82,9 +87,12 @@ const updateTagsSchema = z.object({
 
 const updateSpecificationsSchema = z.object({
   dealId: z.string(),
-  isReviewed: z.boolean().default(false),
-  isPublished: z.boolean().default(false),
-  seen: z.boolean().default(false),
+  reviewState: z.enum([
+    "NOT_SEEN",
+    "SEEN",
+    "REVIEWED",
+    "PUBLISHED",
+  ] as const),
   status: z.nativeEnum(DealStatus),
 });
 
@@ -323,22 +331,32 @@ export const dealsRouter = createTRPCRouter({
   updateSpecifications: protectedProcedure
     .input(updateSpecificationsSchema)
     .mutation(async ({ input }) => {
-      const { dealId, ...data } = input;
+      const { dealId, reviewState, status } = input;
 
-      await db
-        .update(deals)
-        .set({
-          seen: data.seen,
-          status: data.status,
-          isReviewed: data.isReviewed,
-          isPublished: data.isPublished,
-        })
-        .where(eq(deals.id, dealId));
+      let opp = await GetDealOpportunityById(dealId);
+      if (!opp) {
+        opp = await GetDealOpportunityByLegacyDealId(dealId);
+      }
+      if (opp) {
+        await db
+          .update(dealOpportunities)
+          .set({ reviewState: reviewState as ReviewState, status })
+          .where(eq(dealOpportunities.id, dealId));
+        revalidatePath(`/deals/${dealId}`);
+      } else {
+        await db
+          .update(deals)
+          .set({ reviewState: reviewState as ReviewState, status })
+          .where(eq(deals.id, dealId));
+        revalidatePath(`/raw-deals/${dealId}`);
+      }
 
-      revalidatePath(`/raw-deals/${dealId}`);
+      revalidateTag(`deal-${dealId}`, "max");
+      revalidateTag("deals", "max");
       revalidatePath("/raw-deals");
+      revalidatePath("/deals");
 
-      return { success: true };
+      return { success: true, dealId };
     }),
 
   uploadDocument: protectedProcedure

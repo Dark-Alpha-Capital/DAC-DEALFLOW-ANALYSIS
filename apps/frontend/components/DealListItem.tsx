@@ -55,19 +55,22 @@ export default function DealListItem({ deal, selected, onToggle }: Props) {
           </h3>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>
-              {deal.isPublished && (
+              {deal.reviewState === "PUBLISHED" && (
                 <CheckCircle2 className="mr-1 inline h-3 w-3" />
               )}
-              {deal.isPublished ? "Published" : "Draft"}
+              {deal.reviewState === "PUBLISHED" ? "Published" : "Draft"}
             </span>
             <span className="text-border">·</span>
             <span>
-              {deal.isReviewed ? (
+              {(deal.reviewState === "REVIEWED" ||
+                deal.reviewState === "PUBLISHED") ? (
                 <CheckCircle2 className="mr-1 inline h-3 w-3" />
               ) : (
                 <Clock className="mr-1 inline h-3 w-3" />
               )}
-              {deal.isReviewed ? "Reviewed" : "Pending"}
+              {deal.reviewState === "REVIEWED" || deal.reviewState === "PUBLISHED"
+                ? "Reviewed"
+                : "Pending"}
             </span>
           </div>
         </div>

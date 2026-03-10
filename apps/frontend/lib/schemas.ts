@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { DealDocumentCategory, DealStatus } from "@repo/db/schema";
+import { DealDocumentCategory, DealStatus, ReviewState } from "@repo/db/schema";
 
 const optionalNumberFromInputSchema = z.preprocess(
   (value) => (value === "" || value === null ? undefined : value),
@@ -32,9 +32,7 @@ export function parseOptionalNumericInput(
 }
 
 export const dealSpecificationsFormSchema = z.object({
-  isReviewed: z.boolean().default(false),
-  isPublished: z.boolean().default(false),
-  seen: z.boolean().default(false),
+  reviewState: z.nativeEnum(ReviewState),
   status: z.nativeEnum(DealStatus),
 });
 

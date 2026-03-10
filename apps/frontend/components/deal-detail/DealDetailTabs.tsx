@@ -8,7 +8,8 @@ import type {
 } from "@repo/db/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealHeader } from "./deal-header";
-import { DealOpportunitiesTable } from "./DealOpportunitiesTable";
+import { DealFinancialsSection } from "./DealFinancialsSection";
+import { DealPipelineSection } from "./DealPipelineSection";
 import { EntityContactsSection } from "./EntityContactsSection";
 import { EntityDocumentsSection } from "./EntityDocumentsSection";
 import {
@@ -17,11 +18,13 @@ import {
 } from "@/components/company-detail/CompanyOutreach";
 import { CompanyNotes } from "@/components/company-detail/CompanyNotes";
 import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
+import { FileText, User } from "lucide-react";
 
 interface DealDetailTabsProps {
   deal: Deal & { id: string };
   uid: string;
   company: Company | null;
+  currentOpportunity?: DealOpportunity | null;
   dealOpportunities: DealOpportunity[];
   companyContacts: Contact[];
   dealContacts: Contact[];
@@ -36,6 +39,7 @@ export function DealDetailTabs({
   deal,
   uid,
   company,
+  currentOpportunity,
   dealOpportunities,
   companyContacts,
   dealContacts,
@@ -47,20 +51,134 @@ export function DealDetailTabs({
 }: DealDetailTabsProps) {
   if (!company) return null;
 
+  const dealOutreach = outreach.filter(
+    (row) => row.dealOpportunityId === uid,
+  );
+  const hasPipeline = !!currentOpportunity;
+
   return (
     <Tabs defaultValue="overview" className="w-full space-y-6">
       <TabsList className="w-full justify-start overflow-x-auto">
         <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="ai-screening">AI screening</TabsTrigger>
-        <TabsTrigger value="deals">Deal opportunities</TabsTrigger>
-        <TabsTrigger value="contacts">Contacts</TabsTrigger>
+        <TabsTrigger value="financials">Financials</TabsTrigger>
+        <TabsTrigger value="ai-screening">AI Screening</TabsTrigger>
+        {hasPipeline && (
+          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+        )}
         <TabsTrigger value="outreach">Outreach</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>
+        <TabsTrigger value="contacts">Contacts</TabsTrigger>
         <TabsTrigger value="notes">Notes</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="overview">
-        <DealHeader deal={deal} uid={uid} basePath="deals" />
+      <TabsContent value="overview" className="space-y-6">
+        <DealHeader
+          deal={deal}
+          uid={uid}
+          basePath="deals"
+          stage={currentOpportunity?.stage}
+        />
+
+        {(deal.dealTeaser || deal.description) && (
+          <div className="space-y-3">
+            <h2 className="flex items-center gap-2 text-base font-semibold">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              Description
+            </h2>
+            {deal.dealTeaser && (
+              <p className="text-sm leading-relaxed text-foreground">
+                {deal.dealTeaser}
+              </p>
+            )}
+            {deal.description && (
+              <p className="text-muted-foreground whitespace-pre-wrap text-sm leading-relaxed">
+                {deal.description}
+              </p>
+            )}
+          </div>
+        )}
+
+        {(deal.firstName ||
+          deal.lastName ||
+          deal.email ||
+          deal.workPhone ||
+          deal.linkedinUrl ||
+          deal.brokerage) && (
+          <div className="space-y-3">
+            <h2 className="flex items-center gap-2 text-base font-semibold">
+              <User className="h-4 w-4 text-muted-foreground" />
+              Broker Information
+            </h2>
+            <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                {(deal.firstName || deal.lastName) && (
+                  <div>
+                    <dt className="text-muted-foreground text-xs">Name</dt>
+                    <dd>
+                      {[deal.firstName, deal.lastName].filter(Boolean).join(" ")}
+                    </dd>
+                  </div>
+                )}
+                {deal.brokerage && (
+                  <div>
+                    <dt className="text-muted-foreground text-xs">Brokerage</dt>
+                    <dd>{deal.brokerage}</dd>
+                  </div>
+                )}
+                {deal.email && (
+                  <div>
+                    <dt className="text-muted-foreground text-xs">Email</dt>
+                    <dd>
+                      <a
+                        href={`mailto:${deal.email}`}
+                        className="text-primary hover:underline"
+                      >
+                        {deal.email}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {deal.workPhone && (
+                  <div>
+                    <dt className="text-muted-foreground text-xs">Phone</dt>
+                    <dd>
+                      <a
+                        href={`tel:${deal.workPhone}`}
+                        className="text-primary hover:underline"
+                      >
+                        {deal.workPhone}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {deal.linkedinUrl && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-muted-foreground text-xs">LinkedIn</dt>
+                    <dd>
+                      <a
+                        href={deal.linkedinUrl.startsWith("http") ? deal.linkedinUrl : `https://${deal.linkedinUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {deal.linkedinUrl}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+          </div>
+        )}
+
+        {hasPipeline && (
+          <DealPipelineSection dealId={uid} currentOpportunity={currentOpportunity} />
+        )}
+      </TabsContent>
+
+      <TabsContent value="financials">
+        <DealFinancialsSection
+          deal={deal}
+          currentOpportunity={currentOpportunity ?? undefined}
+        />
       </TabsContent>
 
       <TabsContent value="ai-screening">
@@ -71,11 +189,38 @@ export function DealDetailTabs({
         />
       </TabsContent>
 
-      <TabsContent value="deals">
-        <DealOpportunitiesTable
-          dealOpportunities={dealOpportunities}
-          company={company}
-          currentOppId={uid}
+      {hasPipeline && (
+        <TabsContent value="pipeline">
+          <DealPipelineSection dealId={uid} currentOpportunity={currentOpportunity} />
+        </TabsContent>
+      )}
+
+      <TabsContent value="outreach">
+        <CompanyOutreach
+          outreach={dealOutreach}
+          companyId={company.id}
+          dealOpportunities={dealOpportunities.map((o) => ({
+            id: o.id,
+            stage: o.stage ?? "LISTED",
+            createdAt: o.createdAt ?? new Date(),
+          }))}
+        />
+      </TabsContent>
+
+      <TabsContent value="documents" className="space-y-8">
+        <EntityDocumentsSection
+          title="Deal documents"
+          entityType="DEAL_OPPORTUNITY"
+          entityId={uid}
+          documents={dealDocuments}
+          emptyMessage="No deal documents. Upload CIM, Teaser, or Financials."
+        />
+        <EntityDocumentsSection
+          title="Company documents"
+          entityType="COMPANY"
+          entityId={company.id}
+          documents={companyDocuments}
+          emptyMessage="No company documents. Upload to attach to this company."
         />
       </TabsContent>
 
@@ -93,27 +238,6 @@ export function DealDetailTabs({
           entityId={uid}
           contacts={dealContacts}
           emptyLabel="No deal-specific contacts added yet."
-        />
-      </TabsContent>
-
-      <TabsContent value="outreach">
-        <CompanyOutreach outreach={outreach} />
-      </TabsContent>
-
-      <TabsContent value="documents" className="space-y-8">
-        <EntityDocumentsSection
-          title="Company documents"
-          entityType="COMPANY"
-          entityId={company.id}
-          documents={companyDocuments}
-          emptyMessage="No company documents. Upload to attach to this company."
-        />
-        <EntityDocumentsSection
-          title="Deal documents"
-          entityType="DEAL_OPPORTUNITY"
-          entityId={uid}
-          documents={dealDocuments}
-          emptyMessage="No deal documents. Upload to attach to this deal."
         />
       </TabsContent>
 
