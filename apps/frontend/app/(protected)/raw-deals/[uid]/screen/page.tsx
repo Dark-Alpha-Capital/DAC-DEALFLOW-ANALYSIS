@@ -1,5 +1,9 @@
 import React, { Suspense } from "react";
 import { getAllScreeners } from "@repo/db/queries";
+import {
+  GetDealOpportunityById,
+  GetDealOpportunityByLegacyDealId,
+} from "@repo/db/queries";
 import ScreeningWrapper from "./ScreeningWrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -41,9 +45,18 @@ function ScreenersSkeleton() {
 }
 
 async function DisplayScreeners({ dealId }: { dealId: string }) {
-  const availableScreeners = await getAllScreeners();
+  const [availableScreeners, byId, byLegacyDealId] = await Promise.all([
+    getAllScreeners(),
+    GetDealOpportunityById(dealId),
+    GetDealOpportunityByLegacyDealId(dealId),
+  ]);
+  const dealOpportunityId = byId?.id || byLegacyDealId?.id || dealId;
 
   return (
-    <ScreeningWrapper dealId={dealId} screeners={availableScreeners || []} />
+    <ScreeningWrapper
+      dealId={dealId}
+      dealOpportunityId={dealOpportunityId}
+      screeners={availableScreeners || []}
+    />
   );
 }

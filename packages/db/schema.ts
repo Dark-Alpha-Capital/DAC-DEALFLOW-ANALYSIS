@@ -82,6 +82,21 @@ export const reviewStateEnum = pgEnum("ReviewState", [
   "PUBLISHED",
 ]);
 
+export const dealScreeningStatusEnum = pgEnum("DealScreeningStatus", [
+  "PASS",
+  "FAIL",
+  "INCOMPLETE",
+]);
+
+export const screenerResponseTypeEnum = pgEnum("ScreenerResponseType", [
+  "SCORE",
+]);
+
+export const screenerResponseSourceEnum = pgEnum("ScreenerResponseSource", [
+  "AI",
+  "HUMAN",
+]);
+
 // ============================================================================
 // TABLES
 // ============================================================================
@@ -618,22 +633,97 @@ export const questionnaires = pgTable("questionnaires", {
     .$onUpdate(() => new Date()),
 });
 
-// Screener table
-export const screeners = pgTable("Screener", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-  content: text("content").notNull(),
+export const screenerTemplates = pgTable(
+  "ScreenerTemplate",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    name: text("name").notNull(),
+    category: text("category").notNull(),
+    description: text("description"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    screenerTemplateCategoryIdx: index("screener_template_category_idx").on(
+      table.category,
+    ),
+    screenerTemplateNameIdx: index("screener_template_name_idx").on(table.name),
+  }),
+);
 
-  fileUrl: text("fileUrl").notNull(),
-  name: text("name").notNull(),
-  description: text("description"),
-});
+export const screeners = screenerTemplates;
+
+export const screenerQuestions = pgTable(
+  "ScreenerQuestion",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    screenerId: text("screenerId")
+      .notNull()
+      .references(() => screenerTemplates.id, { onDelete: "cascade" }),
+    question: text("question").notNull(),
+    weight: integer("weight").default(10).notNull(),
+    responseType: screenerResponseTypeEnum("responseType")
+      .default("SCORE")
+      .notNull(),
+    position: integer("position").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    screenerQuestionScreenerIdx: index("screener_question_screener_idx").on(
+      table.screenerId,
+    ),
+    screenerQuestionOrderUniqueIdx: uniqueIndex(
+      "screener_question_order_unique_idx",
+    ).on(table.screenerId, table.position),
+  }),
+);
+
+export const screenerResponses = pgTable(
+  "ScreenerResponse",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    dealOpportunityId: text("dealOpportunityId")
+      .notNull()
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }),
+    questionId: text("questionId")
+      .notNull()
+      .references(() => screenerQuestions.id, { onDelete: "cascade" }),
+    score: integer("score").notNull(),
+    source: screenerResponseSourceEnum("source").notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    screenerResponseDealOppIdx: index("screener_response_deal_opp_idx").on(
+      table.dealOpportunityId,
+    ),
+    screenerResponseQuestionIdx: index("screener_response_question_idx").on(
+      table.questionId,
+    ),
+    screenerResponseUniqueIdx: uniqueIndex("screener_response_unique_idx").on(
+      table.dealOpportunityId,
+      table.questionId,
+      table.source,
+    ),
+  }),
+);
 
 // AiScreening table
 export const aiScreenings = pgTable(
@@ -663,6 +753,44 @@ export const aiScreenings = pgTable(
     aiScreeningDealOppIdx: index("ai_screening_deal_opp_idx").on(
       table.dealOpportunityId,
     ),
+  }),
+);
+
+export const dealOpportunityScreenings = pgTable(
+  "DealOpportunityScreening",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    dealOpportunityId: text("dealOpportunityId")
+      .notNull()
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }),
+    status: dealScreeningStatusEnum("status").notNull(),
+    passed: boolean("passed").notNull().default(false),
+    reasons: text("reasons").array().notNull().default([]),
+    score: integer("score"),
+    ebitdaFitScore: integer("ebitdaFitScore"),
+    revenueScore: integer("revenueScore"),
+    industryScore: integer("industryScore"),
+    profileKey: text("profileKey").notNull(),
+    profileVersion: text("profileVersion").notNull(),
+    screenedAt: timestamp("screenedAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    dealOpportunityScreeningDealUniqueIdx: uniqueIndex(
+      "deal_opp_screening_deal_unique_idx",
+    ).on(table.dealOpportunityId),
+    dealOpportunityScreeningStatusIdx: index(
+      "deal_opp_screening_status_idx",
+    ).on(table.status),
+    dealOpportunityScreeningScoreIdx: index(
+      "deal_opp_screening_score_idx",
+    ).on(table.score),
   }),
 );
 
@@ -838,6 +966,11 @@ export const dealOpportunitiesRelations = relations(
       references: [deals.id],
     }),
     aiScreenings: many(aiScreenings),
+    deterministicScreening: one(dealOpportunityScreenings, {
+      fields: [dealOpportunities.id],
+      references: [dealOpportunityScreenings.dealOpportunityId],
+    }),
+    screenerResponses: many(screenerResponses),
     outreach: many(outreach),
   }),
 );
@@ -871,8 +1004,34 @@ export const companyNotesRelations = relations(companyNotes, ({ one }) => ({
 }));
 
 export const screenersRelations = relations(screeners, ({ many }) => ({
+  questions: many(screenerQuestions),
   aiScreenings: many(aiScreenings),
 }));
+
+export const screenerQuestionsRelations = relations(
+  screenerQuestions,
+  ({ one, many }) => ({
+    screener: one(screeners, {
+      fields: [screenerQuestions.screenerId],
+      references: [screeners.id],
+    }),
+    responses: many(screenerResponses),
+  }),
+);
+
+export const screenerResponsesRelations = relations(
+  screenerResponses,
+  ({ one }) => ({
+    dealOpportunity: one(dealOpportunities, {
+      fields: [screenerResponses.dealOpportunityId],
+      references: [dealOpportunities.id],
+    }),
+    question: one(screenerQuestions, {
+      fields: [screenerResponses.questionId],
+      references: [screenerQuestions.id],
+    }),
+  }),
+);
 
 export const aiScreeningsRelations = relations(aiScreenings, ({ one }) => ({
   dealOpportunity: one(dealOpportunities, {
@@ -884,6 +1043,16 @@ export const aiScreeningsRelations = relations(aiScreenings, ({ one }) => ({
     references: [screeners.id],
   }),
 }));
+
+export const dealOpportunityScreeningsRelations = relations(
+  dealOpportunityScreenings,
+  ({ one }) => ({
+    dealOpportunity: one(dealOpportunities, {
+      fields: [dealOpportunityScreenings.dealOpportunityId],
+      references: [dealOpportunities.id],
+    }),
+  }),
+);
 
 export const userActionLogsRelations = relations(userActionLogs, ({ one }) => ({
   user: one(users, {
@@ -977,12 +1146,33 @@ export const ReviewState = {
 } as const;
 export type ReviewState = (typeof ReviewState)[keyof typeof ReviewState];
 
+export const DealScreeningStatus = {
+  PASS: "PASS",
+  FAIL: "FAIL",
+  INCOMPLETE: "INCOMPLETE",
+} as const;
+export type DealScreeningStatus =
+  (typeof DealScreeningStatus)[keyof typeof DealScreeningStatus];
+
 export const Sentiment = {
   POSITIVE: "POSITIVE",
   NEUTRAL: "NEUTRAL",
   NEGATIVE: "NEGATIVE",
 } as const;
 export type Sentiment = (typeof Sentiment)[keyof typeof Sentiment];
+
+export const ScreenerResponseType = {
+  SCORE: "SCORE",
+} as const;
+export type ScreenerResponseType =
+  (typeof ScreenerResponseType)[keyof typeof ScreenerResponseType];
+
+export const ScreenerResponseSource = {
+  AI: "AI",
+  HUMAN: "HUMAN",
+} as const;
+export type ScreenerResponseSource =
+  (typeof ScreenerResponseSource)[keyof typeof ScreenerResponseSource];
 
 export const OutreachType = {
   EMAIL: "EMAIL",
@@ -1040,8 +1230,16 @@ export type NewLead = typeof leads.$inferInsert;
 export type Questionnaire = typeof questionnaires.$inferSelect;
 export type NewQuestionnaire = typeof questionnaires.$inferInsert;
 
-export type Screener = typeof screeners.$inferSelect;
-export type NewScreener = typeof screeners.$inferInsert;
+export type ScreenerTemplate = typeof screenerTemplates.$inferSelect;
+export type NewScreenerTemplate = typeof screenerTemplates.$inferInsert;
+export type Screener = ScreenerTemplate;
+export type NewScreener = NewScreenerTemplate;
+
+export type ScreenerQuestion = typeof screenerQuestions.$inferSelect;
+export type NewScreenerQuestion = typeof screenerQuestions.$inferInsert;
+
+export type ScreenerResponse = typeof screenerResponses.$inferSelect;
+export type NewScreenerResponse = typeof screenerResponses.$inferInsert;
 
 export type DealOpportunity = typeof dealOpportunities.$inferSelect;
 export type NewDealOpportunity = typeof dealOpportunities.$inferInsert;
@@ -1065,6 +1263,10 @@ export type NewThemeCompanyCoverage = typeof themeCompanyCoverage.$inferInsert;
 
 export type AiScreening = typeof aiScreenings.$inferSelect;
 export type NewAiScreening = typeof aiScreenings.$inferInsert;
+export type DealOpportunityScreening =
+  typeof dealOpportunityScreenings.$inferSelect;
+export type NewDealOpportunityScreening =
+  typeof dealOpportunityScreenings.$inferInsert;
 
 export type UserActionLog = typeof userActionLogs.$inferSelect;
 export type NewUserActionLog = typeof userActionLogs.$inferInsert;

@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:introspect": "drizzle-kit introspect"
+    "db:introspect": "drizzle-kit introspect",
+    "screenings:backfill": "bun run --cwd ../deal-screening backfill"
   },
   "peerDependencies": {
     "typescript": "^5"

@@ -1,17 +1,11 @@
+import crypto from "crypto";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { aiScreenings, eq, DealType, Sentiment } from "@repo/db";
-import { DeleteReasoningById } from "@repo/db/mutations";
-import { revalidatePath } from "next/cache";
+import { DeleteReasoningById, UpsertScreenerResponse } from "@repo/db/mutations";
+import { GetDealOpportunityById, GetDealOpportunityByLegacyDealId } from "@repo/db/queries";
 import { screenDealQueue, type ScreenDealJobData } from "@/lib/queue-client";
-import { redisClient } from "@/lib/redis";
-import crypto from "crypto";
-
-const screenDealSchema = z.object({
-  title: z.string(),
-  explanation: z.string(),
-  sentiment: z.enum(["POSITIVE", "NEUTRAL", "NEGATIVE"]),
-});
 
 const saveScreeningSchema = z.object({
   dealId: z.string(),
@@ -37,12 +31,21 @@ const updateScreeningSchema = z.object({
 
 const saveEvaluationSchema = z.object({
   dealId: z.string(),
+  dealOpportunityId: z.string().optional(),
   screenerId: z.string(),
   title: z.string(),
   explanation: z.string(),
   sentiment: z.enum(["POSITIVE", "NEUTRAL", "NEGATIVE"]).optional(),
   score: z.number().optional(),
-  content: z.string().optional(),
+  responses: z
+    .array(
+      z.object({
+        questionId: z.string(),
+        score: z.number().int().min(0).max(10),
+        notes: z.string().optional(),
+      }),
+    )
+    .default([]),
 });
 
 const bulkScreenSchema = z.object({
@@ -50,17 +53,60 @@ const bulkScreenSchema = z.object({
   screenerId: z.string(),
 });
 
+async function resolveDealOpportunityId({
+  dealId,
+  dealOpportunityId,
+}: {
+  dealId?: string;
+  dealOpportunityId?: string;
+}) {
+  if (dealOpportunityId) {
+    const byId = await GetDealOpportunityById(dealOpportunityId);
+    if (byId) return byId.id;
+  }
+
+  if (!dealId) return null;
+
+  const byId = await GetDealOpportunityById(dealId);
+  if (byId) return byId.id;
+
+  const byLegacyDealId = await GetDealOpportunityByLegacyDealId(dealId);
+  return byLegacyDealId?.id ?? null;
+}
+
+function toSentiment(
+  sentiment?: "POSITIVE" | "NEUTRAL" | "NEGATIVE",
+): (typeof Sentiment)[keyof typeof Sentiment] {
+  switch (sentiment) {
+    case "POSITIVE":
+      return Sentiment.POSITIVE;
+    case "NEGATIVE":
+      return Sentiment.NEGATIVE;
+    case "NEUTRAL":
+    default:
+      return Sentiment.NEUTRAL;
+  }
+}
+
 export const screeningsRouter = createTRPCRouter({
   save: protectedProcedure
     .input(saveScreeningSchema)
     .mutation(async ({ input }) => {
+      const dealOpportunityId = await resolveDealOpportunityId({
+        dealId: input.dealId,
+      });
+
+      if (!dealOpportunityId) {
+        throw new Error("Deal opportunity not found");
+      }
+
       const [addedScreenResult] = await db
         .insert(aiScreenings)
         .values({
-          dealId: input.dealId,
+          dealOpportunityId,
           title: input.title,
           explanation: input.explanation,
-          sentiment: input.sentiment,
+          sentiment: toSentiment(input.sentiment),
         })
         .returning();
 
@@ -72,10 +118,18 @@ export const screeningsRouter = createTRPCRouter({
   saveRaw: protectedProcedure
     .input(saveRawScreeningSchema)
     .mutation(async ({ input }) => {
+      const dealOpportunityId = await resolveDealOpportunityId({
+        dealId: input.dealId,
+      });
+
+      if (!dealOpportunityId) {
+        throw new Error("Deal opportunity not found");
+      }
+
       const [addedScreenResult] = await db
         .insert(aiScreenings)
         .values({
-          dealId: input.dealId,
+          dealOpportunityId,
           title: "AI Screening Result",
           explanation: input.result,
           sentiment: Sentiment.NEUTRAL,
@@ -95,7 +149,7 @@ export const screeningsRouter = createTRPCRouter({
         .set({
           title: input.title,
           explanation: input.explanation,
-          sentiment: input.sentiment,
+          sentiment: toSentiment(input.sentiment),
         })
         .where(eq(aiScreenings.id, input.screeningId));
 
@@ -108,48 +162,52 @@ export const screeningsRouter = createTRPCRouter({
     .input(z.object({ screeningId: z.string(), dealId: z.string() }))
     .mutation(async ({ input }) => {
       await DeleteReasoningById(input.screeningId);
-
       revalidatePath(`/raw-deals/${input.dealId}`);
-
       return { success: true };
     }),
 
   saveEvaluation: protectedProcedure
     .input(saveEvaluationSchema)
     .mutation(async ({ input }) => {
-      let sentiment: (typeof Sentiment)[keyof typeof Sentiment] =
-        Sentiment.NEUTRAL;
-      if (input.sentiment) {
-        switch (input.sentiment) {
-          case "POSITIVE":
-            sentiment = Sentiment.POSITIVE;
-            break;
-          case "NEGATIVE":
-            sentiment = Sentiment.NEGATIVE;
-            break;
-          case "NEUTRAL":
-          default:
-            sentiment = Sentiment.NEUTRAL;
-            break;
-        }
+      const dealOpportunityId = await resolveDealOpportunityId({
+        dealId: input.dealId,
+        dealOpportunityId: input.dealOpportunityId,
+      });
+
+      if (!dealOpportunityId) {
+        throw new Error("Deal opportunity not found");
       }
 
       const [savedEvaluation] = await db
         .insert(aiScreenings)
         .values({
-          dealId: input.dealId,
+          dealOpportunityId,
           title: input.title,
           explanation: input.explanation,
-          score: input.score ? Math.round(input.score) : null,
-          content: input.content || null,
-          sentiment,
+          score: input.score != null ? Math.round(input.score) : null,
+          content:
+            input.responses.length > 0
+              ? JSON.stringify(input.responses)
+              : null,
+          sentiment: toSentiment(input.sentiment),
           screenerId: input.screenerId,
         })
         .returning();
 
+      await Promise.all(
+        input.responses.map((response) =>
+          UpsertScreenerResponse({
+            dealOpportunityId,
+            questionId: response.questionId,
+            score: response.score,
+            source: "AI",
+            notes: response.notes || null,
+          }),
+        ),
+      );
+
       revalidatePath(`/raw-deals/${input.dealId}`);
-      revalidatePath(`/manual-deals/${input.dealId}`);
-      revalidatePath(`/inferred-deals/${input.dealId}`);
+      revalidatePath(`/raw-deals/${dealOpportunityId}/screen`);
 
       return { evaluationId: savedEvaluation?.id, data: savedEvaluation };
     }),
@@ -159,33 +217,30 @@ export const screeningsRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.user.id as string;
 
-      // Create individual jobs for each deal ID
-      const jobPromises = input.dealIds.map(async (dealId: string) => {
-        const jobId = crypto.randomUUID();
+      const results = await Promise.all(
+        input.dealIds.map(async (dealId: string) => {
+          const jobId = crypto.randomUUID();
+          const jobData: ScreenDealJobData = {
+            jobId,
+            userId,
+            dealId,
+            screenerId: input.screenerId,
+          };
 
-        // Add job to BullMQ queue
-        const jobData: ScreenDealJobData = {
-          jobId,
-          userId: userId,
-          dealId,
-          screenerId: input.screenerId,
-        };
+          const job = await screenDealQueue.add("screen", jobData, {
+            jobId,
+          });
 
-        const job = await screenDealQueue.add("screen", jobData, {
-          jobId, // Use our own jobId for easier tracking
-        });
-
-        console.log(`Added job ${job.id} for deal ${dealId}`);
-        return { jobId, dealId, bullmqJobId: job.id };
-      });
-
-      // Wait for all jobs to be added
-      const results = await Promise.all(jobPromises);
-      console.log(`Successfully added ${results.length} jobs to BullMQ queue`);
+          return { jobId, dealId, bullmqJobId: job.id };
+        }),
+      );
 
       return {
         ok: true,
-        jobs: results.map((r) => ({ jobId: r.jobId, dealId: r.dealId })),
+        jobs: results.map((result) => ({
+          jobId: result.jobId,
+          dealId: result.dealId,
+        })),
       };
     }),
 });

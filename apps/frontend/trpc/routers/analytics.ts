@@ -4,6 +4,7 @@ import db, {
   aiScreenings,
   companies,
   dealOpportunities,
+  dealOpportunityScreenings,
   leads,
   themes,
   eq,
@@ -309,7 +310,7 @@ export const analyticsRouter = createTRPCRouter({
     >();
     for (const row of companyRows) {
       const isUnassigned = !row.themeId || row.themeDeletedAt != null;
-      const key = isUnassigned ? "unassigned" : row.themeId;
+      const key = isUnassigned ? "unassigned" : (row.themeId ?? "unassigned");
       const themeName = isUnassigned ? "Unassigned" : (row.themeName ?? "Unassigned");
       const current = companyCounts.get(key) ?? {
         themeId: isUnassigned ? null : row.themeId,
@@ -326,7 +327,7 @@ export const analyticsRouter = createTRPCRouter({
     >();
     for (const row of dealRows) {
       const isUnassigned = !row.themeId || row.themeDeletedAt != null;
-      const key = isUnassigned ? "unassigned" : row.themeId;
+      const key = isUnassigned ? "unassigned" : (row.themeId ?? "unassigned");
       const themeName = isUnassigned ? "Unassigned" : (row.themeName ?? "Unassigned");
       const current = dealCounts.get(key) ?? {
         themeId: isUnassigned ? null : row.themeId,
@@ -352,7 +353,7 @@ export const analyticsRouter = createTRPCRouter({
   }),
 
   /**
-   * Top deals ranked by latest AI screening score.
+   * Top deals ranked by deterministic screening score.
    */
   topDealsByLatestScreening: protectedProcedure
     .input(
@@ -363,24 +364,28 @@ export const analyticsRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const rows = await db
         .select({
-          dealOpportunityId: aiScreenings.dealOpportunityId,
-          score: aiScreenings.score,
-          screenedAt: aiScreenings.createdAt,
+          dealOpportunityId: dealOpportunities.id,
+          score: dealOpportunityScreenings.score,
+          screenedAt: dealOpportunityScreenings.screenedAt,
+          status: dealOpportunityScreenings.status,
           stage: dealOpportunities.stage,
           companyName: companies.name,
           companyDeletedAt: companies.deletedAt,
           themeName: themes.name,
           themeDeletedAt: themes.deletedAt,
         })
-        .from(aiScreenings)
-        .leftJoin(
+        .from(dealOpportunityScreenings)
+        .innerJoin(
           dealOpportunities,
-          eq(aiScreenings.dealOpportunityId, dealOpportunities.id),
+          eq(dealOpportunityScreenings.dealOpportunityId, dealOpportunities.id),
         )
         .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
         .leftJoin(themes, eq(companies.themeId, themes.id))
-        .where(isNotNull(aiScreenings.score))
-        .orderBy(desc(aiScreenings.createdAt), desc(aiScreenings.id));
+        .where(eq(dealOpportunityScreenings.status, "PASS"))
+        .orderBy(
+          desc(dealOpportunityScreenings.score),
+          desc(dealOpportunityScreenings.screenedAt),
+        );
 
       const latestByDeal = new Map<
         string,
@@ -395,7 +400,8 @@ export const analyticsRouter = createTRPCRouter({
       >();
 
       for (const row of rows) {
-        if (!row.dealOpportunityId || row.score == null || !row.screenedAt) continue;
+        if (!row.dealOpportunityId || row.score == null || !row.screenedAt)
+          continue;
         if (!row.companyName) continue;
         if (row.companyDeletedAt != null) continue;
         if (row.stage == null) continue;

@@ -1,0 +1,27 @@
+{
+  "name": "@repo/deal-screening",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "backfill": "bun run ./scripts/backfill-deal-opportunity-screenings.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.41",
+    "@repo/db": "workspace:*",
+    "ai": "^6.0.124",
+    "zod": "^4.3.5"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./screening": "./screening.ts",
+    "./ai-screening": "./ai-screening.ts",
+    "./prompts": "./prompts/index.ts"
+  }
+}

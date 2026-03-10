@@ -20,6 +20,9 @@
     "node": ">=18"
   },
   "packageManager": "bun@1.1.13",
+  "overrides": {
+    "@ai-sdk/provider-utils": "4.0.20"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"

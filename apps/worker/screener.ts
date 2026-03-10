@@ -128,8 +128,7 @@ async function processContentChunks(
     }
     try {
       console.log(
-        `Processing chunk ${i + 1}/${chunks.length} (${
-          chunk.length
+        `Processing chunk ${i + 1}/${chunks.length} (${chunk.length
         } characters)`
       );
 

@@ -9,6 +9,8 @@ import { TrendingUp, Building2, CheckCircle2 } from "lucide-react";
 interface Screener {
   id: string;
   name: string;
+  category?: string;
+  questionCount?: number;
 }
 
 interface ScreenerSelectorProps {
@@ -59,11 +61,16 @@ export default function ScreenerSelector({
                     {screener.name}
                   </h4>
                   <p className="text-xs text-muted-foreground">
-                    AI-powered screening tool
+                    {screener.category || "Structured screener"}
                   </p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
+                {typeof screener.questionCount === "number" ? (
+                  <Badge variant="outline" className="text-xs">
+                    {screener.questionCount} q
+                  </Badge>
+                ) : null}
                 {selectedScreenerId === screener.id ? (
                   <Badge variant="default" className="text-xs">
                     <CheckCircle2 className="mr-1 h-3 w-3" />

@@ -1,7 +1,7 @@
 import { AlertTriangle } from "lucide-react";
-import { Button } from "./ui/button";
 import { DealType, AiScreening } from "@repo/db/schema";
 import AIReasoning from "./AiReasoning";
+import { RunAiScreeningButton } from "@/app/(protected)/deals/run-ai-screening-button";
 
 const FetchDealAIScreenings = ({
   dealId,
@@ -13,33 +13,36 @@ const FetchDealAIScreenings = ({
   aiScreenings: AiScreening[];
 }) => {
   return (
-    <div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <RunAiScreeningButton dealOpportunityId={dealId} />
+      </div>
       <div>
         {aiScreenings && aiScreenings.length > 0 ? (
-          aiScreenings.map((e, index) => (
+          aiScreenings.map((e) => (
             <AIReasoning
               key={e.id}
               title={e.title}
               explanation={e.explanation}
               sentiment={e.sentiment}
               score={e.score}
+              content={e.content}
               dealId={dealId}
               dealType={dealType}
               screeningId={e.id}
             />
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <AlertTriangle className="mb-4 h-10 w-10 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-foreground">
-              No AI reasoning available
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-8 text-center">
+            <AlertTriangle className="text-muted-foreground mb-4 h-10 w-10" />
+            <h3 className="text-foreground text-sm font-medium">
+              No AI screenings yet
             </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              AI analysis for this deal has not been generated yet.
+            <p className="text-muted-foreground mt-2 text-sm">
+              Run AI screening to get qualitative analysis of revenue
+              predictability, market growth, competitive advantage, and key
+              risks.
             </p>
-            <Button className="mt-4" variant="outline" size="sm">
-              Request analysis
-            </Button>
           </div>
         )}
       </div>

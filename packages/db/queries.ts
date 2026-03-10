@@ -4,7 +4,10 @@ import {
   leads,
   users,
   screeners,
+  screenerQuestions,
+  screenerResponses,
   aiScreenings,
+  dealOpportunityScreenings,
   documents,
   dealOpportunities,
   companies,
@@ -303,6 +306,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
     dealDocs,
     companyDocs,
     screenings,
+    deterministicScreening,
     dealOpportunitiesList,
     companyContacts,
     dealContacts,
@@ -320,6 +324,11 @@ export const GetDealWithAllRelations = async (uid: string) => {
         ),
       ),
     getAllDealReasoningsWithScreenerNameByOpportunityId(opp.id),
+    db
+      .select()
+      .from(dealOpportunityScreenings)
+      .where(eq(dealOpportunityScreenings.dealOpportunityId, opp.id))
+      .limit(1),
     db
       .select()
       .from(dealOpportunities)
@@ -409,6 +418,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
     currentOpportunity: opp,
     documents: dealDocs ?? [],
     aiScreenings: screenings ?? [],
+    deterministicScreening: deterministicScreening[0] ?? null,
     company: company ?? null,
     dealOpportunities: dealOpportunitiesList ?? [],
     companyContacts: companyContacts ?? [],
@@ -622,10 +632,28 @@ export async function getAllScreeners() {
       .select({
         id: screeners.id,
         name: screeners.name,
+        category: screeners.category,
+        description: screeners.description,
         createdAt: screeners.createdAt,
         updatedAt: screeners.updatedAt,
+        questionCount: sql<number>`count(${screenerQuestions.id})`
+          .mapWith(Number)
+          .as("questionCount"),
+        totalWeight: sql<number>`coalesce(sum(${screenerQuestions.weight}), 0)`
+          .mapWith(Number)
+          .as("totalWeight"),
       })
-      .from(screeners);
+      .from(screeners)
+      .leftJoin(screenerQuestions, eq(screenerQuestions.screenerId, screeners.id))
+      .groupBy(
+        screeners.id,
+        screeners.name,
+        screeners.category,
+        screeners.description,
+        screeners.createdAt,
+        screeners.updatedAt,
+      )
+      .orderBy(asc(screeners.name));
   } catch (error) {
     console.error("Error fetching all screeners", error);
     return null;
@@ -637,16 +665,115 @@ export async function getAllScreeners() {
  * @returns all screeners
  */
 export async function getAllScreenersWithContent() {
+  return getAllScreeners();
+}
+
+export async function getScreenerById(screenerId: string) {
   try {
-    return await db
+    const [row] = await db
       .select({
         id: screeners.id,
         name: screeners.name,
+        category: screeners.category,
+        description: screeners.description,
+        createdAt: screeners.createdAt,
+        updatedAt: screeners.updatedAt,
       })
-      .from(screeners);
+      .from(screeners)
+      .where(eq(screeners.id, screenerId))
+      .limit(1);
+
+    return row ?? null;
   } catch (error) {
-    console.error("Error fetching all screeners", error);
+    console.error("Error fetching screener by id", error);
     return null;
+  }
+}
+
+export async function getScreenerQuestions(screenerId: string) {
+  try {
+    return await db
+      .select({
+        id: screenerQuestions.id,
+        screenerId: screenerQuestions.screenerId,
+        question: screenerQuestions.question,
+        weight: screenerQuestions.weight,
+        responseType: screenerQuestions.responseType,
+        position: screenerQuestions.position,
+        createdAt: screenerQuestions.createdAt,
+        updatedAt: screenerQuestions.updatedAt,
+      })
+      .from(screenerQuestions)
+      .where(eq(screenerQuestions.screenerId, screenerId))
+      .orderBy(asc(screenerQuestions.position), asc(screenerQuestions.createdAt));
+  } catch (error) {
+    console.error("Error fetching screener questions", error);
+    return [];
+  }
+}
+
+export async function getScreenerWithQuestions(screenerId: string) {
+  const [screener, questions] = await Promise.all([
+    getScreenerById(screenerId),
+    getScreenerQuestions(screenerId),
+  ]);
+
+  if (!screener) {
+    return null;
+  }
+
+  return {
+    ...screener,
+    questions,
+  };
+}
+
+export async function getScreenerResponsesByDealOpportunityId(
+  dealOpportunityId: string,
+  screenerId: string,
+) {
+  try {
+    const [questions, responses] = await Promise.all([
+      getScreenerQuestions(screenerId),
+      db
+        .select({
+          id: screenerResponses.id,
+          dealOpportunityId: screenerResponses.dealOpportunityId,
+          questionId: screenerResponses.questionId,
+          score: screenerResponses.score,
+          source: screenerResponses.source,
+          notes: screenerResponses.notes,
+          createdAt: screenerResponses.createdAt,
+          updatedAt: screenerResponses.updatedAt,
+        })
+        .from(screenerResponses)
+        .innerJoin(
+          screenerQuestions,
+          eq(screenerQuestions.id, screenerResponses.questionId),
+        )
+        .where(
+          and(
+            eq(screenerResponses.dealOpportunityId, dealOpportunityId),
+            eq(screenerQuestions.screenerId, screenerId),
+          ),
+        ),
+    ]);
+
+    const responseMap = new Map(
+      responses.map((response) => [
+        `${response.questionId}:${response.source}`,
+        response,
+      ]),
+    );
+
+    return questions.map((question) => ({
+      ...question,
+      aiResponse: responseMap.get(`${question.id}:AI`) ?? null,
+      humanResponse: responseMap.get(`${question.id}:HUMAN`) ?? null,
+    }));
+  } catch (error) {
+    console.error("Error fetching screener responses", error);
+    return [];
   }
 }
 
@@ -829,6 +956,17 @@ interface GetDealOpportunitiesResult {
   totalPages: number;
 }
 
+export interface RankedDealOpportunityRow {
+  opp: typeof dealOpportunities.$inferSelect;
+  company: {
+    id: string | null;
+    name: string | null;
+    industry: string | null;
+    location: string | null;
+  } | null;
+  screening: typeof dealOpportunityScreenings.$inferSelect | null;
+}
+
 /**
  * Get all deal opportunities with company, paginated
  */
@@ -899,6 +1037,110 @@ export const GetDealOpportunitiesByStages = async () => {
     return data;
   } catch (error) {
     console.error("Failed query: select from DealOpportunity by stages", error);
+    throw error;
+  }
+};
+
+export const GetRankedDealOpportunities = async (): Promise<
+  RankedDealOpportunityRow[]
+> => {
+  try {
+    return await db
+      .select({
+        opp: dealOpportunities,
+        company: {
+          id: companies.id,
+          name: companies.name,
+          industry: companies.industry,
+          location: companies.location,
+        },
+        screening: dealOpportunityScreenings,
+      })
+      .from(dealOpportunities)
+      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+      .leftJoin(
+        dealOpportunityScreenings,
+        eq(dealOpportunityScreenings.dealOpportunityId, dealOpportunities.id),
+      )
+      .where(isNull(companies.deletedAt))
+      .orderBy(
+        sql`case
+          when ${dealOpportunityScreenings.status} = 'PASS' then 0
+          when ${dealOpportunityScreenings.status} = 'INCOMPLETE' then 1
+          when ${dealOpportunityScreenings.status} = 'FAIL' then 2
+          else 3
+        end`,
+        desc(dealOpportunityScreenings.score),
+        desc(dealOpportunityScreenings.screenedAt),
+        desc(dealOpportunities.createdAt),
+        desc(dealOpportunities.id),
+      );
+  } catch (error) {
+    console.error("Failed query: ranked deal opportunities", error);
+    throw error;
+  }
+};
+
+export type TopRankedDeal = {
+  dealOpportunityId: string;
+  companyName: string;
+  stage: string;
+  score: number;
+  screenedAt: Date;
+};
+
+export const GetTopRankedDeals = async (
+  limit = 10,
+): Promise<TopRankedDeal[]> => {
+  try {
+    const rows = await db
+      .select({
+        dealOpportunityId: dealOpportunities.id,
+        companyName: companies.name,
+        stage: dealOpportunities.stage,
+        score: dealOpportunityScreenings.score,
+        screenedAt: dealOpportunityScreenings.screenedAt,
+      })
+      .from(dealOpportunityScreenings)
+      .innerJoin(
+        dealOpportunities,
+        eq(dealOpportunityScreenings.dealOpportunityId, dealOpportunities.id),
+      )
+      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+      .where(
+        and(
+          eq(dealOpportunityScreenings.status, "PASS"),
+          isNull(companies.deletedAt),
+        ),
+      )
+      .orderBy(
+        desc(dealOpportunityScreenings.score),
+        desc(dealOpportunityScreenings.screenedAt),
+      )
+      .limit(limit);
+
+    return rows
+      .filter(
+        (row): row is typeof row & {
+          companyName: string;
+          score: number;
+          screenedAt: Date;
+          stage: string;
+        } =>
+          row.companyName != null &&
+          row.score != null &&
+          row.screenedAt != null &&
+          row.stage != null,
+      )
+      .map((row) => ({
+        dealOpportunityId: row.dealOpportunityId,
+        companyName: row.companyName,
+        stage: row.stage,
+        score: row.score,
+        screenedAt: row.screenedAt,
+      }));
+  } catch (error) {
+    console.error("Failed query: top ranked deals", error);
     throw error;
   }
 };

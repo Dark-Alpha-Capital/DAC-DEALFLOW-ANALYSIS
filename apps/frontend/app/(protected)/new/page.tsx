@@ -8,7 +8,6 @@ import { Metadata } from "next";
 // BulkImportDialog is unused, consider removing if not needed elsewhere
 // import { BulkImportDialog } from "@/components/Dialogs/bulk-import-dialog";
 import BulkImportCard from "@/components/cards/bulk-import-card";
-import DealsFromDoc from "./deals-doc";
 
 export const metadata: Metadata = {
   title: "Add New Deal",

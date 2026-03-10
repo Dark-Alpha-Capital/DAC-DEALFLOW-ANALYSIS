@@ -1,9 +1,17 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { companies, themes, eq, and, isNull } from "@repo/db";
+import db, {
+  companies,
+  dealOpportunities,
+  themes,
+  eq,
+  and,
+  isNull,
+} from "@repo/db";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { asc } from "drizzle-orm";
+import { upsertDealOpportunityScreening } from "@repo/deal-screening";
 
 const companySchema = z.object({
   name: z.string().min(1, "Company name is required"),
@@ -90,6 +98,15 @@ export const companiesRouter = createTRPCRouter({
           coverageStatus: data.coverageStatus ?? "UNCONTACTED",
         })
         .where(and(eq(companies.id, id), isNull(companies.deletedAt)));
+
+      const companyOpportunities = await db
+        .select({ id: dealOpportunities.id })
+        .from(dealOpportunities)
+        .where(eq(dealOpportunities.companyId, id));
+
+      for (const opportunity of companyOpportunities) {
+        await upsertDealOpportunityScreening(opportunity.id);
+      }
 
       revalidatePath("/companies");
       revalidatePath(`/companies/${id}`);

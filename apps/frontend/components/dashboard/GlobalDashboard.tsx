@@ -234,7 +234,7 @@ function ThemeChart({
 
 function TopDeals({ data }: { data: TopDeal[] }) {
   return (
-    <SegmentedPanel title="Top Deals" description="Ranked by latest screening score.">
+    <SegmentedPanel title="Top Deals" description="Ranked by deterministic screening score.">
       {data.length === 0 ? (
         <p className="text-sm text-muted-foreground">No scored deals found.</p>
       ) : (
@@ -340,7 +340,7 @@ export function GlobalDashboard({ pipeline, themes, topDeals }: GlobalDashboardP
       <TabsContent value="deals" className="mt-0 space-y-4">
         <SectionHeader
           title="Deals"
-          description="Top opportunities ranked by latest screening score."
+          description="Top opportunities ranked by deterministic screening score."
         />
         <TopDeals data={topDeals} />
       </TabsContent>

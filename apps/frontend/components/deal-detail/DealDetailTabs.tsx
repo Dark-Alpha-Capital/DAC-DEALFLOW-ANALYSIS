@@ -5,6 +5,7 @@ import type {
   Contact,
   AiScreening,
   CompanyNote,
+  DealOpportunityScreening,
 } from "@repo/db/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealHeader } from "./deal-header";
@@ -19,10 +20,12 @@ import {
 import { CompanyNotes } from "@/components/company-detail/CompanyNotes";
 import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
 import { FileText, User } from "lucide-react";
+import { DeterministicScreeningSummary } from "./DeterministicScreeningSummary";
 
 interface DealDetailTabsProps {
   deal: Deal & { id: string };
   uid: string;
+  defaultTab?: string;
   company: Company | null;
   currentOpportunity?: DealOpportunity | null;
   dealOpportunities: DealOpportunity[];
@@ -32,12 +35,14 @@ interface DealDetailTabsProps {
   companyDocuments: Document[];
   dealDocuments: Document[];
   aiScreenings: AiScreening[];
+  deterministicScreening: DealOpportunityScreening | null;
   companyNotes: CompanyNote[];
 }
 
 export function DealDetailTabs({
   deal,
   uid,
+  defaultTab,
   company,
   currentOpportunity,
   dealOpportunities,
@@ -47,6 +52,7 @@ export function DealDetailTabs({
   companyDocuments,
   dealDocuments,
   aiScreenings,
+  deterministicScreening,
   companyNotes,
 }: DealDetailTabsProps) {
   if (!company) return null;
@@ -56,12 +62,26 @@ export function DealDetailTabs({
   );
   const hasPipeline = !!currentOpportunity;
 
+  const initialTab =
+    defaultTab === "screenings" ||
+    defaultTab === "ai-screening" ||
+    defaultTab === "financials" ||
+    defaultTab === "pipeline" ||
+    defaultTab === "outreach" ||
+    defaultTab === "documents" ||
+    defaultTab === "contacts" ||
+    defaultTab === "notes"
+      ? defaultTab === "ai-screening"
+        ? "screenings"
+        : defaultTab
+      : "overview";
+
   return (
-    <Tabs defaultValue="overview" className="w-full space-y-6">
+    <Tabs defaultValue={initialTab} className="w-full space-y-6">
       <TabsList className="w-full justify-start overflow-x-auto">
         <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="screenings">Screenings</TabsTrigger>
         <TabsTrigger value="financials">Financials</TabsTrigger>
-        <TabsTrigger value="ai-screening">AI Screening</TabsTrigger>
         {hasPipeline && (
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
         )}
@@ -174,18 +194,25 @@ export function DealDetailTabs({
         )}
       </TabsContent>
 
+      <TabsContent value="screenings" className="space-y-8">
+        <DeterministicScreeningSummary
+          screening={deterministicScreening}
+          dealOpportunityId={uid}
+        />
+        <div className="space-y-3">
+          <h2 className="text-base font-semibold">AI Screening</h2>
+          <FetchDealAIScreenings
+            dealId={uid}
+            dealType={deal.dealType}
+            aiScreenings={aiScreenings}
+          />
+        </div>
+      </TabsContent>
+
       <TabsContent value="financials">
         <DealFinancialsSection
           deal={deal}
           currentOpportunity={currentOpportunity ?? undefined}
-        />
-      </TabsContent>
-
-      <TabsContent value="ai-screening">
-        <FetchDealAIScreenings
-          dealId={uid}
-          dealType={deal.dealType}
-          aiScreenings={aiScreenings}
         />
       </TabsContent>
 
