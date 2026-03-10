@@ -12,7 +12,7 @@ export type JobStatus =
   | "delayed";
 
 // Job type
-export type JobType = "screen-deal" | "file-upload";
+export type JobType = "screen-deal" | "file-upload" | "cim-extraction";
 
 // Progress data
 export interface JobProgressData {
@@ -43,6 +43,7 @@ export interface JobWithMetadata {
 export const QUEUE_NAMES = {
   SCREEN_DEAL: "screen-deal",
   FILE_UPLOAD: "file-upload",
+  CIM_EXTRACTION: "cim-extraction",
 } as const;
 
 /**
@@ -54,6 +55,8 @@ export function getJobTypeLabel(queueName: string): string {
       return "Screen Deal";
     case QUEUE_NAMES.FILE_UPLOAD:
       return "File Upload";
+    case QUEUE_NAMES.CIM_EXTRACTION:
+      return "CIM Extraction";
     default:
       return queueName;
   }

@@ -3,10 +3,7 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
-import {
-  GetDealOpportunitiesWithScreenings,
-  GetRankedDealOpportunities,
-} from "@repo/db/queries";
+import { GetRankedDealOpportunities } from "@repo/db/queries";
 import DealsAuthedSkeleton from "@/components/skeletons/DealsAuthedSkeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -58,9 +55,13 @@ async function FetchAndDisplayDeals() {
   "use cache";
   cacheTag("deals");
   cacheLife("hours");
-  const [screeningDeals, aiDeals] = await Promise.all([
-    GetRankedDealOpportunities(),
-    GetDealOpportunitiesWithScreenings(),
-  ]);
-  return <DealsWorkspace screeningDeals={screeningDeals} aiDeals={aiDeals} />;
+  const rows = await GetRankedDealOpportunities();
+  // Dedupe: one row per opportunity (keep best screening when multiple exist)
+  const seen = new Set<string>();
+  const deals = rows.filter((r) => {
+    if (seen.has(r.opp.id)) return false;
+    seen.add(r.opp.id);
+    return true;
+  });
+  return <DealsWorkspace deals={deals} />;
 }

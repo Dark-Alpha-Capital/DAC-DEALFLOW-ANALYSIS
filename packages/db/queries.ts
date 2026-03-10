@@ -19,6 +19,8 @@ import {
   themePerformance,
   theses,
   themeCompanyCoverage,
+  cimExtractions,
+  dealSims,
   type Deal,
   type Lead,
   type Company,
@@ -146,9 +148,9 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       .where(
         dealOppIds.length > 0
           ? or(
-              eq(outreach.companyId, id),
-              inArray(outreach.dealOpportunityId, dealOppIds),
-            )
+            eq(outreach.companyId, id),
+            inArray(outreach.dealOpportunityId, dealOppIds),
+          )
           : eq(outreach.companyId, id),
       )
       .orderBy(desc(outreach.createdAt));
@@ -264,10 +266,10 @@ export const GetDealOpportunitiesByLeadId = async (leadId: string) => {
     company:
       company && company.name
         ? {
-            name: company.name,
-            industry: company.industry,
-            location: company.location,
-          }
+          name: company.name,
+          industry: company.industry,
+          location: company.location,
+        }
         : null,
   }));
 };
@@ -294,6 +296,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
       aiScreenings: [] as Awaited<
         ReturnType<typeof getAllDealReasoningsWithScreenerName>
       >,
+      cimExtraction: null,
     };
   }
 
@@ -312,6 +315,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
     dealContacts,
     outreachRows,
     companyNotesRows,
+    cimExtraction,
   ] = await Promise.all([
     getDealDocuments(opp.id),
     db
@@ -378,6 +382,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
       .from(companyNotes)
       .where(eq(companyNotes.companyId, opp.companyId))
       .orderBy(desc(companyNotes.createdAt)),
+    GetCIMExtractionByDealOpportunityId(opp.id).catch(() => null),
   ]);
 
   const dealView: Deal & { id: string } = {
@@ -427,6 +432,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
     companyDocuments: companyDocs ?? [],
     dealDocuments: dealDocs ?? [],
     companyNotes: companyNotesRows ?? [],
+    cimExtraction: cimExtraction ?? null,
   };
 };
 
@@ -441,6 +447,75 @@ async function getDealDocuments(dealOpportunityId: string) {
       ),
     );
 }
+
+/**
+ * Get active SIM for a deal opportunity.
+ */
+export const getActiveSimForDeal = async (dealOpportunityId: string) => {
+  const [row] = await db
+    .select()
+    .from(dealSims)
+    .where(
+      and(
+        eq(dealSims.dealOpportunityId, dealOpportunityId),
+        eq(dealSims.status, "ACTIVE"),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+};
+
+/**
+ * Get CIM extraction for the active SIM of a deal opportunity.
+ * Falls back to legacy extraction by dealOpportunityId if no active sim.
+ */
+export const GetCIMExtractionByDealOpportunityId = async (
+  dealOpportunityId: string,
+) => {
+  try {
+    const activeSim = await getActiveSimForDeal(dealOpportunityId);
+    if (activeSim) {
+      const [row] = await db
+        .select({
+          extraction: cimExtractions,
+          documentFileName: documents.fileName,
+          documentCreatedAt: documents.createdAt,
+        })
+        .from(cimExtractions)
+        .innerJoin(dealSims, eq(cimExtractions.simId, dealSims.id))
+        .leftJoin(documents, eq(dealSims.documentId, documents.id))
+        .where(eq(cimExtractions.simId, activeSim.id))
+        .limit(1);
+      return row?.extraction
+        ? {
+          ...row.extraction,
+          documentFileName: row.documentFileName,
+          documentCreatedAt: row.documentCreatedAt,
+        }
+        : null;
+    }
+    // Legacy: extraction by dealOpportunityId (pre-migration or denormalized)
+    const [legacyRow] = await db
+      .select({
+        extraction: cimExtractions,
+        documentFileName: documents.fileName,
+        documentCreatedAt: documents.createdAt,
+      })
+      .from(cimExtractions)
+      .leftJoin(documents, eq(cimExtractions.documentId, documents.id))
+      .where(eq(cimExtractions.dealOpportunityId, dealOpportunityId))
+      .limit(1);
+    return legacyRow?.extraction
+      ? {
+        ...legacyRow.extraction,
+        documentFileName: legacyRow.documentFileName,
+        documentCreatedAt: legacyRow.documentCreatedAt,
+      }
+      : null;
+  } catch {
+    return null;
+  }
+};
 
 interface GetDealsResult {
   data: Deal[];
@@ -1599,10 +1674,10 @@ export const GetDealOpportunitiesWithScreenings = async (): Promise<
       const existing = byOpp.get(row.opp.id);
       const company = row.companyName
         ? {
-            name: row.companyName,
-            industry: row.companyIndustry,
-            location: row.companyLocation,
-          }
+          name: row.companyName,
+          industry: row.companyIndustry,
+          location: row.companyLocation,
+        }
         : null;
 
       if (!existing) {

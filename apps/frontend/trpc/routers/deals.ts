@@ -21,6 +21,7 @@ import { DeleteDealById, BulkDeleteDeals } from "@repo/db/mutations";
 import { revalidatePath, revalidateTag } from "next/cache";
 import {
   fileUploadQueue,
+  cimExtractionQueue,
   type FileUploadJobData,
   type EntityMetadata,
 } from "@/lib/queue-client";
@@ -29,8 +30,15 @@ import {
   GetDealById,
   GetDealOpportunityById,
   GetDealOpportunityByLegacyDealId,
+  GetCIMExtractionByDealOpportunityId,
+  getActiveSimForDeal,
 } from "@repo/db/queries";
-import { uploadBuffer } from "@repo/nextcloud";
+import {
+  replaceDealSim,
+  upsertCIMExtraction,
+  deleteFinancialsForSim,
+} from "@repo/db/mutations";
+import { uploadBuffer, getNextcloudConfig } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
 import {
   upsertDealOpportunityScreening,
@@ -152,7 +160,225 @@ const uploadDealDocumentSchema = z.object({
   fileType: z.string(),
 });
 
+const uploadCIMSchema = z.object({
+  dealOpportunityId: z.string().min(1, "Deal opportunity ID is required"),
+  entityName: z.string().min(1, "Entity name is required"),
+  fileData: z.string(),
+  fileName: z.string().min(1, "File name is required"),
+});
+
+const editFinancialsSchema = z.object({
+  dealOpportunityId: z.string().min(1),
+  revenueHistory: z.record(z.string(), z.number()).optional().nullable(),
+  ebitdaHistory: z.record(z.string(), z.number()).optional().nullable(),
+  employeeCount: z.number().optional().nullable(),
+  customerConcentration: z.number().optional().nullable(),
+  capexIntensity: z.string().optional().nullable(),
+  revenueBreakdown: z.record(z.string(), z.number()).optional().nullable(),
+  growthDrivers: z.array(z.string()).optional().nullable(),
+  keyRisks: z.array(z.string()).optional().nullable(),
+  industryOverview: z.string().optional().nullable(),
+  transactionDetails: z.string().optional().nullable(),
+});
+
 export const dealsRouter = createTRPCRouter({
+  uploadCIM: protectedProcedure
+    .input(uploadCIMSchema)
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.session.user.id;
+      if (!userId?.trim()) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "User ID is required",
+        });
+      }
+
+      const opp = await GetDealOpportunityById(input.dealOpportunityId);
+      if (!opp) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Deal opportunity not found",
+        });
+      }
+
+      if (!input.fileName.toLowerCase().endsWith(".pdf")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "CIM must be a PDF file",
+        });
+      }
+
+      const base64Data = input.fileData.split(",")[1] || input.fileData;
+      const buffer = Buffer.from(base64Data, "base64");
+      const finalPath = `dealflow/deal_opportunity/${input.dealOpportunityId}/cim/${input.fileName}`;
+
+      await uploadBuffer(buffer, finalPath);
+
+      const { url, user } = getNextcloudConfig();
+      const publicUrl = `${url}/remote.php/dav/files/${user}/${finalPath}`;
+
+      const [documentRecord] = await db
+        .insert(documents)
+        .values({
+          entityType: "DEAL_OPPORTUNITY",
+          entityId: input.dealOpportunityId,
+          title: input.fileName,
+          description: `CIM for ${input.entityName}`,
+          category: "PROSPECTUS",
+          fileUrl: publicUrl,
+          fileName: input.fileName,
+          fileSize: buffer.length,
+          mimeType: "application/pdf",
+          uploadedById: userId,
+        })
+        .returning();
+
+      if (!documentRecord) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to save document record",
+        });
+      }
+
+      const sim = await replaceDealSim({
+        dealOpportunityId: input.dealOpportunityId,
+        documentId: documentRecord.id,
+        storageKey: finalPath,
+        uploadedById: userId,
+      });
+
+      const jobId = randomUUID();
+      await cimExtractionQueue.add(
+        "extract",
+        {
+          simId: sim.id,
+          documentId: documentRecord.id,
+          dealOpportunityId: input.dealOpportunityId,
+          filePath: finalPath,
+          userId,
+        },
+        { jobId },
+      );
+
+      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+      revalidateTag("deals", "max");
+      revalidatePath(`/deals/${input.dealOpportunityId}`);
+
+      return {
+        success: true,
+        jobId,
+        documentId: documentRecord.id,
+        simId: sim.id,
+      };
+    }),
+
+  getActiveSimForOpportunity: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string() }))
+    .query(async ({ input }) => {
+      const sim = await getActiveSimForDeal(input.dealOpportunityId);
+      if (!sim) return null;
+      const [doc] = await db
+        .select({ fileName: documents.fileName, createdAt: documents.createdAt })
+        .from(documents)
+        .where(eq(documents.id, sim.documentId))
+        .limit(1);
+      return {
+        id: sim.id,
+        documentId: sim.documentId,
+        fileName: doc?.fileName ?? null,
+        uploadedAt: sim.uploadedAt,
+        status: sim.status,
+      };
+    }),
+
+  getCIMAnalysisForOpportunity: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string() }))
+    .query(async ({ input }) => {
+      const activeSim = await getActiveSimForDeal(input.dealOpportunityId);
+      const extraction = await GetCIMExtractionByDealOpportunityId(
+        input.dealOpportunityId,
+      );
+      const hasActiveSim = !!activeSim;
+      const hasFinancials = !!extraction;
+      return {
+        activeSim: activeSim
+          ? {
+            id: activeSim.id,
+            status: hasFinancials ? "ready" as const : "processing" as const,
+          }
+          : null,
+        revenueHistory: extraction?.revenueHistory ?? {},
+        ebitdaHistory: extraction?.ebitdaHistory ?? {},
+        employeeCount: extraction?.employeeCount,
+        customerConcentration: extraction?.customerConcentration,
+        capexIntensity: extraction?.capexIntensity,
+        revenueBreakdown: extraction?.revenueBreakdown ?? {},
+        growthDrivers: extraction?.growthDrivers ?? [],
+        keyRisks: extraction?.keyRisks ?? [],
+        industryOverview: extraction?.industryOverview,
+        transactionDetails: extraction?.transactionDetails,
+        documentFileName: extraction?.documentFileName,
+        documentCreatedAt: extraction?.documentCreatedAt,
+      };
+    }),
+
+  editFinancials: protectedProcedure
+    .input(editFinancialsSchema)
+    .mutation(async ({ input, ctx }) => {
+      const sim = await getActiveSimForDeal(input.dealOpportunityId);
+      if (!sim) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No active SIM found for this deal",
+        });
+      }
+      const existing = await GetCIMExtractionByDealOpportunityId(
+        input.dealOpportunityId,
+      );
+      const payload = {
+        revenueHistory: input.revenueHistory ?? existing?.revenueHistory ?? null,
+        ebitdaHistory: input.ebitdaHistory ?? existing?.ebitdaHistory ?? null,
+        employeeCount: input.employeeCount ?? existing?.employeeCount ?? null,
+        customerConcentration:
+          input.customerConcentration ?? existing?.customerConcentration ?? null,
+        capexIntensity: input.capexIntensity ?? existing?.capexIntensity ?? null,
+        revenueBreakdown:
+          input.revenueBreakdown ?? existing?.revenueBreakdown ?? null,
+        growthDrivers: input.growthDrivers ?? existing?.growthDrivers ?? null,
+        keyRisks: input.keyRisks ?? existing?.keyRisks ?? null,
+        industryOverview:
+          input.industryOverview ?? existing?.industryOverview ?? null,
+        transactionDetails:
+          input.transactionDetails ?? existing?.transactionDetails ?? null,
+      };
+      await upsertCIMExtraction({
+        simId: sim.id,
+        dealOpportunityId: input.dealOpportunityId,
+        payload,
+        source: "USER",
+        updatedByUserId: ctx.session.user.id,
+      });
+      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+      revalidatePath(`/deals/${input.dealOpportunityId}`);
+      return { success: true };
+    }),
+
+  deleteFinancials: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string() }))
+    .mutation(async ({ input }) => {
+      const sim = await getActiveSimForDeal(input.dealOpportunityId);
+      if (!sim) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No active SIM found for this deal",
+        });
+      }
+      await deleteFinancialsForSim(sim.id);
+      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+      revalidatePath(`/deals/${input.dealOpportunityId}`);
+      return { success: true, canReExtract: true };
+    }),
+
   create: protectedProcedure
     .input(createDealSchema)
     .mutation(async ({ input, ctx }) => {
@@ -667,10 +893,9 @@ export const dealsRouter = createTRPCRouter({
         fileSize: buffer.length,
         mimeType,
         userId,
-        entityType: "DEAL" as const,
+        entityType: "DEAL_OPPORTUNITY" as const,
         entityId,
         entityMetadata,
-        embedInVectorStore: true, // Enable Google File Search Store for deals
         fileCategory: category,
         fileDescription: input.description,
       };

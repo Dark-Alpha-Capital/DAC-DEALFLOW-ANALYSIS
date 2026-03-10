@@ -9,6 +9,7 @@ import {
   decimal,
   index,
   uniqueIndex,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
@@ -95,6 +96,13 @@ export const screenerResponseTypeEnum = pgEnum("ScreenerResponseType", [
 export const screenerResponseSourceEnum = pgEnum("ScreenerResponseSource", [
   "AI",
   "HUMAN",
+]);
+
+export const dealSimStatusEnum = pgEnum("DealSimStatus", ["ACTIVE", "ARCHIVED"]);
+
+export const cimExtractionSourceEnum = pgEnum("CIMExtractionSource", [
+  "AI",
+  "USER",
 ]);
 
 // ============================================================================
@@ -843,6 +851,101 @@ export const documents = pgTable("Document", {
     .$onUpdate(() => new Date()),
 });
 
+/**
+ * Deal SIMs (CIMs) - one active per deal opportunity.
+ * Latest upload becomes active; previous is archived.
+ */
+export const dealSims = pgTable(
+  "DealSim",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    dealOpportunityId: text("dealOpportunityId")
+      .notNull()
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }),
+    documentId: text("documentId")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    storageKey: text("storageKey").notNull(), // Path in object storage for worker
+    status: dealSimStatusEnum("status").default("ACTIVE").notNull(),
+    uploadedById: text("uploadedById").references(() => users.id),
+    uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    dealSimDealOppIdx: index("deal_sim_deal_opp_idx").on(table.dealOpportunityId),
+    dealSimActiveUniqueIdx: uniqueIndex("deal_sim_active_unique_idx")
+      .on(table.dealOpportunityId)
+      .where(sql`${table.status} = 'ACTIVE'`),
+  }),
+);
+
+export const cimExtractions = pgTable(
+  "CIMExtraction",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    simId: text("simId").references(() => dealSims.id, { onDelete: "cascade" }),
+    documentId: text("documentId")
+      .references(() => documents.id, { onDelete: "cascade" }), // Denormalized; primary link is simId
+    dealOpportunityId: text("dealOpportunityId")
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }), // Denormalized for queries
+
+    revenueHistory: jsonb("revenueHistory").$type<Record<string, number>>(),
+    ebitdaHistory: jsonb("ebitdaHistory").$type<Record<string, number>>(),
+    employeeCount: integer("employeeCount"),
+    customerConcentration: doublePrecision("customerConcentration"),
+    capexIntensity: text("capexIntensity"),
+    revenueBreakdown: jsonb("revenueBreakdown").$type<
+      Record<string, number>
+    >(),
+    growthDrivers: text("growthDrivers").array(),
+    keyRisks: text("keyRisks").array(),
+    industryOverview: text("industryOverview"),
+    transactionDetails: text("transactionDetails"),
+
+    source: cimExtractionSourceEnum("source").default("AI").notNull(),
+    updatedByUserId: text("updatedByUserId").references(() => users.id),
+
+    modelName: text("modelName"),
+    version: text("version"),
+
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    cimExtractionSimIdx: index("cim_extraction_sim_idx").on(table.simId),
+    cimExtractionSimUniqueIdx: uniqueIndex("cim_extraction_sim_unique_idx").on(
+      table.simId,
+    ),
+    cimExtractionDealOppIdx: index("cim_extraction_deal_opp_idx").on(
+      table.dealOpportunityId,
+    ),
+  }),
+);
+
+// Simple dummy tables for migration verification
+export const cimExtractionDebugs = pgTable("CIMExtractionDebug", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const cimExtractionLogs = pgTable("CIMExtractionLog", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  dealOpportunityId: text("dealOpportunityId"),
+  message: text("message"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 // ============================================================================
 // RELATIONS
 // ============================================================================
@@ -972,6 +1075,11 @@ export const dealOpportunitiesRelations = relations(
     }),
     screenerResponses: many(screenerResponses),
     outreach: many(outreach),
+    cimExtraction: one(cimExtractions, {
+      fields: [dealOpportunities.id],
+      references: [cimExtractions.dealOpportunityId],
+    }),
+    dealSims: many(dealSims),
   }),
 );
 
@@ -1064,6 +1172,41 @@ export const userActionLogsRelations = relations(userActionLogs, ({ one }) => ({
 export const documentsRelations = relations(documents, ({ one }) => ({
   uploadedBy: one(users, {
     fields: [documents.uploadedById],
+    references: [users.id],
+  }),
+}));
+
+export const dealSimsRelations = relations(dealSims, ({ one, many }) => ({
+  dealOpportunity: one(dealOpportunities, {
+    fields: [dealSims.dealOpportunityId],
+    references: [dealOpportunities.id],
+  }),
+  document: one(documents, {
+    fields: [dealSims.documentId],
+    references: [documents.id],
+  }),
+  uploadedBy: one(users, {
+    fields: [dealSims.uploadedById],
+    references: [users.id],
+  }),
+  cimExtractions: many(cimExtractions),
+}));
+
+export const cimExtractionsRelations = relations(cimExtractions, ({ one }) => ({
+  sim: one(dealSims, {
+    fields: [cimExtractions.simId],
+    references: [dealSims.id],
+  }),
+  document: one(documents, {
+    fields: [cimExtractions.documentId],
+    references: [documents.id],
+  }),
+  dealOpportunity: one(dealOpportunities, {
+    fields: [cimExtractions.dealOpportunityId],
+    references: [dealOpportunities.id],
+  }),
+  updatedBy: one(users, {
+    fields: [cimExtractions.updatedByUserId],
     references: [users.id],
   }),
 }));
@@ -1273,6 +1416,12 @@ export type NewUserActionLog = typeof userActionLogs.$inferInsert;
 
 export type Document = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;
+
+export type DealSim = typeof dealSims.$inferSelect;
+export type NewDealSim = typeof dealSims.$inferInsert;
+
+export type CIMExtraction = typeof cimExtractions.$inferSelect;
+export type NewCIMExtraction = typeof cimExtractions.$inferInsert;
 
 export type Outreach = typeof outreach.$inferSelect;
 export type NewOutreach = typeof outreach.$inferInsert;

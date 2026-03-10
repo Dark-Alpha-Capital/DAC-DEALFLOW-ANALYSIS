@@ -21,6 +21,7 @@ import { CompanyNotes } from "@/components/company-detail/CompanyNotes";
 import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
 import { FileText, User } from "lucide-react";
 import { DeterministicScreeningSummary } from "./DeterministicScreeningSummary";
+import { CIMAnalysisSection } from "./CIMAnalysisSection";
 
 interface DealDetailTabsProps {
   deal: Deal & { id: string };
@@ -209,11 +210,17 @@ export function DealDetailTabs({
         </div>
       </TabsContent>
 
-      <TabsContent value="financials">
+      <TabsContent value="financials" className="space-y-8">
         <DealFinancialsSection
           deal={deal}
           currentOpportunity={currentOpportunity ?? undefined}
         />
+        {hasPipeline && (
+          <CIMAnalysisSection
+            dealOpportunityId={uid}
+            entityName={company?.name ?? "Deal"}
+          />
+        )}
       </TabsContent>
 
       {hasPipeline && (
@@ -241,6 +248,10 @@ export function DealDetailTabs({
           entityId={uid}
           documents={dealDocuments}
           emptyMessage="No deal documents. Upload CIM, Teaser, or Financials."
+          cimUploadProps={{
+            dealOpportunityId: uid,
+            entityName: company?.name ?? "Deal",
+          }}
         />
         <EntityDocumentsSection
           title="Company documents"

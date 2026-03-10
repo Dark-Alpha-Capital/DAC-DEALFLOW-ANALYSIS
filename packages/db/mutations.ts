@@ -6,9 +6,24 @@ import {
   screenerResponses,
   aiScreenings,
   questionnaires,
+  cimExtractions,
+  dealSims,
   type ScreenerResponseSource,
 } from "./schema";
 import { eq, inArray, and } from "drizzle-orm";
+
+export interface CIMExtractionPayload {
+  revenueHistory?: Record<string, number> | null;
+  ebitdaHistory?: Record<string, number> | null;
+  employeeCount?: number | null;
+  customerConcentration?: number | null;
+  capexIntensity?: string | null;
+  revenueBreakdown?: Record<string, number> | null;
+  growthDrivers?: string[] | null;
+  keyRisks?: string[] | null;
+  industryOverview?: string | null;
+  transactionDetails?: string | null;
+}
 
 export const BulkDeleteDeals = async (dealIds: readonly string[]) => {
   try {
@@ -148,4 +163,168 @@ export const DeleteQuestionnaireById = async (questionnaireId: string) => {
     console.error("Error deleting questionnaire:", error);
     throw error;
   }
+};
+
+/**
+ * Archive the current active SIM for a deal opportunity.
+ */
+export const archiveActiveDealSim = async (dealOpportunityId: string) => {
+  await db
+    .update(dealSims)
+    .set({ status: "ARCHIVED" })
+    .where(
+      and(
+        eq(dealSims.dealOpportunityId, dealOpportunityId),
+        eq(dealSims.status, "ACTIVE"),
+      ),
+    );
+};
+
+/**
+ * Create a new DealSim (active). Call archiveActiveDealSim first if replacing.
+ */
+export const createDealSim = async ({
+  dealOpportunityId,
+  documentId,
+  storageKey,
+  uploadedById,
+}: {
+  dealOpportunityId: string;
+  documentId: string;
+  storageKey: string;
+  uploadedById?: string;
+}) => {
+  const [row] = await db
+    .insert(dealSims)
+    .values({
+      dealOpportunityId,
+      documentId,
+      storageKey,
+      status: "ACTIVE",
+      uploadedById: uploadedById ?? null,
+    })
+    .returning();
+  return row!;
+};
+
+/**
+ * Replace SIM: archive current active, create new active. Returns new sim.
+ * Runs in a transaction to prevent race conditions.
+ */
+export const replaceDealSim = async ({
+  dealOpportunityId,
+  documentId,
+  storageKey,
+  uploadedById,
+}: {
+  dealOpportunityId: string;
+  documentId: string;
+  storageKey: string;
+  uploadedById?: string;
+}) => {
+  return db.transaction(async (tx) => {
+    await tx
+      .update(dealSims)
+      .set({ status: "ARCHIVED" })
+      .where(
+        and(
+          eq(dealSims.dealOpportunityId, dealOpportunityId),
+          eq(dealSims.status, "ACTIVE"),
+        ),
+      );
+    const [row] = await tx
+      .insert(dealSims)
+      .values({
+        dealOpportunityId,
+        documentId,
+        storageKey,
+        status: "ACTIVE",
+        uploadedById: uploadedById ?? null,
+      })
+      .returning();
+    if (!row) throw new Error("Failed to create DealSim");
+    return row;
+  });
+};
+
+/**
+ * Upsert CIM extraction for a SIM.
+ * Uses simId as the canonical link; one extraction per SIM.
+ */
+export const upsertCIMExtraction = async ({
+  simId,
+  documentId,
+  dealOpportunityId,
+  payload,
+  modelName,
+  version,
+  source = "AI",
+  updatedByUserId,
+}: {
+  simId: string;
+  documentId?: string;
+  dealOpportunityId?: string;
+  payload: CIMExtractionPayload;
+  modelName?: string;
+  version?: string;
+  source?: "AI" | "USER";
+  updatedByUserId?: string;
+}) => {
+  const values = {
+    simId,
+    documentId: documentId ?? null,
+    dealOpportunityId: dealOpportunityId ?? null,
+    revenueHistory: payload.revenueHistory ?? null,
+    ebitdaHistory: payload.ebitdaHistory ?? null,
+    employeeCount: payload.employeeCount ?? null,
+    customerConcentration: payload.customerConcentration ?? null,
+    capexIntensity: payload.capexIntensity ?? null,
+    revenueBreakdown: payload.revenueBreakdown ?? null,
+    growthDrivers: payload.growthDrivers ?? null,
+    keyRisks: payload.keyRisks ?? null,
+    industryOverview: payload.industryOverview ?? null,
+    transactionDetails: payload.transactionDetails ?? null,
+    modelName: modelName ?? null,
+    version: version ?? null,
+    source,
+    updatedByUserId: updatedByUserId ?? null,
+  };
+
+  try {
+    await db
+      .insert(cimExtractions)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [cimExtractions.simId],
+        set: {
+          documentId: values.documentId,
+          dealOpportunityId: values.dealOpportunityId,
+          revenueHistory: values.revenueHistory,
+          ebitdaHistory: values.ebitdaHistory,
+          employeeCount: values.employeeCount,
+          customerConcentration: values.customerConcentration,
+          capexIntensity: values.capexIntensity,
+          revenueBreakdown: values.revenueBreakdown,
+          growthDrivers: values.growthDrivers,
+          keyRisks: values.keyRisks,
+          industryOverview: values.industryOverview,
+          transactionDetails: values.transactionDetails,
+          modelName: values.modelName,
+          version: values.version,
+          source: values.source,
+          updatedByUserId: values.updatedByUserId,
+          updatedAt: new Date(),
+        },
+      });
+  } catch (error) {
+    console.error("[upsertCIMExtraction] Failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete all financials (CIM extraction) for a SIM.
+ */
+export const deleteFinancialsForSim = async (simId: string) => {
+  await db.delete(cimExtractions).where(eq(cimExtractions.simId, simId));
 };

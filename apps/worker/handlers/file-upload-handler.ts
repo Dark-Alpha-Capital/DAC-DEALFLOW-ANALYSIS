@@ -1,24 +1,11 @@
 import { Job } from "bullmq";
-import {
-  COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME,
-  googleGenAI,
-} from "../lib/ai/available-models";
 import { db } from "@repo/db";
-import {
-  documents,
-  type FileCategory,
-  type DocumentCategory,
-} from "@repo/db/schema";
-import {
-  fileExists,
-  getFileContents,
-  getNextcloudConfig,
-} from "@repo/nextcloud";
+import { documents, type DocumentCategory } from "@repo/db/schema";
+import { fileExists, getNextcloudConfig } from "@repo/nextcloud";
 
 export enum FileUploadStep {
   Validate = "validate",
   UploadNextcloud = "upload-nextcloud",
-  UploadGoogle = "upload-google",
   SaveDb = "save-db",
   Done = "done",
 }
@@ -50,8 +37,6 @@ export interface FileUploadJobData {
   entityType: "DEAL" | "DEAL_OPPORTUNITY";
   entityId: string; // References deals.id or dealOpportunities.id
   entityMetadata: EntityMetadata;
-  // Vector store embedding control
-  embedInVectorStore?: boolean; // Default can be overridden per job
   // Optional file metadata
   fileCategory?: string;
   fileDescription?: string;
@@ -67,16 +52,12 @@ export interface FileUploadJobData {
     destPath: string;
     publicUrl: string;
   };
-  googleFileSearchResult?: {
-    documentName: string | null;
-  };
 }
 
 export interface FileUploadResult {
   success: boolean;
   fileName?: string;
   nextcloudUrl?: string;
-  googleDocumentName?: string | null;
   fileId?: string;
   message?: string;
 }
@@ -187,9 +168,8 @@ async function revalidateCacheTags(tags: string[]): Promise<void> {
  * Steps:
  * 1. Validate - Validate file size, type, and metadata
  * 2. UploadNextcloud - Verify file exists at final location (uploaded by tRPC handler)
- * 3. UploadGoogle - Upload to Google File Search Store with metadata
- * 4. SaveDb - Save file record to files table
- * 5. Done - Complete
+ * 3. SaveDb - Save file record to database
+ * 4. Done - Complete
  */
 export async function fileUploadHandler(
   job: Job<FileUploadJobData>
@@ -211,14 +191,9 @@ export async function fileUploadHandler(
     entityId,
     entityMetadata,
     userId,
-    embedInVectorStore,
   } = jobData;
 
   let step = jobData.step ?? FileUploadStep.Validate;
-
-  // Default embedInVectorStore: false for deals unless explicitly enabled
-  const shouldEmbedInVectorStore =
-    embedInVectorStore !== undefined ? embedInVectorStore : false;
 
   console.log(`[file-upload] Extracted values:`, {
     userId: userId || "UNDEFINED",
@@ -227,11 +202,9 @@ export async function fileUploadHandler(
     entityMetadata: entityMetadata || "UNDEFINED",
     fileName: fileName || "UNDEFINED",
     jobId: jobId || "UNDEFINED",
-    embedInVectorStore: shouldEmbedInVectorStore,
     step,
     validateResult: jobData.validateResult,
     nextcloudResult: jobData.nextcloudResult,
-    googleFileSearchResult: jobData.googleFileSearchResult,
   });
 
   // Validate required fields at the start
@@ -320,163 +293,10 @@ export async function fileUploadHandler(
         // Save progress and move to next step
         await job.updateData({
           ...job.data,
-          step: FileUploadStep.UploadGoogle,
+          step: FileUploadStep.SaveDb,
           nextcloudResult: {
             destPath: filePath,
             publicUrl,
-          },
-        });
-        step = FileUploadStep.UploadGoogle;
-        break;
-      }
-
-      // ========================================
-      // Step 3: Upload to Google File Search Store
-      // ========================================
-      case FileUploadStep.UploadGoogle: {
-        await job.updateProgress({
-          step: "Uploading to Google File Search",
-          percentage: 70,
-        });
-
-        const validateResult = job.data.validateResult;
-        const nextcloudResult = job.data.nextcloudResult;
-        if (!validateResult) {
-          throw new Error("Missing validateResult - job state corrupted");
-        }
-        if (!nextcloudResult) {
-          throw new Error("Missing nextcloudResult - job state corrupted");
-        }
-
-        let documentName: string | null = null;
-
-        // Upload to Google File Search Store if configured and enabled
-        if (
-          shouldEmbedInVectorStore &&
-          COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME
-        ) {
-          console.log(
-            `[file-upload] ${jobId}: Uploading to Google File Search Store`
-          );
-
-          try {
-            // Create custom metadata for the file (Google API expects array of key-value pairs)
-            const customMetadata = [
-              { key: "entityType", stringValue: entityType },
-              { key: "entityId", stringValue: entityId },
-              {
-                key: "dealName",
-                stringValue: entityMetadata.name,
-              },
-              { key: "sector", stringValue: entityMetadata.sector ?? "" },
-              { key: "stage", stringValue: entityMetadata.stage ?? "" },
-              {
-                key: "headquarters",
-                stringValue: entityMetadata.headquarters ?? "",
-              },
-              { key: "revenue", numericValue: entityMetadata.revenue ?? 0 },
-              { key: "ebitda", numericValue: entityMetadata.ebitda ?? 0 },
-              { key: "uploadedAt", stringValue: new Date().toISOString() },
-              { key: "fileName", stringValue: fileName },
-            ];
-
-            const fileBuffer = await getFileContents(nextcloudResult.destPath);
-            // getFileContents with format: "binary" returns a Buffer in Node.js
-            // Buffer extends Uint8Array, so we can use it directly with Blob
-            const fileBlob = new Blob([fileBuffer as Buffer], {
-              type: mimeType,
-            });
-
-            console.log(`[file-upload] ${jobId}: Created Blob`, {
-              size: fileBlob.size,
-              type: fileBlob.type,
-              fileName,
-            });
-
-            // Upload to Google File Search Store
-            // Note: The API expects a Blob or File object, which we've created from the Buffer
-            let operation =
-              await googleGenAI.fileSearchStores.uploadToFileSearchStore({
-                file: fileBlob,
-                fileSearchStoreName: COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME,
-                config: {
-                  displayName: fileName,
-                  customMetadata,
-                },
-              });
-
-            console.log(`[file-upload] ${jobId}: Upload operation started`, {
-              operationName: operation.name,
-              done: operation.done,
-            });
-
-            // Wait for indexing to complete
-            console.log(
-              `[file-upload] ${jobId}: Waiting for Google indexing to complete...`
-            );
-            let waitCount = 0;
-            while (!operation.done) {
-              waitCount++;
-              await new Promise((resolve) => setTimeout(resolve, 5000));
-              operation = await googleGenAI.operations.get({ operation });
-              if (waitCount % 3 === 0) {
-                console.log(
-                  `[file-upload] ${jobId}: Still waiting for indexing... (${waitCount * 5}s elapsed)`
-                );
-              }
-            }
-
-            console.log(`[file-upload] ${jobId}: Operation completed`, {
-              operation: JSON.stringify(operation, null, 2),
-            });
-
-            // Extract document name from operation response
-            // The response structure may vary, so check multiple possible paths
-            documentName =
-              (operation.response as any)?.documentName ||
-              (operation.response as any)?.document?.name ||
-              null;
-
-            if (documentName) {
-              console.log(
-                `[file-upload] ${jobId}: Google upload complete - Document: ${documentName}`
-              );
-            } else {
-              console.warn(
-                `[file-upload] ${jobId}: Google upload completed but no document name returned`,
-                {
-                  operationResponse: operation.response,
-                  operationKeys: operation.response
-                    ? Object.keys(operation.response)
-                    : [],
-                }
-              );
-            }
-          } catch (error) {
-            console.error(
-              `[file-upload] ${jobId}: Error uploading to Google File Search:`,
-              error
-            );
-            // Don't fail the job - continue without Google indexing
-          }
-        } else {
-          if (!shouldEmbedInVectorStore) {
-            console.log(
-              `[file-upload] ${jobId}: Skipping Google upload - vector store embedding disabled for ${entityType}`
-            );
-          } else {
-            console.log(
-              `[file-upload] ${jobId}: Skipping Google upload - store not configured`
-            );
-          }
-        }
-
-        // Save progress and move to next step
-        await job.updateData({
-          ...job.data,
-          step: FileUploadStep.SaveDb,
-          googleFileSearchResult: {
-            documentName,
           },
         });
         step = FileUploadStep.SaveDb;
@@ -484,7 +304,7 @@ export async function fileUploadHandler(
       }
 
       // ========================================
-      // Step 4: Save to database
+      // Step 3: Save to database + CIM extraction
       // ========================================
       case FileUploadStep.SaveDb: {
         await job.updateProgress({
@@ -494,7 +314,6 @@ export async function fileUploadHandler(
 
         const validateResult = job.data.validateResult;
         const nextcloudResult = job.data.nextcloudResult;
-        const googleResult = job.data.googleFileSearchResult;
 
         if (!validateResult || !nextcloudResult) {
           throw new Error("Missing results - job state corrupted");
@@ -580,7 +399,6 @@ export async function fileUploadHandler(
           success: true,
           fileName,
           nextcloudUrl: nextcloudResult.publicUrl,
-          googleDocumentName: googleResult?.documentName,
           fileId: documentRecord.id,
           message: "File uploaded successfully",
         };
