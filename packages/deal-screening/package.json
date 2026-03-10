@@ -1,0 +1,22 @@
+{
+  "name": "@repo/deal-screening",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "backfill": "bun run ./scripts/backfill-deal-opportunity-screenings.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@repo/db": "workspace:*"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./screening": "./screening.ts"
+  }
+}

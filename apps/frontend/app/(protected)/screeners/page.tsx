@@ -1,224 +1,189 @@
-import React, { Suspense } from "react";
-import { Metadata } from "next";
+import Link from "next/link";
+import { Suspense } from "react";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  FileText,
-  Calendar,
-  Clock,
-  Plus,
-  Edit,
-  Eye,
-  Filter,
-  Search,
-} from "lucide-react";
-import DeleteScreenerButton from "./delete-screener-button";
-import AddScreenerDialog from "@/components/Dialogs/create-screener-dialog";
-import { getAllScreeners } from "@repo/db/queries";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
+import { getAllScreeners } from "@repo/db/queries";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import AddScreenerDialog from "@/components/Dialogs/create-screener-dialog";
+import DeleteScreenerButton from "./delete-screener-button";
 
 export const metadata: Metadata = {
   title: "Screeners",
-  description: "Manage and view your deal screening criteria",
+  description: "Manage structured screener templates and questions",
 };
 
-const Screeners = async () => {
+export default function ScreenersPage() {
+  const sessionPromise = getSession();
+
   return (
-    <div className="block-space big-container">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Screeners</h1>
-            <p className="mt-2 text-muted-foreground">
-              Manage your deal screening criteria and evaluation rules
-            </p>
-          </div>
-          <AddScreenerDialog />
+    <section className="block-space-mini container">
+      <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-3xl font-bold md:text-4xl">Screeners</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage structured screener templates and weighted questions.
+          </p>
         </div>
+        <AddScreenerDialog />
       </div>
 
-      <Suspense fallback={<div>Loading screeners...</div>}>
-        <ShowScreenersComponent />
+      <Suspense fallback={<ScreenersSkeleton />}>
+        <AuthedScreeners sessionPromise={sessionPromise} />
       </Suspense>
-    </div>
+    </section>
   );
-};
+}
 
-export default Screeners;
-
-async function ShowScreenersComponent() {
-  const userSession = await getSession();
-  if (!userSession?.user) {
+async function AuthedScreeners({
+  sessionPromise,
+}: {
+  sessionPromise: ReturnType<typeof getSession>;
+}) {
+  const session = await sessionPromise;
+  if (!session?.user) {
     redirect("/auth/login");
   }
 
-  return <FetchAndDisplayScreeners />;
+  return <ScreenersContent />;
 }
 
-async function FetchAndDisplayScreeners() {
+async function ScreenersContent() {
   "use cache";
   cacheTag("screeners");
   cacheLife("hours");
 
-  const screeners = await getAllScreeners();
+  const screeners = (await getAllScreeners()) ?? [];
+  const totalQuestions = screeners.reduce(
+    (sum, screener) => sum + (screener.questionCount ?? 0),
+    0,
+  );
+  const totalWeight = screeners.reduce(
+    (sum, screener) => sum + (screener.totalWeight ?? 0),
+    0,
+  );
 
   return (
-    <>
-      {/* Stats Section */}
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <div className="rounded-lg bg-muted p-2">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Total Screeners
-                </p>
-                <p className="text-2xl font-bold">{screeners?.length || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <div className="rounded-lg bg-muted p-2">
-                <Filter className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Active Rules
-                </p>
-                <p className="text-2xl font-bold">{screeners?.length || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <div className="rounded-lg bg-muted p-2">
-                <Search className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Evaluations
-                </p>
-                <p className="text-2xl font-bold">0</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <StatBlock label="Templates" value={screeners.length} />
+        <StatBlock label="Questions" value={totalQuestions} />
+        <StatBlock label="Total Weight" value={totalWeight} />
       </div>
 
-      {/* Screeners Grid */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Your Screeners</h2>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Search className="h-4 w-4" />
-              Search
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Filter className="h-4 w-4" />
-              Filter
-            </Button>
+      {screeners.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-10 text-center">
+          <h2 className="text-lg font-semibold">No screeners yet</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Create a template to start defining structured screening questions.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <AddScreenerDialog />
           </div>
         </div>
+      ) : (
+        <div className="overflow-hidden rounded-lg border">
+          <div className="hidden grid-cols-[minmax(0,2fr)_1fr_120px_120px_140px_auto] gap-4 border-b bg-muted/40 px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+            <span>Template</span>
+            <span>Category</span>
+            <span>Questions</span>
+            <span>Weight</span>
+            <span>Updated</span>
+            <span className="text-right">Actions</span>
+          </div>
 
-        {screeners && screeners.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="divide-y">
             {screeners.map((screener) => (
-              <Card
+              <div
                 key={screener.id}
-                className="group transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                className="flex flex-col gap-4 px-5 py-5 lg:grid lg:grid-cols-[minmax(0,2fr)_1fr_120px_120px_140px_auto] lg:items-center lg:gap-4 lg:px-6"
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="rounded-lg bg-muted p-2">
-                        <FileText className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg">
-                          {screener.name}
-                        </CardTitle>
-                        <Badge variant="secondary" className="mt-1">
-                          Active
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
+                <div className="min-w-0">
+                  <h2 className="truncate text-base font-semibold">
+                    {screener.name}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {screener.description || "No description provided."}
+                  </p>
+                </div>
 
-                <CardContent className="pt-0">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-1 text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        <span>Created</span>
-                      </div>
-                      <span className="font-medium">
-                        {new Date(screener.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
+                <div className="flex items-center justify-between gap-3 lg:block">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground lg:hidden">
+                    Category
+                  </span>
+                  <Badge variant="secondary">{screener.category}</Badge>
+                </div>
 
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-1 text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>Updated</span>
-                      </div>
-                      <span className="font-medium">
-                        {new Date(screener.updatedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
+                <InlineMeta
+                  label="Questions"
+                  value={String(screener.questionCount ?? 0)}
+                />
+                <InlineMeta
+                  label="Weight"
+                  value={String(screener.totalWeight ?? 0)}
+                />
+                <InlineMeta
+                  label="Updated"
+                  value={new Date(screener.updatedAt).toLocaleDateString()}
+                />
 
-                  <div className="mt-4 flex items-center space-x-2 border-t pt-4">
-                    <Button size="sm" className="flex-1 gap-2">
-                      <Eye className="h-3 w-3" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Edit className="h-3 w-3" />
-                      Edit
-                    </Button>
-                    <DeleteScreenerButton screenerId={screener.id} />
-                  </div>
-                </CardContent>
-              </Card>
+                <div className="flex items-center justify-between gap-3 lg:justify-end">
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/screeners/${screener.id}`}>Manage</Link>
+                  </Button>
+                  <DeleteScreenerButton screenerId={screener.id} />
+                </div>
+              </div>
             ))}
           </div>
-        ) : (
-          <Card className="p-12 text-center">
-            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-muted">
-              <FileText className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="mb-2 text-lg font-semibold">No screeners found</h3>
-            <p className="mb-6 text-muted-foreground">
-              Create your first screener to start evaluating deals with custom
-              criteria.
-            </p>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Create Your First Screener
-            </Button>
-          </Card>
-        )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatBlock({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border px-4 py-4">
+      <div className="text-sm text-muted-foreground">{label}</div>
+      <div className="mt-1 text-2xl font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function InlineMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 lg:block">
+      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground lg:hidden">
+        {label}
+      </span>
+      <span className="text-sm">{value}</span>
+    </div>
+  );
+}
+
+function ScreenersSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="h-24 animate-pulse rounded-lg border bg-muted/40" />
+        ))}
       </div>
-    </>
+
+      <div className="overflow-hidden rounded-lg border">
+        <div className="hidden h-12 border-b bg-muted/40 lg:block" />
+        <div className="divide-y">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="space-y-3 px-5 py-5 lg:px-6">
+              <div className="h-5 w-48 animate-pulse rounded bg-muted/50" />
+              <div className="h-4 w-full max-w-2xl animate-pulse rounded bg-muted/40" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

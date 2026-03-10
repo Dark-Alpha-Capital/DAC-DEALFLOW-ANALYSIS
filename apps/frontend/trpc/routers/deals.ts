@@ -3,6 +3,7 @@ import { createTRPCRouter, protectedProcedure, adminProcedure } from "../init";
 import db, {
   deals,
   dealOpportunities,
+  dealOpportunityScreenings,
   companies,
   eq,
   DealType,
@@ -28,6 +29,7 @@ import {
 } from "@repo/db/queries";
 import { uploadBuffer } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
+import { upsertDealOpportunityScreening } from "@repo/deal-screening";
 
 const createDealSchema = z.object({
   first_name: z.string().optional(),
@@ -129,6 +131,10 @@ const updateOpportunityStageSchema = z.object({
   ]),
 });
 
+const screenOpportunitySchema = z.object({
+  id: z.string(),
+});
+
 const uploadDealDocumentSchema = z.object({
   dealId: z.string(),
   title: z.string().min(1, "Title is required"),
@@ -199,6 +205,10 @@ export const dealsRouter = createTRPCRouter({
         })
         .returning();
 
+      if (added?.id) {
+        await upsertDealOpportunityScreening(added.id);
+      }
+
       revalidatePath("/deals");
       revalidateTag("deals", "max");
       return { dealOpportunityId: added?.id };
@@ -217,6 +227,35 @@ export const dealsRouter = createTRPCRouter({
       revalidateTag(`deal-${input.id}`, "max");
 
       return { dealOpportunityId: input.id, stage: input.stage };
+    }),
+
+  screenOpportunity: protectedProcedure
+    .input(screenOpportunitySchema)
+    .mutation(async ({ input }) => {
+      const screening = await upsertDealOpportunityScreening(input.id);
+
+      revalidatePath("/deals");
+      revalidatePath(`/deals/${input.id}`);
+      revalidatePath("/dashboard");
+      revalidateTag("deals", "max");
+      revalidateTag(`deal-${input.id}`, "max");
+
+      return { screening };
+    }),
+
+  deleteDeterministicScreening: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string() }))
+    .mutation(async ({ input }) => {
+      await db
+        .delete(dealOpportunityScreenings)
+        .where(eq(dealOpportunityScreenings.dealOpportunityId, input.dealOpportunityId));
+
+      revalidatePath("/deals");
+      revalidatePath(`/deals/${input.dealOpportunityId}`);
+      revalidateTag("deals", "max");
+      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+
+      return { success: true };
     }),
 
   updateOpportunity: protectedProcedure
@@ -243,6 +282,8 @@ export const dealsRouter = createTRPCRouter({
           brokerLinkedIn: data.brokerLinkedIn || null,
         })
         .where(eq(dealOpportunities.id, id));
+
+      await upsertDealOpportunityScreening(id);
 
       revalidatePath("/deals");
       revalidatePath(`/deals/${id}`);

@@ -12,6 +12,7 @@ import db, {
 } from "@repo/db";
 import { convertLeadToCompanySchema, leadFormSchema } from "@/lib/schemas";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { upsertDealOpportunityScreening } from "@repo/deal-screening";
 
 const createLeadSchema = leadFormSchema;
 
@@ -474,6 +475,10 @@ export const leadsRouter = createTRPCRouter({
       revalidateTag(`lead-${result.leadId}`, "max");
       revalidateTag("companies", "max");
       revalidateTag(`company-${result.companyId}`, "max");
+
+      if (result.dealOpportunityId) {
+        await upsertDealOpportunityScreening(result.dealOpportunityId);
+      }
 
       return result;
     }),

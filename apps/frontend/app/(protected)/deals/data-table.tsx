@@ -28,7 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { stageLabels } from "./columns";
 import { useRouter } from "next/navigation";
 
 interface DealsDataTableProps {
@@ -38,7 +37,10 @@ interface DealsDataTableProps {
 
 export function DealsDataTable({ columns, data }: DealsDataTableProps) {
   const router = useRouter();
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "screeningStatus", desc: false },
+    { id: "title", desc: false },
+  ]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
@@ -70,22 +72,24 @@ export function DealsDataTable({ columns, data }: DealsDataTableProps) {
         />
         <Select
           value={
-            (table.getColumn("stage")?.getFilterValue() as string) ?? "all"
+            (table.getColumn("screeningStatus")?.getFilterValue() as string) ??
+            "all"
           }
           onValueChange={(v) =>
-            table.getColumn("stage")?.setFilterValue(v === "all" ? "" : v)
+            table
+              .getColumn("screeningStatus")
+              ?.setFilterValue(v === "all" ? "" : v)
           }
         >
-          <SelectTrigger className="w-full sm:w-36">
-            <SelectValue placeholder="Stage" />
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="Screening" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All stages</SelectItem>
-            {Object.entries(stageLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
+            <SelectItem value="all">All screens</SelectItem>
+            <SelectItem value="PASS">Pass</SelectItem>
+            <SelectItem value="FAIL">Fail</SelectItem>
+            <SelectItem value="INCOMPLETE">Incomplete</SelectItem>
+            <SelectItem value="UNSCREENED">Unscreened</SelectItem>
           </SelectContent>
         </Select>
       </div>

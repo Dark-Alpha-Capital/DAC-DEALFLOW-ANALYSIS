@@ -6,7 +6,18 @@ import { Deal, DealStatus, DealType } from "@repo/db/schema";
 import { DealActionsDropdown } from "./deal-actions-dropdown";
 import { DealStatusControls } from "./DealStatusControls";
 import { cn } from "@/lib/utils";
-import { stageLabels } from "@/app/(protected)/deals/columns";
+
+const stageLabels: Record<string, string> = {
+  LISTED: "Listed",
+  INITIAL_REVIEW: "Initial Review",
+  SCREENED: "Screened",
+  MEETING_HELD: "Meeting",
+  IOI_SUBMITTED: "IOI",
+  LOI_SUBMITTED: "LOI",
+  DILIGENCE: "Diligence",
+  CLOSED: "Closed",
+  DEAD: "Dead",
+};
 
 interface DealHeaderProps {
   deal: Deal;
@@ -70,9 +81,7 @@ export function DealHeader({
   } = deal;
 
   const brokerDisplay =
-    brokerage ||
-    [firstName, lastName].filter(Boolean).join(" ") ||
-    null;
+    brokerage || [firstName, lastName].filter(Boolean).join(" ") || null;
 
   return (
     <div className="space-y-6">
@@ -88,7 +97,7 @@ export function DealHeader({
       </Button>
 
       <div className="space-y-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-foreground text-2xl font-semibold tracking-tight">
           {dealCaption || "Deal"}
         </h1>
 
@@ -118,7 +127,11 @@ export function DealHeader({
               <dt className="text-muted-foreground inline">Source: </dt>
               <dd className="inline">
                 <a
-                  href={sourceWebsite.startsWith("http") ? sourceWebsite : `https://${sourceWebsite}`}
+                  href={
+                    sourceWebsite.startsWith("http")
+                      ? sourceWebsite
+                      : `https://${sourceWebsite}`
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"
@@ -149,7 +162,7 @@ export function DealHeader({
           {(companyLocation || industry) && (
             <div key="meta">
               <dt className="text-muted-foreground inline"> </dt>
-              <dd className="inline text-muted-foreground">
+              <dd className="text-muted-foreground inline">
                 {[companyLocation, industry].filter(Boolean).join(" • ")}
               </dd>
             </div>

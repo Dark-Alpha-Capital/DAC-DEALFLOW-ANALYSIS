@@ -3,13 +3,15 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
-import { GetDealOpportunitiesByStages } from "@repo/db/queries";
-import { DealsDataTable } from "./data-table";
-import { columns } from "./columns";
+import {
+  GetDealOpportunitiesWithScreenings,
+  GetRankedDealOpportunities,
+} from "@repo/db/queries";
 import DealsAuthedSkeleton from "@/components/skeletons/DealsAuthedSkeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Eye, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import { DealsWorkspace } from "./deals-workspace";
 
 export const metadata: Metadata = {
   title: "Deals",
@@ -27,12 +29,6 @@ const DealsPage = () => {
             <Link href="/deals/new" className="gap-2">
               <Plus className="h-4 w-4" />
               New Deal
-            </Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/screenings" className="gap-2">
-              <Eye className="h-4 w-4" />
-              View Screenings
             </Link>
           </Button>
         </div>
@@ -62,7 +58,9 @@ async function FetchAndDisplayDeals() {
   "use cache";
   cacheTag("deals");
   cacheLife("hours");
-  const data = await GetDealOpportunitiesByStages();
-
-  return <DealsDataTable columns={columns} data={data} />;
+  const [screeningDeals, aiDeals] = await Promise.all([
+    GetRankedDealOpportunities(),
+    GetDealOpportunitiesWithScreenings(),
+  ]);
+  return <DealsWorkspace screeningDeals={screeningDeals} aiDeals={aiDeals} />;
 }

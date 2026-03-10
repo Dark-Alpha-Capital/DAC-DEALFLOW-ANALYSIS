@@ -1,26 +1,18 @@
 "use server";
 
-import { getSession } from "@/lib/auth-server";
-import { openai, openaiClient } from "@/lib/ai/available-models";
-import db, { deals, screeners, eq } from "@repo/db";
-import { splitContentIntoChunks } from "@/lib/utils";
-import { generateObject, generateText } from "ai";
-import { z } from "zod";
 import { headers } from "next/headers";
+import { z } from "zod";
+import { generateObject } from "ai";
+import { getSession } from "@/lib/auth-server";
+import { openai } from "@/lib/ai/available-models";
 import { rateLimit } from "@/lib/redis";
+import db, { deals, eq } from "@repo/db";
+import { getScreenerWithQuestions } from "@repo/db/queries";
 
-/**
- * Evaluates a deal against a screener
- * @param dealId - The ID of the deal to evaluate
- * @param screenerId - The ID of the screener to use for evaluation
- * @returns The evaluation result
- */
 export async function evaluateDeal(dealId: string, screenerId: string) {
   const userSession = await getSession();
 
   if (!userSession) {
-    console.log("user session is not available");
-
     return {
       success: false,
       error: "Unauthorized",
@@ -29,108 +21,126 @@ export async function evaluateDeal(dealId: string, screenerId: string) {
 
   const ip =
     (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
-  const { ok, remaining, reset } = await rateLimit(
+  const { ok } = await rateLimit(
     `api:evaluate-deal:${ip}`,
-    10, // 10 requests per minute
-    60_000, // 1 minute
+    10,
+    60_000,
   );
 
   if (!ok) {
-    console.log("Rate limit excedded for evaluate deal");
-
     return {
       success: false,
       message: "Too many requests",
     };
   }
 
-  const [fetchedDealInformation] = await db.select({
-    id: deals.id,
-    title: deals.title,
-    dealCaption: deals.dealCaption,
-    dealTeaser: deals.dealTeaser,
-    askingPrice: deals.askingPrice,
-    dealType: deals.dealType,
-    grossRevenue: deals.grossRevenue,
-    tags: deals.tags,
-    brokerage: deals.brokerage,
-    ebitdaMargin: deals.ebitdaMargin,
-    ebitda: deals.ebitda,
-    revenue: deals.revenue,
-  }).from(deals).where(eq(deals.id, dealId)).limit(1);
+  const [deal] = await db
+    .select({
+      id: deals.id,
+      title: deals.title,
+      dealCaption: deals.dealCaption,
+      dealTeaser: deals.dealTeaser,
+      askingPrice: deals.askingPrice,
+      dealType: deals.dealType,
+      grossRevenue: deals.grossRevenue,
+      tags: deals.tags,
+      brokerage: deals.brokerage,
+      ebitdaMargin: deals.ebitdaMargin,
+      ebitda: deals.ebitda,
+      revenue: deals.revenue,
+    })
+    .from(deals)
+    .where(eq(deals.id, dealId))
+    .limit(1);
 
-  if (!fetchedDealInformation) {
+  if (!deal) {
     return {
       success: false,
       error: "Deal not found",
     };
   }
 
+  const screener = await getScreenerWithQuestions(screenerId);
+  if (!screener || screener.questions.length === 0) {
+    return {
+      success: false,
+      error: "Screener not found or has no questions",
+    };
+  }
+
   try {
-    const [screener] = await db.select().from(screeners).where(eq(screeners.id, screenerId)).limit(1);
+    const evaluation = await generateObject({
+      model: openai("gpt-4o-mini"),
+      prompt: `Evaluate this deal against the structured screener below.
 
-    if (!screener) {
-      return {
-        success: false,
-        error: "Screener not found",
-      };
-    }
+Deal:
+${JSON.stringify(deal, null, 2)}
 
-    const chunks = await splitContentIntoChunks(screener.content);
-    const totalChunks = chunks.length;
-    console.log("total chunks", totalChunks);
+Screener:
+${JSON.stringify(
+  {
+    id: screener.id,
+    name: screener.name,
+    category: screener.category,
+    description: screener.description,
+    questions: screener.questions.map((question) => ({
+      questionId: question.id,
+      question: question.question,
+      weight: question.weight,
+      responseType: question.responseType,
+    })),
+  },
+  null,
+  2,
+)}
 
-    const intermediateSummaries = [];
+Instructions:
+- Score every question on a 0-10 integer scale.
+- Use only the deal information provided.
+- Return concise notes for each question.
+- Also return an overall title, weighted score, sentiment, and explanation.`,
+      schema: z.object({
+        title: z.string(),
+        score: z.number().min(0).max(10),
+        sentiment: z.enum(["POSITIVE", "NEGATIVE", "NEUTRAL"]),
+        explanation: z.string(),
+        responses: z.array(
+          z.object({
+            questionId: z.string(),
+            score: z.number().int().min(0).max(10),
+            notes: z.string(),
+          }),
+        ),
+      }),
+    });
 
-    for (const chunk of chunks) {
-      const summary = await generateText({
-        model: openai("gpt-4o-mini"),
-        prompt: `Evaluate this listing ${JSON.stringify(
-          fetchedDealInformation,
-        )}: ${chunk}`,
-      });
-      console.log("pushing chunk evaluation", summary.text);
-      intermediateSummaries.push(summary.text);
-    }
-    const combinedSummary = intermediateSummaries.join(
-      "\n\n=== Next Section ===\n\n",
+    const responseByQuestionId = new Map(
+      evaluation.object.responses.map((response) => [
+        response.questionId,
+        response,
+      ]),
     );
-
-    console.log(combinedSummary);
-
-    let finalSummary;
-
-    try {
-      finalSummary = await generateObject({
-        model: openai("gpt-4o-mini"),
-        prompt: `Combine the following summaries into a single summary: ${combinedSummary}`,
-        schema: z.object({
-          title: z.string(),
-          score: z.number(),
-          sentiment: z.enum(["POSITIVE", "NEGATIVE", "NEUTRAL"]),
-          explanation: z.string(),
-        }),
-      });
-    } catch (error) {
-      console.log(error);
-      return {
-        success: false,
-        message: "Error generating summary",
-      };
-    }
-
-    console.log("finalSummary", finalSummary);
 
     return {
       success: true,
-      title: finalSummary?.object?.title,
-      score: finalSummary?.object?.score,
-      sentiment: finalSummary?.object?.sentiment,
-      explanation: finalSummary?.object?.explanation,
-      content: combinedSummary,
+      title: evaluation.object.title,
+      score: evaluation.object.score,
+      sentiment: evaluation.object.sentiment,
+      explanation: evaluation.object.explanation,
+      responses: screener.questions.map((question) => {
+        const response = responseByQuestionId.get(question.id);
+
+        return {
+          questionId: question.id,
+          question: question.question,
+          weight: question.weight,
+          score: response?.score ?? 0,
+          notes: response?.notes ?? "No supporting detail returned.",
+        };
+      }),
     };
   } catch (error) {
-    console.error("Error extracting text from PDF:", error);
+    console.error("Error evaluating deal:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

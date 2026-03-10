@@ -1,6 +1,14 @@
 import { db } from ".";
-import { deals, screeners, aiScreenings, questionnaires } from "./schema";
-import { eq, inArray } from "drizzle-orm";
+import {
+  deals,
+  screeners,
+  screenerQuestions,
+  screenerResponses,
+  aiScreenings,
+  questionnaires,
+  type ScreenerResponseSource,
+} from "./schema";
+import { eq, inArray, and } from "drizzle-orm";
 
 export const BulkDeleteDeals = async (dealIds: readonly string[]) => {
   try {
@@ -33,6 +41,83 @@ export const DeleteScreenerById = async (screenerId: string) => {
     await db.delete(screeners).where(eq(screeners.id, screenerId));
   } catch (error) {
     console.error("Error deleting screener:", error);
+    throw error;
+  }
+};
+
+export const DeleteScreenerQuestionById = async (
+  screenerId: string,
+  questionId: string,
+) => {
+  try {
+    await db
+      .delete(screenerQuestions)
+      .where(
+        and(
+          eq(screenerQuestions.id, questionId),
+          eq(screenerQuestions.screenerId, screenerId),
+        ),
+      );
+  } catch (error) {
+    console.error("Error deleting screener question:", error);
+    throw error;
+  }
+};
+
+export const UpsertScreenerResponse = async ({
+  dealOpportunityId,
+  questionId,
+  score,
+  source,
+  notes,
+}: {
+  dealOpportunityId: string;
+  questionId: string;
+  score: number;
+  source: ScreenerResponseSource;
+  notes?: string | null;
+}) => {
+  try {
+    const [existing] = await db
+      .select({ id: screenerResponses.id })
+      .from(screenerResponses)
+      .where(
+        and(
+          eq(screenerResponses.dealOpportunityId, dealOpportunityId),
+          eq(screenerResponses.questionId, questionId),
+          eq(screenerResponses.source, source),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      const [updated] = await db
+        .update(screenerResponses)
+        .set({
+          score,
+          notes: notes ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(screenerResponses.id, existing.id))
+        .returning();
+
+      return updated ?? null;
+    }
+
+    const [created] = await db
+      .insert(screenerResponses)
+      .values({
+        dealOpportunityId,
+        questionId,
+        score,
+        source,
+        notes: notes ?? null,
+      })
+      .returning();
+
+    return created ?? null;
+  } catch (error) {
+    console.error("Error upserting screener response:", error);
     throw error;
   }
 };

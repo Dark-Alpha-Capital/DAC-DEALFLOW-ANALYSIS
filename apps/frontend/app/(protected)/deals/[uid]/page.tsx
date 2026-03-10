@@ -81,6 +81,7 @@ async function CachedDealContent({ uid }: { uid: string }) {
         companyDocuments={dealData.companyDocuments ?? []}
         dealDocuments={dealData.dealDocuments ?? []}
         aiScreenings={(dealData.aiScreenings ?? []) as unknown as AiScreening[]}
+        deterministicScreening={dealData.deterministicScreening ?? null}
         companyNotes={dealData.companyNotes ?? []}
       />
     </section>

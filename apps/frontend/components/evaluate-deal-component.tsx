@@ -1,255 +1,346 @@
 "use client";
 
-import React, { useTransition, useState } from "react";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Alert, AlertDescription } from "./ui/alert";
-import { evaluateDeal } from "@/lib/actions/evaluate-deal";
-import { CheckCircle, XCircle, AlertCircle, Loader2, Save } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle, Loader2, Save, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import ReactMarkdown from "react-markdown";
-import { useMutation } from "@tanstack/react-query";
+import { evaluateDeal } from "@/lib/actions/evaluate-deal";
 import { useTRPC } from "@/trpc/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-interface DealEvaluation {
+interface DealEvaluationResult {
   success: boolean;
   title?: string;
   score?: number;
   sentiment?: "POSITIVE" | "NEGATIVE" | "NEUTRAL";
   explanation?: string;
-  content?: string;
+  responses?: Array<{
+    questionId: string;
+    question: string;
+    weight: number;
+    score: number;
+    notes: string;
+  }>;
   error?: string;
   message?: string;
 }
 
-const EvaluateDealComponent = ({
+type HumanResponseDraft = {
+  questionId: string;
+  score: string;
+  notes: string;
+};
+
+export default function EvaluateDealComponent({
   dealId,
+  dealOpportunityId,
   screenerId,
 }: {
   dealId: string;
+  dealOpportunityId: string;
   screenerId: string;
-}) => {
-  const [isPending, startTransition] = useTransition();
-  const [dealEvaluation, setDealEvaluation] = useState<DealEvaluation | null>(
-    null,
-  );
-  const [saveResult, setSaveResult] = useState<{
-    success: boolean;
-    message?: string;
-    error?: string;
-  } | null>(null);
+}) {
+  const [isEvaluating, startEvaluation] = useTransition();
+  const [dealEvaluation, setDealEvaluation] =
+    useState<DealEvaluationResult | null>(null);
+  const [humanResponses, setHumanResponses] = useState<
+    Record<string, HumanResponseDraft>
+  >({});
 
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
 
-  const { mutate: saveEvaluationMutation, isPending: isSaving } = useMutation(
-    trpc.screenings.saveEvaluation.mutationOptions({
-      onSuccess: () => {
-        setSaveResult({ success: true });
-        toast.success("Evaluation saved successfully");
-      },
-      onError: (error) => {
-        setSaveResult({ success: false, error: error.message });
-        toast.error(error.message || "Failed to save evaluation");
-      },
-    })
+  const responsesQuery = useQuery(
+    trpc.screeners.getResponses.queryOptions({
+      dealOpportunityId,
+      screenerId,
+    }),
   );
 
-  const dealEvaluationHandler = () => {
-    startTransition(async () => {
+  useEffect(() => {
+    if (!responsesQuery.data) return;
+
+    const nextDrafts = responsesQuery.data.reduce<
+      Record<string, HumanResponseDraft>
+    >((acc, question) => {
+      acc[question.id] = {
+        questionId: question.id,
+        score:
+          question.humanResponse?.score != null
+            ? String(question.humanResponse.score)
+            : "",
+        notes: question.humanResponse?.notes ?? "",
+      };
+      return acc;
+    }, {});
+
+    setHumanResponses(nextDrafts);
+  }, [responsesQuery.data]);
+
+  async function invalidateResponseQueries() {
+    await queryClient.invalidateQueries({
+      queryKey: trpc.screeners.getResponses.queryKey({
+        dealOpportunityId,
+        screenerId,
+      }),
+    });
+  }
+
+  const saveHumanResponses = useMutation(
+    trpc.screeners.upsertResponses.mutationOptions({
+      onSuccess: async () => {
+        await invalidateResponseQueries();
+        toast.success("Analyst responses saved");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to save analyst responses");
+      },
+    }),
+  );
+
+  const saveAiEvaluation = useMutation(
+    trpc.screenings.saveEvaluation.mutationOptions({
+      onSuccess: async () => {
+        await invalidateResponseQueries();
+        toast.success("AI evaluation saved");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to save AI evaluation");
+      },
+    }),
+  );
+
+  function updateHumanDraft(
+    questionId: string,
+    patch: Partial<HumanResponseDraft>,
+  ) {
+    setHumanResponses((current) => ({
+      ...current,
+      [questionId]: {
+        ...(current[questionId] ?? { questionId, score: "", notes: "" }),
+        ...patch,
+      },
+    }));
+  }
+
+  function runAiEvaluation() {
+    startEvaluation(async () => {
       const result = await evaluateDeal(dealId, screenerId);
 
       if (result.success) {
         setDealEvaluation(result);
-        setSaveResult(null); // Reset save result when new evaluation is done
-        toast.success("Evaluation done successfully");
-        return;
+        toast.success("AI evaluation completed");
       } else {
-        console.log(result);
-        toast.error(result.message || "An error occurred during evaluation");
+        setDealEvaluation(result);
+        toast.error(result.error || result.message || "Evaluation failed");
       }
     });
-  };
+  }
 
-  const saveEvaluationHandler = () => {
-    if (!dealEvaluation || !dealEvaluation.success) {
-      toast.error("No valid evaluation to save");
+  function saveHumanHandler() {
+    const responses = Object.values(humanResponses)
+      .filter((response) => response.score !== "")
+      .map((response) => ({
+        questionId: response.questionId,
+        score: Number(response.score),
+        notes: response.notes,
+      }));
+
+    if (responses.length === 0) {
+      toast.error("Enter at least one analyst score");
       return;
     }
 
-    saveEvaluationMutation({
-      dealId,
+    saveHumanResponses.mutate({
+      dealOpportunityId,
       screenerId,
-      title: dealEvaluation.title || "Evaluation",
+      source: "HUMAN",
+      responses,
+    });
+  }
+
+  function saveAiHandler() {
+    if (!dealEvaluation?.success || !dealEvaluation.responses?.length) {
+      toast.error("Run an AI evaluation first");
+      return;
+    }
+
+    saveAiEvaluation.mutate({
+      dealId,
+      dealOpportunityId,
+      screenerId,
+      title: dealEvaluation.title || "AI Evaluation",
       explanation: dealEvaluation.explanation || "",
       sentiment: dealEvaluation.sentiment,
       score: dealEvaluation.score,
-      content: dealEvaluation.content,
+      responses: dealEvaluation.responses.map((response) => ({
+        questionId: response.questionId,
+        score: response.score,
+        notes: response.notes,
+      })),
     });
-  };
-
-  const getSentimentColor = (sentiment: string) => {
-    switch (sentiment) {
-      case "POSITIVE":
-        return "bg-success-muted text-success border-success/20";
-      case "NEGATIVE":
-        return "bg-destructive/10 text-destructive border-destructive/20";
-      case "NEUTRAL":
-        return "bg-muted text-muted-foreground border-border";
-      default:
-        return "bg-muted text-muted-foreground border-border";
-    }
-  };
-
-  const getSentimentIcon = (sentiment: string) => {
-    switch (sentiment) {
-      case "POSITIVE":
-        return <CheckCircle className="h-4 w-4" />;
-      case "NEGATIVE":
-        return <XCircle className="h-4 w-4" />;
-      case "NEUTRAL":
-        return <AlertCircle className="h-4 w-4" />;
-      default:
-        return <AlertCircle className="h-4 w-4" />;
-    }
-  };
+  }
 
   return (
-    <div className="space-y-4">
-      <Button
-        onClick={dealEvaluationHandler}
-        disabled={isPending}
-        className="w-full"
-      >
-        {isPending ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Evaluating...
-          </>
-        ) : (
-          "Evaluate Deal"
-        )}
-      </Button>
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={runAiEvaluation} disabled={isEvaluating}>
+          {isEvaluating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Evaluating
+            </>
+          ) : (
+            <>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Run AI Evaluation
+            </>
+          )}
+        </Button>
 
-      {dealEvaluation && (
+        <Button
+          variant="outline"
+          onClick={saveAiHandler}
+          disabled={saveAiEvaluation.isPending}
+        >
+          <Save className="mr-2 h-4 w-4" />
+          {saveAiEvaluation.isPending ? "Saving AI..." : "Save AI Responses"}
+        </Button>
+
+        <Button
+          variant="secondary"
+          onClick={saveHumanHandler}
+          disabled={saveHumanResponses.isPending}
+        >
+          <CheckCircle className="mr-2 h-4 w-4" />
+          {saveHumanResponses.isPending
+            ? "Saving Analyst..."
+            : "Save Analyst Responses"}
+        </Button>
+      </div>
+
+      {dealEvaluation && !dealEvaluation.success ? (
+        <Alert variant="destructive">
+          <AlertDescription>
+            {dealEvaluation.error || dealEvaluation.message || "Evaluation failed"}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {dealEvaluation?.success ? (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Evaluation Results
-              {dealEvaluation.success ? (
-                <CheckCircle className="h-5 w-5 text-success" />
-              ) : (
-                <XCircle className="h-5 w-5 text-destructive" />
-              )}
+            <CardTitle className="flex items-center justify-between gap-3">
+              <span>{dealEvaluation.title || "AI Evaluation"}</span>
+              <div className="flex items-center gap-2">
+                {dealEvaluation.score != null ? (
+                  <Badge variant="outline">{dealEvaluation.score}/10</Badge>
+                ) : null}
+                {dealEvaluation.sentiment ? (
+                  <Badge variant="secondary">{dealEvaluation.sentiment}</Badge>
+                ) : null}
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {!dealEvaluation.success ? (
-              <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {dealEvaluation.error ||
-                    dealEvaluation.message ||
-                    "An error occurred during evaluation"}
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <div className="space-y-4">
-                {dealEvaluation.title && (
-                  <div>
-                    <h3 className="text-lg font-semibold">
-                      {dealEvaluation.title}
-                    </h3>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-4">
-                  {dealEvaluation.score !== undefined && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Score:</span>
-                      <Badge variant="outline" className="text-lg font-bold">
-                        {dealEvaluation.score}/10
-                      </Badge>
-                    </div>
-                  )}
-
-                  {dealEvaluation.sentiment && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Sentiment:</span>
-                      <Badge
-                        variant="outline"
-                        className={`flex items-center gap-1 ${getSentimentColor(dealEvaluation.sentiment)}`}
-                      >
-                        {getSentimentIcon(dealEvaluation.sentiment)}
-                        {dealEvaluation.sentiment}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={saveEvaluationHandler}
-                    disabled={isSaving}
-                    className="flex items-center gap-2"
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" />
-                        Save Evaluation
-                      </>
-                    )}
-                  </Button>
-
-                  {saveResult && (
-                    <Badge
-                      variant={saveResult.success ? "default" : "destructive"}
-                      className="flex items-center gap-1"
-                    >
-                      {saveResult.success ? (
-                        <CheckCircle className="h-3 w-3" />
-                      ) : (
-                        <XCircle className="h-3 w-3" />
-                      )}
-                      {saveResult.success ? "Saved" : "Save Failed"}
-                    </Badge>
-                  )}
-                </div>
-
-                {dealEvaluation.explanation && (
-                  <div>
-                    <h4 className="mb-2 font-medium">Explanation:</h4>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {dealEvaluation.explanation}
-                    </p>
-                  </div>
-                )}
-
-                {dealEvaluation.content && (
-                  <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
-                      View Detailed Analysis
-                    </summary>
-                    <div className="mt-2 rounded-md bg-muted p-3">
-                      <article className="prose prose-sm dark:prose-invert">
-                        <ReactMarkdown>{dealEvaluation.content}</ReactMarkdown>
-                      </article>
-                    </div>
-                  </details>
-                )}
-              </div>
-            )}
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              {dealEvaluation.explanation}
+            </p>
           </CardContent>
         </Card>
+      ) : null}
+
+      {responsesQuery.isLoading ? (
+        <div className="text-sm text-muted-foreground">
+          Loading structured questions...
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {responsesQuery.data?.map((question) => {
+            const draft = humanResponses[question.id] ?? {
+              questionId: question.id,
+              score: "",
+              notes: "",
+            };
+            const aiPreview =
+              dealEvaluation?.responses?.find(
+                (response) => response.questionId === question.id,
+              ) ?? null;
+
+            return (
+              <Card key={question.id}>
+                <CardHeader>
+                  <CardTitle className="flex items-start justify-between gap-3 text-base">
+                    <span>{question.question}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">Weight {question.weight}</Badge>
+                      <Badge variant="secondary">{question.responseType}</Badge>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-3 rounded-lg border p-4">
+                      <div className="text-sm font-medium">Analyst Response</div>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={10}
+                        value={draft.score}
+                        onChange={(event) =>
+                          updateHumanDraft(question.id, {
+                            score: event.target.value,
+                          })
+                        }
+                        placeholder="0-10 score"
+                      />
+                      <Textarea
+                        value={draft.notes}
+                        onChange={(event) =>
+                          updateHumanDraft(question.id, {
+                            notes: event.target.value,
+                          })
+                        }
+                        placeholder="Analyst notes"
+                      />
+                    </div>
+
+                    <div className="space-y-3 rounded-lg border p-4">
+                      <div className="text-sm font-medium">AI Response</div>
+                      <div className="text-sm">
+                        Score:{" "}
+                        <span className="font-semibold">
+                          {aiPreview?.score ??
+                            question.aiResponse?.score ??
+                            "Not scored"}
+                        </span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {aiPreview?.notes ||
+                          question.aiResponse?.notes ||
+                          "No AI notes saved yet."}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {responsesQuery.data?.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-sm text-muted-foreground">
+                This screener has no questions yet.
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
       )}
     </div>
   );
-};
-
-export default EvaluateDealComponent;
+}

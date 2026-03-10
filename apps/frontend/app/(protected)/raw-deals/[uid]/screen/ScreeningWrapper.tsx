@@ -16,15 +16,19 @@ import { Activity, Filter } from "lucide-react";
 interface Screener {
   id: string;
   name: string;
+  category?: string;
+  questionCount?: number;
 }
 
 interface ScreeningWrapperProps {
   dealId: string;
+  dealOpportunityId: string;
   screeners: Screener[];
 }
 
 export default function ScreeningWrapper({
   dealId,
+  dealOpportunityId,
   screeners,
 }: ScreeningWrapperProps) {
   const [selectedScreenerId, setSelectedScreenerId] = useState<string>("");
@@ -58,6 +62,7 @@ export default function ScreeningWrapper({
             {selectedScreenerId ? (
               <EvaluateDealComponent
                 dealId={dealId}
+                dealOpportunityId={dealOpportunityId}
                 screenerId={selectedScreenerId}
               />
             ) : (
