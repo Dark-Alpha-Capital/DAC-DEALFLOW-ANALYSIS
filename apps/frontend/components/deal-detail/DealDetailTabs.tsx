@@ -96,7 +96,7 @@ export function DealDetailTabs({
         <DealHeader
           deal={deal}
           uid={uid}
-          basePath="deals"
+          basePath="deal-opportunities"
           stage={currentOpportunity?.stage}
         />
 

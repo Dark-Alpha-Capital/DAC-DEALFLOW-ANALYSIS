@@ -60,11 +60,11 @@ export default function AddDealForm() {
   );
 
   const { mutate: createDeal, isPending } = useMutation(
-    trpc.deals.createOpportunity.mutationOptions({
+    trpc.dealOpportunities.createOpportunity.mutationOptions({
       onSuccess: () => {
         toast.success("Deal saved successfully");
         form.reset();
-        router.push("/deals");
+        router.push("/deal-opportunities");
       },
       onError: (error) => {
         toast.error(error.message || "Failed to add deal");

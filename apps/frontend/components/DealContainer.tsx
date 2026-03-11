@@ -37,7 +37,7 @@ export default function DealContainer({ data }: DealContainerProps) {
   const trpc = useTRPC();
 
   const { mutate: bulkDeleteDeals, isPending: isDeleting } = useMutation(
-    trpc.deals.bulkDelete.mutationOptions({
+    trpc.dealOpportunities.bulkDelete.mutationOptions({
       onSuccess: () => {
         router.refresh();
         setSelectedIds(new Set());

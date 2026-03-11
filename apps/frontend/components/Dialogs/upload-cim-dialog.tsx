@@ -46,7 +46,7 @@ export function UploadCIMDialog({
   const user = useCurrentUser();
 
   const { mutate: uploadCIM, isPending } = useMutation(
-    trpc.deals.uploadCIM.mutationOptions({
+    trpc.dealOpportunities.uploadCIM.mutationOptions({
       onSuccess: (data) => {
         if (data.success && data.jobId) {
           window.dispatchEvent(

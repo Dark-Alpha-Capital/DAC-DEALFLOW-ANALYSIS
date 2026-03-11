@@ -23,7 +23,7 @@ export type DealsByThemeDatum = {
 
 const chartConfig = {
   deals: {
-    label: "Deals",
+    label: "Deal opportunities",
     color: "var(--chart-1)",
   },
 } satisfies ChartConfig;
@@ -37,7 +37,7 @@ export function ThemePerformanceChart({ data }: ThemePerformanceChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Deals by theme</CardTitle>
+          <CardTitle>Deal opportunities by theme</CardTitle>
           <CardDescription>No deal opportunities found.</CardDescription>
         </CardHeader>
       </Card>
@@ -52,7 +52,7 @@ export function ThemePerformanceChart({ data }: ThemePerformanceChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Deals by theme</CardTitle>
+        <CardTitle>Deal opportunities by theme</CardTitle>
         <CardDescription>
           Distribution of deal opportunities across investment themes.
         </CardDescription>

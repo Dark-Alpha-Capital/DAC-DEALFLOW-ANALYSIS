@@ -3,7 +3,7 @@
 import type { DealOpportunityScreening } from "@repo/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScreenDealButton } from "@/app/(protected)/deals/screen-deal-button";
+import { ScreenDealButton } from "@/app/(protected)/deal-opportunities/screen-deal-button";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useTRPC } from "@/trpc/client";
@@ -29,7 +29,7 @@ function DeleteScreeningButton({
   const trpc = useTRPC();
   const router = useRouter();
   const { mutate: deleteScreening, isPending } = useMutation(
-    trpc.deals.deleteDeterministicScreening.mutationOptions({
+    trpc.dealOpportunities.deleteDeterministicScreening.mutationOptions({
       onSuccess: () => {
         toast.success("Screening deleted");
         router.refresh();

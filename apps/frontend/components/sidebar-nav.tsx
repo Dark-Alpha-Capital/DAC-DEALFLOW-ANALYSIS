@@ -32,7 +32,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: FiHome },
   { title: "Leads", url: "/leads", icon: FiUserPlus },
-  { title: "Deals", url: "/deals", icon: FiTrendingUp },
+  { title: "Deal opportunities", url: "/deal-opportunities", icon: FiTrendingUp },
   { title: "Companies", url: "/companies", icon: FiUsers },
   { title: "Jobs", url: "/jobs", icon: FiBriefcase },
   { title: "Themes", url: "/themes", icon: FaPalette },

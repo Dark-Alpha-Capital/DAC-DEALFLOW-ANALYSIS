@@ -620,7 +620,7 @@ export const contacts = pgTable("Contact", {
   email: text("email"),
   phone: text("phone"),
   linkedinUrl: text("linkedinUrl"),
-  role: text("role"), // Broker, Founder, CFO, Advisor
+  role: text("role"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

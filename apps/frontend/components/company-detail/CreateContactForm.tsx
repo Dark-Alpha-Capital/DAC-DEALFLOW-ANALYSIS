@@ -47,7 +47,8 @@ export function CreateContactForm(
 ) {
   const entityType: ContactEntity =
     "company" in props ? "COMPANY" : props.entityType;
-  const entityId: string = "company" in props ? props.company.id : props.entityId;
+  const entityId: string =
+    "company" in props ? props.company.id : props.entityId;
   const triggerLabel = props.triggerLabel ?? "Add contact";
   const trpc = useTRPC();
   const [open, setOpen] = useState(false);
@@ -61,7 +62,6 @@ export function CreateContactForm(
       email: "",
       phone: "",
       linkedinUrl: "",
-      role: "",
     },
   });
 
@@ -88,7 +88,6 @@ export function CreateContactForm(
       email: values.email || undefined,
       phone: values.phone,
       linkedinUrl: values.linkedinUrl || undefined,
-      role: values.role,
     });
   };
 
@@ -114,6 +113,7 @@ export function CreateContactForm(
                   <Input
                     {...field}
                     id={field.name}
+                    placeholder="Jane Doe"
                     aria-invalid={fieldState.invalid}
                   />
                   {fieldState.invalid && (
@@ -131,6 +131,7 @@ export function CreateContactForm(
                   <Input
                     {...field}
                     id={field.name}
+                    placeholder="Head of Procurement"
                     aria-invalid={fieldState.invalid}
                   />
                   {fieldState.invalid && (
@@ -149,6 +150,7 @@ export function CreateContactForm(
                     {...field}
                     id={field.name}
                     type="email"
+                    placeholder="jane@company.com"
                     aria-invalid={fieldState.invalid}
                   />
                   {fieldState.invalid && (
@@ -166,6 +168,7 @@ export function CreateContactForm(
                   <Input
                     {...field}
                     id={field.name}
+                    placeholder="+1 (555) 000-0000"
                     aria-invalid={fieldState.invalid}
                   />
                   {fieldState.invalid && (
@@ -183,23 +186,7 @@ export function CreateContactForm(
                   <Input
                     {...field}
                     id={field.name}
-                    aria-invalid={fieldState.invalid}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
-            <Controller
-              name="role"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor={field.name}>Role</FieldLabel>
-                  <Input
-                    {...field}
-                    id={field.name}
+                    placeholder="https://linkedin.com/in/jane-doe"
                     aria-invalid={fieldState.invalid}
                   />
                   {fieldState.invalid && (

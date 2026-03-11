@@ -164,6 +164,95 @@ export const leadsRouter = createTRPCRouter({
     }),
 
   /**
+   * Explicitly update lead status. User-controlled, predictable.
+   */
+  updateStatus: protectedProcedure
+    .input(
+      z.object({
+        leadId: z.string(),
+        status: z.enum(["NEW", "PROCESSED", "DUPLICATE", "REJECTED"]),
+        companyId: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const [lead] = await db
+        .select({
+          id: leads.id,
+          status: leads.status,
+          duplicateCompanyId: leads.duplicateCompanyId,
+          processedAt: leads.processedAt,
+          deletedAt: leads.deletedAt,
+        })
+        .from(leads)
+        .where(eq(leads.id, input.leadId))
+        .limit(1);
+
+      if (!lead || lead.deletedAt) {
+        throw new Error("Lead not found");
+      }
+
+      if (input.status === "DUPLICATE" && !input.companyId) {
+        throw new Error("Company is required when setting status to DUPLICATE");
+      }
+
+      const now = new Date();
+      type Status = "NEW" | "PROCESSED" | "DUPLICATE" | "REJECTED";
+      const payload: {
+        status: Status;
+        duplicateCompanyId: string | null;
+        processedAt: Date | null;
+      } = {
+        status: input.status as Status,
+        duplicateCompanyId: null,
+        processedAt: lead.processedAt ?? now,
+      };
+
+      switch (input.status) {
+        case "NEW":
+          payload.duplicateCompanyId = null;
+          payload.processedAt = null;
+          break;
+        case "REJECTED":
+          payload.duplicateCompanyId = null;
+          payload.processedAt = now;
+          break;
+        case "DUPLICATE":
+          if (!input.companyId) throw new Error("Company required for DUPLICATE");
+          const [company] = await db
+            .select({ id: companies.id, deletedAt: companies.deletedAt })
+            .from(companies)
+            .where(eq(companies.id, input.companyId))
+            .limit(1);
+          if (!company || company.deletedAt) {
+            throw new Error("Company not found");
+          }
+          payload.duplicateCompanyId = input.companyId;
+          payload.processedAt = lead.processedAt ?? now;
+          break;
+        case "PROCESSED":
+          payload.duplicateCompanyId = null;
+          payload.processedAt = lead.processedAt ?? now;
+          break;
+      }
+
+      await db
+        .update(leads)
+        .set(payload)
+        .where(eq(leads.id, lead.id));
+
+      revalidatePath("/leads");
+      revalidatePath(`/leads/${input.leadId}`);
+      revalidateTag("leads", "max");
+      revalidateTag(`lead-${input.leadId}`, "max");
+      if (payload.duplicateCompanyId) {
+        revalidatePath(`/companies/${payload.duplicateCompanyId}`);
+        revalidateTag(`company-${payload.duplicateCompanyId}`, "max");
+      }
+
+      return { leadId: input.leadId };
+    }),
+
+  /**
    * Mark a lead as rejected
    */
   reject: protectedProcedure

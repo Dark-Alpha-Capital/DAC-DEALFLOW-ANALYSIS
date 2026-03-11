@@ -29,7 +29,7 @@ export default function DealScreeningSummary({
           Linked to screenings
         </Badge>
         <Link
-          href={`/deals/${dealOpportunityId}`}
+          href={`/deal-opportunities/${dealOpportunityId}`}
           className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
         >
           Open analysis

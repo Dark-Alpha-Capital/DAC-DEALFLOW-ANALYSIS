@@ -11,8 +11,8 @@ import { Plus } from "lucide-react";
 import { DealsWorkspace } from "./deals-workspace";
 
 export const metadata: Metadata = {
-  title: "Deals",
-  description: "View all deals",
+  title: "Deal opportunities",
+  description: "View all deal opportunities",
 };
 
 const DealsPage = () => {
@@ -20,12 +20,12 @@ const DealsPage = () => {
   return (
     <section className="block-space-mini group container">
       <div className="mb-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
-        <h1 className="text-4xl font-bold md:text-5xl">Deals Pipeline</h1>
+        <h1 className="text-4xl font-bold md:text-5xl">Deal opportunities</h1>
         <div className="flex gap-2">
           <Button asChild size="sm" variant="outline">
-            <Link href="/deals/new" className="gap-2">
+            <Link href="/deal-opportunities/new" className="gap-2">
               <Plus className="h-4 w-4" />
-              New Deal
+              New deal opportunity
             </Link>
           </Button>
         </div>

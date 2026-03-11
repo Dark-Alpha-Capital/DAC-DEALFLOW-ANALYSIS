@@ -16,7 +16,8 @@ import { outreachRouter } from "./outreach";
 
 export const appRouter = createTRPCRouter({
   companies: companiesRouter,
-  deals: dealsRouter,
+  dealOpportunities: dealsRouter,
+  deals: dealsRouter, // backward-compatible alias
   themes: themesRouter,
   leads: leadsRouter,
   screeners: screenersRouter,

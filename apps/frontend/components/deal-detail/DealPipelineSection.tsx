@@ -53,7 +53,7 @@ export function DealPipelineSection({
   const currentLabel = STAGE_LABELS[currentStage] ?? currentStage;
 
   const { mutate: updateStage, isPending } = useMutation(
-    trpc.deals.updateOpportunityStage.mutationOptions({
+    trpc.dealOpportunities.updateOpportunityStage.mutationOptions({
       onSuccess: () => {
         toast.success("Deal stage updated");
         router.refresh();

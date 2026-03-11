@@ -27,15 +27,15 @@ function DealActionsCell({ dealOpportunityId }: { dealOpportunityId: string }) {
   const router = useRouter();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { mutate: deleteOpportunity, isPending: isDeleting } = useMutation(
-    trpc.deals.deleteOpportunity.mutationOptions({
+    trpc.dealOpportunities.deleteOpportunity.mutationOptions({
       onSuccess: () => {
-        toast.success("Deal deleted");
-        router.push("/deals");
+        toast.success("Deal opportunity deleted");
+        router.push("/deal-opportunities");
         router.refresh();
         setDeleteDialogOpen(false);
       },
       onError: (error) => {
-        toast.error(error.message || "Failed to delete deal");
+        toast.error(error.message || "Failed to delete deal opportunity");
       },
     }),
   );
@@ -50,14 +50,14 @@ function DealActionsCell({ dealOpportunityId }: { dealOpportunityId: string }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuItem asChild>
-            <Link href={`/deals/${dealOpportunityId}`} className="flex items-center">
+            <Link href={`/deal-opportunities/${dealOpportunityId}`} className="flex items-center">
               <Eye className="mr-2 h-4 w-4" />
               View
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link
-              href={`/deals/${dealOpportunityId}/edit`}
+              href={`/deal-opportunities/${dealOpportunityId}/edit`}
               className="flex items-center"
             >
               <Pencil className="mr-2 h-4 w-4" />
@@ -77,8 +77,8 @@ function DealActionsCell({ dealOpportunityId }: { dealOpportunityId: string }) {
       <DeleteEntityDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        title="Delete deal?"
-        description="This will permanently delete this deal. This action cannot be undone."
+        title="Delete deal opportunity?"
+        description="This will permanently delete this deal opportunity. This action cannot be undone."
         onConfirm={() => deleteOpportunity({ id: dealOpportunityId })}
         isPending={isDeleting}
       />

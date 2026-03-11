@@ -27,7 +27,7 @@ const chartConfig = {
     color: "var(--chart-3)",
   },
   deals: {
-    label: "Deals",
+    label: "Deal opportunities",
     color: "var(--chart-4)",
   },
 } satisfies ChartConfig;

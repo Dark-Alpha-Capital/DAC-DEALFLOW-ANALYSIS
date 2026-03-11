@@ -57,7 +57,7 @@ export default function CreateNewDealForm() {
   const trpc = useTRPC();
 
   const { mutate: createDeal, isPending } = useMutation(
-    trpc.deals.create.mutationOptions({
+    trpc.dealOpportunities.create.mutationOptions({
       onSuccess: () => {
         toast.success("Deal saved successfully");
         form.reset();

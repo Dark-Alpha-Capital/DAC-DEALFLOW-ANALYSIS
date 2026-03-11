@@ -53,7 +53,7 @@ const DealDocumentUploadDialog: React.FC<DealDocumentUploadDialogProps> = ({
   const user = useCurrentUser();
 
   const { mutate: uploadDocument, isPending } = useMutation(
-    trpc.deals.uploadDocument.mutationOptions({
+    trpc.dealOpportunities.uploadDocument.mutationOptions({
       onSuccess: (data) => {
         // Dispatch custom event for real-time job tracking
         if (data.success && data.jobId) {

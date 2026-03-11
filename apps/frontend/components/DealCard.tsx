@@ -52,7 +52,7 @@ export default function DealCard({
   const trpc = useTRPC();
 
   const { mutate: deleteDeal, isPending: isDeleting } = useMutation(
-    trpc.deals.delete.mutationOptions({
+    trpc.dealOpportunities.delete.mutationOptions({
       onSuccess: () => {
         toast({
           title: "Deal Deleted",

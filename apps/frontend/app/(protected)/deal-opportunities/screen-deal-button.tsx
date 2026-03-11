@@ -1,13 +1,13 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useTRPC } from "@/trpc/client";
 
-export function RunAiScreeningButton({
+export function ScreenDealButton({
   dealOpportunityId,
 }: {
   dealOpportunityId: string;
@@ -15,14 +15,14 @@ export function RunAiScreeningButton({
   const trpc = useTRPC();
   const router = useRouter();
 
-  const mutation = useMutation(
-    trpc.deals.runAiScreening.mutationOptions({
+  const screeningMutation = useMutation(
+    trpc.dealOpportunities.screenOpportunity.mutationOptions({
       onSuccess: () => {
-        toast.success("AI screening completed");
+        toast.success("Deterministic screening completed");
         router.refresh();
       },
       onError: (error) => {
-        toast.error(error.message || "Failed to run AI screening");
+        toast.error(error.message || "Failed to run screening");
       },
     }),
   );
@@ -31,19 +31,19 @@ export function RunAiScreeningButton({
     <Button
       size="sm"
       variant="secondary"
-      disabled={mutation.isPending}
-      onClick={(e) => {
-        e.stopPropagation();
-        mutation.mutate({ dealOpportunityId });
+      disabled={screeningMutation.isPending}
+      onClick={(event) => {
+        event.stopPropagation();
+        screeningMutation.mutate({ id: dealOpportunityId });
       }}
     >
-      {mutation.isPending ? (
+      {screeningMutation.isPending ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       ) : (
-        <Sparkles className="h-3.5 w-3.5" />
+        <Play className="h-3.5 w-3.5" />
       )}
       <span className="ml-1.5">
-        {mutation.isPending ? "Running" : "Run AI Screening"}
+        {screeningMutation.isPending ? "Running" : "Run Screening"}
       </span>
     </Button>
   );

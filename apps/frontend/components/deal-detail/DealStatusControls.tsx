@@ -43,7 +43,7 @@ export function DealStatusControls({
   const trpc = useTRPC();
 
   const { mutate: updateSpecifications, isPending } = useMutation(
-    trpc.deals.updateSpecifications.mutationOptions({
+    trpc.dealOpportunities.updateSpecifications.mutationOptions({
       onSuccess: () => {
         toast.success("Deal updated");
         router.refresh();

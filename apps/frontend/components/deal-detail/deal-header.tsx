@@ -22,7 +22,7 @@ const stageLabels: Record<string, string> = {
 interface DealHeaderProps {
   deal: Deal;
   uid: string;
-  basePath?: "deals" | "raw-deals";
+  basePath?: "deal-opportunities" | "raw-deals";
   stage?: string | null;
 }
 
@@ -55,14 +55,14 @@ function getStatusColor(status: DealStatus): string {
 export function DealHeader({
   deal,
   uid,
-  basePath = "raw-deals",
+  basePath = "raw-deals" as const,
   stage,
 }: DealHeaderProps) {
-  const backHref = basePath === "deals" ? "/deals" : "/raw-deals";
+  const backHref = basePath === "deal-opportunities" ? "/deal-opportunities" : "/raw-deals";
   const backLabel =
-    basePath === "deals" ? "Back to Deals" : "Back to Raw Deals";
+    basePath === "deal-opportunities" ? "Back to Deal opportunities" : "Back to Raw Deals";
   const editHref =
-    basePath === "deals" ? `/deals/${uid}/edit` : `/raw-deals/${uid}/edit`;
+    basePath === "deal-opportunities" ? `/deal-opportunities/${uid}/edit` : `/raw-deals/${uid}/edit`;
 
   const {
     dealCaption,
@@ -188,7 +188,7 @@ export function DealHeader({
           <Button asChild>
             <Link href={editHref}>
               <Edit className="mr-2 h-4 w-4" />
-              Edit Deal
+              Edit deal opportunity
             </Link>
           </Button>
           <DealActionsDropdown deal={deal} uid={uid} />

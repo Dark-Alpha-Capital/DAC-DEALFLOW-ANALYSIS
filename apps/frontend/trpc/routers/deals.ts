@@ -262,7 +262,7 @@ export const dealsRouter = createTRPCRouter({
 
       revalidateTag(`deal-${input.dealOpportunityId}`, "max");
       revalidateTag("deals", "max");
-      revalidatePath(`/deals/${input.dealOpportunityId}`);
+      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
 
       return {
         success: true,
@@ -359,7 +359,7 @@ export const dealsRouter = createTRPCRouter({
         updatedByUserId: ctx.session.user.id,
       });
       revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-      revalidatePath(`/deals/${input.dealOpportunityId}`);
+      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
       return { success: true };
     }),
 
@@ -375,7 +375,7 @@ export const dealsRouter = createTRPCRouter({
       }
       await deleteFinancialsForSim(sim.id);
       revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-      revalidatePath(`/deals/${input.dealOpportunityId}`);
+      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
       return { success: true, canReExtract: true };
     }),
 
@@ -441,7 +441,7 @@ export const dealsRouter = createTRPCRouter({
         await upsertDealOpportunityScreening(added.id);
       }
 
-      revalidatePath("/deals");
+      revalidatePath("/deal-opportunities");
       revalidateTag("deals", "max");
       return { dealOpportunityId: added?.id };
     }),
@@ -454,7 +454,7 @@ export const dealsRouter = createTRPCRouter({
         .set({ stage: input.stage })
         .where(eq(dealOpportunities.id, input.id));
 
-      revalidatePath("/deals");
+      revalidatePath("/deal-opportunities");
       revalidateTag("deals", "max");
       revalidateTag(`deal-${input.id}`, "max");
 
@@ -466,8 +466,8 @@ export const dealsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const screening = await upsertDealOpportunityScreening(input.id);
 
-      revalidatePath("/deals");
-      revalidatePath(`/deals/${input.id}`);
+      revalidatePath("/deal-opportunities");
+      revalidatePath(`/deal-opportunities/${input.id}`);
       revalidatePath("/dashboard");
       revalidateTag("deals", "max");
       revalidateTag(`deal-${input.id}`, "max");
@@ -482,8 +482,8 @@ export const dealsRouter = createTRPCRouter({
         .delete(dealOpportunityScreenings)
         .where(eq(dealOpportunityScreenings.dealOpportunityId, input.dealOpportunityId));
 
-      revalidatePath("/deals");
-      revalidatePath(`/deals/${input.dealOpportunityId}`);
+      revalidatePath("/deal-opportunities");
+      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
       revalidateTag("deals", "max");
       revalidateTag(`deal-${input.dealOpportunityId}`, "max");
 
@@ -645,8 +645,8 @@ export const dealsRouter = createTRPCRouter({
         screenerId: null,
       });
 
-      revalidatePath("/deals");
-      revalidatePath(`/deals/${opp.id}`);
+      revalidatePath("/deal-opportunities");
+      revalidatePath(`/deal-opportunities/${opp.id}`);
       revalidateTag("deals", "max");
       revalidateTag(`deal-${opp.id}`, "max");
 
@@ -680,9 +680,9 @@ export const dealsRouter = createTRPCRouter({
 
       await upsertDealOpportunityScreening(id);
 
-      revalidatePath("/deals");
-      revalidatePath(`/deals/${id}`);
-      revalidatePath(`/deals/${id}/edit`);
+      revalidatePath("/deal-opportunities");
+      revalidatePath(`/deal-opportunities/${id}`);
+      revalidatePath(`/deal-opportunities/${id}/edit`);
       revalidateTag("deals", "max");
       revalidateTag(`deal-${id}`, "max");
       return { dealOpportunityId: id };
@@ -692,7 +692,7 @@ export const dealsRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       await db.delete(dealOpportunities).where(eq(dealOpportunities.id, input.id));
-      revalidatePath("/deals");
+      revalidatePath("/deal-opportunities");
       revalidateTag("deals", "max");
       revalidateTag(`deal-${input.id}`, "max");
       return { success: true };
@@ -778,7 +778,7 @@ export const dealsRouter = createTRPCRouter({
           .update(dealOpportunities)
           .set({ reviewState: reviewState as ReviewState, status })
           .where(eq(dealOpportunities.id, dealId));
-        revalidatePath(`/deals/${dealId}`);
+        revalidatePath(`/deal-opportunities/${dealId}`);
       } else {
         await db
           .update(deals)
@@ -790,7 +790,7 @@ export const dealsRouter = createTRPCRouter({
       revalidateTag(`deal-${dealId}`, "max");
       revalidateTag("deals", "max");
       revalidatePath("/raw-deals");
-      revalidatePath("/deals");
+      revalidatePath("/deal-opportunities");
 
       return { success: true, dealId };
     }),

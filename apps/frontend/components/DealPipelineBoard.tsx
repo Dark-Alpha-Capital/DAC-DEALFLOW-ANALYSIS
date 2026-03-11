@@ -55,7 +55,7 @@ export default function DealPipelineBoard({ data }: DealPipelineBoardProps) {
   }, [data]);
 
   const { mutate: updateStage, isPending: isUpdating } = useMutation(
-    trpc.deals.updateOpportunityStage.mutationOptions({
+    trpc.dealOpportunities.updateOpportunityStage.mutationOptions({
       onSuccess: () => {
         toast.success("Deal stage updated");
         router.refresh();
@@ -178,7 +178,7 @@ function DealPipelineCard({
   onSelect,
 }: DealPipelineCardProps) {
   const title = row.company?.name ?? row.opp.dealTeaser ?? "Deal";
-  const detailHref = `/deals/${row.opp.id}`;
+  const detailHref = `/deal-opportunities/${row.opp.id}`;
 
   return (
     <div

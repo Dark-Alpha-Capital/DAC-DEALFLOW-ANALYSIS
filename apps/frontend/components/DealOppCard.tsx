@@ -51,7 +51,7 @@ export default function DealOppCard({ opp, deal, company }: DealOppCardProps) {
   const trpc = useTRPC();
   const router = useRouter();
   const { mutate: deleteDeal, isPending: isDeleting } = useMutation(
-    trpc.deals.deleteOpportunity.mutationOptions({
+    trpc.dealOpportunities.deleteOpportunity.mutationOptions({
       onSuccess: () => {
         toast.success("Deal deleted");
         router.refresh();
@@ -66,7 +66,7 @@ export default function DealOppCard({ opp, deal, company }: DealOppCardProps) {
     return null;
   }
 
-  const detailLink = `/deals/${resolvedOpp.id}`;
+  const detailLink = `/deal-opportunities/${resolvedOpp.id}`;
   const title = company?.name ?? resolvedOpp.dealTeaser ?? "Deal";
 
   return (
@@ -143,7 +143,7 @@ export default function DealOppCard({ opp, deal, company }: DealOppCardProps) {
           </Link>
         </Button>
         <Button size="sm" variant="outline" className="gap-1.5" asChild>
-          <Link href={`/deals/${resolvedOpp.id}/edit`}>
+          <Link href={`/deal-opportunities/${resolvedOpp.id}/edit`}>
             <Pencil className="h-3.5 w-3.5" />
             Edit
           </Link>

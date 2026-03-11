@@ -3,10 +3,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Phone } from "lucide-react";
-import DealOppCard, {
-  type DealOppCardCompanyMeta,
-  type DealOppCardOpportunity,
-} from "@/components/DealOppCard";
 import { formatCurrency, formatDateTimeStable } from "@/lib/utils";
 import { getLeadStatusClassName } from "@/lib/lead-status";
 
@@ -30,19 +26,9 @@ function Field({
 
 interface LeadDetailTabsProps {
   lead: LeadDetailLead;
-  dealOpportunities: LeadDetailDealOpportunity[];
 }
 
-export function LeadDetailTabs({ lead, dealOpportunities }: LeadDetailTabsProps) {
-  const companyMeta = (opp: LeadDetailDealOpportunity): DealOppCardCompanyMeta | null =>
-    opp.company
-      ? {
-          name: opp.company.name,
-          industry: opp.company.industry ?? null,
-          location: opp.company.location ?? null,
-        }
-      : null;
-
+export function LeadDetailTabs({ lead }: LeadDetailTabsProps) {
   return (
     <Tabs defaultValue="listing" className="w-full space-y-6">
       <TabsList className="w-full justify-start overflow-x-auto">
@@ -51,7 +37,6 @@ export function LeadDetailTabs({ lead, dealOpportunities }: LeadDetailTabsProps)
         <TabsTrigger value="broker">Broker</TabsTrigger>
         <TabsTrigger value="company">Company Matching</TabsTrigger>
         <TabsTrigger value="status">Status</TabsTrigger>
-        <TabsTrigger value="deals">Deal Opportunities</TabsTrigger>
       </TabsList>
 
       <TabsContent value="listing" className="space-y-4">
@@ -162,24 +147,6 @@ export function LeadDetailTabs({ lead, dealOpportunities }: LeadDetailTabsProps)
           value={formatDateTimeStable(lead.createdAt)}
         />
       </TabsContent>
-
-      <TabsContent value="deals" className="space-y-4">
-        {dealOpportunities.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No deal opportunities linked to this lead.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {dealOpportunities.map((opp) => (
-              <DealOppCard
-                key={opp.id}
-                opp={opp}
-                company={companyMeta(opp)}
-              />
-            ))}
-          </div>
-        )}
-      </TabsContent>
     </Tabs>
   );
 }
@@ -203,8 +170,4 @@ type LeadDetailLead = {
   brokerPhone?: string | null;
   normalizedCompanyName?: string | null;
   companyLocation?: string | null;
-};
-
-type LeadDetailDealOpportunity = DealOppCardOpportunity & {
-  company?: DealOppCardCompanyMeta | null;
 };

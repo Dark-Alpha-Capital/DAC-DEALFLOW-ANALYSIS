@@ -61,16 +61,16 @@ export function CIMAnalysisSection({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { data, isLoading } = useQuery(
-    trpc.deals.getCIMAnalysisForOpportunity.queryOptions({ dealOpportunityId }),
+    trpc.dealOpportunities.getCIMAnalysisForOpportunity.queryOptions({ dealOpportunityId }),
   );
 
   const { mutate: editFinancials, isPending: isSaving } = useMutation(
-    trpc.deals.editFinancials.mutationOptions({
+    trpc.dealOpportunities.editFinancials.mutationOptions({
       onSuccess: () => {
         toast.success("Financials updated");
         setIsEditing(false);
         queryClient.invalidateQueries({
-          queryKey: trpc.deals.getCIMAnalysisForOpportunity.queryKey({
+          queryKey: trpc.dealOpportunities.getCIMAnalysisForOpportunity.queryKey({
             dealOpportunityId,
           }),
         });
@@ -80,12 +80,12 @@ export function CIMAnalysisSection({
   );
 
   const { mutate: deleteFinancials, isPending: isDeleting } = useMutation(
-    trpc.deals.deleteFinancials.mutationOptions({
+    trpc.dealOpportunities.deleteFinancials.mutationOptions({
       onSuccess: () => {
         toast.success("Financials deleted");
         setShowDeleteConfirm(false);
         queryClient.invalidateQueries({
-          queryKey: trpc.deals.getCIMAnalysisForOpportunity.queryKey({
+          queryKey: trpc.dealOpportunities.getCIMAnalysisForOpportunity.queryKey({
             dealOpportunityId,
           }),
         });

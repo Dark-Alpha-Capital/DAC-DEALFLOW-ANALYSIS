@@ -33,7 +33,7 @@ async function CachedDealContent({ uid }: { uid: string }) {
       <section className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="border-border w-full max-w-md space-y-4 border-b pb-8 text-center">
           <h1 className="text-foreground text-xl font-semibold">
-            Error loading deal
+            Error loading deal opportunity
           </h1>
           <p className="text-muted-foreground text-sm">
             There was an error loading the deal. Please try again later.
@@ -42,7 +42,7 @@ async function CachedDealContent({ uid }: { uid: string }) {
             <p className="text-muted-foreground text-xs">{error.message}</p>
           )}
           <Button asChild>
-            <Link href="/deals">Back to Deals</Link>
+            <Link href="/deal-opportunities">Back to Deal opportunities</Link>
           </Button>
         </div>
       </section>
@@ -54,13 +54,13 @@ async function CachedDealContent({ uid }: { uid: string }) {
       <section className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="border-border w-full max-w-md space-y-4 border-b pb-8 text-center">
           <h1 className="text-foreground text-xl font-semibold">
-            Deal not found
+            Deal opportunity not found
           </h1>
           <p className="text-muted-foreground text-sm">
-            The deal you are looking for does not exist or has been removed.
+            The deal opportunity you are looking for does not exist or has been removed.
           </p>
           <Button asChild>
-            <Link href="/deals">Back to Deals</Link>
+            <Link href="/deal-opportunities">Back to Deal opportunities</Link>
           </Button>
         </div>
       </section>

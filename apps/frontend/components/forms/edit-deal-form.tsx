@@ -59,10 +59,10 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
   const { data: companies = [] } = useQuery(trpc.companies.listForSelect.queryOptions());
 
   const { mutate: updateDeal, isPending } = useMutation(
-    trpc.deals.updateOpportunity.mutationOptions({
+    trpc.dealOpportunities.updateOpportunity.mutationOptions({
       onSuccess: () => {
         toast.success("Deal updated successfully");
-        router.push(`/deals/${opp.id}`);
+        router.push(`/deal-opportunities/${opp.id}`);
       },
       onError: (error) => {
         toast.error(error.message || "Failed to update deal");

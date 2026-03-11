@@ -23,7 +23,7 @@ export default function DealDetailsPanel({ row }: DealDetailsPanelProps) {
 
   const { opp, company } = row;
   const title = company?.name ?? opp.dealTeaser ?? "Deal";
-  const detailHref = `/deals/${opp.id}`;
+  const detailHref = `/deal-opportunities/${opp.id}`;
 
   return (
     <aside className="flex h-full flex-col rounded-md border bg-background p-4">

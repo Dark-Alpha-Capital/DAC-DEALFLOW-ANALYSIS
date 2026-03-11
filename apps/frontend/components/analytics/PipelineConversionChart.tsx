@@ -22,7 +22,7 @@ export type PipelineConversionDatum = {
 
 const chartConfig = {
   deals: {
-    label: "Deals",
+    label: "Deal opportunities",
     color: "var(--chart-2)",
   },
 } satisfies ChartConfig;

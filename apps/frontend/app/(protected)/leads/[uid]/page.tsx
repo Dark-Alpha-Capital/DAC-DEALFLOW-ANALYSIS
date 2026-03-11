@@ -3,16 +3,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  ArrowLeft,
-  Building2,
-  MapPin,
-  ExternalLink,
-} from "lucide-react";
+import { ArrowLeft, Building2, MapPin, ExternalLink } from "lucide-react";
 import LeadPageSkeleton from "@/components/skeletons/lead-page-skeleton";
 import {
   GetLeadById,
-  GetDealOpportunitiesByLeadId,
   GetCompanyByFirstSeenFromLeadId,
   GetCompanyById,
 } from "@repo/db/queries";
@@ -20,7 +14,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { LeadDetailTabs } from "@/components/lead-detail/LeadDetailTabs";
 import { getLeadStatusClassName } from "@/lib/lead-status";
-import LeadResolutionActions from "@/components/lead-detail/LeadResolutionActions";
+import LeadStatusControl from "@/components/lead-detail/LeadStatusControl";
+import BackButton from "@/components/Buttons/back-button";
 
 type Params = Promise<{ uid: string }>;
 
@@ -52,9 +47,7 @@ async function CachedLeadContent({ uid }: { uid: string }) {
           {process.env.NODE_ENV === "development" && (
             <p className="text-muted-foreground text-xs">{error.message}</p>
           )}
-          <Button asChild>
-            <Link href="/leads">Back to Leads</Link>
-          </Button>
+          <BackButton label="Go Back" />
         </div>
       </section>
     );
@@ -70,36 +63,28 @@ async function CachedLeadContent({ uid }: { uid: string }) {
           <p className="text-muted-foreground text-sm">
             The lead you are looking for does not exist or has been removed.
           </p>
-          <Button asChild>
-            <Link href="/leads">Back to Leads</Link>
-          </Button>
+          <BackButton label="Go Back" />
         </div>
       </section>
     );
   }
 
-  const [dealOpportunities, convertedCompany, duplicateCompany] = await Promise.all([
-    GetDealOpportunitiesByLeadId(lead.id),
+  const [convertedCompany, duplicateCompany] = await Promise.all([
     GetCompanyByFirstSeenFromLeadId(lead.id),
-    lead.duplicateCompanyId ? GetCompanyById(lead.duplicateCompanyId) : Promise.resolve(null),
+    lead.duplicateCompanyId
+      ? GetCompanyById(lead.duplicateCompanyId)
+      : Promise.resolve(null),
   ]);
 
   return (
     <section className="container mx-auto max-w-5xl px-4 py-8">
       <div className="space-y-6">
-        <Button
-          variant="ghost"
-          asChild
-          className="gap-2 pl-0 transition-all hover:pl-2"
-        >
-          <Link href="/leads">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Leads
-          </Link>
-        </Button>
+        <BackButton label="Go Back" />
 
         <div className="space-y-3">
-          <Badge className={getLeadStatusClassName(lead.status)}>{lead.status}</Badge>
+          <Badge className={getLeadStatusClassName(lead.status)}>
+            {lead.status}
+          </Badge>
           <h1 className="text-2xl font-semibold tracking-tight">
             {lead.rawTitle}
           </h1>
@@ -160,9 +145,7 @@ async function CachedLeadContent({ uid }: { uid: string }) {
             </>
           ) : (
             <Button asChild size="sm">
-              <Link href={`/leads/${lead.id}/convert`}>
-                Convert to company
-              </Link>
+              <Link href={`/leads/${lead.id}/convert`}>Convert to company</Link>
             </Button>
           )}
           {lead.sourceWebsite && (
@@ -180,16 +163,18 @@ async function CachedLeadContent({ uid }: { uid: string }) {
           )}
         </div>
 
-        <LeadResolutionActions
+        <LeadStatusControl
           leadId={lead.id}
           leadStatus={lead.status}
           hasConvertedCompany={!!convertedCompany}
           duplicateCompany={
-            duplicateCompany ? { id: duplicateCompany.id, name: duplicateCompany.name } : null
+            duplicateCompany
+              ? { id: duplicateCompany.id, name: duplicateCompany.name }
+              : null
           }
         />
 
-        <LeadDetailTabs lead={lead} dealOpportunities={dealOpportunities} />
+        <LeadDetailTabs lead={lead} />
       </div>
     </section>
   );
