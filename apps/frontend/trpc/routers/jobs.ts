@@ -51,6 +51,8 @@ export const jobsRouter = createTRPCRouter({
         queueName: z.enum([
           QUEUE_NAMES.SCREEN_DEAL,
           QUEUE_NAMES.FILE_UPLOAD,
+          QUEUE_NAMES.CIM_EXTRACTION,
+          QUEUE_NAMES.RAG_INGESTION,
         ]),
       }),
     )
@@ -94,6 +96,8 @@ export const jobsRouter = createTRPCRouter({
         queueName: z.enum([
           QUEUE_NAMES.SCREEN_DEAL,
           QUEUE_NAMES.FILE_UPLOAD,
+          QUEUE_NAMES.CIM_EXTRACTION,
+          QUEUE_NAMES.RAG_INGESTION,
         ]),
       }),
     )
@@ -122,6 +126,8 @@ export const jobsRouter = createTRPCRouter({
             queueName: z.enum([
               QUEUE_NAMES.SCREEN_DEAL,
               QUEUE_NAMES.FILE_UPLOAD,
+              QUEUE_NAMES.CIM_EXTRACTION,
+              QUEUE_NAMES.RAG_INGESTION,
             ]),
           }),
         ),

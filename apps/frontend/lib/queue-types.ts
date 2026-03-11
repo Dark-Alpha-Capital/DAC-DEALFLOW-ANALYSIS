@@ -12,7 +12,11 @@ export type JobStatus =
   | "delayed";
 
 // Job type
-export type JobType = "screen-deal" | "file-upload" | "cim-extraction";
+export type JobType =
+  | "screen-deal"
+  | "file-upload"
+  | "cim-extraction"
+  | "rag-ingestion";
 
 // Progress data
 export interface JobProgressData {
@@ -44,6 +48,7 @@ export const QUEUE_NAMES = {
   SCREEN_DEAL: "screen-deal",
   FILE_UPLOAD: "file-upload",
   CIM_EXTRACTION: "cim-extraction",
+  RAG_INGESTION: "rag-ingestion",
 } as const;
 
 /**
@@ -57,6 +62,8 @@ export function getJobTypeLabel(queueName: string): string {
       return "File Upload";
     case QUEUE_NAMES.CIM_EXTRACTION:
       return "CIM Extraction";
+    case QUEUE_NAMES.RAG_INGESTION:
+      return "RAG Ingestion";
     default:
       return queueName;
   }

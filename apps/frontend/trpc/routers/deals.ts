@@ -25,6 +25,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import {
   fileUploadQueue,
   cimExtractionQueue,
+  ragIngestionQueue,
   type FileUploadJobData,
   type EntityMetadata,
 } from "@/lib/queue-client";
@@ -277,6 +278,17 @@ export const dealsRouter = createTRPCRouter({
         storageKey: finalPath,
         uploadedById: userId,
       });
+
+      const ragJobId = randomUUID();
+      await ragIngestionQueue.add(
+        "ingest",
+        {
+          jobId: ragJobId,
+          documentId: documentRecord.id,
+          userId,
+        },
+        { jobId: ragJobId },
+      );
 
       const jobId = randomUUID();
       await cimExtractionQueue.add(

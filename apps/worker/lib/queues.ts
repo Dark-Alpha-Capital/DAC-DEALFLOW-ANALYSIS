@@ -6,6 +6,7 @@ export const QUEUE_NAMES = {
   SCREEN_DEAL: "screen-deal",
   FILE_UPLOAD: "file-upload",
   CIM_EXTRACTION: "cim-extraction",
+  RAG_INGESTION: "rag-ingestion",
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -40,6 +41,19 @@ export const fileUploadQueue = new Queue(QUEUE_NAMES.FILE_UPLOAD, {
 
 // CIM extraction queue - for CIM PDF extraction jobs
 export const cimExtractionQueue = new Queue(QUEUE_NAMES.CIM_EXTRACTION, {
+  connection,
+  defaultJobOptions: {
+    removeOnComplete: 100,
+    removeOnFail: 100,
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 1000,
+    },
+  },
+});
+
+export const ragIngestionQueue = new Queue(QUEUE_NAMES.RAG_INGESTION, {
   connection,
   defaultJobOptions: {
     removeOnComplete: 100,

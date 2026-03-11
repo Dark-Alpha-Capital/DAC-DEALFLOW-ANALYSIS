@@ -10,6 +10,7 @@ import {
   index,
   uniqueIndex,
   jsonb,
+  vector,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
@@ -950,6 +951,22 @@ export const documentEntityEnum = pgEnum("DocumentEntityType", [
   "GLOBAL",
 ]);
 
+export const documentIngestionStatusEnum = pgEnum("DocumentIngestionStatus", [
+  "PENDING",
+  "PROCESSING",
+  "PROCESSED",
+  "FAILED",
+  "SKIPPED",
+]);
+
+export const documentChunkModalityEnum = pgEnum("DocumentChunkModality", [
+  "TEXT",
+  "IMAGE",
+  "AUDIO",
+  "VIDEO",
+  "PDF",
+]);
+
 export const documents = pgTable("Document", {
   id: text("id")
     .primaryKey()
@@ -977,6 +994,13 @@ export const documents = pgTable("Document", {
   fileName: text("fileName").notNull(),
   fileSize: integer("fileSize"),
   mimeType: text("mimeType"),
+  ingestionStatus: documentIngestionStatusEnum("ingestionStatus")
+    .default("PENDING")
+    .notNull(),
+  ingestionStartedAt: timestamp("ingestionStartedAt"),
+  ingestionCompletedAt: timestamp("ingestionCompletedAt"),
+  ingestionAttemptCount: integer("ingestionAttemptCount").default(0).notNull(),
+  ingestionError: text("ingestionError"),
 
   uploadedById: text("uploadedById").references(() => users.id, {
     onDelete: "set null",
@@ -988,6 +1012,52 @@ export const documents = pgTable("Document", {
     .notNull()
     .$onUpdate(() => new Date()),
 });
+
+export const documentChunks = pgTable(
+  "DocumentChunk",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    documentId: text("documentId")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    entityType: documentEntityEnum("entityType").notNull(),
+    entityId: text("entityId"),
+    dealOpportunityId: text("dealOpportunityId").references(
+      () => dealOpportunities.id,
+      { onDelete: "cascade" },
+    ),
+    companyId: text("companyId").references(() => companies.id, {
+      onDelete: "cascade",
+    }),
+    themeId: text("themeId").references(() => themes.id, {
+      onDelete: "cascade",
+    }),
+    chunkText: text("chunkText"),
+    modality: documentChunkModalityEnum("modality").default("TEXT").notNull(),
+    embedding: vector("embedding", { dimensions: 768 }),
+    metadata: jsonb("metadata"),
+    pageNumber: integer("pageNumber"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    documentChunkDocumentIdx: index("document_chunk_document_idx").on(
+      table.documentId,
+    ),
+    documentChunkEntityIdx: index("document_chunk_entity_idx").on(
+      table.entityType,
+      table.entityId,
+    ),
+    documentChunkDealOppIdx: index("document_chunk_deal_opp_idx").on(
+      table.dealOpportunityId,
+    ),
+    documentChunkCompanyIdx: index("document_chunk_company_idx").on(
+      table.companyId,
+    ),
+    documentChunkThemeIdx: index("document_chunk_theme_idx").on(table.themeId),
+  }),
+);
 
 /**
  * Deal SIMs (CIMs) - one active per deal opportunity.
@@ -1094,6 +1164,37 @@ export const cimExtractionLogs = pgTable("CIMExtractionLog", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const chatSessions = pgTable(
+  "ChatSession",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default("New chat"),
+    provider: text("provider").notNull().default("openai"),
+    model: text("model").notNull().default("gpt-5-mini"),
+    messages: jsonb("messages")
+      .$type<Record<string, unknown>[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    chatSessionUserIdx: index("chat_session_user_idx").on(table.userId),
+    chatSessionUserUpdatedIdx: index("chat_session_user_updated_idx").on(
+      table.userId,
+      table.updatedAt,
+    ),
+  }),
+);
+
 // ============================================================================
 // RELATIONS
 // ============================================================================
@@ -1109,6 +1210,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   userActionLogs: many(userActionLogs),
   documents: many(documents),
   outreach: many(outreach),
+  chatSessions: many(chatSessions),
 }));
 
 export const themesRelations = relations(themes, ({ one, many }) => ({
@@ -1347,7 +1449,7 @@ export const userActionLogsRelations = relations(userActionLogs, ({ one }) => ({
   }),
 }));
 
-export const documentsRelations = relations(documents, ({ one }) => ({
+export const documentsRelations = relations(documents, ({ one, many }) => ({
   uploadedBy: one(users, {
     fields: [documents.uploadedById],
     references: [users.id],
@@ -1356,7 +1458,18 @@ export const documentsRelations = relations(documents, ({ one }) => ({
     fields: [documents.themeId],
     references: [themes.id],
   }),
+  chunks: many(documentChunks),
 }));
+
+export const documentChunksRelations = relations(
+  documentChunks,
+  ({ one }) => ({
+    document: one(documents, {
+      fields: [documentChunks.documentId],
+      references: [documents.id],
+    }),
+  }),
+);
 
 export const dealSimsRelations = relations(dealSims, ({ one, many }) => ({
   dealOpportunity: one(dealOpportunities, {
@@ -1404,6 +1517,13 @@ export const outreachRelations = relations(outreach, ({ one }) => ({
   }),
   createdBy: one(users, {
     fields: [outreach.createdById],
+    references: [users.id],
+  }),
+}));
+
+export const chatSessionsRelations = relations(chatSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [chatSessions.userId],
     references: [users.id],
   }),
 }));
@@ -1576,6 +1696,26 @@ export const EntityType = {
 } as const;
 export type EntityType = (typeof EntityType)[keyof typeof EntityType];
 
+export const DocumentIngestionStatus = {
+  PENDING: "PENDING",
+  PROCESSING: "PROCESSING",
+  PROCESSED: "PROCESSED",
+  FAILED: "FAILED",
+  SKIPPED: "SKIPPED",
+} as const;
+export type DocumentIngestionStatus =
+  (typeof DocumentIngestionStatus)[keyof typeof DocumentIngestionStatus];
+
+export const DocumentChunkModality = {
+  TEXT: "TEXT",
+  IMAGE: "IMAGE",
+  AUDIO: "AUDIO",
+  VIDEO: "VIDEO",
+  PDF: "PDF",
+} as const;
+export type DocumentChunkModality =
+  (typeof DocumentChunkModality)[keyof typeof DocumentChunkModality];
+
 // Model type exports (inferred from tables)
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -1646,6 +1786,8 @@ export type NewUserActionLog = typeof userActionLogs.$inferInsert;
 
 export type Document = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;
+export type DocumentChunk = typeof documentChunks.$inferSelect;
+export type NewDocumentChunk = typeof documentChunks.$inferInsert;
 
 export type DealSim = typeof dealSims.$inferSelect;
 export type NewDealSim = typeof dealSims.$inferInsert;
@@ -1658,3 +1800,6 @@ export type NewOutreach = typeof outreach.$inferInsert;
 
 export type Contact = typeof contacts.$inferSelect;
 export type NewContact = typeof contacts.$inferInsert;
+
+export type ChatSession = typeof chatSessions.$inferSelect;
+export type NewChatSession = typeof chatSessions.$inferInsert;

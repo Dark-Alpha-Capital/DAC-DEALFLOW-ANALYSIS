@@ -9,6 +9,7 @@ import { Worker } from "bullmq";
 import { fileUploadHandler } from "./handlers/file-upload-handler";
 import { screenDealHandler } from "./handlers/screen-deal-handler";
 import { cimExtractionHandler } from "./handlers/cim-extraction-handler";
+import { ragIngestionHandler } from "./handlers/rag-ingestion-handler";
 import IORedis from "ioredis";
 
 if (!process.env.REDIS_URL) {
@@ -47,6 +48,11 @@ const cimExtractionWorker = new Worker("cim-extraction", cimExtractionHandler, {
   concurrency: 5,
 });
 
+const ragIngestionWorker = new Worker("rag-ingestion", ragIngestionHandler, {
+  connection,
+  concurrency: 5,
+});
+
 console.log("Workers are listening for jobs...");
 
 screenDealWorker.on("failed", (job, err) =>
@@ -71,6 +77,14 @@ cimExtractionWorker.on("failed", (job, err) =>
 
 cimExtractionWorker.on("completed", (job) =>
   console.log(`CIM Extraction Job ${job.id} completed successfully`)
+);
+
+ragIngestionWorker.on("failed", (job, err) =>
+  console.error(`RAG Ingestion Job failed: ${err.message}`)
+);
+
+ragIngestionWorker.on("completed", (job) =>
+  console.log(`RAG Ingestion Job ${job.id} completed successfully`)
 );
 
 // Cloud Run requires the container to listen on PORT for health checks

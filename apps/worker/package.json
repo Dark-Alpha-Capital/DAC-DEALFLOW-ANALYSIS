@@ -23,6 +23,7 @@
     "@prisma/client": "^6.12.0",
     "@repo/cim-extraction": "workspace:*",
     "@repo/db": "workspace:*",
+    "@repo/rag-engine": "workspace:*",
     "drizzle-orm": "^0.45.1",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",

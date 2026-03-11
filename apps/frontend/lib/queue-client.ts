@@ -66,6 +66,19 @@ export const cimExtractionQueue = new Queue(QUEUE_NAMES.CIM_EXTRACTION, {
   },
 });
 
+export const ragIngestionQueue = new Queue(QUEUE_NAMES.RAG_INGESTION, {
+  connection,
+  defaultJobOptions: {
+    removeOnComplete: 100,
+    removeOnFail: 100,
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 1000,
+    },
+  },
+});
+
 // Job data types
 export interface ScreenDealJobData {
   jobId: string;
@@ -127,6 +140,13 @@ export interface CIMExtractionJobData {
   userId?: string;
 }
 
+export interface RagIngestionJobData {
+  jobId: string;
+  documentId: string;
+  userId: string;
+  forceReingest?: boolean;
+}
+
 // Re-export types and constants from queue-types for backward compatibility
 // Client components should import from queue-types.ts directly to avoid pulling in BullMQ
 export type {
@@ -154,6 +174,8 @@ export async function getJobStatus(queueName: string, jobId: string) {
     queue = fileUploadQueue;
   } else if (queueName === QUEUE_NAMES.CIM_EXTRACTION) {
     queue = cimExtractionQueue;
+  } else if (queueName === QUEUE_NAMES.RAG_INGESTION) {
+    queue = ragIngestionQueue;
   } else {
     throw new Error(`Unknown queue name: ${queueName}`);
   }
@@ -233,11 +255,13 @@ export async function getAllUserJobs(
   ];
 
   // Fetch jobs from all queues in parallel
-  const [screenDealJobs, fileUploadJobs, cimExtractionJobs] = await Promise.all([
-    screenDealQueue.getJobs(jobStates, 0, 1000),
-    fileUploadQueue.getJobs(jobStates, 0, 1000),
-    cimExtractionQueue.getJobs(jobStates, 0, 1000),
-  ]);
+  const [screenDealJobs, fileUploadJobs, cimExtractionJobs, ragIngestionJobs] =
+    await Promise.all([
+      screenDealQueue.getJobs(jobStates, 0, 1000),
+      fileUploadQueue.getJobs(jobStates, 0, 1000),
+      cimExtractionQueue.getJobs(jobStates, 0, 1000),
+      ragIngestionQueue.getJobs(jobStates, 0, 1000),
+    ]);
 
   // Combine and filter by userId
   const allJobs = [
@@ -253,6 +277,10 @@ export async function getAllUserJobs(
       job,
       queueName: QUEUE_NAMES.CIM_EXTRACTION,
     })),
+    ...ragIngestionJobs.map((job) => ({
+      job,
+      queueName: QUEUE_NAMES.RAG_INGESTION,
+    })),
   ];
 
   // Filter by userId and transform to JobWithMetadata
@@ -262,7 +290,8 @@ export async function getAllUserJobs(
     const jobData = job.data as
       | ScreenDealJobData
       | FileUploadJobData
-      | CIMExtractionJobData;
+      | CIMExtractionJobData
+      | RagIngestionJobData;
 
     const jobUserId = "userId" in jobData ? jobData.userId : undefined;
     if (jobUserId === userId) {
@@ -330,6 +359,8 @@ export async function deleteUserJob(
     queue = fileUploadQueue;
   } else if (queueName === QUEUE_NAMES.CIM_EXTRACTION) {
     queue = cimExtractionQueue;
+  } else if (queueName === QUEUE_NAMES.RAG_INGESTION) {
+    queue = ragIngestionQueue;
   } else {
     throw new Error(`Unknown queue name: ${queueName}`);
   }

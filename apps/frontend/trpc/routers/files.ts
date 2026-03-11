@@ -3,6 +3,8 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents } from "@repo/db";
 import { uploadBuffer } from "@repo/nextcloud";
 import { revalidateTag } from "next/cache";
+import { ragIngestionQueue } from "@/lib/queue-client";
+import { randomUUID } from "crypto";
 
 const uploadFileSchema = z.object({
   entityType: z.enum(["LEAD", "COMPANY", "DEAL_OPPORTUNITY", "THEME"]),
@@ -82,6 +84,17 @@ export const filesRouter = createTRPCRouter({
         })
         .returning();
 
+      const ragJobId = randomUUID();
+      await ragIngestionQueue.add(
+        "ingest",
+        {
+          jobId: ragJobId,
+          documentId: documentRecord.id,
+          userId,
+        },
+        { jobId: ragJobId },
+      );
+
       // Revalidate cache based on entity type (matches cacheTag in entity detail pages)
       const tags: string[] = [];
       switch (input.entityType) {
@@ -143,6 +156,17 @@ export const filesRouter = createTRPCRouter({
         })
         .returning();
 
+      const ragJobId = randomUUID();
+      await ragIngestionQueue.add(
+        "ingest",
+        {
+          jobId: ragJobId,
+          documentId: documentRecord.id,
+          userId,
+        },
+        { jobId: ragJobId },
+      );
+
       revalidateTag("documents", "max");
 
       return {
@@ -152,4 +176,3 @@ export const filesRouter = createTRPCRouter({
       };
     }),
 });
-

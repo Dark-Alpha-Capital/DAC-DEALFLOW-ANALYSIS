@@ -2,6 +2,7 @@ import { Job } from "bullmq";
 import { db } from "@repo/db";
 import { documents, type DocumentCategory } from "@repo/db/schema";
 import { fileExists, getNextcloudConfig } from "@repo/nextcloud";
+import { ragIngestionQueue } from "../lib/queues";
 
 export enum FileUploadStep {
   Validate = "validate",
@@ -377,6 +378,19 @@ export async function fileUploadHandler(
 
         console.log(
           `[file-upload] ${jobId}: Document record saved with ID: ${documentRecord.id}`
+        );
+
+        await ragIngestionQueue.add(
+          "ingest",
+          {
+            jobId: `${jobId}-rag`,
+            documentId: documentRecord.id,
+            userId,
+          },
+          { jobId: `${jobId}-rag` },
+        );
+        console.log(
+          `[file-upload] ${jobId}: RAG ingestion queued for document ${documentRecord.id}`,
         );
 
         // Revalidate cache tags for the entity page
