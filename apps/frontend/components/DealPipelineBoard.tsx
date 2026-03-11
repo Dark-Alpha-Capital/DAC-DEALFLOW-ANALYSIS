@@ -8,7 +8,7 @@ import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import DealDetailsPanel from "@/components/DealDetailsPanel";
 
 type DealOppRow = {
@@ -55,7 +55,7 @@ export default function DealPipelineBoard({ data }: DealPipelineBoardProps) {
   }, [data]);
 
   const { mutate: updateStage, isPending: isUpdating } = useMutation(
-    trpc.deals.updateOpportunityStage.mutationOptions({
+    trpc.dealOpportunities.updateOpportunityStage.mutationOptions({
       onSuccess: () => {
         toast.success("Deal stage updated");
         router.refresh();
@@ -178,7 +178,7 @@ function DealPipelineCard({
   onSelect,
 }: DealPipelineCardProps) {
   const title = row.company?.name ?? row.opp.dealTeaser ?? "Deal";
-  const detailHref = `/deals/${row.opp.id}`;
+  const detailHref = `/deal-opportunities/${row.opp.id}`;
 
   return (
     <div
@@ -209,7 +209,7 @@ function DealPipelineCard({
           <div>
             <p className="text-muted-foreground text-[10px]">Revenue</p>
             <p className="text-[11px] font-medium tabular-nums">
-              {row.opp.revenue.toLocaleString()}
+              {formatCurrency(row.opp.revenue)}
             </p>
           </div>
         )}
@@ -217,7 +217,7 @@ function DealPipelineCard({
           <div>
             <p className="text-muted-foreground text-[10px]">EBITDA</p>
             <p className="text-[11px] font-medium tabular-nums">
-              {row.opp.ebitda.toLocaleString()}
+              {formatCurrency(row.opp.ebitda)}
             </p>
           </div>
         )}

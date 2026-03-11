@@ -16,11 +16,15 @@ import db, {
   DealDocumentCategory,
   DocumentCategory,
   ReviewState,
+  DealFinancialSnapshotSource,
+  DealRiskSeverity,
+  DealRiskType,
 } from "@repo/db";
 import { DeleteDealById, BulkDeleteDeals } from "@repo/db/mutations";
 import { revalidatePath, revalidateTag } from "next/cache";
 import {
   fileUploadQueue,
+  cimExtractionQueue,
   type FileUploadJobData,
   type EntityMetadata,
 } from "@/lib/queue-client";
@@ -29,13 +33,34 @@ import {
   GetDealById,
   GetDealOpportunityById,
   GetDealOpportunityByLegacyDealId,
+  GetCIMExtractionByDealOpportunityId,
+  getActiveSimForDeal,
+  GetLatestDealFinancialSnapshotByDealOpportunityId,
+  GetDealFinancialSnapshotsByDealOpportunityId,
+  GetDealRiskFlagsByDealOpportunityId,
 } from "@repo/db/queries";
-import { uploadBuffer } from "@repo/nextcloud";
+import {
+  replaceDealSim,
+  upsertCIMExtraction,
+  deleteFinancialsForSim,
+  createDealFinancialSnapshot,
+  createDealRiskFlag,
+} from "@repo/db/mutations";
+import { uploadBuffer, getNextcloudConfig } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
 import {
   upsertDealOpportunityScreening,
   runAiQualitativeScreening,
 } from "@repo/deal-screening";
+
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+const formatUsd = (value: number) => currencyFormatter.format(value);
 
 const createDealSchema = z.object({
   first_name: z.string().optional(),
@@ -95,12 +120,7 @@ const updateTagsSchema = z.object({
 
 const updateSpecificationsSchema = z.object({
   dealId: z.string(),
-  reviewState: z.enum([
-    "NOT_SEEN",
-    "SEEN",
-    "REVIEWED",
-    "PUBLISHED",
-  ] as const),
+  reviewState: z.enum(["NOT_SEEN", "SEEN", "REVIEWED", "PUBLISHED"] as const),
   status: z.nativeEnum(DealStatus),
 });
 
@@ -120,6 +140,24 @@ const createDealOpportunitySchema = z.object({
   brokerEmail: z.union([z.string().email(), z.literal("")]).optional(),
   brokerPhone: z.string().optional(),
   brokerLinkedIn: z.string().optional(),
+});
+
+const addFinancialSnapshotSchema = z.object({
+  dealOpportunityId: z.string().min(1),
+  revenue: z.number().nullable().optional(),
+  ebitda: z.number().nullable().optional(),
+  ebitdaMargin: z.number().nullable().optional(),
+  askingPrice: z.number().nullable().optional(),
+  impliedMultiple: z.number().nullable().optional(),
+  source: z.nativeEnum(DealFinancialSnapshotSource).default("MANUAL"),
+  notes: z.string().optional(),
+});
+
+const addRiskFlagSchema = z.object({
+  dealOpportunityId: z.string().min(1),
+  riskType: z.nativeEnum(DealRiskType),
+  severity: z.nativeEnum(DealRiskSeverity),
+  description: z.string().min(1),
 });
 
 const updateOpportunityStageSchema = z.object({
@@ -152,7 +190,235 @@ const uploadDealDocumentSchema = z.object({
   fileType: z.string(),
 });
 
+const uploadCIMSchema = z.object({
+  dealOpportunityId: z.string().min(1, "Deal opportunity ID is required"),
+  entityName: z.string().min(1, "Entity name is required"),
+  fileData: z.string(),
+  fileName: z.string().min(1, "File name is required"),
+});
+
+const editFinancialsSchema = z.object({
+  dealOpportunityId: z.string().min(1),
+  revenueHistory: z.record(z.string(), z.number()).optional().nullable(),
+  ebitdaHistory: z.record(z.string(), z.number()).optional().nullable(),
+  employeeCount: z.number().optional().nullable(),
+  customerConcentration: z.number().optional().nullable(),
+  capexIntensity: z.string().optional().nullable(),
+  revenueBreakdown: z.record(z.string(), z.number()).optional().nullable(),
+  growthDrivers: z.array(z.string()).optional().nullable(),
+  keyRisks: z.array(z.string()).optional().nullable(),
+  industryOverview: z.string().optional().nullable(),
+  transactionDetails: z.string().optional().nullable(),
+});
+
 export const dealsRouter = createTRPCRouter({
+  uploadCIM: protectedProcedure
+    .input(uploadCIMSchema)
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.session.user.id;
+      if (!userId?.trim()) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "User ID is required",
+        });
+      }
+
+      const opp = await GetDealOpportunityById(input.dealOpportunityId);
+      if (!opp) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Deal opportunity not found",
+        });
+      }
+
+      if (!input.fileName.toLowerCase().endsWith(".pdf")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "CIM must be a PDF file",
+        });
+      }
+
+      const base64Data = input.fileData.split(",")[1] || input.fileData;
+      const buffer = Buffer.from(base64Data, "base64");
+      const finalPath = `dealflow/deal_opportunity/${input.dealOpportunityId}/cim/${input.fileName}`;
+
+      await uploadBuffer(buffer, finalPath);
+
+      const { url, user } = getNextcloudConfig();
+      const publicUrl = `${url}/remote.php/dav/files/${user}/${finalPath}`;
+
+      const [documentRecord] = await db
+        .insert(documents)
+        .values({
+          entityType: "DEAL_OPPORTUNITY",
+          entityId: input.dealOpportunityId,
+          dealOpportunityId: input.dealOpportunityId,
+          title: input.fileName,
+          description: `CIM for ${input.entityName}`,
+          category: "PROSPECTUS",
+          fileUrl: publicUrl,
+          fileName: input.fileName,
+          fileSize: buffer.length,
+          mimeType: "application/pdf",
+          uploadedById: userId,
+        })
+        .returning();
+
+      if (!documentRecord) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to save document record",
+        });
+      }
+
+      const sim = await replaceDealSim({
+        dealOpportunityId: input.dealOpportunityId,
+        documentId: documentRecord.id,
+        storageKey: finalPath,
+        uploadedById: userId,
+      });
+
+      const jobId = randomUUID();
+      await cimExtractionQueue.add(
+        "extract",
+        {
+          simId: sim.id,
+          documentId: documentRecord.id,
+          dealOpportunityId: input.dealOpportunityId,
+          filePath: finalPath,
+          userId,
+        },
+        { jobId },
+      );
+
+      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+      revalidateTag("deals", "max");
+      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+
+      return {
+        success: true,
+        jobId,
+        documentId: documentRecord.id,
+        simId: sim.id,
+      };
+    }),
+
+  getActiveSimForOpportunity: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string() }))
+    .query(async ({ input }) => {
+      const sim = await getActiveSimForDeal(input.dealOpportunityId);
+      if (!sim) return null;
+      const [doc] = await db
+        .select({
+          fileName: documents.fileName,
+          createdAt: documents.createdAt,
+        })
+        .from(documents)
+        .where(eq(documents.id, sim.documentId))
+        .limit(1);
+      return {
+        id: sim.id,
+        documentId: sim.documentId,
+        fileName: doc?.fileName ?? null,
+        uploadedAt: sim.uploadedAt,
+        status: sim.status,
+      };
+    }),
+
+  getCIMAnalysisForOpportunity: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string() }))
+    .query(async ({ input }) => {
+      const activeSim = await getActiveSimForDeal(input.dealOpportunityId);
+      const extraction = await GetCIMExtractionByDealOpportunityId(
+        input.dealOpportunityId,
+      );
+      const hasActiveSim = !!activeSim;
+      const hasFinancials = !!extraction;
+      return {
+        activeSim: activeSim
+          ? {
+              id: activeSim.id,
+              status: hasFinancials
+                ? ("ready" as const)
+                : ("processing" as const),
+            }
+          : null,
+        revenueHistory: extraction?.revenueHistory ?? {},
+        ebitdaHistory: extraction?.ebitdaHistory ?? {},
+        employeeCount: extraction?.employeeCount,
+        customerConcentration: extraction?.customerConcentration,
+        capexIntensity: extraction?.capexIntensity,
+        revenueBreakdown: extraction?.revenueBreakdown ?? {},
+        growthDrivers: extraction?.growthDrivers ?? [],
+        keyRisks: extraction?.keyRisks ?? [],
+        industryOverview: extraction?.industryOverview,
+        transactionDetails: extraction?.transactionDetails,
+        documentFileName: extraction?.documentFileName,
+        documentCreatedAt: extraction?.documentCreatedAt,
+      };
+    }),
+
+  editFinancials: protectedProcedure
+    .input(editFinancialsSchema)
+    .mutation(async ({ input, ctx }) => {
+      const sim = await getActiveSimForDeal(input.dealOpportunityId);
+      if (!sim) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No active SIM found for this deal",
+        });
+      }
+      const existing = await GetCIMExtractionByDealOpportunityId(
+        input.dealOpportunityId,
+      );
+      const payload = {
+        revenueHistory:
+          input.revenueHistory ?? existing?.revenueHistory ?? null,
+        ebitdaHistory: input.ebitdaHistory ?? existing?.ebitdaHistory ?? null,
+        employeeCount: input.employeeCount ?? existing?.employeeCount ?? null,
+        customerConcentration:
+          input.customerConcentration ??
+          existing?.customerConcentration ??
+          null,
+        capexIntensity:
+          input.capexIntensity ?? existing?.capexIntensity ?? null,
+        revenueBreakdown:
+          input.revenueBreakdown ?? existing?.revenueBreakdown ?? null,
+        growthDrivers: input.growthDrivers ?? existing?.growthDrivers ?? null,
+        keyRisks: input.keyRisks ?? existing?.keyRisks ?? null,
+        industryOverview:
+          input.industryOverview ?? existing?.industryOverview ?? null,
+        transactionDetails:
+          input.transactionDetails ?? existing?.transactionDetails ?? null,
+      };
+      await upsertCIMExtraction({
+        simId: sim.id,
+        dealOpportunityId: input.dealOpportunityId,
+        payload,
+        source: "USER",
+        updatedByUserId: ctx.session.user.id,
+      });
+      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+      return { success: true };
+    }),
+
+  deleteFinancials: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string() }))
+    .mutation(async ({ input }) => {
+      const sim = await getActiveSimForDeal(input.dealOpportunityId);
+      if (!sim) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No active SIM found for this deal",
+        });
+      }
+      await deleteFinancialsForSim(sim.id);
+      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+      return { success: true, canReExtract: true };
+    }),
+
   create: protectedProcedure
     .input(createDealSchema)
     .mutation(async ({ input, ctx }) => {
@@ -189,6 +455,12 @@ export const dealsRouter = createTRPCRouter({
   createOpportunity: protectedProcedure
     .input(createDealOpportunitySchema)
     .mutation(async ({ input, ctx }) => {
+      const hasFinancials =
+        input.revenue != null ||
+        input.ebitda != null ||
+        input.ebitdaMargin != null ||
+        input.askingPrice != null;
+
       const [added] = await db
         .insert(dealOpportunities)
         .values({
@@ -196,10 +468,10 @@ export const dealsRouter = createTRPCRouter({
           leadId: input.leadId || null,
           sourceWebsite: input.sourceWebsite || null,
           brokerage: input.brokerage || null,
-          revenue: input.revenue ?? null,
-          ebitda: input.ebitda ?? null,
-          ebitdaMargin: input.ebitdaMargin ?? null,
-          askingPrice: input.askingPrice ?? null,
+          revenue: null,
+          ebitda: null,
+          ebitdaMargin: null,
+          askingPrice: null,
           dealTeaser: input.dealTeaser || null,
           description: input.description || null,
           brokerFirstName: input.brokerFirstName || null,
@@ -212,10 +484,21 @@ export const dealsRouter = createTRPCRouter({
         .returning();
 
       if (added?.id) {
+        if (hasFinancials) {
+          await createDealFinancialSnapshot({
+            dealOpportunityId: added.id,
+            revenue: input.revenue ?? null,
+            ebitda: input.ebitda ?? null,
+            ebitdaMargin: input.ebitdaMargin ?? null,
+            askingPrice: input.askingPrice ?? null,
+            source: "LISTING",
+            createdById: ctx.user.id,
+          });
+        }
         await upsertDealOpportunityScreening(added.id);
       }
 
-      revalidatePath("/deals");
+      revalidatePath("/deal-opportunities");
       revalidateTag("deals", "max");
       return { dealOpportunityId: added?.id };
     }),
@@ -228,20 +511,75 @@ export const dealsRouter = createTRPCRouter({
         .set({ stage: input.stage })
         .where(eq(dealOpportunities.id, input.id));
 
-      revalidatePath("/deals");
+      revalidatePath("/deal-opportunities");
       revalidateTag("deals", "max");
       revalidateTag(`deal-${input.id}`, "max");
 
       return { dealOpportunityId: input.id, stage: input.stage };
     }),
 
+  addFinancialSnapshot: protectedProcedure
+    .input(addFinancialSnapshotSchema)
+    .mutation(async ({ input, ctx }) => {
+      const snapshot = await createDealFinancialSnapshot({
+        dealOpportunityId: input.dealOpportunityId,
+        revenue: input.revenue ?? null,
+        ebitda: input.ebitda ?? null,
+        ebitdaMargin: input.ebitdaMargin ?? null,
+        askingPrice: input.askingPrice ?? null,
+        impliedMultiple: input.impliedMultiple ?? null,
+        source: input.source,
+        notes: input.notes ?? null,
+        createdById: ctx.user.id,
+      });
+
+      await upsertDealOpportunityScreening(input.dealOpportunityId);
+
+      revalidatePath("/deal-opportunities");
+      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+      revalidateTag("deals", "max");
+      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+
+      return { snapshot };
+    }),
+
+  listFinancialSnapshots: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string().min(1) }))
+    .query(async ({ input }) =>
+      GetDealFinancialSnapshotsByDealOpportunityId(input.dealOpportunityId),
+    ),
+
+  addRiskFlag: protectedProcedure
+    .input(addRiskFlagSchema)
+    .mutation(async ({ input, ctx }) => {
+      const riskFlag = await createDealRiskFlag({
+        dealOpportunityId: input.dealOpportunityId,
+        riskType: input.riskType,
+        severity: input.severity,
+        description: input.description,
+        source: "USER",
+        createdById: ctx.user.id,
+      });
+
+      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+
+      return { riskFlag };
+    }),
+
+  listRiskFlags: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string().min(1) }))
+    .query(async ({ input }) =>
+      GetDealRiskFlagsByDealOpportunityId(input.dealOpportunityId),
+    ),
+
   screenOpportunity: protectedProcedure
     .input(screenOpportunitySchema)
     .mutation(async ({ input }) => {
       const screening = await upsertDealOpportunityScreening(input.id);
 
-      revalidatePath("/deals");
-      revalidatePath(`/deals/${input.id}`);
+      revalidatePath("/deal-opportunities");
+      revalidatePath(`/deal-opportunities/${input.id}`);
       revalidatePath("/dashboard");
       revalidateTag("deals", "max");
       revalidateTag(`deal-${input.id}`, "max");
@@ -254,10 +592,15 @@ export const dealsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await db
         .delete(dealOpportunityScreenings)
-        .where(eq(dealOpportunityScreenings.dealOpportunityId, input.dealOpportunityId));
+        .where(
+          eq(
+            dealOpportunityScreenings.dealOpportunityId,
+            input.dealOpportunityId,
+          ),
+        );
 
-      revalidatePath("/deals");
-      revalidatePath(`/deals/${input.dealOpportunityId}`);
+      revalidatePath("/deal-opportunities");
+      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
       revalidateTag("deals", "max");
       revalidateTag(`deal-${input.dealOpportunityId}`, "max");
 
@@ -278,7 +621,7 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      const [company, leadFromOpp] = await Promise.all([
+      const [company, leadFromOpp, latestSnapshot] = await Promise.all([
         db
           .select()
           .from(companies)
@@ -290,19 +633,16 @@ export const dealsRouter = createTRPCRouter({
         opp.leadId
           ? db.select().from(leads).where(eq(leads.id, opp.leadId)).limit(1)
           : Promise.resolve([]),
+        GetLatestDealFinancialSnapshotByDealOpportunityId(opp.id),
       ]);
 
       const leadId = opp.leadId ?? company?.firstSeenFromLeadId ?? null;
       const leadRow =
         leadFromOpp[0] ??
         (leadId
-          ? (
-            await db
-              .select()
-              .from(leads)
-              .where(eq(leads.id, leadId))
-              .limit(1)
-          )[0] ?? null
+          ? ((
+              await db.select().from(leads).where(eq(leads.id, leadId)).limit(1)
+            )[0] ?? null)
           : null);
 
       const sections: string[] = [];
@@ -310,15 +650,28 @@ export const dealsRouter = createTRPCRouter({
       if (opp.dealTeaser || opp.description) {
         sections.push(
           "## Deal Listing\n" +
-          [opp.dealTeaser, opp.description].filter(Boolean).join("\n\n"),
+            [opp.dealTeaser, opp.description].filter(Boolean).join("\n\n"),
         );
       }
 
       const oppFields: string[] = [];
-      if (opp.revenue != null) oppFields.push(`Revenue: $${(opp.revenue / 1e6).toFixed(2)}M`);
-      if (opp.ebitda != null) oppFields.push(`EBITDA: $${(opp.ebitda / 1e6).toFixed(2)}M`);
-      if (opp.ebitdaMargin != null) oppFields.push(`EBITDA Margin: ${opp.ebitdaMargin}%`);
-      if (opp.askingPrice != null) oppFields.push(`Asking Price: $${(opp.askingPrice / 1e6).toFixed(2)}M`);
+      const resolvedRevenue = latestSnapshot?.revenue ?? opp.revenue;
+      const resolvedEbitda = latestSnapshot?.ebitda ?? opp.ebitda;
+      const resolvedEbitdaMargin =
+        latestSnapshot?.ebitdaMargin ?? opp.ebitdaMargin;
+      const resolvedAskingPrice =
+        latestSnapshot?.askingPrice ?? opp.askingPrice;
+
+      if (resolvedRevenue != null)
+        oppFields.push(`Revenue: ${formatUsd(resolvedRevenue)}`);
+      if (resolvedEbitda != null)
+        oppFields.push(`EBITDA: ${formatUsd(resolvedEbitda)}`);
+      if (resolvedEbitdaMargin != null)
+        oppFields.push(`EBITDA Margin: ${resolvedEbitdaMargin}%`);
+      if (resolvedAskingPrice != null)
+        oppFields.push(`Asking Price: ${formatUsd(resolvedAskingPrice)}`);
+      if (latestSnapshot)
+        oppFields.push(`Financial Source: ${latestSnapshot.source}`);
       if (opp.brokerage) oppFields.push(`Brokerage: ${opp.brokerage}`);
       if (opp.sourceWebsite) oppFields.push(`Source: ${opp.sourceWebsite}`);
       if (opp.tags?.length) oppFields.push(`Tags: ${opp.tags.join(", ")}`);
@@ -334,28 +687,32 @@ export const dealsRouter = createTRPCRouter({
       if (company) {
         const companyFields: string[] = [];
         if (company.name) companyFields.push(`Name: ${company.name}`);
-        if (company.industry) companyFields.push(`Industry: ${company.industry}`);
-        if (company.location) companyFields.push(`Location: ${company.location}`);
+        if (company.industry)
+          companyFields.push(`Industry: ${company.industry}`);
+        if (company.location)
+          companyFields.push(`Location: ${company.location}`);
         if (company.revenueEstimate != null)
           companyFields.push(
-            `Revenue Estimate: $${(company.revenueEstimate / 1e6).toFixed(2)}M`,
+            `Revenue Estimate: ${formatUsd(company.revenueEstimate)}`,
           );
         if (company.ebitdaEstimate != null)
           companyFields.push(
-            `EBITDA Estimate: $${(company.ebitdaEstimate / 1e6).toFixed(2)}M`,
+            `EBITDA Estimate: ${formatUsd(company.ebitdaEstimate)}`,
           );
         if (company.ebitdaMarginEstimate != null)
-          companyFields.push(
-            `EBITDA Margin: ${company.ebitdaMarginEstimate}%`,
-          );
+          companyFields.push(`EBITDA Margin: ${company.ebitdaMarginEstimate}%`);
         if (company.recurringRevenuePct != null)
-          companyFields.push(`Recurring Revenue: ${company.recurringRevenuePct}%`);
+          companyFields.push(
+            `Recurring Revenue: ${company.recurringRevenuePct}%`,
+          );
         if (company.customerConcentrationPct != null)
           companyFields.push(
             `Customer Concentration: ${company.customerConcentrationPct}%`,
           );
         if (company.attractivenessScore != null)
-          companyFields.push(`Attractiveness Score: ${company.attractivenessScore}`);
+          companyFields.push(
+            `Attractiveness Score: ${company.attractivenessScore}`,
+          );
         if (companyFields.length) {
           sections.push("## Company\n" + companyFields.join("\n"));
         }
@@ -364,18 +721,24 @@ export const dealsRouter = createTRPCRouter({
       if (leadRow) {
         const leadFields: string[] = [];
         if (leadRow.rawTitle) leadFields.push(`Title: ${leadRow.rawTitle}`);
-        if (leadRow.rawDescription) leadFields.push(`Description: ${leadRow.rawDescription}`);
-        if (leadRow.rawIndustry) leadFields.push(`Industry: ${leadRow.rawIndustry}`);
+        if (leadRow.rawDescription)
+          leadFields.push(`Description: ${leadRow.rawDescription}`);
+        if (leadRow.rawIndustry)
+          leadFields.push(`Industry: ${leadRow.rawIndustry}`);
         if (leadRow.revenue != null)
-          leadFields.push(`Revenue: $${(leadRow.revenue / 1e6).toFixed(2)}M`);
+          leadFields.push(`Revenue: ${formatUsd(leadRow.revenue)}`);
         if (leadRow.ebitda != null)
-          leadFields.push(`EBITDA: $${(leadRow.ebitda / 1e6).toFixed(2)}M`);
+          leadFields.push(`EBITDA: ${formatUsd(leadRow.ebitda)}`);
         if (leadRow.askingPrice != null)
-          leadFields.push(`Asking Price: $${(leadRow.askingPrice / 1e6).toFixed(2)}M`);
-        if (leadRow.brokerage) leadFields.push(`Brokerage: ${leadRow.brokerage}`);
-        if (leadRow.companyLocation) leadFields.push(`Location: ${leadRow.companyLocation}`);
+          leadFields.push(`Asking Price: ${formatUsd(leadRow.askingPrice)}`);
+        if (leadRow.brokerage)
+          leadFields.push(`Brokerage: ${leadRow.brokerage}`);
+        if (leadRow.companyLocation)
+          leadFields.push(`Location: ${leadRow.companyLocation}`);
         if (leadFields.length) {
-          sections.push("## Raw Lead / Source Listing\n" + leadFields.join("\n"));
+          sections.push(
+            "## Raw Lead / Source Listing\n" + leadFields.join("\n"),
+          );
         }
       }
 
@@ -383,7 +746,8 @@ export const dealsRouter = createTRPCRouter({
       if (!enrichedContext.trim()) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Deal has no description, teaser, or related data to analyze",
+          message:
+            "Deal has no description, teaser, or related data to analyze",
         });
       }
 
@@ -414,13 +778,12 @@ export const dealsRouter = createTRPCRouter({
         explanation: result.explanation,
         score,
         content,
-        sentiment:
-          sentiment as "POSITIVE" | "NEGATIVE" | "NEUTRAL",
+        sentiment: sentiment as "POSITIVE" | "NEGATIVE" | "NEUTRAL",
         screenerId: null,
       });
 
-      revalidatePath("/deals");
-      revalidatePath(`/deals/${opp.id}`);
+      revalidatePath("/deal-opportunities");
+      revalidatePath(`/deal-opportunities/${opp.id}`);
       revalidateTag("deals", "max");
       revalidateTag(`deal-${opp.id}`, "max");
 
@@ -429,8 +792,13 @@ export const dealsRouter = createTRPCRouter({
 
   updateOpportunity: protectedProcedure
     .input(createDealOpportunitySchema.extend({ id: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
+      const hasFinancials =
+        data.revenue != null ||
+        data.ebitda != null ||
+        data.ebitdaMargin != null ||
+        data.askingPrice != null;
       await db
         .update(dealOpportunities)
         .set({
@@ -438,10 +806,6 @@ export const dealsRouter = createTRPCRouter({
           leadId: data.leadId || null,
           sourceWebsite: data.sourceWebsite || null,
           brokerage: data.brokerage || null,
-          revenue: data.revenue ?? null,
-          ebitda: data.ebitda ?? null,
-          ebitdaMargin: data.ebitdaMargin ?? null,
-          askingPrice: data.askingPrice ?? null,
           dealTeaser: data.dealTeaser || null,
           description: data.description || null,
           brokerFirstName: data.brokerFirstName || null,
@@ -452,11 +816,23 @@ export const dealsRouter = createTRPCRouter({
         })
         .where(eq(dealOpportunities.id, id));
 
+      if (hasFinancials) {
+        await createDealFinancialSnapshot({
+          dealOpportunityId: id,
+          revenue: data.revenue ?? null,
+          ebitda: data.ebitda ?? null,
+          ebitdaMargin: data.ebitdaMargin ?? null,
+          askingPrice: data.askingPrice ?? null,
+          source: "MANUAL",
+          createdById: ctx.user.id,
+        });
+      }
+
       await upsertDealOpportunityScreening(id);
 
-      revalidatePath("/deals");
-      revalidatePath(`/deals/${id}`);
-      revalidatePath(`/deals/${id}/edit`);
+      revalidatePath("/deal-opportunities");
+      revalidatePath(`/deal-opportunities/${id}`);
+      revalidatePath(`/deal-opportunities/${id}/edit`);
       revalidateTag("deals", "max");
       revalidateTag(`deal-${id}`, "max");
       return { dealOpportunityId: id };
@@ -465,8 +841,10 @@ export const dealsRouter = createTRPCRouter({
   deleteOpportunity: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      await db.delete(dealOpportunities).where(eq(dealOpportunities.id, input.id));
-      revalidatePath("/deals");
+      await db
+        .delete(dealOpportunities)
+        .where(eq(dealOpportunities.id, input.id));
+      revalidatePath("/deal-opportunities");
       revalidateTag("deals", "max");
       revalidateTag(`deal-${input.id}`, "max");
       return { success: true };
@@ -552,7 +930,7 @@ export const dealsRouter = createTRPCRouter({
           .update(dealOpportunities)
           .set({ reviewState: reviewState as ReviewState, status })
           .where(eq(dealOpportunities.id, dealId));
-        revalidatePath(`/deals/${dealId}`);
+        revalidatePath(`/deal-opportunities/${dealId}`);
       } else {
         await db
           .update(deals)
@@ -564,7 +942,7 @@ export const dealsRouter = createTRPCRouter({
       revalidateTag(`deal-${dealId}`, "max");
       revalidateTag("deals", "max");
       revalidatePath("/raw-deals");
-      revalidatePath("/deals");
+      revalidatePath("/deal-opportunities");
 
       return { success: true, dealId };
     }),
@@ -667,10 +1045,9 @@ export const dealsRouter = createTRPCRouter({
         fileSize: buffer.length,
         mimeType,
         userId,
-        entityType: "DEAL" as const,
+        entityType: "DEAL_OPPORTUNITY" as const,
         entityId,
         entityMetadata,
-        embedInVectorStore: true, // Enable Google File Search Store for deals
         fileCategory: category,
         fileDescription: input.description,
       };

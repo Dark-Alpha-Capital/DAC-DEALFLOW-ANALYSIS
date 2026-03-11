@@ -2,6 +2,16 @@ import { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      { source: "/deals", destination: "/deal-opportunities", permanent: true },
+      {
+        source: "/deals/:path*",
+        destination: "/deal-opportunities/:path*",
+        permanent: true,
+      },
+    ];
+  },
   reactCompiler: true,
   typescript: {
     ignoreBuildErrors: true,

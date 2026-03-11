@@ -12,18 +12,27 @@ export type DocumentRow = Document;
 
 export const entityTypeLabels: Record<string, string> = {
   COMPANY: "Company",
-  DEAL_OPPORTUNITY: "Deal",
+  DEAL_OPPORTUNITY: "Deal opportunity",
   LEAD: "Lead",
+  THEME: "Theme",
+  GLOBAL: "Firm",
 };
 
-export function getEntityRoute(entityType: string, entityId: string): string {
+export function getEntityRoute(
+  entityType: string,
+  entityId: string | null,
+): string {
   switch (entityType) {
     case "COMPANY":
-      return `/companies/${entityId}`;
+      return `/companies/${entityId ?? ""}`;
     case "DEAL_OPPORTUNITY":
-      return `/deals/${entityId}`;
+      return `/deal-opportunities/${entityId ?? ""}`;
     case "LEAD":
-      return `/leads/${entityId}`;
+      return `/leads/${entityId ?? ""}`;
+    case "THEME":
+      return `/themes/${entityId ?? ""}`;
+    case "GLOBAL":
+      return "/documents";
     default:
       return "#";
   }
@@ -120,7 +129,10 @@ export const columns: ColumnDef<DocumentRow>[] = [
     ),
     cell: ({ row }) => (
       <span className="text-muted-foreground text-sm capitalize">
-        {row.original.category?.toLowerCase() ?? "—"}
+        {row.original.category
+          ?.toLowerCase()
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase()) ?? "—"}
       </span>
     ),
     meta: { className: "text-center" },
@@ -152,7 +164,7 @@ export const columns: ColumnDef<DocumentRow>[] = [
     header: () => <span className="block w-full text-center">Actions</span>,
     cell: ({ row }) => {
       const doc = row.original;
-      const entityRoute = getEntityRoute(doc.entityType, doc.entityId);
+      const entityRoute = getEntityRoute(doc.entityType, doc.entityId ?? null);
       return (
         <div
           className="flex justify-center gap-1"

@@ -1,6 +1,7 @@
 import db, { and, desc, eq, isNull } from "@repo/db";
 import {
   companies,
+  dealFinancialSnapshots,
   dealOpportunities,
   dealOpportunityScreenings,
   type DealOpportunityScreening,
@@ -216,7 +217,10 @@ export function screenDeal(
     reasons.push("EBITDA above $10M target range");
   }
 
-  const industryMatch = matchPreferredIndustry(input.industry as string, profile);
+  const industryMatch = matchPreferredIndustry(
+    input.industry as string,
+    profile,
+  );
   if (!industryMatch) {
     reasons.push("Industry is outside Dark Alpha preferred sectors");
   }
@@ -241,8 +245,8 @@ export function screenDeal(
   const industryScore = industryMatch?.score ?? 0;
   const score = clampScore(
     ebitdaFitScore * profile.weights.ebitdaFit +
-    revenueScore * profile.weights.revenue +
-    industryScore * profile.weights.industry,
+      revenueScore * profile.weights.revenue +
+      industryScore * profile.weights.industry,
   );
 
   return {
@@ -288,6 +292,16 @@ export async function buildDealScreeningInput(
     return null;
   }
 
+  const [latestSnapshot] = await db
+    .select()
+    .from(dealFinancialSnapshots)
+    .where(eq(dealFinancialSnapshots.dealOpportunityId, dealOpportunityId))
+    .orderBy(
+      desc(dealFinancialSnapshots.createdAt),
+      desc(dealFinancialSnapshots.id),
+    )
+    .limit(1);
+
   const company = row.company ?? {
     id: null,
     name: null,
@@ -301,8 +315,16 @@ export async function buildDealScreeningInput(
     dealOpportunityId: row.opportunity.id,
     companyId: company.id,
     companyName: company.name,
-    ebitda: row.opportunity.ebitda ?? company.ebitdaEstimate ?? null,
-    revenue: row.opportunity.revenue ?? company.revenueEstimate ?? null,
+    ebitda:
+      latestSnapshot?.ebitda ??
+      row.opportunity.ebitda ??
+      company.ebitdaEstimate ??
+      null,
+    revenue:
+      latestSnapshot?.revenue ??
+      row.opportunity.revenue ??
+      company.revenueEstimate ??
+      null,
     industry: company.industry ?? null,
     location: company.location ?? null,
   };

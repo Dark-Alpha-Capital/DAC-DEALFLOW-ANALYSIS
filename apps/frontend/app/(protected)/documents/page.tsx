@@ -8,10 +8,12 @@ import { DocumentsDataTable } from "./data-table";
 import { columns } from "./columns";
 import DocumentsTableSkeleton from "@/components/skeletons/DocumentsTableSkeleton";
 import Pagination from "@/components/pagination";
+import { GlobalDocumentUploadDialog } from "@/components/Dialogs/global-document-upload-dialog";
 
 export const metadata: Metadata = {
   title: "Documents",
-  description: "View all documents across companies, deals, and leads",
+  description:
+    "View all documents across companies, deals, themes, and firm library",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -25,15 +27,21 @@ const DocumentsPage = (props: { searchParams: SearchParams }) => {
   const sessionPromise = getSession();
   return (
     <section className="block-space-mini group container">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold md:text-5xl">Documents</h1>
-        <p className="mt-2 text-muted-foreground">
-          All documents across companies, deals, and leads
-        </p>
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-4xl font-bold md:text-5xl">Documents</h1>
+          <p className="text-muted-foreground mt-2">
+            All documents across companies, deals, themes, and firm library
+          </p>
+        </div>
+        <GlobalDocumentUploadDialog />
       </div>
 
       <Suspense fallback={<DocumentsTableSkeleton />}>
-        <AuthedDocuments searchParams={props.searchParams} sessionPromise={sessionPromise} />
+        <AuthedDocuments
+          searchParams={props.searchParams}
+          sessionPromise={sessionPromise}
+        />
       </Suspense>
     </section>
   );

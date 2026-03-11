@@ -123,7 +123,9 @@ export function DocumentsDataTable({ columns, data }: DocumentsDataTableProps) {
                   className="cursor-pointer hover:bg-muted/60"
                   onClick={() => {
                     const doc = row.original;
-                    router.push(getEntityRoute(doc.entityType, doc.entityId));
+                    router.push(
+                      getEntityRoute(doc.entityType, doc.entityId ?? null),
+                    );
                   }}
                 >
                   {row.getVisibleCells().map((cell) => (

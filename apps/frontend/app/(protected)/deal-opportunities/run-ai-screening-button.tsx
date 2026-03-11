@@ -1,13 +1,13 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, Play } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useTRPC } from "@/trpc/client";
 
-export function ScreenDealButton({
+export function RunAiScreeningButton({
   dealOpportunityId,
 }: {
   dealOpportunityId: string;
@@ -15,14 +15,14 @@ export function ScreenDealButton({
   const trpc = useTRPC();
   const router = useRouter();
 
-  const screeningMutation = useMutation(
-    trpc.deals.screenOpportunity.mutationOptions({
+  const mutation = useMutation(
+    trpc.dealOpportunities.runAiScreening.mutationOptions({
       onSuccess: () => {
-        toast.success("Deterministic screening completed");
+        toast.success("AI screening completed");
         router.refresh();
       },
       onError: (error) => {
-        toast.error(error.message || "Failed to run screening");
+        toast.error(error.message || "Failed to run AI screening");
       },
     }),
   );
@@ -31,19 +31,19 @@ export function ScreenDealButton({
     <Button
       size="sm"
       variant="secondary"
-      disabled={screeningMutation.isPending}
-      onClick={(event) => {
-        event.stopPropagation();
-        screeningMutation.mutate({ id: dealOpportunityId });
+      disabled={mutation.isPending}
+      onClick={(e) => {
+        e.stopPropagation();
+        mutation.mutate({ dealOpportunityId });
       }}
     >
-      {screeningMutation.isPending ? (
+      {mutation.isPending ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       ) : (
-        <Play className="h-3.5 w-3.5" />
+        <Sparkles className="h-3.5 w-3.5" />
       )}
       <span className="ml-1.5">
-        {screeningMutation.isPending ? "Running" : "Run Screening"}
+        {mutation.isPending ? "Running" : "Run AI Screening"}
       </span>
     </Button>
   );

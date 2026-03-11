@@ -30,9 +30,9 @@ async function CachedEditContent({ uid }: { uid: string }) {
     return (
       <section className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="border-border w-full max-w-md space-y-4 border-b pb-8 text-center">
-          <h1 className="text-foreground text-xl font-semibold">Error loading deal</h1>
+          <h1 className="text-foreground text-xl font-semibold">Error loading deal opportunity</h1>
           <Button asChild>
-            <Link href="/deals">Back to Deals</Link>
+            <Link href="/deal-opportunities">Back to deal opportunity opportunities</Link>
           </Button>
         </div>
       </section>
@@ -43,9 +43,9 @@ async function CachedEditContent({ uid }: { uid: string }) {
     return (
       <section className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="border-border w-full max-w-md space-y-4 border-b pb-8 text-center">
-          <h1 className="text-foreground text-xl font-semibold">Deal not found</h1>
+          <h1 className="text-foreground text-xl font-semibold">Deal opportunity not found</h1>
           <Button asChild>
-            <Link href="/deals">Back to Deals</Link>
+            <Link href="/deal-opportunities">Back to deal opportunity opportunities</Link>
           </Button>
         </div>
       </section>
@@ -56,12 +56,12 @@ async function CachedEditContent({ uid }: { uid: string }) {
     <section className="big-container block-space min-h-screen">
       <div className="mb-6">
         <Button variant="ghost" asChild className="gap-2 pl-0">
-          <Link href={`/deals/${uid}`}>
+          <Link href={`/deal-opportunities/${uid}`}>
             <ArrowLeft className="h-4 w-4" />
-            Back to Deal
+            Back to deal opportunity
           </Link>
         </Button>
-        <h1 className="mt-4">Edit Deal</h1>
+        <h1 className="mt-4">Edit deal opportunity</h1>
         <p className="text-muted-foreground">Update deal opportunity details.</p>
       </div>
       <EditDealForm opp={opp} />

@@ -8,6 +8,7 @@ import EditLeadForm from "@/components/forms/edit-lead-form";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
 import { Skeleton } from "@/components/ui/skeleton";
+import BackButton from "@/components/Buttons/back-button";
 
 type Params = Promise<{ uid: string }>;
 
@@ -30,9 +31,11 @@ async function CachedEditContent({ uid }: { uid: string }) {
     return (
       <section className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="border-border w-full max-w-md space-y-4 border-b pb-8 text-center">
-          <h1 className="text-foreground text-xl font-semibold">Error loading lead</h1>
+          <h1 className="text-foreground text-xl font-semibold">
+            Error loading lead
+          </h1>
           <Button asChild>
-            <Link href="/leads">Back to Leads</Link>
+            <BackButton href="/leads" label="Back to Leads" />
           </Button>
         </div>
       </section>
@@ -43,9 +46,11 @@ async function CachedEditContent({ uid }: { uid: string }) {
     return (
       <section className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="border-border w-full max-w-md space-y-4 border-b pb-8 text-center">
-          <h1 className="text-foreground text-xl font-semibold">Lead not found</h1>
+          <h1 className="text-foreground text-xl font-semibold">
+            Lead not found
+          </h1>
           <Button asChild>
-            <Link href="/leads">Back to Leads</Link>
+            <BackButton href="/leads" label="Back to Leads" />
           </Button>
         </div>
       </section>
@@ -55,12 +60,7 @@ async function CachedEditContent({ uid }: { uid: string }) {
   return (
     <section className="big-container block-space min-h-screen">
       <div className="mb-6">
-        <Button variant="ghost" asChild className="gap-2 pl-0">
-          <Link href={`/leads/${uid}`}>
-            <ArrowLeft className="h-4 w-4" />
-            Back to Lead
-          </Link>
-        </Button>
+        <BackButton label="Go Back" />
         <h1 className="mt-4">Edit Lead</h1>
         <p className="text-muted-foreground">Update lead details.</p>
       </div>
@@ -88,7 +88,10 @@ async function AuthedEditContent(props: {
   params: Params;
   sessionPromise: ReturnType<typeof getSession>;
 }) {
-  const [params, userSession] = await Promise.all([props.params, props.sessionPromise]);
+  const [params, userSession] = await Promise.all([
+    props.params,
+    props.sessionPromise,
+  ]);
   if (!userSession?.user) redirect("/auth/login");
   return <CachedEditContent uid={params.uid} />;
 }
@@ -97,7 +100,10 @@ export default function EditLeadPage(props: { params: Params }) {
   const sessionPromise = getSession();
   return (
     <Suspense fallback={<EditPageSkeleton />}>
-      <AuthedEditContent params={props.params} sessionPromise={sessionPromise} />
+      <AuthedEditContent
+        params={props.params}
+        sessionPromise={sessionPromise}
+      />
     </Suspense>
   );
 }

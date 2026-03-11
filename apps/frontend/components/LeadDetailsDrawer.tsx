@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { Lead } from "@repo/db";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,9 +13,13 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
-  DrawerClose,
 } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
+import { Eye, Pencil, Trash2 } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+import { toast } from "sonner";
+import DeleteEntityDialog from "@/components/DeleteEntityDialog";
 
 interface LeadDetailsDrawerProps {
   lead: Lead | null;
@@ -41,6 +47,24 @@ export default function LeadDetailsDrawer({
   open,
   onOpenChange,
 }: LeadDetailsDrawerProps) {
+  const router = useRouter();
+  const trpc = useTRPC();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const { mutate: deleteLead, isPending: isDeleting } = useMutation(
+    trpc.leads.delete.mutationOptions({
+      onSuccess: () => {
+        toast.success("Lead deleted");
+        setDeleteDialogOpen(false);
+        onOpenChange(false);
+        router.refresh();
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to delete lead");
+      },
+    }),
+  );
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
@@ -129,19 +153,44 @@ export default function LeadDetailsDrawer({
                   Added {new Date(lead.createdAt).toLocaleDateString()}
                 </div>
                 <div className="flex gap-2">
-                  <DrawerClose asChild>
-                    <Button variant="outline" size="sm">
-                      Close
-                    </Button>
-                  </DrawerClose>
                   <Button asChild size="sm" variant="outline">
-                    <Link href={`/leads/${lead.id}/edit`}>Edit</Link>
+                    <Link
+                      href={`/leads/${lead.id}`}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View
+                    </Link>
                   </Button>
-                  <Button asChild size="sm">
-                    <Link href={`/leads/${lead.id}`}>View full page</Link>
+                  <Button asChild size="sm" variant="outline">
+                    <Link
+                      href={`/leads/${lead.id}/edit`}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Edit
+                    </Link>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => setDeleteDialogOpen(true)}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
                   </Button>
                 </div>
               </DrawerFooter>
+              <DeleteEntityDialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+                title="Delete lead?"
+                description="This will permanently delete this lead. This action cannot be undone."
+                isPending={isDeleting}
+                onConfirm={() => lead && deleteLead({ id: lead.id })}
+              />
             </>
           ) : (
             <div className="space-y-2 px-4 py-6">

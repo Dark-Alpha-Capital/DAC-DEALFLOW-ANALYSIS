@@ -1,6 +1,14 @@
+import { config } from "dotenv";
+import { resolve } from "path";
+
+// Load worker .env so DATABASE_URL matches migrations (avoids "relation does not exist")
+config({ path: resolve(import.meta.dir, ".env") });
+config({ path: resolve(import.meta.dir, ".env.local") });
+
 import { Worker } from "bullmq";
 import { fileUploadHandler } from "./handlers/file-upload-handler";
 import { screenDealHandler } from "./handlers/screen-deal-handler";
+import { cimExtractionHandler } from "./handlers/cim-extraction-handler";
 import IORedis from "ioredis";
 
 if (!process.env.REDIS_URL) {
@@ -34,6 +42,11 @@ const screenDealWorker = new Worker("screen-deal", screenDealHandler, {
   concurrency: 10,
 });
 
+const cimExtractionWorker = new Worker("cim-extraction", cimExtractionHandler, {
+  connection,
+  concurrency: 5,
+});
+
 console.log("Workers are listening for jobs...");
 
 screenDealWorker.on("failed", (job, err) =>
@@ -50,6 +63,14 @@ fileUploadWorker.on("failed", (job, err) =>
 
 fileUploadWorker.on("completed", (job) =>
   console.log(`File Upload Job ${job.id} completed successfully`)
+);
+
+cimExtractionWorker.on("failed", (job, err) =>
+  console.error(`CIM Extraction Job failed: ${err.message}`)
+);
+
+cimExtractionWorker.on("completed", (job) =>
+  console.log(`CIM Extraction Job ${job.id} completed successfully`)
 );
 
 // Cloud Run requires the container to listen on PORT for health checks

@@ -2,10 +2,8 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { DealHeader } from "@/components/deal-detail/deal-header";
 import { DealDetailTabs } from "@/components/deal-detail/DealDetailTabs";
 import DealPageSkeleton from "@/components/skeletons/deal-page-skeleton";
-import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
 import type { AiScreening } from "@repo/db/schema";
 import { GetDealWithAllRelations } from "@repo/db/queries";
 import { cacheLife, cacheTag } from "next/cache";
@@ -33,7 +31,7 @@ async function CachedDealContent({ uid }: { uid: string }) {
       <section className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="border-border w-full max-w-md space-y-4 border-b pb-8 text-center">
           <h1 className="text-foreground text-xl font-semibold">
-            Error loading deal
+            Error loading deal opportunity
           </h1>
           <p className="text-muted-foreground text-sm">
             There was an error loading the deal. Please try again later.
@@ -42,7 +40,7 @@ async function CachedDealContent({ uid }: { uid: string }) {
             <p className="text-muted-foreground text-xs">{error.message}</p>
           )}
           <Button asChild>
-            <Link href="/deals">Back to Deals</Link>
+            <Link href="/deal-opportunities">Back to Deal opportunities</Link>
           </Button>
         </div>
       </section>
@@ -54,13 +52,14 @@ async function CachedDealContent({ uid }: { uid: string }) {
       <section className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="border-border w-full max-w-md space-y-4 border-b pb-8 text-center">
           <h1 className="text-foreground text-xl font-semibold">
-            Deal not found
+            Deal opportunity not found
           </h1>
           <p className="text-muted-foreground text-sm">
-            The deal you are looking for does not exist or has been removed.
+            The deal opportunity you are looking for does not exist or has been
+            removed.
           </p>
           <Button asChild>
-            <Link href="/deals">Back to Deals</Link>
+            <Link href="/deal-opportunities">Back to Deal opportunities</Link>
           </Button>
         </div>
       </section>
@@ -73,7 +72,11 @@ async function CachedDealContent({ uid }: { uid: string }) {
         deal={dealData.deal}
         uid={uid}
         company={dealData.company ?? null}
-        currentOpportunity={"currentOpportunity" in dealData ? dealData.currentOpportunity : undefined}
+        currentOpportunity={
+          "currentOpportunity" in dealData
+            ? dealData.currentOpportunity
+            : undefined
+        }
         dealOpportunities={dealData.dealOpportunities ?? []}
         companyContacts={dealData.companyContacts ?? []}
         dealContacts={dealData.dealContacts ?? []}
@@ -83,6 +86,7 @@ async function CachedDealContent({ uid }: { uid: string }) {
         aiScreenings={(dealData.aiScreenings ?? []) as unknown as AiScreening[]}
         deterministicScreening={dealData.deterministicScreening ?? null}
         companyNotes={dealData.companyNotes ?? []}
+        financialSnapshots={dealData.financialSnapshots ?? []}
       />
     </section>
   );

@@ -9,6 +9,7 @@ import {
   decimal,
   index,
   uniqueIndex,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
@@ -57,6 +58,14 @@ export const documentCategoryEnum = pgEnum("DocumentCategory", [
   "RESEARCH",
   "PROSPECTUS",
   "OTHER",
+  // Firm-level global document categories
+  "OPERATING_PLAYBOOK",
+  "INVESTMENT_MEMO",
+  "IC_TEMPLATE",
+  "INDUSTRY_RESEARCH",
+  "VALUE_CREATION_PLAYBOOK",
+  "PAST_DEAL_ANALYSIS",
+  "DUE_DILIGENCE_CHECKLIST",
 ]);
 
 // Entity type enum for polymorphic association
@@ -96,6 +105,44 @@ export const screenerResponseSourceEnum = pgEnum("ScreenerResponseSource", [
   "AI",
   "HUMAN",
 ]);
+
+export const dealSimStatusEnum = pgEnum("DealSimStatus", [
+  "ACTIVE",
+  "ARCHIVED",
+]);
+
+export const cimExtractionSourceEnum = pgEnum("CIMExtractionSource", [
+  "AI",
+  "USER",
+]);
+
+export const dealFinancialSnapshotSourceEnum = pgEnum(
+  "DealFinancialSnapshotSource",
+  [
+    "LISTING",
+    "BROKER_CALL",
+    "CIM",
+    "MANAGEMENT_MEETING",
+    "DILIGENCE",
+    "MANUAL",
+  ],
+);
+
+export const dealRiskTypeEnum = pgEnum("DealRiskType", [
+  "CUSTOMER_CONCENTRATION",
+  "CAPEX",
+  "QUALITY_OF_EARNINGS",
+  "WORKING_CAPITAL",
+  "OTHER",
+]);
+
+export const dealRiskSeverityEnum = pgEnum("DealRiskSeverity", [
+  "LOW",
+  "MEDIUM",
+  "HIGH",
+]);
+
+export const dealRiskSourceEnum = pgEnum("DealRiskSource", ["SYSTEM", "USER"]);
 
 // ============================================================================
 // TABLES
@@ -187,7 +234,9 @@ export const themes = pgTable("Theme", {
   status: themeStatusEnum("status").default("ACTIVE").notNull(), // ACTIVE, PAUSED, RETIRED
   capitalPriorityScore: integer("capitalPriorityScore"), // 1–100
   confidenceScore: integer("confidenceScore"), // Conviction level
-  createdById: text("createdById").references(() => users.id),
+  createdById: text("createdById").references(() => users.id, {
+    onDelete: "set null",
+  }),
   deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
@@ -292,7 +341,7 @@ export const companies = pgTable(
     founderAgeEstimate: integer("founderAgeEstimate"),
 
     // Strategic alignment
-    themeId: text("themeId").references(() => themes.id),
+    themeId: text("themeId").references(() => themes.id, { onDelete: "set null" }),
     attractivenessScore: integer("attractivenessScore"),
     coverageStatus: companyCoverageStatusEnum("coverageStatus")
       .default("UNCONTACTED")
@@ -300,7 +349,7 @@ export const companies = pgTable(
 
     firstSeenAt: timestamp("firstSeenAt"),
     lastSeenAt: timestamp("lastSeenAt"),
-    firstSeenFromLeadId: text("firstSeenFromLeadId").references(() => leads.id),
+    firstSeenFromLeadId: text("firstSeenFromLeadId"),
     deletedAt: timestamp("deletedAt"),
 
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -335,7 +384,9 @@ export const companyNotes = pgTable(
     title: text("title"),
     content: text("content").notNull(),
 
-    createdById: text("createdById").references(() => users.id),
+    createdById: text("createdById").references(() => users.id, {
+      onDelete: "set null",
+    }),
 
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
@@ -393,7 +444,7 @@ export const themePerformance = pgTable("ThemePerformance", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
-  themeId: text("themeId").references(() => themes.id),
+  themeId: text("themeId").references(() => themes.id, { onDelete: "set null" }),
   dealsSourced: integer("dealsSourced"),
   meetingsHeld: integer("meetingsHeld"),
   loisIssued: integer("loisIssued"),
@@ -447,7 +498,9 @@ export const leads = pgTable(
 
     // Processing state
     status: leadStatusEnum("status").default("NEW").notNull(),
-    duplicateCompanyId: text("duplicateCompanyId"),
+    duplicateCompanyId: text("duplicateCompanyId").references(() => companies.id, {
+      onDelete: "set null",
+    }),
     processedAt: timestamp("processedAt"),
     deletedAt: timestamp("deletedAt"),
 
@@ -489,7 +542,7 @@ export const deals = pgTable("Deal", {
     .$onUpdate(() => new Date()),
   bitrixCreatedAt: timestamp("bitrixCreatedAt"),
   bitrixId: text("bitrixId"),
-  userId: text("userId").references(() => users.id),
+  userId: text("userId").references(() => users.id, { onDelete: "set null" }),
   dealTeaser: text("dealTeaser"),
   tags: text("tags").array().default([]),
   bitrixLink: text("bitrixLink"),
@@ -523,10 +576,10 @@ export const dealOpportunities = pgTable(
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
 
-    leadId: text("leadId").references(() => leads.id),
+    leadId: text("leadId").references(() => leads.id, { onDelete: "set null" }),
 
     legacyDealId: text("legacyDealId")
-      .references(() => deals.id)
+      .references(() => deals.id, { onDelete: "set null" })
       .unique(),
 
     // Deal-specific metadata
@@ -561,7 +614,7 @@ export const dealOpportunities = pgTable(
     brokerPhone: text("brokerPhone"),
     brokerLinkedIn: text("brokerLinkedIn"),
 
-    userId: text("userId").references(() => users.id),
+    userId: text("userId").references(() => users.id, { onDelete: "set null" }),
 
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
@@ -573,6 +626,71 @@ export const dealOpportunities = pgTable(
     dealOppCompanyIdx: index("deal_opp_company_idx").on(table.companyId),
     dealOppStageIdx: index("deal_opp_stage_idx").on(table.stage),
     dealOppStatusIdx: index("deal_opp_status_idx").on(table.status),
+  }),
+);
+
+export const dealFinancialSnapshots = pgTable(
+  "DealFinancialSnapshot",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    dealOpportunityId: text("dealOpportunityId")
+      .notNull()
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }),
+    revenue: doublePrecision("revenue"),
+    ebitda: doublePrecision("ebitda"),
+    ebitdaMargin: doublePrecision("ebitdaMargin"),
+    askingPrice: doublePrecision("askingPrice"),
+    impliedMultiple: doublePrecision("impliedMultiple"),
+    source: dealFinancialSnapshotSourceEnum("source").notNull(),
+    notes: text("notes"),
+    createdById: text("createdById").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    dealFinancialSnapshotDealOppIdx: index("deal_fin_snapshot_deal_opp_idx").on(
+      table.dealOpportunityId,
+    ),
+    dealFinancialSnapshotDealOppCreatedAtIdx: index(
+      "deal_fin_snapshot_deal_opp_created_at_idx",
+    ).on(table.dealOpportunityId, table.createdAt),
+    dealFinancialSnapshotDealOppSourceCreatedAtIdx: index(
+      "deal_fin_snapshot_deal_opp_source_created_at_idx",
+    ).on(table.dealOpportunityId, table.source, table.createdAt),
+  }),
+);
+
+export const dealRiskFlags = pgTable(
+  "DealRiskFlag",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    dealOpportunityId: text("dealOpportunityId")
+      .notNull()
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }),
+    riskType: dealRiskTypeEnum("riskType").notNull(),
+    severity: dealRiskSeverityEnum("severity").notNull(),
+    description: text("description").notNull(),
+    source: dealRiskSourceEnum("source").default("USER").notNull(),
+    createdById: text("createdById").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    dealRiskFlagDealOppIdx: index("deal_risk_flag_deal_opp_idx").on(
+      table.dealOpportunityId,
+    ),
+    dealRiskFlagDealOppCreatedAtIdx: index(
+      "deal_risk_flag_deal_opp_created_at_idx",
+    ).on(table.dealOpportunityId, table.createdAt),
+    dealRiskFlagDealOppTypeSeverityIdx: index(
+      "deal_risk_flag_deal_opp_type_severity_idx",
+    ).on(table.dealOpportunityId, table.riskType, table.severity),
   }),
 );
 
@@ -589,14 +707,19 @@ export const outreach = pgTable("Outreach", {
 
   dealOpportunityId: text("dealOpportunityId").references(
     () => dealOpportunities.id,
+    { onDelete: "cascade" },
   ),
-  companyId: text("companyId").references(() => companies.id),
+  companyId: text("companyId").references(() => companies.id, {
+    onDelete: "cascade",
+  }),
 
   type: outreachTypeEnum("type").notNull(),
   notes: text("notes"),
   outcome: text("outcome"),
 
-  createdById: text("createdById").references(() => users.id),
+  createdById: text("createdById").references(() => users.id, {
+    onDelete: "set null",
+  }),
 
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -607,12 +730,20 @@ export const contacts = pgTable("Contact", {
     .$defaultFn(() => createId()),
   entityType: contactEntityEnum("entityType").notNull(),
   entityId: text("entityId").notNull(),
+  companyId: text("companyId").references(() => companies.id, {
+    onDelete: "cascade",
+  }),
+  leadId: text("leadId").references(() => leads.id, { onDelete: "cascade" }),
+  dealOpportunityId: text("dealOpportunityId").references(
+    () => dealOpportunities.id,
+    { onDelete: "cascade" },
+  ),
   name: text("name").notNull(),
   title: text("title"),
   email: text("email"),
   phone: text("phone"),
   linkedinUrl: text("linkedinUrl"),
-  role: text("role"), // Broker, Founder, CFO, Advisor
+  role: text("role"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -788,9 +919,9 @@ export const dealOpportunityScreenings = pgTable(
     dealOpportunityScreeningStatusIdx: index(
       "deal_opp_screening_status_idx",
     ).on(table.status),
-    dealOpportunityScreeningScoreIdx: index(
-      "deal_opp_screening_score_idx",
-    ).on(table.score),
+    dealOpportunityScreeningScoreIdx: index("deal_opp_screening_score_idx").on(
+      table.score,
+    ),
   }),
 );
 
@@ -801,7 +932,7 @@ export const userActionLogs = pgTable("UserActionLog", {
     .$defaultFn(() => createId()),
   userId: text("userId")
     .notNull()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -815,6 +946,8 @@ export const documentEntityEnum = pgEnum("DocumentEntityType", [
   "LEAD",
   "COMPANY",
   "DEAL_OPPORTUNITY",
+  "THEME",
+  "GLOBAL",
 ]);
 
 export const documents = pgTable("Document", {
@@ -823,7 +956,18 @@ export const documents = pgTable("Document", {
     .$defaultFn(() => createId()),
 
   entityType: documentEntityEnum("entityType").notNull(),
-  entityId: text("entityId").notNull(),
+  entityId: text("entityId"), // Nullable for GLOBAL documents
+  companyId: text("companyId").references(() => companies.id, {
+    onDelete: "cascade",
+  }),
+  leadId: text("leadId").references(() => leads.id, { onDelete: "cascade" }),
+  dealOpportunityId: text("dealOpportunityId").references(
+    () => dealOpportunities.id,
+    { onDelete: "cascade" },
+  ),
+  themeId: text("themeId").references(() => themes.id, {
+    onDelete: "cascade",
+  }),
 
   title: text("title").notNull(),
   description: text("description"),
@@ -834,13 +978,120 @@ export const documents = pgTable("Document", {
   fileSize: integer("fileSize"),
   mimeType: text("mimeType"),
 
-  uploadedById: text("uploadedById").references(() => users.id),
+  uploadedById: text("uploadedById").references(() => users.id, {
+    onDelete: "set null",
+  }),
 
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
+});
+
+/**
+ * Deal SIMs (CIMs) - one active per deal opportunity.
+ * Latest upload becomes active; previous is archived.
+ */
+export const dealSims = pgTable(
+  "DealSim",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    dealOpportunityId: text("dealOpportunityId")
+      .notNull()
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }),
+    documentId: text("documentId")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    storageKey: text("storageKey").notNull(), // Path in object storage for worker
+    status: dealSimStatusEnum("status").default("ACTIVE").notNull(),
+    uploadedById: text("uploadedById").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    dealSimDealOppIdx: index("deal_sim_deal_opp_idx").on(
+      table.dealOpportunityId,
+    ),
+    dealSimActiveUniqueIdx: uniqueIndex("deal_sim_active_unique_idx")
+      .on(table.dealOpportunityId)
+      .where(sql`${table.status} = 'ACTIVE'`),
+  }),
+);
+
+export const cimExtractions = pgTable(
+  "CIMExtraction",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    simId: text("simId").references(() => dealSims.id, { onDelete: "cascade" }),
+    documentId: text("documentId").references(() => documents.id, {
+      onDelete: "cascade",
+    }), // Denormalized; primary link is simId
+    dealOpportunityId: text("dealOpportunityId").references(
+      () => dealOpportunities.id,
+      { onDelete: "cascade" },
+    ), // Denormalized for queries
+
+    revenueHistory: jsonb("revenueHistory").$type<Record<string, number>>(),
+    ebitdaHistory: jsonb("ebitdaHistory").$type<Record<string, number>>(),
+    employeeCount: integer("employeeCount"),
+    customerConcentration: doublePrecision("customerConcentration"),
+    capexIntensity: text("capexIntensity"),
+    revenueBreakdown: jsonb("revenueBreakdown").$type<Record<string, number>>(),
+    growthDrivers: text("growthDrivers").array(),
+    keyRisks: text("keyRisks").array(),
+    industryOverview: text("industryOverview"),
+    transactionDetails: text("transactionDetails"),
+
+    source: cimExtractionSourceEnum("source").default("AI").notNull(),
+    updatedByUserId: text("updatedByUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+
+    modelName: text("modelName"),
+    version: text("version"),
+
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    cimExtractionSimIdx: index("cim_extraction_sim_idx").on(table.simId),
+    cimExtractionSimUniqueIdx: uniqueIndex("cim_extraction_sim_unique_idx").on(
+      table.simId,
+    ),
+    cimExtractionDealOppIdx: index("cim_extraction_deal_opp_idx").on(
+      table.dealOpportunityId,
+    ),
+  }),
+);
+
+// Simple dummy tables for migration verification
+export const cimExtractionDebugs = pgTable("CIMExtractionDebug", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const cimExtractionLogs = pgTable("CIMExtractionLog", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  dealOpportunityId: text("dealOpportunityId").references(
+    () => dealOpportunities.id,
+    { onDelete: "cascade" },
+  ),
+  message: text("message"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 // ============================================================================
@@ -852,6 +1103,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   deals: many(deals),
   dealOpportunities: many(dealOpportunities),
+  dealFinancialSnapshots: many(dealFinancialSnapshots),
+  dealRiskFlags: many(dealRiskFlags),
   themes: many(themes),
   userActionLogs: many(userActionLogs),
   documents: many(documents),
@@ -868,6 +1121,7 @@ export const themesRelations = relations(themes, ({ one, many }) => ({
   companies: many(companies),
   themePerformance: many(themePerformance),
   companyCoverage: many(themeCompanyCoverage),
+  documents: many(documents),
 }));
 
 export const thesesRelations = relations(theses, ({ one }) => ({
@@ -972,6 +1226,13 @@ export const dealOpportunitiesRelations = relations(
     }),
     screenerResponses: many(screenerResponses),
     outreach: many(outreach),
+    financialSnapshots: many(dealFinancialSnapshots),
+    riskFlags: many(dealRiskFlags),
+    cimExtraction: one(cimExtractions, {
+      fields: [dealOpportunities.id],
+      references: [cimExtractions.dealOpportunityId],
+    }),
+    dealSims: many(dealSims),
   }),
 );
 
@@ -990,6 +1251,31 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
   notes: many(companyNotes),
   outreach: many(outreach),
   themeCoverage: many(themeCompanyCoverage),
+}));
+
+export const dealFinancialSnapshotsRelations = relations(
+  dealFinancialSnapshots,
+  ({ one }) => ({
+    dealOpportunity: one(dealOpportunities, {
+      fields: [dealFinancialSnapshots.dealOpportunityId],
+      references: [dealOpportunities.id],
+    }),
+    createdBy: one(users, {
+      fields: [dealFinancialSnapshots.createdById],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const dealRiskFlagsRelations = relations(dealRiskFlags, ({ one }) => ({
+  dealOpportunity: one(dealOpportunities, {
+    fields: [dealRiskFlags.dealOpportunityId],
+    references: [dealOpportunities.id],
+  }),
+  createdBy: one(users, {
+    fields: [dealRiskFlags.createdById],
+    references: [users.id],
+  }),
 }));
 
 export const companyNotesRelations = relations(companyNotes, ({ one }) => ({
@@ -1064,6 +1350,45 @@ export const userActionLogsRelations = relations(userActionLogs, ({ one }) => ({
 export const documentsRelations = relations(documents, ({ one }) => ({
   uploadedBy: one(users, {
     fields: [documents.uploadedById],
+    references: [users.id],
+  }),
+  theme: one(themes, {
+    fields: [documents.themeId],
+    references: [themes.id],
+  }),
+}));
+
+export const dealSimsRelations = relations(dealSims, ({ one, many }) => ({
+  dealOpportunity: one(dealOpportunities, {
+    fields: [dealSims.dealOpportunityId],
+    references: [dealOpportunities.id],
+  }),
+  document: one(documents, {
+    fields: [dealSims.documentId],
+    references: [documents.id],
+  }),
+  uploadedBy: one(users, {
+    fields: [dealSims.uploadedById],
+    references: [users.id],
+  }),
+  cimExtractions: many(cimExtractions),
+}));
+
+export const cimExtractionsRelations = relations(cimExtractions, ({ one }) => ({
+  sim: one(dealSims, {
+    fields: [cimExtractions.simId],
+    references: [dealSims.id],
+  }),
+  document: one(documents, {
+    fields: [cimExtractions.documentId],
+    references: [documents.id],
+  }),
+  dealOpportunity: one(dealOpportunities, {
+    fields: [cimExtractions.dealOpportunityId],
+    references: [dealOpportunities.id],
+  }),
+  updatedBy: one(users, {
+    fields: [cimExtractions.updatedByUserId],
     references: [users.id],
   }),
 }));
@@ -1182,6 +1507,41 @@ export const OutreachType = {
 } as const;
 export type OutreachType = (typeof OutreachType)[keyof typeof OutreachType];
 
+export const DealFinancialSnapshotSource = {
+  LISTING: "LISTING",
+  BROKER_CALL: "BROKER_CALL",
+  CIM: "CIM",
+  MANAGEMENT_MEETING: "MANAGEMENT_MEETING",
+  DILIGENCE: "DILIGENCE",
+  MANUAL: "MANUAL",
+} as const;
+export type DealFinancialSnapshotSource =
+  (typeof DealFinancialSnapshotSource)[keyof typeof DealFinancialSnapshotSource];
+
+export const DealRiskType = {
+  CUSTOMER_CONCENTRATION: "CUSTOMER_CONCENTRATION",
+  CAPEX: "CAPEX",
+  QUALITY_OF_EARNINGS: "QUALITY_OF_EARNINGS",
+  WORKING_CAPITAL: "WORKING_CAPITAL",
+  OTHER: "OTHER",
+} as const;
+export type DealRiskType = (typeof DealRiskType)[keyof typeof DealRiskType];
+
+export const DealRiskSeverity = {
+  LOW: "LOW",
+  MEDIUM: "MEDIUM",
+  HIGH: "HIGH",
+} as const;
+export type DealRiskSeverity =
+  (typeof DealRiskSeverity)[keyof typeof DealRiskSeverity];
+
+export const DealRiskSource = {
+  SYSTEM: "SYSTEM",
+  USER: "USER",
+} as const;
+export type DealRiskSource =
+  (typeof DealRiskSource)[keyof typeof DealRiskSource];
+
 export const DocumentCategory = {
   FINANCIALS: "FINANCIALS",
   LEGAL: "LEGAL",
@@ -1198,6 +1558,14 @@ export const DocumentCategory = {
   RESEARCH: "RESEARCH",
   PROSPECTUS: "PROSPECTUS",
   OTHER: "OTHER",
+  // Firm-level global document categories
+  OPERATING_PLAYBOOK: "OPERATING_PLAYBOOK",
+  INVESTMENT_MEMO: "INVESTMENT_MEMO",
+  IC_TEMPLATE: "IC_TEMPLATE",
+  INDUSTRY_RESEARCH: "INDUSTRY_RESEARCH",
+  VALUE_CREATION_PLAYBOOK: "VALUE_CREATION_PLAYBOOK",
+  PAST_DEAL_ANALYSIS: "PAST_DEAL_ANALYSIS",
+  DUE_DILIGENCE_CHECKLIST: "DUE_DILIGENCE_CHECKLIST",
 } as const;
 export type DocumentCategory =
   (typeof DocumentCategory)[keyof typeof DocumentCategory];
@@ -1243,6 +1611,11 @@ export type NewScreenerResponse = typeof screenerResponses.$inferInsert;
 
 export type DealOpportunity = typeof dealOpportunities.$inferSelect;
 export type NewDealOpportunity = typeof dealOpportunities.$inferInsert;
+export type DealFinancialSnapshot = typeof dealFinancialSnapshots.$inferSelect;
+export type NewDealFinancialSnapshot =
+  typeof dealFinancialSnapshots.$inferInsert;
+export type DealRiskFlag = typeof dealRiskFlags.$inferSelect;
+export type NewDealRiskFlag = typeof dealRiskFlags.$inferInsert;
 
 export type Company = typeof companies.$inferSelect;
 export type NewCompany = typeof companies.$inferInsert;
@@ -1273,6 +1646,12 @@ export type NewUserActionLog = typeof userActionLogs.$inferInsert;
 
 export type Document = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;
+
+export type DealSim = typeof dealSims.$inferSelect;
+export type NewDealSim = typeof dealSims.$inferInsert;
+
+export type CIMExtraction = typeof cimExtractions.$inferSelect;
+export type NewCIMExtraction = typeof cimExtractions.$inferInsert;
 
 export type Outreach = typeof outreach.$inferSelect;
 export type NewOutreach = typeof outreach.$inferInsert;

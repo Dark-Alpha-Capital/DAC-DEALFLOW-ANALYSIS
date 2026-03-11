@@ -19,6 +19,10 @@ import {
   themePerformance,
   theses,
   themeCompanyCoverage,
+  cimExtractions,
+  dealSims,
+  dealFinancialSnapshots,
+  dealRiskFlags,
   type Deal,
   type Lead,
   type Company,
@@ -146,9 +150,9 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       .where(
         dealOppIds.length > 0
           ? or(
-              eq(outreach.companyId, id),
-              inArray(outreach.dealOpportunityId, dealOppIds),
-            )
+            eq(outreach.companyId, id),
+            inArray(outreach.dealOpportunityId, dealOppIds),
+          )
           : eq(outreach.companyId, id),
       )
       .orderBy(desc(outreach.createdAt));
@@ -228,6 +232,44 @@ export const GetDealOpportunityByLegacyDealId = async (
   return opp ?? null;
 };
 
+export const GetLatestDealFinancialSnapshotByDealOpportunityId = async (
+  dealOpportunityId: string,
+) => {
+  const [snapshot] = await db
+    .select()
+    .from(dealFinancialSnapshots)
+    .where(eq(dealFinancialSnapshots.dealOpportunityId, dealOpportunityId))
+    .orderBy(
+      desc(dealFinancialSnapshots.createdAt),
+      desc(dealFinancialSnapshots.id),
+    )
+    .limit(1);
+  return snapshot ?? null;
+};
+
+export const GetDealFinancialSnapshotsByDealOpportunityId = async (
+  dealOpportunityId: string,
+) => {
+  return db
+    .select()
+    .from(dealFinancialSnapshots)
+    .where(eq(dealFinancialSnapshots.dealOpportunityId, dealOpportunityId))
+    .orderBy(
+      desc(dealFinancialSnapshots.createdAt),
+      desc(dealFinancialSnapshots.id),
+    );
+};
+
+export const GetDealRiskFlagsByDealOpportunityId = async (
+  dealOpportunityId: string,
+) => {
+  return db
+    .select()
+    .from(dealRiskFlags)
+    .where(eq(dealRiskFlags.dealOpportunityId, dealOpportunityId))
+    .orderBy(desc(dealRiskFlags.createdAt), desc(dealRiskFlags.id));
+};
+
 /**
  * Get DealOpportunities linked to a lead, with company joined for display.
  */
@@ -264,10 +306,10 @@ export const GetDealOpportunitiesByLeadId = async (leadId: string) => {
     company:
       company && company.name
         ? {
-            name: company.name,
-            industry: company.industry,
-            location: company.location,
-          }
+          name: company.name,
+          industry: company.industry,
+          location: company.location,
+        }
         : null,
   }));
 };
@@ -294,6 +336,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
       aiScreenings: [] as Awaited<
         ReturnType<typeof getAllDealReasoningsWithScreenerName>
       >,
+      cimExtraction: null,
     };
   }
 
@@ -312,6 +355,10 @@ export const GetDealWithAllRelations = async (uid: string) => {
     dealContacts,
     outreachRows,
     companyNotesRows,
+    cimExtraction,
+    latestSnapshot,
+    financialSnapshots,
+    riskFlags,
   ] = await Promise.all([
     getDealDocuments(opp.id),
     db
@@ -378,21 +425,36 @@ export const GetDealWithAllRelations = async (uid: string) => {
       .from(companyNotes)
       .where(eq(companyNotes.companyId, opp.companyId))
       .orderBy(desc(companyNotes.createdAt)),
+    GetCIMExtractionByDealOpportunityId(opp.id).catch(() => null),
+    GetLatestDealFinancialSnapshotByDealOpportunityId(opp.id),
+    GetDealFinancialSnapshotsByDealOpportunityId(opp.id),
+    GetDealRiskFlagsByDealOpportunityId(opp.id),
   ]);
+
+  const resolvedRevenue =
+    latestSnapshot?.revenue ?? opp.revenue ?? company?.revenueEstimate ?? 0;
+  const resolvedEbitda =
+    latestSnapshot?.ebitda ?? opp.ebitda ?? company?.ebitdaEstimate ?? 0;
+  const resolvedEbitdaMargin =
+    latestSnapshot?.ebitdaMargin ??
+    opp.ebitdaMargin ??
+    company?.ebitdaMarginEstimate ??
+    0;
+  const resolvedAskingPrice = latestSnapshot?.askingPrice ?? opp.askingPrice;
 
   const dealView: Deal & { id: string } = {
     id: opp.id,
     dealCaption: company?.name ?? "",
-    revenue: opp.revenue ?? company?.revenueEstimate ?? 0,
-    ebitda: opp.ebitda ?? company?.ebitdaEstimate ?? 0,
-    ebitdaMargin: opp.ebitdaMargin ?? company?.ebitdaMarginEstimate ?? 0,
+    revenue: resolvedRevenue,
+    ebitda: resolvedEbitda,
+    ebitdaMargin: resolvedEbitdaMargin,
     brokerage: opp.brokerage ?? "",
     industry: company?.industry ?? "",
     companyLocation: company?.location ?? null,
     sourceWebsite: opp.sourceWebsite ?? "",
     dealType: opp.dealType,
     status: opp.status,
-    askingPrice: opp.askingPrice,
+    askingPrice: resolvedAskingPrice,
     grossRevenue: company?.revenueEstimate ?? null,
     firstName: opp.brokerFirstName,
     lastName: opp.brokerLastName,
@@ -427,6 +489,10 @@ export const GetDealWithAllRelations = async (uid: string) => {
     companyDocuments: companyDocs ?? [],
     dealDocuments: dealDocs ?? [],
     companyNotes: companyNotesRows ?? [],
+    cimExtraction: cimExtraction ?? null,
+    latestFinancialSnapshot: latestSnapshot ?? null,
+    financialSnapshots: financialSnapshots ?? [],
+    riskFlags: riskFlags ?? [],
   };
 };
 
@@ -441,6 +507,75 @@ async function getDealDocuments(dealOpportunityId: string) {
       ),
     );
 }
+
+/**
+ * Get active SIM for a deal opportunity.
+ */
+export const getActiveSimForDeal = async (dealOpportunityId: string) => {
+  const [row] = await db
+    .select()
+    .from(dealSims)
+    .where(
+      and(
+        eq(dealSims.dealOpportunityId, dealOpportunityId),
+        eq(dealSims.status, "ACTIVE"),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+};
+
+/**
+ * Get CIM extraction for the active SIM of a deal opportunity.
+ * Falls back to legacy extraction by dealOpportunityId if no active sim.
+ */
+export const GetCIMExtractionByDealOpportunityId = async (
+  dealOpportunityId: string,
+) => {
+  try {
+    const activeSim = await getActiveSimForDeal(dealOpportunityId);
+    if (activeSim) {
+      const [row] = await db
+        .select({
+          extraction: cimExtractions,
+          documentFileName: documents.fileName,
+          documentCreatedAt: documents.createdAt,
+        })
+        .from(cimExtractions)
+        .innerJoin(dealSims, eq(cimExtractions.simId, dealSims.id))
+        .leftJoin(documents, eq(dealSims.documentId, documents.id))
+        .where(eq(cimExtractions.simId, activeSim.id))
+        .limit(1);
+      return row?.extraction
+        ? {
+          ...row.extraction,
+          documentFileName: row.documentFileName,
+          documentCreatedAt: row.documentCreatedAt,
+        }
+        : null;
+    }
+    // Legacy: extraction by dealOpportunityId (pre-migration or denormalized)
+    const [legacyRow] = await db
+      .select({
+        extraction: cimExtractions,
+        documentFileName: documents.fileName,
+        documentCreatedAt: documents.createdAt,
+      })
+      .from(cimExtractions)
+      .leftJoin(documents, eq(cimExtractions.documentId, documents.id))
+      .where(eq(cimExtractions.dealOpportunityId, dealOpportunityId))
+      .limit(1);
+    return legacyRow?.extraction
+      ? {
+        ...legacyRow.extraction,
+        documentFileName: legacyRow.documentFileName,
+        documentCreatedAt: legacyRow.documentCreatedAt,
+      }
+      : null;
+  } catch {
+    return null;
+  }
+};
 
 interface GetDealsResult {
   data: Deal[];
@@ -559,9 +694,7 @@ export const GetAllDeals = async ({
     );
   }
   if (showReviewed) {
-    conditions.push(
-      inArray(deals.reviewState, ["REVIEWED", "PUBLISHED"]),
-    );
+    conditions.push(inArray(deals.reviewState, ["REVIEWED", "PUBLISHED"]));
   }
   if (showPublished) {
     conditions.push(eq(deals.reviewState, "PUBLISHED"));
@@ -644,7 +777,10 @@ export async function getAllScreeners() {
           .as("totalWeight"),
       })
       .from(screeners)
-      .leftJoin(screenerQuestions, eq(screenerQuestions.screenerId, screeners.id))
+      .leftJoin(
+        screenerQuestions,
+        eq(screenerQuestions.screenerId, screeners.id),
+      )
       .groupBy(
         screeners.id,
         screeners.name,
@@ -705,7 +841,10 @@ export async function getScreenerQuestions(screenerId: string) {
       })
       .from(screenerQuestions)
       .where(eq(screenerQuestions.screenerId, screenerId))
-      .orderBy(asc(screenerQuestions.position), asc(screenerQuestions.createdAt));
+      .orderBy(
+        asc(screenerQuestions.position),
+        asc(screenerQuestions.createdAt),
+      );
   } catch (error) {
     console.error("Error fetching screener questions", error);
     return [];
@@ -1121,7 +1260,9 @@ export const GetTopRankedDeals = async (
 
     return rows
       .filter(
-        (row): row is typeof row & {
+        (
+          row,
+        ): row is typeof row & {
           companyName: string;
           score: number;
           screenedAt: Date;
@@ -1241,6 +1382,46 @@ export const GetCompanyDocuments = async (companyId: string) => {
   }
 };
 
+/**
+ * Get documents attached to a theme
+ */
+export const GetThemeDocuments = async (themeId: string) => {
+  try {
+    const docs = await db
+      .select()
+      .from(documents)
+      .where(
+        and(
+          eq(documents.entityType, "THEME"),
+          eq(documents.entityId, themeId),
+        ),
+      );
+
+    return docs;
+  } catch (error) {
+    console.error("Failed query: select documents for theme", error);
+    throw error;
+  }
+};
+
+/**
+ * Get firm-level (global) documents
+ */
+export const GetGlobalDocuments = async () => {
+  try {
+    const docs = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.entityType, "GLOBAL"))
+      .orderBy(desc(documents.createdAt));
+
+    return docs;
+  } catch (error) {
+    console.error("Failed query: select global documents", error);
+    throw error;
+  }
+};
+
 interface GetAllDocumentsResult {
   data: (typeof documents.$inferSelect)[];
   totalCount: number;
@@ -1253,22 +1434,42 @@ interface GetAllDocumentsResult {
 export const GetAllDocuments = async ({
   offset = 0,
   limit = 50,
+  entityType,
 }: {
   offset?: number;
   limit?: number;
+  entityType?: "LEAD" | "COMPANY" | "DEAL_OPPORTUNITY" | "THEME" | "GLOBAL";
 }): Promise<GetAllDocumentsResult> => {
   try {
+    const whereClause = entityType
+      ? eq(documents.entityType, entityType)
+      : undefined;
+
     const [data, countResult] = await Promise.all([
-      db
-        .select()
-        .from(documents)
-        .orderBy(desc(documents.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.select({ count: count() }).from(documents),
+      whereClause
+        ? db
+          .select()
+          .from(documents)
+          .where(whereClause)
+          .orderBy(desc(documents.createdAt))
+          .limit(limit)
+          .offset(offset)
+        : db
+          .select()
+          .from(documents)
+          .orderBy(desc(documents.createdAt))
+          .limit(limit)
+          .offset(offset),
+      whereClause
+        ? db
+          .select({ count: count() })
+          .from(documents)
+          .where(whereClause)
+        : db.select({ count: count() }).from(documents),
     ]);
 
-    const totalCount = countResult[0]?.count ?? 0;
+    const rawCount = countResult[0]?.count ?? 0;
+    const totalCount = Number(rawCount);
     const totalPages = Math.ceil(totalCount / limit);
 
     return { data, totalCount, totalPages };
@@ -1371,13 +1572,17 @@ export const GetAllThemes = async ({
       minCapitalPriorityScore != null &&
       Number.isFinite(minCapitalPriorityScore)
     ) {
-      conditions.push(gte(themes.capitalPriorityScore, minCapitalPriorityScore));
+      conditions.push(
+        gte(themes.capitalPriorityScore, minCapitalPriorityScore),
+      );
     }
     if (
       maxCapitalPriorityScore != null &&
       Number.isFinite(maxCapitalPriorityScore)
     ) {
-      conditions.push(lte(themes.capitalPriorityScore, maxCapitalPriorityScore));
+      conditions.push(
+        lte(themes.capitalPriorityScore, maxCapitalPriorityScore),
+      );
     }
     if (minConfidenceScore != null && Number.isFinite(minConfidenceScore)) {
       conditions.push(gte(themes.confidenceScore, minConfidenceScore));
@@ -1396,10 +1601,7 @@ export const GetAllThemes = async ({
         .orderBy(desc(themes.createdAt))
         .limit(limit)
         .offset(offset),
-      db
-        .select({ count: count() })
-        .from(themes)
-        .where(whereClause),
+      db.select({ count: count() }).from(themes).where(whereClause),
     ]);
 
     const totalCount = countResult[0]?.count ?? 0;
@@ -1599,10 +1801,10 @@ export const GetDealOpportunitiesWithScreenings = async (): Promise<
       const existing = byOpp.get(row.opp.id);
       const company = row.companyName
         ? {
-            name: row.companyName,
-            industry: row.companyIndustry,
-            location: row.companyLocation,
-          }
+          name: row.companyName,
+          industry: row.companyIndustry,
+          location: row.companyLocation,
+        }
         : null;
 
       if (!existing) {

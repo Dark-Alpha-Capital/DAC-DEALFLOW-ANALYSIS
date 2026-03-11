@@ -123,7 +123,7 @@ export function DealsDataTable({ columns, data }: DealsDataTableProps) {
                 <TableRow
                   key={row.id}
                   className="hover:bg-muted/60 cursor-pointer"
-                  onClick={() => router.push(`/deals/${row.original.opp.id}`)}
+                  onClick={() => router.push(`/deal-opportunities/${row.original.opp.id}`)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
@@ -147,7 +147,7 @@ export function DealsDataTable({ columns, data }: DealsDataTableProps) {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No deals found.
+                  No deal opportunities found.
                 </TableCell>
               </TableRow>
             )}

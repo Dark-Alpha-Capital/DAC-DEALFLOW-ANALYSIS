@@ -111,7 +111,7 @@ export function DealOpportunitiesTable({
                   <td className="py-3">
                     {!isCurrent && (
                       <Button size="sm" variant="ghost" asChild>
-                        <Link href={`/deals/${opp.id}`} className="gap-1">
+                        <Link href={`/deal-opportunities/${opp.id}`} className="gap-1">
                           <Eye className="h-3.5 w-3.5" />
                           View
                         </Link>

@@ -61,13 +61,16 @@ export const fetcher = (...args: Parameters<typeof fetch>) =>
   fetch(...args).then((res) => res.json());
 
 export function formatCurrency(value: number): string {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "—";
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 0,
-    notation: value >= 1000000 ? "compact" : "standard",
-    compactDisplay: "short",
-  }).format(value);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+    notation: "standard",
+  }).format(numeric);
 }
 
 const ALLOWED_HTTP_PROTOCOLS = new Set(["http:", "https:"]);

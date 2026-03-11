@@ -254,7 +254,7 @@ function TopDeals({ data }: { data: TopDeal[] }) {
               <TableRow key={row.dealOpportunityId}>
                 <TableCell className="font-medium">#{index + 1}</TableCell>
                 <TableCell>
-                  <Link href={`/deals/${row.dealOpportunityId}`} className="hover:underline">
+                  <Link href={`/deal-opportunities/${row.dealOpportunityId}`} className="hover:underline">
                     {row.companyName}
                   </Link>
                 </TableCell>
@@ -339,7 +339,7 @@ export function GlobalDashboard({ pipeline, themes, topDeals }: GlobalDashboardP
 
       <TabsContent value="deals" className="mt-0 space-y-4">
         <SectionHeader
-          title="Deals"
+          title="Deal opportunities"
           description="Top opportunities ranked by deterministic screening score."
         />
         <TopDeals data={topDeals} />

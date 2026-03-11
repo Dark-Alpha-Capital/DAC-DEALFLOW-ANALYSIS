@@ -52,6 +52,20 @@ export const fileUploadQueue = new Queue(QUEUE_NAMES.FILE_UPLOAD, {
   },
 });
 
+// CIM extraction queue - for CIM PDF extraction jobs
+export const cimExtractionQueue = new Queue(QUEUE_NAMES.CIM_EXTRACTION, {
+  connection,
+  defaultJobOptions: {
+    removeOnComplete: 100,
+    removeOnFail: 100,
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 1000,
+    },
+  },
+});
+
 // Job data types
 export interface ScreenDealJobData {
   jobId: string;
@@ -79,9 +93,9 @@ export interface FileUploadJobData {
   fileSize: number; // File size in bytes
   mimeType: string; // MIME type of the file
   userId: string; // Required - user who uploaded the file
-  // Entity context (deal-only)
-  entityType: "DEAL";
-  entityId: string; // References deals.id
+  // Entity context
+  entityType: "DEAL" | "DEAL_OPPORTUNITY";
+  entityId: string; // References deals.id or dealOpportunities.id
   entityMetadata: EntityMetadata;
   // Vector store embedding control
   embedInVectorStore?: boolean;
@@ -103,6 +117,14 @@ export interface FileUploadJobData {
   googleFileSearchResult?: {
     documentName: string | null;
   };
+}
+
+export interface CIMExtractionJobData {
+  simId: string;
+  documentId?: string;
+  dealOpportunityId?: string;
+  filePath: string;
+  userId?: string;
 }
 
 // Re-export types and constants from queue-types for backward compatibility
@@ -130,6 +152,8 @@ export async function getJobStatus(queueName: string, jobId: string) {
     queue = screenDealQueue;
   } else if (queueName === QUEUE_NAMES.FILE_UPLOAD) {
     queue = fileUploadQueue;
+  } else if (queueName === QUEUE_NAMES.CIM_EXTRACTION) {
+    queue = cimExtractionQueue;
   } else {
     throw new Error(`Unknown queue name: ${queueName}`);
   }
@@ -209,9 +233,10 @@ export async function getAllUserJobs(
   ];
 
   // Fetch jobs from all queues in parallel
-  const [screenDealJobs, fileUploadJobs] = await Promise.all([
+  const [screenDealJobs, fileUploadJobs, cimExtractionJobs] = await Promise.all([
     screenDealQueue.getJobs(jobStates, 0, 1000),
     fileUploadQueue.getJobs(jobStates, 0, 1000),
+    cimExtractionQueue.getJobs(jobStates, 0, 1000),
   ]);
 
   // Combine and filter by userId
@@ -224,6 +249,10 @@ export async function getAllUserJobs(
       job,
       queueName: QUEUE_NAMES.FILE_UPLOAD,
     })),
+    ...cimExtractionJobs.map((job) => ({
+      job,
+      queueName: QUEUE_NAMES.CIM_EXTRACTION,
+    })),
   ];
 
   // Filter by userId and transform to JobWithMetadata
@@ -232,9 +261,11 @@ export async function getAllUserJobs(
   for (const { job, queueName } of allJobs) {
     const jobData = job.data as
       | ScreenDealJobData
-      | FileUploadJobData;
+      | FileUploadJobData
+      | CIMExtractionJobData;
 
-    if (jobData.userId === userId) {
+    const jobUserId = "userId" in jobData ? jobData.userId : undefined;
+    if (jobUserId === userId) {
       const state = (await job.getState()) as JobStatus;
       const progress = (job.progress as JobProgressData | undefined) || null;
 
@@ -248,7 +279,7 @@ export async function getAllUserJobs(
         returnvalue: job.returnvalue,
         failedReason: job.failedReason || null,
         attemptsMade: job.attemptsMade,
-        userId: jobData.userId,
+        userId: jobUserId ?? "",
         dealId: "dealId" in jobData ? jobData.dealId : undefined,
         fileName: "fileName" in jobData ? jobData.fileName : undefined,
         screenerId: "screenerId" in jobData ? jobData.screenerId : undefined,
@@ -297,6 +328,8 @@ export async function deleteUserJob(
     queue = screenDealQueue;
   } else if (queueName === QUEUE_NAMES.FILE_UPLOAD) {
     queue = fileUploadQueue;
+  } else if (queueName === QUEUE_NAMES.CIM_EXTRACTION) {
+    queue = cimExtractionQueue;
   } else {
     throw new Error(`Unknown queue name: ${queueName}`);
   }

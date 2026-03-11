@@ -41,11 +41,15 @@ const STAGE_LABELS: Record<string, string> = {
 interface DealPipelineSectionProps {
   dealId: string;
   currentOpportunity: DealOpportunity;
+  compact?: boolean;
+  inline?: boolean;
 }
 
 export function DealPipelineSection({
   dealId,
   currentOpportunity,
+  compact = false,
+  inline = false,
 }: DealPipelineSectionProps) {
   const router = useRouter();
   const trpc = useTRPC();
@@ -53,7 +57,7 @@ export function DealPipelineSection({
   const currentLabel = STAGE_LABELS[currentStage] ?? currentStage;
 
   const { mutate: updateStage, isPending } = useMutation(
-    trpc.deals.updateOpportunityStage.mutationOptions({
+    trpc.dealOpportunities.updateOpportunityStage.mutationOptions({
       onSuccess: () => {
         toast.success("Deal stage updated");
         router.refresh();
@@ -65,23 +69,40 @@ export function DealPipelineSection({
   );
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-base font-semibold">Deal Pipeline Stage</h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Current stage: <span className="font-medium text-foreground">{currentLabel}</span>
-        </p>
-      </div>
-      <div className="space-y-2">
-        <Label className="text-sm">Change stage</Label>
+    <div className={compact ? "space-y-2" : "space-y-4"}>
+      {!compact && (
+        <div>
+          <h2 className="text-base font-semibold">Deal Pipeline Stage</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Current stage:{" "}
+            <span className="text-foreground font-medium">{currentLabel}</span>
+          </p>
+        </div>
+      )}
+      <div
+        className={
+          inline
+            ? "flex items-center gap-2"
+            : compact
+              ? "space-y-1"
+              : "space-y-2"
+        }
+      >
+        <Label className={inline ? "text-xs whitespace-nowrap" : "text-sm"}>
+          {compact ? "Listing stage" : "Change stage"}
+        </Label>
         <Select
           value={currentStage}
           onValueChange={(value) =>
-            !isPending && updateStage({ id: dealId, stage: value as (typeof STAGE_ORDER)[number] })
+            !isPending &&
+            updateStage({
+              id: dealId,
+              stage: value as (typeof STAGE_ORDER)[number],
+            })
           }
           disabled={isPending}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className={inline ? "w-[180px]" : "w-[200px]"}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
