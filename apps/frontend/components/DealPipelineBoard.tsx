@@ -8,7 +8,7 @@ import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import DealDetailsPanel from "@/components/DealDetailsPanel";
 
 type DealOppRow = {
@@ -209,7 +209,7 @@ function DealPipelineCard({
           <div>
             <p className="text-muted-foreground text-[10px]">Revenue</p>
             <p className="text-[11px] font-medium tabular-nums">
-              {row.opp.revenue.toLocaleString()}
+              {formatCurrency(row.opp.revenue)}
             </p>
           </div>
         )}
@@ -217,7 +217,7 @@ function DealPipelineCard({
           <div>
             <p className="text-muted-foreground text-[10px]">EBITDA</p>
             <p className="text-[11px] font-medium tabular-nums">
-              {row.opp.ebitda.toLocaleString()}
+              {formatCurrency(row.opp.ebitda)}
             </p>
           </div>
         )}

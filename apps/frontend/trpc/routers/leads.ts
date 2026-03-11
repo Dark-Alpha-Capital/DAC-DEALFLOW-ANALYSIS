@@ -13,6 +13,7 @@ import db, {
 import { convertLeadToCompanySchema, leadFormSchema } from "@/lib/schemas";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { upsertDealOpportunityScreening } from "@repo/deal-screening";
+import { createDealFinancialSnapshot } from "@repo/db/mutations";
 
 const createLeadSchema = leadFormSchema;
 
@@ -39,27 +40,38 @@ function scoreDuplicateCandidate(
   const reasons: string[] = [];
   let score = 0;
 
-  const leadNormalized = normalizeText(lead.normalizedCompanyName || lead.rawTitle);
-  const companyNormalized = normalizeText(company.normalizedName || company.name);
+  const leadNormalized = normalizeText(
+    lead.normalizedCompanyName || lead.rawTitle,
+  );
+  const companyNormalized = normalizeText(
+    company.normalizedName || company.name,
+  );
   const leadTitle = normalizeText(lead.rawTitle);
   const companyName = normalizeText(company.name);
 
-  if (leadNormalized && companyNormalized && leadNormalized === companyNormalized) {
+  if (
+    leadNormalized &&
+    companyNormalized &&
+    leadNormalized === companyNormalized
+  ) {
     score += 0.75;
     reasons.push("Exact normalized-name match");
   } else {
-    if (leadNormalized && companyNormalized && (
-      leadNormalized.includes(companyNormalized) ||
-      companyNormalized.includes(leadNormalized)
-    )) {
+    if (
+      leadNormalized &&
+      companyNormalized &&
+      (leadNormalized.includes(companyNormalized) ||
+        companyNormalized.includes(leadNormalized))
+    ) {
       score += 0.35;
       reasons.push("Strong name overlap");
     }
 
-    if (leadTitle && companyName && (
-      leadTitle.includes(companyName) ||
-      companyName.includes(leadTitle)
-    )) {
+    if (
+      leadTitle &&
+      companyName &&
+      (leadTitle.includes(companyName) || companyName.includes(leadTitle))
+    ) {
       score += 0.2;
       reasons.push("Title/name overlap");
     }
@@ -217,7 +229,8 @@ export const leadsRouter = createTRPCRouter({
           payload.processedAt = now;
           break;
         case "DUPLICATE":
-          if (!input.companyId) throw new Error("Company required for DUPLICATE");
+          if (!input.companyId)
+            throw new Error("Company required for DUPLICATE");
           const [company] = await db
             .select({ id: companies.id, deletedAt: companies.deletedAt })
             .from(companies)
@@ -235,10 +248,7 @@ export const leadsRouter = createTRPCRouter({
           break;
       }
 
-      await db
-        .update(leads)
-        .set(payload)
-        .where(eq(leads.id, lead.id));
+      await db.update(leads).set(payload).where(eq(leads.id, lead.id));
 
       revalidatePath("/leads");
       revalidatePath(`/leads/${input.leadId}`);
@@ -487,11 +497,11 @@ export const leadsRouter = createTRPCRouter({
         const [company] = insertedCompany
           ? [insertedCompany]
           : await tx
-            .select()
-            .from(companies)
-            .where(eq(companies.firstSeenFromLeadId, lead.id))
-            .orderBy(desc(companies.createdAt), desc(companies.id))
-            .limit(1);
+              .select()
+              .from(companies)
+              .where(eq(companies.firstSeenFromLeadId, lead.id))
+              .orderBy(desc(companies.createdAt), desc(companies.id))
+              .limit(1);
 
         if (!company) {
           throw new Error("Failed to resolve company from lead conversion");
@@ -504,7 +514,9 @@ export const leadsRouter = createTRPCRouter({
             .where(eq(companies.id, company.id))
             .returning();
           if (!restoredCompany) {
-            throw new Error("Failed to restore previously soft-deleted company");
+            throw new Error(
+              "Failed to restore previously soft-deleted company",
+            );
           }
         }
 
@@ -517,26 +529,29 @@ export const leadsRouter = createTRPCRouter({
               eq(dealOpportunities.leadId, lead.id),
             ),
           )
-          .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id))
+          .orderBy(
+            desc(dealOpportunities.createdAt),
+            desc(dealOpportunities.id),
+          )
           .limit(1);
 
         const [createdOpp] = existingOpp
           ? [null]
           : await tx
-            .insert(dealOpportunities)
-            .values({
-              companyId: company.id,
-              leadId: lead.id,
-              sourceWebsite: lead.sourceWebsite,
-              brokerage: lead.brokerage,
-              revenue: lead.revenue ?? null,
-              ebitda: lead.ebitda ?? null,
-              askingPrice: lead.askingPrice ?? null,
-              dealTeaser: lead.rawTitle,
-              description: lead.rawDescription,
-              dealType: "MANUAL",
-            })
-            .returning();
+              .insert(dealOpportunities)
+              .values({
+                companyId: company.id,
+                leadId: lead.id,
+                sourceWebsite: lead.sourceWebsite,
+                brokerage: lead.brokerage,
+                revenue: null,
+                ebitda: null,
+                askingPrice: null,
+                dealTeaser: lead.rawTitle,
+                description: lead.rawDescription,
+                dealType: "MANUAL",
+              })
+              .returning();
 
         if (lead.status !== "PROCESSED" || !lead.processedAt) {
           await tx
@@ -554,6 +569,10 @@ export const leadsRouter = createTRPCRouter({
           companyId: company.id,
           dealOpportunityId: existingOpp?.id ?? createdOpp?.id ?? null,
           alreadyConverted: !insertedCompany,
+          createdOpportunityFromLead: Boolean(createdOpp),
+          leadRevenue: lead.revenue ?? null,
+          leadEbitda: lead.ebitda ?? null,
+          leadAskingPrice: lead.askingPrice ?? null,
         };
       });
 
@@ -566,6 +585,20 @@ export const leadsRouter = createTRPCRouter({
       revalidateTag(`company-${result.companyId}`, "max");
 
       if (result.dealOpportunityId) {
+        if (
+          result.createdOpportunityFromLead &&
+          (result.leadRevenue != null ||
+            result.leadEbitda != null ||
+            result.leadAskingPrice != null)
+        ) {
+          await createDealFinancialSnapshot({
+            dealOpportunityId: result.dealOpportunityId,
+            revenue: result.leadRevenue,
+            ebitda: result.leadEbitda,
+            askingPrice: result.leadAskingPrice,
+            source: "LISTING",
+          });
+        }
         await upsertDealOpportunityScreening(result.dealOpportunityId);
       }
 

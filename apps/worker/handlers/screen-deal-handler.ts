@@ -5,11 +5,13 @@ import db, {
   Sentiment,
   deals,
   dealOpportunities,
+  dealFinancialSnapshots,
   companies,
   screeners,
   aiScreenings,
   eq,
   and,
+  desc,
 } from "@repo/db";
 import { openai } from "../lib/ai/available-models";
 import { splitContentIntoChunks } from "../lib/utils";
@@ -94,7 +96,7 @@ export interface ScreenDealResult {
  * This is idempotent: running the job multiple times produces the same result.
  */
 export async function screenDealHandler(
-  job: Job<ScreenDealJobData>
+  job: Job<ScreenDealJobData>,
 ): Promise<ScreenDealResult> {
   const { dealId, screenerId, jobId } = job.data;
   let step = job.data.step ?? ScreenDealStep.FetchData;
@@ -107,7 +109,10 @@ export async function screenDealHandler(
       // Step 1: Fetch deal and screener data
       // ========================================
       case ScreenDealStep.FetchData: {
-        await job.updateProgress({ step: "Fetching deal information", percentage: 5 });
+        await job.updateProgress({
+          step: "Fetching deal information",
+          percentage: 5,
+        });
         console.log(`[screen-deal] ${jobId}: Fetching data`);
 
         // Resolve dealId to DealOpportunity + Company (or fallback to legacy Deal)
@@ -120,28 +125,54 @@ export async function screenDealHandler(
         let dealOpportunityIdForSave: string;
 
         if (opp) {
-          const [company] = await db
-            .select()
-            .from(companies)
-            .where(eq(companies.id, opp.companyId));
+          const [company, latestSnapshot] = await Promise.all([
+            db
+              .select()
+              .from(companies)
+              .where(eq(companies.id, opp.companyId))
+              .then((rows) => rows[0]),
+            db
+              .select()
+              .from(dealFinancialSnapshots)
+              .where(eq(dealFinancialSnapshots.dealOpportunityId, opp.id))
+              .orderBy(
+                desc(dealFinancialSnapshots.createdAt),
+                desc(dealFinancialSnapshots.id),
+              )
+              .limit(1)
+              .then((rows) => rows[0]),
+          ]);
+
           fetchedDeal = {
             id: opp.id,
             title: null,
             dealCaption: company?.name ?? opp.dealTeaser ?? "",
             dealTeaser: opp.dealTeaser,
-            askingPrice: opp.askingPrice,
+            askingPrice: latestSnapshot?.askingPrice ?? opp.askingPrice,
             dealType: opp.dealType,
             grossRevenue: company?.revenueEstimate ?? null,
             tags: opp.tags,
             brokerage: opp.brokerage,
-            ebitdaMargin: company?.ebitdaMarginEstimate ?? null,
-            ebitda: company?.ebitdaEstimate ?? null,
-            revenue: company?.revenueEstimate ?? null,
+            ebitdaMargin:
+              latestSnapshot?.ebitdaMargin ??
+              opp.ebitdaMargin ??
+              company?.ebitdaMarginEstimate ??
+              null,
+            ebitda:
+              latestSnapshot?.ebitda ??
+              opp.ebitda ??
+              company?.ebitdaEstimate ??
+              null,
+            revenue:
+              latestSnapshot?.revenue ??
+              opp.revenue ??
+              company?.revenueEstimate ??
+              null,
           };
           dealOpportunityIdForSave = opp.id;
         } else {
           throw new Error(
-            `Deal ${dealId} not migrated. Run db:migrate-deals first.`
+            `Deal ${dealId} not migrated. Run db:migrate-deals first.`,
           );
         }
 
@@ -153,7 +184,11 @@ export async function screenDealHandler(
         // Fetch screener
         await job.updateProgress({ step: "Fetching screener", percentage: 10 });
         const [screener] = await db
-          .select({ id: screeners.id, content: screeners.content })
+          .select({
+            id: screeners.id,
+            name: screeners.name,
+            description: screeners.description,
+          })
           .from(screeners)
           .where(eq(screeners.id, screenerId));
 
@@ -162,10 +197,18 @@ export async function screenDealHandler(
         }
 
         // Split content into chunks
-        await job.updateProgress({ step: "Splitting content into chunks", percentage: 15 });
-        const chunks = await splitContentIntoChunks(screener.content);
+        await job.updateProgress({
+          step: "Splitting content into chunks",
+          percentage: 15,
+        });
+        const screenerContent = [screener.name, screener.description]
+          .filter(Boolean)
+          .join("\n\n");
+        const chunks = await splitContentIntoChunks(screenerContent);
 
-        console.log(`[screen-deal] ${jobId}: Fetched data, ${chunks.length} chunks`);
+        console.log(
+          `[screen-deal] ${jobId}: Fetched data, ${chunks.length} chunks`,
+        );
 
         // Save progress and move to next step
         await job.updateData({
@@ -173,7 +216,7 @@ export async function screenDealHandler(
           step: ScreenDealStep.ProcessChunks,
           fetchResult: {
             deal: fetchedDeal,
-            screenerContent: screener.content,
+            screenerContent,
             chunks,
           },
         });
@@ -199,9 +242,13 @@ export async function screenDealHandler(
           intermediateSummaries: [],
         };
         const startIndex = existingResults.processedChunks;
-        const intermediateSummaries = [...existingResults.intermediateSummaries];
+        const intermediateSummaries = [
+          ...existingResults.intermediateSummaries,
+        ];
 
-        console.log(`[screen-deal] ${jobId}: Processing chunks ${startIndex + 1}-${totalChunks}`);
+        console.log(
+          `[screen-deal] ${jobId}: Processing chunks ${startIndex + 1}-${totalChunks}`,
+        );
 
         // Process remaining chunks
         for (let i = startIndex; i < totalChunks; i++) {
@@ -251,7 +298,10 @@ export async function screenDealHandler(
       // Step 3: Generate final summary
       // ========================================
       case ScreenDealStep.GenerateSummary: {
-        await job.updateProgress({ step: "Generating final summary", percentage: 80 });
+        await job.updateProgress({
+          step: "Generating final summary",
+          percentage: 80,
+        });
 
         const chunkResults = job.data.chunkResults;
         if (!chunkResults) {
@@ -259,7 +309,7 @@ export async function screenDealHandler(
         }
 
         const combinedSummary = chunkResults.intermediateSummaries.join(
-          "\n\n=== Next Section ===\n\n"
+          "\n\n=== Next Section ===\n\n",
         );
 
         console.log(`[screen-deal] ${jobId}: Generating final summary`);
@@ -294,7 +344,10 @@ export async function screenDealHandler(
       // Step 4: Save to database
       // ========================================
       case ScreenDealStep.SaveToDatabase: {
-        await job.updateProgress({ step: "Saving results to database", percentage: 95 });
+        await job.updateProgress({
+          step: "Saving results to database",
+          percentage: 95,
+        });
 
         const summaryResult = job.data.summaryResult;
         if (!summaryResult) {
@@ -318,12 +371,14 @@ export async function screenDealHandler(
           .where(
             and(
               eq(aiScreenings.dealOpportunityId, dealOpportunityId),
-              eq(aiScreenings.screenerId, screenerId)
-            )
+              eq(aiScreenings.screenerId, screenerId),
+            ),
           );
 
         if (existing.length > 0) {
-          console.log(`[screen-deal] ${jobId}: Screening already exists, skipping insert`);
+          console.log(
+            `[screen-deal] ${jobId}: Screening already exists, skipping insert`,
+          );
           await job.updateData({ ...job.data, step: ScreenDealStep.Done });
           await job.updateProgress({ step: "Completed", percentage: 100 });
           return {
@@ -334,7 +389,8 @@ export async function screenDealHandler(
         }
 
         // Convert sentiment
-        let sentiment: (typeof Sentiment)[keyof typeof Sentiment] = Sentiment.NEUTRAL;
+        let sentiment: (typeof Sentiment)[keyof typeof Sentiment] =
+          Sentiment.NEUTRAL;
         switch (summaryResult.sentiment) {
           case "POSITIVE":
             sentiment = Sentiment.POSITIVE;

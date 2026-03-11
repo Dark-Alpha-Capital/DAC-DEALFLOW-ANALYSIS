@@ -347,6 +347,7 @@ export async function fileUploadHandler(
               mimeType: validateResult.mimeType,
               entityType: "DEAL_OPPORTUNITY",
               entityId: entityId,
+              dealOpportunityId: entityId,
               uploadedById: userId,
             })
             .returning();

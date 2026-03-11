@@ -45,6 +45,14 @@ export const contactsRouter = createTRPCRouter({
         .values({
           entityType: input.entityType,
           entityId: input.entityId,
+          companyId:
+            input.entityType === "COMPANY" ? input.entityId : undefined,
+          leadId:
+            input.entityType === "LEAD" ? input.entityId : undefined,
+          dealOpportunityId:
+            input.entityType === "DEAL_OPPORTUNITY"
+              ? input.entityId
+              : undefined,
           name: input.name,
           title: input.title || null,
           email: input.email || null,
@@ -72,6 +80,12 @@ export const contactsRouter = createTRPCRouter({
         .set({
           entityType: data.entityType,
           entityId: data.entityId,
+          companyId:
+            data.entityType === "COMPANY" ? data.entityId : null,
+          leadId:
+            data.entityType === "LEAD" ? data.entityId : null,
+          dealOpportunityId:
+            data.entityType === "DEAL_OPPORTUNITY" ? data.entityId : null,
           name: data.name,
           title: data.title || null,
           email: data.email || null,

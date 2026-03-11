@@ -32,12 +32,14 @@ interface DealStatusControlsProps {
   dealId: string;
   status: DealStatus;
   reviewState: ReviewState;
+  compact?: boolean;
 }
 
 export function DealStatusControls({
   dealId,
   status,
   reviewState,
+  compact = false,
 }: DealStatusControlsProps) {
   const router = useRouter();
   const trpc = useTRPC();
@@ -53,6 +55,64 @@ export function DealStatusControls({
       },
     }),
   );
+
+  if (compact) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Label className="text-xs whitespace-nowrap">Status</Label>
+          <Select
+            value={status}
+            onValueChange={(value) =>
+              updateSpecifications({
+                dealId,
+                status: value as DealStatus,
+                reviewState,
+              })
+            }
+            disabled={isPending}
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label className="text-xs whitespace-nowrap">Review</Label>
+          <Select
+            value={reviewState}
+            onValueChange={(value) =>
+              updateSpecifications({
+                dealId,
+                status,
+                reviewState: value as ReviewState,
+              })
+            }
+            disabled={isPending}
+          >
+            <SelectTrigger className="w-[170px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(REVIEW_STATE_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-end gap-4">

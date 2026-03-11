@@ -2,9 +2,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit, ArrowLeft, Link as LinkIcon } from "lucide-react";
-import { Deal, DealStatus, DealType } from "@repo/db/schema";
+import { Deal, DealOpportunity, DealStatus, DealType } from "@repo/db/schema";
 import { DealActionsDropdown } from "./deal-actions-dropdown";
 import { DealStatusControls } from "./DealStatusControls";
+import { DealPipelineSection } from "./DealPipelineSection";
 import { cn } from "@/lib/utils";
 
 const stageLabels: Record<string, string> = {
@@ -24,6 +25,7 @@ interface DealHeaderProps {
   uid: string;
   basePath?: "deal-opportunities" | "raw-deals";
   stage?: string | null;
+  currentOpportunity?: DealOpportunity | null;
 }
 
 function getDealTypeLabel(dealType: DealType): string {
@@ -57,12 +59,18 @@ export function DealHeader({
   uid,
   basePath = "raw-deals" as const,
   stage,
+  currentOpportunity,
 }: DealHeaderProps) {
-  const backHref = basePath === "deal-opportunities" ? "/deal-opportunities" : "/raw-deals";
+  const backHref =
+    basePath === "deal-opportunities" ? "/deal-opportunities" : "/raw-deals";
   const backLabel =
-    basePath === "deal-opportunities" ? "Back to Deal opportunities" : "Back to Raw Deals";
+    basePath === "deal-opportunities"
+      ? "Back to Deal opportunities"
+      : "Back to Raw Deals";
   const editHref =
-    basePath === "deal-opportunities" ? `/deal-opportunities/${uid}/edit` : `/raw-deals/${uid}/edit`;
+    basePath === "deal-opportunities"
+      ? `/deal-opportunities/${uid}/edit`
+      : `/raw-deals/${uid}/edit`;
 
   const {
     dealCaption,
@@ -193,11 +201,22 @@ export function DealHeader({
           </Button>
           <DealActionsDropdown deal={deal} uid={uid} />
         </div>
-        <DealStatusControls
-          dealId={uid}
-          status={status}
-          reviewState={deal.reviewState}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          {currentOpportunity && (
+            <DealPipelineSection
+              dealId={uid}
+              currentOpportunity={currentOpportunity}
+              compact
+              inline
+            />
+          )}
+          <DealStatusControls
+            dealId={uid}
+            status={status}
+            reviewState={deal.reviewState}
+            compact
+          />
+        </div>
       </div>
     </div>
   );

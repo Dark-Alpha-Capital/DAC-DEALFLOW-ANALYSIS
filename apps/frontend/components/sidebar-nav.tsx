@@ -8,7 +8,6 @@ import {
   FiUsers,
   FiFileText,
   FiBarChart2,
-  FiFolderPlus,
   FiHome,
   FiBriefcase,
   FiBookOpen,
@@ -34,13 +33,12 @@ const navItems: NavItem[] = [
   { title: "Leads", url: "/leads", icon: FiUserPlus },
   { title: "Deal opportunities", url: "/deal-opportunities", icon: FiTrendingUp },
   { title: "Companies", url: "/companies", icon: FiUsers },
-  { title: "Jobs", url: "/jobs", icon: FiBriefcase },
   { title: "Themes", url: "/themes", icon: FaPalette },
-  { title: "Add", url: "/new", icon: FiFolderPlus },
   { title: "Docs", url: "/docs", icon: FiBookOpen },
 ];
 
 const adminNavItems: NavItem[] = [
+  { title: "Jobs", url: "/jobs", icon: FiBriefcase },
   { title: "Analytics", url: "/analytics", icon: FiBarChart2 },
   { title: "Screeners", url: "/screeners", icon: FaScrewdriver },
   { title: "Documents", url: "/documents", icon: FiFileText },
