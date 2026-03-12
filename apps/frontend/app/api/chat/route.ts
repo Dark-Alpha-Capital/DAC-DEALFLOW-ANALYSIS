@@ -2,6 +2,7 @@ import {
   consumeStream,
   convertToModelMessages,
   createIdGenerator,
+  stepCountIs,
   streamText,
   tool,
   type UIMessage,
@@ -36,6 +37,19 @@ import {
   queryBusinessDataInputSchema,
   themeDossierInputSchema,
 } from "@/lib/chat-db-tools";
+import {
+  buildDiligenceSystemPrompt,
+  compareDiligenceEvidence,
+  compareDiligenceEvidenceInputSchema,
+  diligenceScopeInputSchema,
+  resolveDiligenceScope,
+  retrieveDiligenceEvidence,
+  retrieveDiligenceEvidenceInputSchema,
+  runDiligenceChecks,
+  runDiligenceChecksInputSchema,
+  summarizeDiligenceFindings,
+  summarizeDiligenceFindingsInputSchema,
+} from "@/lib/chat-diligence-tools";
 
 export const maxDuration = 30;
 
@@ -145,10 +159,59 @@ export async function POST(req: Request) {
   const result = streamText({
     model: resolvedModel,
     abortSignal: req.signal,
-    system:
-      "You are a private-equity ops assistant for internal business data. Prefer these database tools before answering: getEntityCounts, listEntities, getEntityById, getDealOpportunityDossier, getInvestmentThemeDossier, getEntityDocuments, queryBusinessData. Always use tools for questions about leads, companies, themes, screeners, deal opportunities, financials, screenings, and documents. Do not invent database facts.",
+    system: `${buildDiligenceSystemPrompt()} Prefer these tools for data-backed responses: resolveDiligenceScope, retrieveDiligenceEvidence, compareDiligenceEvidence, runDiligenceChecks, summarizeDiligenceFindings, getDealOpportunityDossier, getEntityDocuments, getEntityCounts, queryBusinessData. Use evidence-first responses and cite documentId/chunkId in outputs.`,
     messages: await convertToModelMessages(validatedMessages),
     tools: {
+      resolveDiligenceScope: tool({
+        description:
+          "Resolve the due-diligence scope from chat context and optional deal/company hints.",
+        inputSchema: diligenceScopeInputSchema,
+        execute: async (input) =>
+          resolveDiligenceScope(input, {
+            companyId: chat.companyId,
+            leadId: chat.leadId,
+            dealOpportunityId: chat.dealOpportunityId,
+          }),
+      }),
+      retrieveDiligenceEvidence: tool({
+        description:
+          "Retrieve due-diligence evidence from document chunks using hybrid retrieval (vector + keyword fallback).",
+        inputSchema: retrieveDiligenceEvidenceInputSchema,
+        execute: async (input) =>
+          retrieveDiligenceEvidence(input, {
+            companyId: chat.companyId,
+            leadId: chat.leadId,
+            dealOpportunityId: chat.dealOpportunityId,
+          }),
+      }),
+      compareDiligenceEvidence: tool({
+        description:
+          "Compare retrieved evidence and detect cross-document discrepancies.",
+        inputSchema: compareDiligenceEvidenceInputSchema,
+        execute: async (input) =>
+          compareDiligenceEvidence(input, {
+            companyId: chat.companyId,
+            leadId: chat.leadId,
+            dealOpportunityId: chat.dealOpportunityId,
+          }),
+      }),
+      runDiligenceChecks: tool({
+        description:
+          "Run deterministic diligence checks for discrepancy detection and document coverage gaps.",
+        inputSchema: runDiligenceChecksInputSchema,
+        execute: async (input) =>
+          runDiligenceChecks(input, {
+            companyId: chat.companyId,
+            leadId: chat.leadId,
+            dealOpportunityId: chat.dealOpportunityId,
+          }),
+      }),
+      summarizeDiligenceFindings: tool({
+        description:
+          "Produce a structured due-diligence report summary from findings/discrepancies.",
+        inputSchema: summarizeDiligenceFindingsInputSchema,
+        execute: async (input) => summarizeDiligenceFindings(input),
+      }),
       getEntityCounts: tool({
         description:
           "Get counts of business entities such as leads, companies, themes, screeners, deal opportunities, and documents.",
@@ -222,6 +285,7 @@ export async function POST(req: Request) {
           }),
       }),
     },
+    stopWhen: stepCountIs(8),
   });
 
   result.consumeStream();
