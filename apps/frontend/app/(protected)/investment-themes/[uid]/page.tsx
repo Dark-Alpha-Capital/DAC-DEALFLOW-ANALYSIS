@@ -65,7 +65,7 @@ async function CachedThemeContent({ uid }: { uid: string }) {
             <p className="text-muted-foreground text-xs">{error.message}</p>
           )}
           <Button asChild>
-            <Link href="/themes">Back to Themes</Link>
+            <Link href="/investment-themes">Back to Investment themes</Link>
           </Button>
         </div>
       </section>
@@ -83,7 +83,7 @@ async function CachedThemeContent({ uid }: { uid: string }) {
             The theme you are looking for does not exist or has been removed.
           </p>
           <Button asChild>
-            <Link href="/themes">Back to Themes</Link>
+            <Link href="/investment-themes">Back to Investment themes</Link>
           </Button>
         </div>
       </section>
@@ -112,9 +112,9 @@ async function CachedThemeContent({ uid }: { uid: string }) {
           asChild
           className="gap-2 pl-0 transition-all hover:pl-2"
         >
-          <Link href="/themes">
+          <Link href="/investment-themes">
             <ArrowLeft className="h-4 w-4" />
-            Back to Themes
+            Back to Investment themes
           </Link>
         </Button>
 
@@ -132,7 +132,7 @@ async function CachedThemeContent({ uid }: { uid: string }) {
             </p>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link href={`/themes/${theme.id}/edit`} className="gap-2">
+            <Link href={`/investment-themes/${theme.id}/edit`} className="gap-2">
               <Pencil className="h-4 w-4" />
               Edit Theme
             </Link>

@@ -13,7 +13,7 @@ import { GlobalDocumentUploadDialog } from "@/components/Dialogs/global-document
 export const metadata: Metadata = {
   title: "Documents",
   description:
-    "View all documents across companies, deals, themes, and firm library",
+    "View all documents across companies, deals, investment themes, and firm library",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -31,7 +31,7 @@ const DocumentsPage = (props: { searchParams: SearchParams }) => {
         <div>
           <h1 className="text-4xl font-bold md:text-5xl">Documents</h1>
           <p className="text-muted-foreground mt-2">
-            All documents across companies, deals, themes, and firm library
+            All documents across companies, deals, investment themes, and firm library
           </p>
         </div>
         <GlobalDocumentUploadDialog />

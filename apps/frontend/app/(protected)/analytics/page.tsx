@@ -21,7 +21,7 @@ export default async function AnalyticsPage() {
         <div>
           <h1 className="text-4xl font-bold md:text-5xl">Analytics</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Institutional dashboards across themes, pipeline, sources, and AI
+            Institutional dashboards across investment themes, pipeline, sources, and AI
             screenings.
           </p>
         </div>

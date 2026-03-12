@@ -289,7 +289,7 @@ export function GlobalDashboard({ pipeline, themes, topDeals }: GlobalDashboardP
           value="themes"
           className="rounded-none border-b-2 border-transparent px-4 py-3 text-xs tracking-[0.12em] uppercase data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
         >
-          Themes
+          Investment themes
         </TabsTrigger>
         <TabsTrigger
           value="deals"
@@ -317,21 +317,21 @@ export function GlobalDashboard({ pipeline, themes, topDeals }: GlobalDashboardP
 
       <TabsContent value="themes" className="mt-0 space-y-4">
         <SectionHeader
-          title="Themes"
-          description="Theme coverage and concentration across companies and opportunities."
+          title="Investment themes"
+          description="Investment theme coverage and concentration across companies and opportunities."
         />
         <div className="grid gap-3 md:grid-cols-3">
-          <KpiStrip title="Active Themes" value={themes.activeThemes} />
+          <KpiStrip title="Active investment themes" value={themes.activeThemes} />
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           <ThemeChart
-            title="Companies per Theme"
-            description="Company concentration across strategic themes."
+            title="Companies per investment theme"
+            description="Company concentration across strategic investment themes."
             data={themes.companiesPerTheme}
           />
           <ThemeChart
-            title="Deals per Theme"
-            description="Deal opportunity concentration across themes."
+            title="Deals per investment theme"
+            description="Deal opportunity concentration across investment themes."
             data={themes.dealsPerTheme}
           />
         </div>

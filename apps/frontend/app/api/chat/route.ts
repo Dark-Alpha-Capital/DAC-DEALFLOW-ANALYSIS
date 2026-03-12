@@ -1,4 +1,5 @@
 import {
+  consumeStream,
   convertToModelMessages,
   createIdGenerator,
   streamText,
@@ -8,7 +9,6 @@ import {
 } from "ai";
 import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
-import { z } from "zod";
 import { getSession } from "@/lib/auth-server";
 import {
   coerceStoredMessages,
@@ -20,6 +20,22 @@ import {
   isAllowedModel,
   type ChatProvider,
 } from "@/lib/chat-models";
+import {
+  dealOpportunityDossierInputSchema,
+  entityCountsInputSchema,
+  entityDocumentsInputSchema,
+  getDealOpportunityDossier,
+  getEntityById,
+  getEntityCounts,
+  getEntityDocuments,
+  getInvestmentThemeDossier,
+  getEntityByIdInputSchema,
+  listEntities,
+  listEntitiesInputSchema,
+  queryBusinessData,
+  queryBusinessDataInputSchema,
+  themeDossierInputSchema,
+} from "@/lib/chat-db-tools";
 
 export const maxDuration = 30;
 
@@ -37,22 +53,6 @@ type ChatRequestBody = {
 
 const badRequest = (message: string) =>
   Response.json({ error: message }, { status: 400 });
-
-const WEATHER_CONDITIONS = [
-  "Sunny",
-  "Cloudy",
-  "Rainy",
-  "Windy",
-  "Foggy",
-] as const;
-
-function hashString(value: string): number {
-  let hash = 0;
-  for (const char of value) {
-    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  }
-  return hash;
-}
 
 function dedupeMessagesById(messages: UIMessage[]): UIMessage[] {
   const deduped = new Map<string, UIMessage>();
@@ -144,55 +144,82 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: resolvedModel,
+    abortSignal: req.signal,
     system:
-      "You are a helpful assistant with testing tools. Use getWeatherInformation for weather requests, getLocation for user location requests, and getStockQuote for stock price requests.",
+      "You are a private-equity ops assistant for internal business data. Prefer these database tools before answering: getEntityCounts, listEntities, getEntityById, getDealOpportunityDossier, getInvestmentThemeDossier, getEntityDocuments, queryBusinessData. Always use tools for questions about leads, companies, themes, screeners, deal opportunities, financials, screenings, and documents. Do not invent database facts.",
     messages: await convertToModelMessages(validatedMessages),
     tools: {
-      getWeatherInformation: tool({
-        description: "Get deterministic weather details for a city.",
-        inputSchema: z.object({
-          city: z.string().describe("City to get weather for"),
-        }),
-        execute: async ({ city }) => {
-          const normalizedCity = city.trim() || "Unknown";
-          const hash = hashString(normalizedCity.toLowerCase());
-
-          return {
-            city: normalizedCity,
-            condition: WEATHER_CONDITIONS[hash % WEATHER_CONDITIONS.length],
-            temperatureC: 10 + (hash % 23),
-            humidityPct: 35 + (hash % 60),
-          };
-        },
-      }),
-      getLocation: tool({
+      getEntityCounts: tool({
         description:
-          "Get a deterministic test location for the current user session.",
-        inputSchema: z.object({}),
+          "Get counts of business entities such as leads, companies, themes, screeners, deal opportunities, and documents.",
+        inputSchema: entityCountsInputSchema,
+        execute: async (input) =>
+          getEntityCounts(input, {
+            companyId: chat.companyId,
+            leadId: chat.leadId,
+            dealOpportunityId: chat.dealOpportunityId,
+          }),
       }),
-      getStockQuote: tool({
+      listEntities: tool({
         description:
-          "Get a deterministic stock quote for a symbol. Ask approval before running.",
-        inputSchema: z.object({
-          symbol: z.string().describe("Stock ticker symbol, e.g. AAPL"),
-        }),
-        needsApproval: true,
-        execute: async ({ symbol }) => {
-          const normalizedSymbol = symbol.trim().toUpperCase() || "AAPL";
-          const hash = hashString(normalizedSymbol);
-          const basis = 40 + (hash % 460);
-          const cents = (hash % 100) / 100;
-          const change = ((hash % 200) - 100) / 10;
-
-          return {
-            symbol: normalizedSymbol,
-            price: Number((basis + cents).toFixed(2)),
-            changePct: Number(change.toFixed(2)),
-            asOf: "2026-01-01T12:00:00.000Z",
-            venue: "NASDAQ",
-            delayed: true,
-          };
-        },
+          "List business entities with optional search, filters, and pagination.",
+        inputSchema: listEntitiesInputSchema,
+        execute: async (input) =>
+          listEntities(input, {
+            companyId: chat.companyId,
+            leadId: chat.leadId,
+            dealOpportunityId: chat.dealOpportunityId,
+          }),
+      }),
+      getEntityById: tool({
+        description:
+          "Fetch one entity by id with optional related information.",
+        inputSchema: getEntityByIdInputSchema,
+        execute: async (input) =>
+          getEntityById(input, {
+            companyId: chat.companyId,
+            leadId: chat.leadId,
+            dealOpportunityId: chat.dealOpportunityId,
+          }),
+      }),
+      getDealOpportunityDossier: tool({
+        description:
+          "Fetch a complete deal opportunity dossier including financials, risk flags, screenings, and document metadata.",
+        inputSchema: dealOpportunityDossierInputSchema,
+        execute: async (input) =>
+          getDealOpportunityDossier(input, {
+            companyId: chat.companyId,
+            leadId: chat.leadId,
+            dealOpportunityId: chat.dealOpportunityId,
+          }),
+      }),
+      getInvestmentThemeDossier: tool({
+        description:
+          "Fetch complete investment theme data, including active thesis, industry intelligence, coverage, and related document metadata.",
+        inputSchema: themeDossierInputSchema,
+        execute: async (input) => getInvestmentThemeDossier(input),
+      }),
+      getEntityDocuments: tool({
+        description:
+          "Fetch document metadata for an entity. Extracted text is optional and off by default.",
+        inputSchema: entityDocumentsInputSchema,
+        execute: async (input) =>
+          getEntityDocuments(input, {
+            companyId: chat.companyId,
+            leadId: chat.leadId,
+            dealOpportunityId: chat.dealOpportunityId,
+          }),
+      }),
+      queryBusinessData: tool({
+        description:
+          "Guarded generic business data reader. Supports count/list/getById/aggregate for business entities.",
+        inputSchema: queryBusinessDataInputSchema,
+        execute: async (input) =>
+          queryBusinessData(input, {
+            companyId: chat.companyId,
+            leadId: chat.leadId,
+            dealOpportunityId: chat.dealOpportunityId,
+          }),
       }),
     },
   });
@@ -200,12 +227,15 @@ export async function POST(req: Request) {
   result.consumeStream();
 
   return result.toUIMessageStreamResponse({
+    consumeSseStream: consumeStream,
     originalMessages: validatedMessages,
     generateMessageId: createIdGenerator({
       prefix: "msg",
       size: 16,
     }),
-    onFinish: async ({ messages }) => {
+    onFinish: async ({ isAborted, messages }) => {
+      // Keep partial assistant output when a response is stopped by the user.
+      // This preserves transcript continuity and allows explicit regeneration.
       await saveChatSessionMessages({
         userId: session.user.id,
         chatId: id,
@@ -213,6 +243,10 @@ export async function POST(req: Request) {
         provider,
         model,
       });
+
+      if (isAborted) {
+        return;
+      }
     },
   });
 }

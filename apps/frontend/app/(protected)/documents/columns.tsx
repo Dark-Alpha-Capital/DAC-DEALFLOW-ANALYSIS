@@ -14,7 +14,7 @@ export const entityTypeLabels: Record<string, string> = {
   COMPANY: "Company",
   DEAL_OPPORTUNITY: "Deal opportunity",
   LEAD: "Lead",
-  THEME: "Theme",
+  THEME: "Investment theme",
   GLOBAL: "Firm",
 };
 
@@ -30,7 +30,7 @@ export function getEntityRoute(
     case "LEAD":
       return `/leads/${entityId ?? ""}`;
     case "THEME":
-      return `/themes/${entityId ?? ""}`;
+      return `/investment-themes/${entityId ?? ""}`;
     case "GLOBAL":
       return "/documents";
     default:
@@ -53,7 +53,7 @@ export const columns: ColumnDef<DocumentRow>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <span className="block truncate font-medium max-w-[200px]">
+      <span className="block max-w-[200px] truncate font-medium">
         {row.original.title ?? "—"}
       </span>
     ),
@@ -107,7 +107,7 @@ export const columns: ColumnDef<DocumentRow>[] = [
     cell: ({ row }) => {
       const size = row.original.fileSize;
       return (
-        <span className="tabular-nums text-muted-foreground text-sm">
+        <span className="text-muted-foreground text-sm tabular-nums">
           {size != null ? formatFileSize(size) : "—"}
         </span>
       );
@@ -165,7 +165,10 @@ export const columns: ColumnDef<DocumentRow>[] = [
     cell: ({ row }) => {
       const doc = row.original;
       return (
-        <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="flex justify-center"
+          onClick={(e) => e.stopPropagation()}
+        >
           <DocumentActionsDropdown doc={doc} />
         </div>
       );

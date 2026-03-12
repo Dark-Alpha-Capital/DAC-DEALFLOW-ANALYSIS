@@ -7,7 +7,7 @@ import {
   resolveMimeType,
   type MetadataBase,
   type ProcessResult,
-} from "../lib/rag-ingestion";
+} from "@repo/rag-engine";
 
 export interface RagIngestionJobData {
   jobId?: string;

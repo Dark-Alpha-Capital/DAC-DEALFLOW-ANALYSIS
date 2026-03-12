@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ChatStatus } from "ai";
 import {
@@ -143,8 +143,10 @@ type ChatPromptInputProps = {
   context: ChatContext;
   onContextChange: (value: ChatContext) => void;
   onSubmit: (message: PromptInputMessage) => void;
-  disabled: boolean;
   status: ChatStatus;
+  onStop: () => void;
+  statusMessageId: string;
+  focusComposerSignal: number;
 };
 
 export function ChatPromptInput({
@@ -155,10 +157,13 @@ export function ChatPromptInput({
   context,
   onContextChange,
   onSubmit,
-  disabled,
   status,
+  onStop,
+  statusMessageId,
+  focusComposerSignal,
 }: ChatPromptInputProps) {
   const trpc = useTRPC();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [companySelectorOpen, setCompanySelectorOpen] = useState(false);
   const [leadSelectorOpen, setLeadSelectorOpen] = useState(false);
   const [dealSelectorOpen, setDealSelectorOpen] = useState(false);
@@ -213,13 +218,24 @@ export function ChatPromptInput({
     return selectedDeal.companyName ?? selectedDeal.dealTeaser ?? selectedDeal.id;
   }, [context.dealOpportunityId, dealSearch.data]);
 
+  useEffect(() => {
+    if (focusComposerSignal > 0) {
+      textareaRef.current?.focus();
+    }
+  }, [focusComposerSignal]);
+
+  const isGenerating = status === "submitted" || status === "streaming";
+  const canSubmit = Boolean(input.trim()) && status === "ready";
+
   return (
     <div className="sticky bottom-0 z-10 shrink-0 border-t bg-background pt-3">
-      <PromptInput onSubmit={onSubmit}>
+      <PromptInput aria-busy={isGenerating} onSubmit={onSubmit}>
         <PromptInputBody>
           <PromptInputTextarea
+            aria-describedby={statusMessageId}
             onChange={(e) => onInputChange(e.currentTarget.value)}
             placeholder="Ask anything..."
+            ref={textareaRef}
             value={input}
           />
         </PromptInputBody>
@@ -363,7 +379,11 @@ export function ChatPromptInput({
             />
           </PromptInputTools>
 
-          <PromptInputSubmit disabled={disabled} status={status} />
+          <PromptInputSubmit
+            disabled={isGenerating ? false : !canSubmit}
+            onStop={onStop}
+            status={status}
+          />
         </PromptInputFooter>
       </PromptInput>
     </div>

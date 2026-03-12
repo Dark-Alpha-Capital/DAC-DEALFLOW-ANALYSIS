@@ -34,7 +34,7 @@ async function CachedEditContent({ uid }: { uid: string }) {
             Error loading theme
           </h1>
           <Button asChild>
-            <Link href="/themes">Back to Themes</Link>
+            <Link href="/investment-themes">Back to Investment themes</Link>
           </Button>
         </div>
       </section>
@@ -49,7 +49,7 @@ async function CachedEditContent({ uid }: { uid: string }) {
             Theme not found
           </h1>
           <Button asChild>
-            <Link href="/themes">Back to Themes</Link>
+            <Link href="/investment-themes">Back to Investment themes</Link>
           </Button>
         </div>
       </section>
@@ -60,14 +60,14 @@ async function CachedEditContent({ uid }: { uid: string }) {
     <section className="big-container block-space min-h-screen">
       <div className="mb-6">
         <Button variant="ghost" asChild className="gap-2 pl-0">
-          <Link href={`/themes/${uid}`}>
+          <Link href={`/investment-themes/${uid}`}>
             <ArrowLeft className="h-4 w-4" />
-            Back to Theme
+            Back to Investment theme
           </Link>
         </Button>
-        <h1 className="mt-4">Edit Theme</h1>
+        <h1 className="mt-4">Edit Investment Theme</h1>
         <p className="text-muted-foreground">
-          Update theme details.
+          Update investment theme details.
         </p>
       </div>
       <EditThemeForm theme={theme} />

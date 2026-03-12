@@ -251,10 +251,14 @@ export const filesRouter = createTRPCRouter({
         throw new Error("Document not found");
       }
 
-      await deleteFile(doc.fileUrl);
-      await db.delete(documents).where(eq(documents.id, input.documentId));
+      await Promise.all([
+        deleteFile(doc.fileUrl),
+        db.delete(documents).where(eq(documents.id, input.documentId)),
+      ]);
 
       revalidateTag("documents", "max");
+
+
       if (doc.entityId) {
         const tag =
           doc.entityType === "DEAL_OPPORTUNITY"

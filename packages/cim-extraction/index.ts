@@ -69,12 +69,20 @@ function toPayload(
 // ============================================================================
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  console.log(`[cim-extraction] extractTextFromPdf: input buffer size=${buffer.length}`);
+  const { text } = await extractPdfContent(buffer);
+  return text;
+}
+
+export async function extractPdfContent(
+  buffer: Buffer,
+): Promise<{ text: string; numpages: number }> {
+  console.log(`[cim-extraction] extractPdfContent: input buffer size=${buffer.length}`);
   try {
     const data = await pdfParse(buffer);
     const text = data.text?.trim() ?? "";
-    console.log(`[cim-extraction] extractTextFromPdf: extracted ${text.length} chars`);
-    return text;
+    const numpages = data.numpages ?? 0;
+    console.log(`[cim-extraction] extractPdfContent: extracted ${text.length} chars, ${numpages} pages`);
+    return { text, numpages };
   } catch (error) {
     console.error("[cim-extraction] PDF parse error:", error);
     throw new Error("Failed to extract text from PDF");

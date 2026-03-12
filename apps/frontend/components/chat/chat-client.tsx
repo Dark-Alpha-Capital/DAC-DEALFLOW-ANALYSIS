@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
 import {
@@ -10,7 +10,7 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
   type UIMessage,
 } from "ai";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, RotateCcw, TriangleAlert } from "lucide-react";
 import {
   Conversation,
   ConversationContent,
@@ -39,7 +39,9 @@ import {
 } from "@/components/ai-elements/tool";
 import { ChatStarterPrompts } from "@/components/chat/chat-starter-prompts";
 import { ChatPromptInput } from "@/components/chat/chat-prompt-input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -48,6 +50,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 import {
   EMPTY_CHAT_CONTEXT,
   type ChatContext,
@@ -110,6 +113,12 @@ export function ChatClient({
   const [input, setInput] = useState("");
   const [selection, setSelection] = useState<ChatSelection>(initialSelection);
   const [context, setContext] = useState<ChatContext>(initialContext);
+  const [focusComposerSignal, setFocusComposerSignal] = useState(0);
+  const [politeAnnouncement, setPoliteAnnouncement] = useState("Chat ready.");
+  const [assertiveAnnouncement, setAssertiveAnnouncement] = useState("");
+  const statusMessageId = useId();
+  const previousStatusRef = useRef<string | null>(null);
+  const retryButtonRef = useRef<HTMLButtonElement>(null);
 
   const [provider, model] = selection.split(":") as [ChatProvider, string];
   const updateContextMutation = useMutation(
@@ -120,6 +129,10 @@ export function ChatClient({
     messages,
     sendMessage,
     status,
+    stop,
+    regenerate,
+    error,
+    clearError,
     addToolOutput,
     addToolApprovalResponse,
   } = useChat({
@@ -155,16 +168,51 @@ export function ChatClient({
         });
       }
     },
-    onFinish: () => {
+    onFinish: ({ isAbort, isDisconnect, isError }) => {
+      if (isAbort) {
+        setAssertiveAnnouncement("Response stopped. Partial response kept.");
+      } else if (isDisconnect || isError) {
+        setAssertiveAnnouncement(
+          "The response ended unexpectedly. Retry the response.",
+        );
+      } else {
+        setPoliteAnnouncement("Assistant response complete.");
+      }
+
       queryClient.invalidateQueries({
         queryKey: trpc.chats.listRecent.queryKey({ limit: 50 }),
       });
       router.refresh();
     },
     onError: (error) => {
+      setAssertiveAnnouncement("Something went wrong. Retry the response.");
       console.error(error);
     },
   });
+
+  useEffect(() => {
+    if (previousStatusRef.current === status) {
+      return;
+    }
+
+    previousStatusRef.current = status;
+
+    if (status === "submitted") {
+      setPoliteAnnouncement("Message sent. Model is thinking.");
+    } else if (status === "streaming") {
+      setPoliteAnnouncement("Assistant is responding.");
+    } else if (status === "ready") {
+      setPoliteAnnouncement("Chat ready for the next message.");
+    } else if (status === "error") {
+      setAssertiveAnnouncement("A chat request failed. Retry or dismiss.");
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (error) {
+      retryButtonRef.current?.focus();
+    }
+  }, [error]);
 
   const handleSubmit = (message: PromptInputMessage) => {
     const text = message.text?.trim();
@@ -197,6 +245,29 @@ export function ChatClient({
         },
       },
     );
+  };
+
+  const handleStop = () => {
+    stop();
+    setAssertiveAnnouncement("Response stopped. Partial response kept.");
+    setFocusComposerSignal((value) => value + 1);
+  };
+
+  const handleRetry = () => {
+    clearError();
+    regenerate({
+      body: {
+        provider,
+        model,
+        context,
+      },
+    });
+    setPoliteAnnouncement("Retrying assistant response.");
+  };
+
+  const handleDismissError = () => {
+    clearError();
+    setFocusComposerSignal((value) => value + 1);
   };
 
   const renderToolPart = (part: ToolPartLike, key: string) => (
@@ -238,8 +309,24 @@ export function ChatClient({
     });
   };
 
+  const isGenerating = status === "submitted" || status === "streaming";
+  const statusText =
+    status === "submitted"
+      ? "Model is thinking..."
+      : status === "streaming"
+        ? "Model is responding..."
+        : status === "error"
+          ? "Request failed. You can retry."
+          : "Ready";
+
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-3 md:p-4">
+      <p aria-atomic="true" aria-live="polite" className="sr-only">
+        {politeAnnouncement}
+      </p>
+      <p aria-atomic="true" aria-live="assertive" className="sr-only">
+        {assertiveAnnouncement}
+      </p>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Conversation className="min-h-0">
           <ConversationContent>
@@ -494,6 +581,9 @@ export function ChatClient({
                         case "dynamic-tool":
                           return renderToolPart(toolPart, key);
                         default:
+                          if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+                            return renderToolPart(toolPart, key);
+                          }
                           return null;
                       }
                     })}
@@ -508,18 +598,72 @@ export function ChatClient({
           <ConversationScrollButton />
         </Conversation>
 
+        {(isGenerating || error) && (
+          <div className="mt-2" id={statusMessageId}>
+            {isGenerating ? (
+              <div
+                aria-live="polite"
+                className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2 text-sm"
+                role="status"
+              >
+                <div className="flex items-center gap-2">
+                  <Spinner className="size-4" />
+                  <span>{statusText}</span>
+                </div>
+                <Button onClick={handleStop} size="sm" type="button" variant="outline">
+                  Stop response
+                </Button>
+              </div>
+            ) : null}
+            {error ? (
+              <Alert className="mt-2" variant="destructive">
+                <TriangleAlert className="size-4" />
+                <AlertTitle>Something went wrong</AlertTitle>
+                <AlertDescription className="space-y-3">
+                  <p>{statusText}</p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleRetry}
+                      ref={retryButtonRef}
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                    >
+                      <RotateCcw className="size-4" />
+                      Retry
+                    </Button>
+                    <Button
+                      onClick={handleDismissError}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            ) : null}
+          </div>
+        )}
+        {!isGenerating && !error ? (
+          <p className="sr-only" id={statusMessageId}>
+            {statusText}
+          </p>
+        ) : null}
+
         <ChatPromptInput
           context={context}
-          disabled={
-            !input.trim() || status === "submitted" || status === "streaming"
-          }
+          focusComposerSignal={focusComposerSignal}
           input={input}
           onContextChange={handleContextChange}
           onInputChange={setInput}
           onSelectionChange={setSelection}
+          onStop={handleStop}
           onSubmit={handleSubmit}
           selection={selection}
           status={status}
+          statusMessageId={statusMessageId}
         />
       </div>
     </div>

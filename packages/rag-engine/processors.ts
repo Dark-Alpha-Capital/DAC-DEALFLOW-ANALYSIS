@@ -1,8 +1,7 @@
-import type { Job } from "bullmq";
-import { getEmbedding, isValidEmbeddingDimension } from "@repo/rag-engine";
-import { extractTextFromDocx, extractTextFromExcel } from "@repo/cim-extraction";
-import { splitContentIntoChunks } from "../utils";
-import type { ChunkRow, DocumentContext, MetadataBase, ProcessResult } from "./types";
+import { getEmbedding, isValidEmbeddingDimension } from "./embedding";
+import { extractPdfContent, extractTextFromDocx, extractTextFromExcel } from "@repo/cim-extraction";
+import { splitContentIntoChunks } from "./chunking";
+import type { ChunkRow, DocumentContext, MetadataBase, ProcessResult, ProgressReporter } from "./ingestion-types";
 import { EXCEL, MIME, TEXT_LIKE, getMediaModality, isMedia } from "./mime";
 
 const CHUNK_SIZE = 1800;
@@ -40,7 +39,7 @@ async function processTextChunks(
   text: string,
   doc: DocumentContext,
   metadata: MetadataBase,
-  job: Job,
+  job: ProgressReporter,
   stepLabel: string
 ): Promise<ChunkRow[]> {
   await job.updateProgress({ step: stepLabel, percentage: 40 });
@@ -71,7 +70,7 @@ async function processInlineBinary(
   modality: "PDF" | "IMAGE" | "AUDIO" | "VIDEO",
   doc: DocumentContext,
   metadata: MetadataBase,
-  job: Job,
+  job: ProgressReporter,
   stepLabel: string
 ): Promise<ChunkRow[]> {
   await job.updateProgress({ step: stepLabel, percentage: 40 });
@@ -93,9 +92,15 @@ export async function processContent(
   mimeType: string,
   doc: DocumentContext,
   metadata: MetadataBase,
-  job: Job
+  job: ProgressReporter
 ): Promise<ProcessResult> {
   if (mimeType === MIME.PDF) {
+    const { text, numpages } = await extractPdfContent(fileBuffer);
+    if (numpages > 6) {
+      console.log("[rag-ingestion] PDF >6 pages, using text extraction path", { numpages });
+      const chunks = await processTextChunks(text, doc, metadata, job, "Embedding PDF (text-extracted)");
+      return { chunks };
+    }
     const chunks = await processInlineBinary(
       fileBuffer,
       MIME.PDF,

@@ -16,3 +16,7 @@ export interface MetadataBase {
 export type ProcessResult =
   | { chunks: ChunkRow[] }
   | { unsupported: true; reason?: string };
+
+export interface ProgressReporter {
+  updateProgress(data: { step?: string; percentage?: number }): Promise<void>;
+}

@@ -26,8 +26,8 @@ import {
 import DeleteThemeFiltersButton from "@/components/Buttons/delete-theme-filters-button";
 
 export const metadata: Metadata = {
-  title: "Themes",
-  description: "View all themes",
+  title: "Investment Themes",
+  description: "View all investment themes",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -48,11 +48,11 @@ const ThemesPage = (props: { searchParams: SearchParams }) => {
   return (
     <section className="block-space-mini group container">
       <div className="mb-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
-        <h1 className="text-4xl font-bold md:text-5xl">Themes</h1>
+        <h1 className="text-4xl font-bold md:text-5xl">Investment Themes</h1>
         <Button asChild size="sm">
-          <Link href="/themes/new" className="gap-2">
+          <Link href="/investment-themes/new" className="gap-2">
             <Plus className="h-4 w-4" />
-            Add Theme
+            Add investment theme
           </Link>
         </Button>
       </div>
@@ -89,7 +89,7 @@ async function AuthedThemes(props: {
             <div>
               <h2 className="text-lg font-semibold">Filters</h2>
               <p className="text-muted-foreground text-sm">
-                Refine themes by search, sector, status, and scores.
+                Refine investment themes by search, sector, status, and scores.
               </p>
             </div>
             <DeleteThemeFiltersButton />
@@ -228,7 +228,7 @@ async function FetchAndDisplayThemes({
         {data.length === 0 ? (
           <div className="mt-12 text-center">
             <p className="text-muted-foreground text-xl">
-              No themes found matching your criteria.
+              No investment themes found matching your criteria.
             </p>
           </div>
         ) : (
