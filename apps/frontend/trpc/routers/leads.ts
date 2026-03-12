@@ -6,6 +6,7 @@ import db, {
   dealOpportunities,
   eq,
   and,
+  or,
   isNull,
   desc,
   ilike,
@@ -91,6 +92,47 @@ function scoreDuplicateCandidate(
 }
 
 export const leadsRouter = createTRPCRouter({
+  searchForChat: protectedProcedure
+    .input(
+      z
+        .object({
+          query: z.string().trim().optional(),
+          limit: z.number().int().min(1).max(50).default(20),
+        })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const query = input?.query?.trim();
+      const limit = input?.limit ?? 20;
+      const predicates = [isNull(leads.deletedAt)];
+
+      if (query) {
+        const searchTerm = `%${query}%`;
+        predicates.push(
+          or(
+            ilike(leads.rawTitle, searchTerm),
+            ilike(leads.rawIndustry, searchTerm),
+            ilike(leads.sourceWebsite, searchTerm),
+            ilike(leads.normalizedCompanyName, searchTerm),
+          )!,
+        );
+      }
+
+      return db
+        .select({
+          id: leads.id,
+          rawTitle: leads.rawTitle,
+          rawIndustry: leads.rawIndustry,
+          sourceWebsite: leads.sourceWebsite,
+          companyLocation: leads.companyLocation,
+          status: leads.status,
+        })
+        .from(leads)
+        .where(and(...predicates))
+        .orderBy(desc(leads.createdAt), desc(leads.id))
+        .limit(limit);
+    }),
+
   /**
    * Create a new lead
    */

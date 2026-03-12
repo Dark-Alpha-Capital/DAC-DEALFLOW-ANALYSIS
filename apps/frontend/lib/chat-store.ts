@@ -11,6 +11,11 @@ import {
 const DEFAULT_CHAT_TITLE = "New chat";
 
 type PersistedMessages = Record<string, unknown>[];
+export type ChatSessionContext = {
+  companyId?: string | null;
+  leadId?: string | null;
+  dealOpportunityId?: string | null;
+};
 
 function deriveTitleFromMessages(messages: UIMessage[]): string {
   const firstUserMessage = messages.find((message) => message.role === "user");
@@ -42,6 +47,9 @@ export async function createChatSessionForUser(userId: string): Promise<string> 
       title: DEFAULT_CHAT_TITLE,
       provider: DEFAULT_CHAT_PROVIDER,
       model: DEFAULT_CHAT_MODEL,
+      companyId: null,
+      leadId: null,
+      dealOpportunityId: null,
       messages: [],
     })
     .returning({ id: chatSessions.id });
@@ -135,6 +143,29 @@ export async function saveChatSessionMessages({
       provider,
       model,
       messages: messages as unknown as PersistedMessages,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(chatSessions.id, chatId), eq(chatSessions.userId, userId)))
+    .returning({ id: chatSessions.id });
+
+  return updated.length > 0;
+}
+
+export async function updateChatSessionContext({
+  userId,
+  chatId,
+  context,
+}: {
+  userId: string;
+  chatId: string;
+  context: ChatSessionContext;
+}) {
+  const updated = await db
+    .update(chatSessions)
+    .set({
+      companyId: context.companyId ?? null,
+      leadId: context.leadId ?? null,
+      dealOpportunityId: context.dealOpportunityId ?? null,
       updatedAt: new Date(),
     })
     .where(and(eq(chatSessions.id, chatId), eq(chatSessions.userId, userId)))

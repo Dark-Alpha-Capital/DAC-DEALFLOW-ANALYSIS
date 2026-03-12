@@ -1,6 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY! });
+
+
+
 export const EMBEDDING_MODEL = "gemini-embedding-2-preview";
 export const EMBEDDING_DIMENSION = 768;
 
@@ -27,6 +30,7 @@ export async function getEmbedding(input: string | MultimodalPart[]): Promise<nu
         const response = await ai.models.embedContent({
             model: multimodalModel,
             contents: [{ parts }],
+            config: { outputDimensionality: EMBEDDING_DIMENSION },
         });
 
         const values = response.embeddings?.[0]?.values;
@@ -50,6 +54,7 @@ export async function getBatchEmbeddings(inputs: (string | MultimodalPart[])[]) 
                 const parts = typeof input === 'string' ? [{ text: input }] : input;
                 return { parts };
             }),
+            config: { outputDimensionality: EMBEDDING_DIMENSION },
         });
 
         if (!response.embeddings) {

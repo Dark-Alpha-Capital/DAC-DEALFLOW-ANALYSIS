@@ -1,7 +1,7 @@
 import { Job } from "bullmq";
 import { db } from "@repo/db";
 import { documents, type DocumentCategory } from "@repo/db/schema";
-import { fileExists, getNextcloudConfig } from "@repo/nextcloud";
+import { buildNextcloudFileUrl, fileExists } from "@repo/nextcloud";
 import { ragIngestionQueue } from "../lib/queues";
 
 export enum FileUploadStep {
@@ -286,8 +286,7 @@ export async function fileUploadHandler(
           );
         }
 
-        const { url, user } = getNextcloudConfig();
-        const publicUrl = `${url}/remote.php/dav/files/${user}/${filePath}`;
+        const publicUrl = buildNextcloudFileUrl(filePath);
 
         console.log(`[file-upload] ${jobId}: File verified at ${filePath}`);
 

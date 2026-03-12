@@ -1176,6 +1176,16 @@ export const chatSessions = pgTable(
     title: text("title").notNull().default("New chat"),
     provider: text("provider").notNull().default("openai"),
     model: text("model").notNull().default("gpt-5-mini"),
+    companyId: text("companyId").references(() => companies.id, {
+      onDelete: "set null",
+    }),
+    leadId: text("leadId").references(() => leads.id, {
+      onDelete: "set null",
+    }),
+    dealOpportunityId: text("dealOpportunityId").references(
+      () => dealOpportunities.id,
+      { onDelete: "set null" },
+    ),
     messages: jsonb("messages")
       .$type<Record<string, unknown>[]>()
       .notNull()
@@ -1525,6 +1535,18 @@ export const chatSessionsRelations = relations(chatSessions, ({ one }) => ({
   user: one(users, {
     fields: [chatSessions.userId],
     references: [users.id],
+  }),
+  company: one(companies, {
+    fields: [chatSessions.companyId],
+    references: [companies.id],
+  }),
+  lead: one(leads, {
+    fields: [chatSessions.leadId],
+    references: [leads.id],
+  }),
+  dealOpportunity: one(dealOpportunities, {
+    fields: [chatSessions.dealOpportunityId],
+    references: [dealOpportunities.id],
   }),
 }));
 

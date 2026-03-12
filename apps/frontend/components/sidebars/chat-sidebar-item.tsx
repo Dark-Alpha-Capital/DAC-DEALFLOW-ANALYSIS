@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -36,6 +35,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTRPC } from "@/trpc/client";
+import { toast } from "sonner";
 
 type Chat = { id: string; title: string };
 
@@ -66,6 +66,7 @@ export function ChatSidebarItem({ chat }: { chat: Chat }) {
           queryKey: trpc.chats.listRecent.queryKey({ limit: 50 }),
         });
         setDeleteOpen(false);
+        toast.success("Chat deleted successfully");
         if (pathname === `/chat/${chat.id}`) {
           router.push("/chat");
         }
@@ -153,7 +154,13 @@ export function ChatSidebarItem({ chat }: { chat: Chat }) {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!open && deleteMutation.isPending) return;
+          setDeleteOpen(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete chat?</AlertDialogTitle>
@@ -163,14 +170,16 @@ export function ChatSidebarItem({ chat }: { chat: Chat }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
               onClick={handleConfirmDelete}
               disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
-            </AlertDialogAction>
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

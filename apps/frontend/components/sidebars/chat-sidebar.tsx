@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NewChatSidebarButton } from "./new-chat-sidebar-button";
 import { useQuery } from "@tanstack/react-query";
 import { MessageSquarePlus, LayoutDashboard, BookOpen } from "lucide-react";
 import {
@@ -41,12 +42,7 @@ export default function ChatSidebar() {
       <SidebarHeader className="border-b px-2 py-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname === "/chat"}>
-              <Link href="/chat">
-                <MessageSquarePlus className="size-4" />
-                <span>New Chat</span>
-              </Link>
-            </SidebarMenuButton>
+            <NewChatSidebarButton isActive={pathname === "/chat"} />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

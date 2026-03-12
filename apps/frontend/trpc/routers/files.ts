@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents } from "@repo/db";
-import { uploadBuffer } from "@repo/nextcloud";
+import { uploadBuffer, deleteFile } from "@repo/nextcloud";
 import { revalidateTag } from "next/cache";
 import { ragIngestionQueue } from "@/lib/queue-client";
 import { randomUUID } from "crypto";
@@ -174,5 +175,99 @@ export const filesRouter = createTRPCRouter({
         documentId: documentRecord.id,
         fileUrl,
       };
+    }),
+
+  updateDocument: protectedProcedure
+    .input(
+      z.object({
+        documentId: z.string().min(1),
+        title: z.string().min(1).optional(),
+        description: z.string().nullable().optional(),
+        category: z
+          .enum([
+            "FINANCIALS",
+            "LEGAL",
+            "TAX",
+            "TECHNICAL",
+            "COMMERCIAL",
+            "ESG",
+            "MARKETING",
+            "OPERATIONS",
+            "DOCUMENTATION",
+            "INVESTOR_RELATIONSHIPS",
+            "TOOLS",
+            "LEGISLATION",
+            "RESEARCH",
+            "PROSPECTUS",
+            "OTHER",
+            "OPERATING_PLAYBOOK",
+            "INVESTMENT_MEMO",
+            "IC_TEMPLATE",
+            "INDUSTRY_RESEARCH",
+            "VALUE_CREATION_PLAYBOOK",
+            "PAST_DEAL_ANALYSIS",
+            "DUE_DILIGENCE_CHECKLIST",
+          ])
+          .optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { documentId, ...updates } = input;
+      const updateData: Record<string, unknown> = {};
+      if (updates.title !== undefined) updateData.title = updates.title;
+      if (updates.description !== undefined)
+        updateData.description = updates.description;
+      if (updates.category !== undefined) updateData.category = updates.category;
+
+      if (Object.keys(updateData).length === 0) {
+        return { success: true };
+      }
+
+      await db
+        .update(documents)
+        .set(updateData)
+        .where(eq(documents.id, documentId));
+
+      revalidateTag("documents", "max");
+      return { success: true };
+    }),
+
+  deleteDocument: protectedProcedure
+    .input(z.object({ documentId: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const [doc] = await db
+        .select({
+          fileUrl: documents.fileUrl,
+          entityType: documents.entityType,
+          entityId: documents.entityId,
+          companyId: documents.companyId,
+          dealOpportunityId: documents.dealOpportunityId,
+        })
+        .from(documents)
+        .where(eq(documents.id, input.documentId))
+        .limit(1);
+
+      if (!doc) {
+        throw new Error("Document not found");
+      }
+
+      await deleteFile(doc.fileUrl);
+      await db.delete(documents).where(eq(documents.id, input.documentId));
+
+      revalidateTag("documents", "max");
+      if (doc.entityId) {
+        const tag =
+          doc.entityType === "DEAL_OPPORTUNITY"
+            ? `deal-${doc.dealOpportunityId ?? doc.entityId}`
+            : doc.entityType === "COMPANY"
+              ? `company-${doc.companyId ?? doc.entityId}`
+              : doc.entityType === "LEAD"
+                ? `lead-${doc.entityId}`
+                : doc.entityType === "THEME"
+                  ? `theme-${doc.entityId}`
+                  : null;
+        if (tag) revalidateTag(tag, "max");
+      }
+      return { success: true };
     }),
 });

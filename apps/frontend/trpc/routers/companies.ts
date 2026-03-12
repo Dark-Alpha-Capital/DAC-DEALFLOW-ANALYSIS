@@ -8,9 +8,10 @@ import db, {
   eq,
   and,
   isNull,
+  ilike,
 } from "@repo/db";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { asc } from "drizzle-orm";
+import { asc, desc } from "drizzle-orm";
 import { upsertDealOpportunityScreening } from "@repo/deal-screening";
 
 const companySchema = z.object({
@@ -48,6 +49,37 @@ export const companiesRouter = createTRPCRouter({
       .where(isNull(companies.deletedAt))
       .orderBy(asc(companies.name));
   }),
+
+  searchForChat: protectedProcedure
+    .input(
+      z
+        .object({
+          query: z.string().trim().optional(),
+          limit: z.number().int().min(1).max(50).default(20),
+        })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const query = input?.query?.trim();
+      const limit = input?.limit ?? 20;
+
+      const conditions = [isNull(companies.deletedAt)];
+      if (query) {
+        conditions.push(ilike(companies.name, `%${query}%`));
+      }
+
+      return db
+        .select({
+          id: companies.id,
+          name: companies.name,
+          industry: companies.industry,
+          location: companies.location,
+        })
+        .from(companies)
+        .where(and(...conditions))
+        .orderBy(query ? asc(companies.name) : desc(companies.updatedAt))
+        .limit(limit);
+    }),
 
   create: protectedProcedure
     .input(createCompanySchema)

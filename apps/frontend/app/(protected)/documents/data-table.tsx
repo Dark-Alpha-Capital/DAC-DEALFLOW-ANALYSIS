@@ -73,9 +73,7 @@ export function DocumentsDataTable({ columns, data }: DocumentsDataTableProps) {
             (table.getColumn("entityType")?.getFilterValue() as string) ?? "all"
           }
           onValueChange={(v) =>
-            table
-              .getColumn("entityType")
-              ?.setFilterValue(v === "all" ? "" : v)
+            table.getColumn("entityType")?.setFilterValue(v === "all" ? "" : v)
           }
         >
           <SelectTrigger className="w-full sm:w-36">
@@ -91,7 +89,7 @@ export function DocumentsDataTable({ columns, data }: DocumentsDataTableProps) {
           </SelectContent>
         </Select>
       </div>
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="bg-card overflow-x-auto rounded-lg border">
         <Table className="min-w-120">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -120,7 +118,7 @@ export function DocumentsDataTable({ columns, data }: DocumentsDataTableProps) {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="cursor-pointer hover:bg-muted/60"
+                  className="hover:bg-muted/60 cursor-pointer"
                   onClick={() => {
                     const doc = row.original;
                     router.push(

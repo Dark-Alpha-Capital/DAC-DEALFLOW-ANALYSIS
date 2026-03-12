@@ -1,12 +1,12 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, Download, ExternalLink } from "lucide-react";
-import Link from "next/link";
+import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatFileSize } from "@/lib/utils";
 import type { Document } from "@repo/db/schema";
+import { DocumentActionsDropdown } from "./document-actions-dropdown";
 
 export type DocumentRow = Document;
 
@@ -164,40 +164,9 @@ export const columns: ColumnDef<DocumentRow>[] = [
     header: () => <span className="block w-full text-center">Actions</span>,
     cell: ({ row }) => {
       const doc = row.original;
-      const entityRoute = getEntityRoute(doc.entityType, doc.entityId ?? null);
       return (
-        <div
-          className="flex justify-center gap-1"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => window.open(doc.fileUrl, "_blank")}
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            View
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => {
-              const link = document.createElement("a");
-              link.href = doc.fileUrl;
-              link.download = doc.title;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }}
-          >
-            <Download className="h-3.5 w-3.5" />
-            Download
-          </Button>
-          <Button asChild size="sm" variant="outline" className="h-8 text-xs">
-            <Link href={entityRoute}>Entity</Link>
-          </Button>
+        <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+          <DocumentActionsDropdown doc={doc} />
         </div>
       );
     },

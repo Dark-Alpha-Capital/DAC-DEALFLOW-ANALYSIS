@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { ChatClient } from "@/components/chat/chat-client";
 import { getSession } from "@/lib/auth-server";
+import { type ChatContext } from "@/lib/chat-context";
 import { coerceStoredMessages, getChatSessionForUser } from "@/lib/chat-store";
 import { getSelectionFromProviderAndModel } from "@/lib/chat-models";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,10 +58,16 @@ async function AuthedChatSession(props: {
     chat.provider,
     chat.model,
   );
+  const initialContext: ChatContext = {
+    companyId: chat.companyId,
+    leadId: chat.leadId,
+    dealOpportunityId: chat.dealOpportunityId,
+  };
 
   return (
     <ChatClient
       chatId={chat.id}
+      initialContext={initialContext}
       initialMessages={initialMessages}
       initialSelection={initialSelection}
     />
