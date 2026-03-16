@@ -33,6 +33,7 @@ import {
   type EntityMetadata,
 } from "@repo/redis-queue";
 import { randomUUID } from "crypto";
+import { createId } from "@paralleldrive/cuid2";
 import {
   GetDealById,
   GetDealOpportunityById,
@@ -138,6 +139,22 @@ const createDealOpportunitySchema = z.object({
   ebitdaMargin: z.coerce.number().optional(),
   askingPrice: z.coerce.number().optional(),
   dealTeaser: z.string().optional(),
+  description: z.string().optional(),
+  brokerFirstName: z.string().optional(),
+  brokerLastName: z.string().optional(),
+  brokerEmail: z.union([z.string().email(), z.literal("")]).optional(),
+  brokerPhone: z.string().optional(),
+  brokerLinkedIn: z.string().optional(),
+});
+
+const createOpportunityQuickSchema = z.object({
+  dealTeaser: z.string().min(1, "Deal title is required"),
+  sourceWebsite: z.string().optional(),
+  brokerage: z.string().optional(),
+  revenue: z.coerce.number().optional(),
+  ebitda: z.coerce.number().optional(),
+  ebitdaMargin: z.coerce.number().optional(),
+  askingPrice: z.coerce.number().optional(),
   description: z.string().optional(),
   brokerFirstName: z.string().optional(),
   brokerLastName: z.string().optional(),
@@ -559,6 +576,83 @@ export const dealsRouter = createTRPCRouter({
       revalidatePath("/deal-opportunities");
       revalidateTag("deals", "max");
       return { dealOpportunityId: added?.id };
+    }),
+
+  createOpportunityQuick: protectedProcedure
+    .input(createOpportunityQuickSchema)
+    .mutation(async ({ input, ctx }) => {
+      const hasFinancials =
+        input.revenue != null ||
+        input.ebitda != null ||
+        input.ebitdaMargin != null ||
+        input.askingPrice != null;
+
+      const result = await db.transaction(async (tx) => {
+        const normalizedName = `quickadd_${createId()}`;
+        const companyName = input.dealTeaser.slice(0, 255);
+
+        const [company] = await tx
+          .insert(companies)
+          .values({
+            name: companyName,
+            normalizedName,
+            location: null,
+            coverageStatus: "UNCONTACTED",
+          })
+          .returning();
+
+        if (!company) throw new Error("Failed to create company");
+
+        const [opp] = await tx
+          .insert(dealOpportunities)
+          .values({
+            companyId: company.id,
+            leadId: null,
+            sourceWebsite: input.sourceWebsite || null,
+            brokerage: input.brokerage || null,
+            revenue: null,
+            ebitda: null,
+            ebitdaMargin: null,
+            askingPrice: null,
+            dealTeaser: input.dealTeaser || null,
+            description: input.description || null,
+            brokerFirstName: input.brokerFirstName || null,
+            brokerLastName: input.brokerLastName || null,
+            brokerEmail: input.brokerEmail || null,
+            brokerPhone: input.brokerPhone || null,
+            brokerLinkedIn: input.brokerLinkedIn || null,
+            userId: ctx.user.id,
+          })
+          .returning();
+
+        if (!opp) throw new Error("Failed to create deal opportunity");
+
+        return { company, opp };
+      });
+
+      if (hasFinancials) {
+        await createDealFinancialSnapshot({
+          dealOpportunityId: result.opp.id,
+          revenue: input.revenue ?? null,
+          ebitda: input.ebitda ?? null,
+          ebitdaMargin: input.ebitdaMargin ?? null,
+          askingPrice: input.askingPrice ?? null,
+          source: "LISTING",
+          createdById: ctx.user.id,
+        });
+      }
+      await upsertDealOpportunityScreening(result.opp.id);
+
+      revalidatePath("/deal-opportunities");
+      revalidatePath(`/deal-opportunities/${result.opp.id}`);
+      revalidatePath(`/companies/${result.company.id}`);
+      revalidateTag("deals", "max");
+      revalidateTag("companies", "max");
+
+      return {
+        dealOpportunityId: result.opp.id,
+        companyId: result.company.id,
+      };
     }),
 
   updateOpportunityStage: protectedProcedure

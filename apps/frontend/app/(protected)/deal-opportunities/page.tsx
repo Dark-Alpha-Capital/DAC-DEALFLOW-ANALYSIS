@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { DealsWorkspace } from "./deals-workspace";
+import { QuickAddDealDialog } from "@/components/Dialogs/QuickAddDealDialog";
 
 export const metadata: Metadata = {
   title: "Deal opportunities",
@@ -22,6 +23,7 @@ const DealsPage = () => {
       <div className="mb-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
         <h1 className="text-4xl font-bold md:text-5xl">Deal opportunities</h1>
         <div className="flex gap-2">
+          <QuickAddDealDialog />
           <Button asChild size="sm" variant="outline">
             <Link href="/deal-opportunities/new" className="gap-2">
               <Plus className="h-4 w-4" />

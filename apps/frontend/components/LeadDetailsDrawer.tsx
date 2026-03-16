@@ -15,7 +15,8 @@ import {
   DrawerFooter,
 } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, Building2 } from "lucide-react";
+import { ConvertLeadDialog } from "@/components/lead-detail/ConvertLeadDialog";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
@@ -50,6 +51,7 @@ export default function LeadDetailsDrawer({
   const router = useRouter();
   const trpc = useTRPC();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
 
   const { mutate: deleteLead, isPending: isDeleting } = useMutation(
     trpc.leads.delete.mutationOptions({
@@ -152,7 +154,7 @@ export default function LeadDetailsDrawer({
                 <div className="text-muted-foreground text-xs">
                   Added {new Date(lead.createdAt).toLocaleDateString()}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button asChild size="sm" variant="outline">
                     <Link
                       href={`/leads/${lead.id}`}
@@ -162,6 +164,17 @@ export default function LeadDetailsDrawer({
                       View
                     </Link>
                   </Button>
+                  {lead.status !== "DUPLICATE" && (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="gap-1.5"
+                      onClick={() => setConvertDialogOpen(true)}
+                    >
+                      <Building2 className="h-4 w-4" />
+                      Convert to company
+                    </Button>
+                  )}
                   <Button asChild size="sm" variant="outline">
                     <Link
                       href={`/leads/${lead.id}/edit`}
@@ -191,6 +204,14 @@ export default function LeadDetailsDrawer({
                 isPending={isDeleting}
                 onConfirm={() => lead && deleteLead({ id: lead.id })}
               />
+              {lead.status !== "DUPLICATE" && (
+                <ConvertLeadDialog
+                  lead={lead}
+                  open={convertDialogOpen}
+                  onOpenChange={setConvertDialogOpen}
+                  onSuccess={() => onOpenChange(false)}
+                />
+              )}
             </>
           ) : (
             <div className="space-y-2 px-4 py-6">

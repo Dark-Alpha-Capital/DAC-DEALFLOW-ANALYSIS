@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
+  type ColumnDef,
+  type ColumnFiltersState,
+  type RowSelectionState,
+  type SortingState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -33,9 +34,16 @@ import { useRouter } from "next/navigation";
 interface DealsDataTableProps {
   columns: ColumnDef<DealOppRow>[];
   data: DealOppRow[];
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: (updater: (prev: RowSelectionState) => RowSelectionState) => void;
 }
 
-export function DealsDataTable({ columns, data }: DealsDataTableProps) {
+export function DealsDataTable({
+  columns,
+  data,
+  rowSelection = {},
+  onRowSelectionChange,
+}: DealsDataTableProps) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "screeningStatus", desc: false },
@@ -50,12 +58,15 @@ export function DealsDataTable({ columns, data }: DealsDataTableProps) {
     getRowId: (row) => row.opp.id,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onRowSelectionChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    enableRowSelection: true,
     state: {
       sorting,
       columnFilters,
+      rowSelection,
     },
   });
 

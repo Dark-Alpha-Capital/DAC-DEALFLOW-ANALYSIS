@@ -3,7 +3,6 @@ import { generateText, generateObject } from "ai";
 import { z } from "zod";
 import db, {
   Sentiment,
-  deals,
   dealOpportunities,
   dealFinancialSnapshots,
   companies,
@@ -13,8 +12,16 @@ import db, {
   and,
   desc,
 } from "@repo/db";
+import { upsertDealOpportunityScreening } from "@repo/deal-screening";
 import { openai } from "../lib/ai/available-models";
 import { splitContentIntoChunks } from "../lib/utils";
+
+interface ManualScreenJobData {
+  jobId: string;
+  userId: string;
+  dealId: string;
+  dealOpportunityId: string;
+}
 
 // ============================================================================
 // Types
@@ -40,6 +47,7 @@ export interface ScreenDealJobData {
   dealId: string;
   screenerId: string;
   userId: string;
+  dealOpportunityId?: string;
   dealOpportunityIdForSave?: string;
   // Step state - persisted via job.updateData() for resume on retry
   step?: ScreenDealStep;
@@ -96,10 +104,23 @@ export interface ScreenDealResult {
  * This is idempotent: running the job multiple times produces the same result.
  */
 export async function screenDealHandler(
-  job: Job<ScreenDealJobData>,
+  job: Job<ScreenDealJobData | ManualScreenJobData>,
 ): Promise<ScreenDealResult> {
-  const { dealId, screenerId, jobId } = job.data;
-  let step = job.data.step ?? ScreenDealStep.FetchData;
+  // Manual screening: deterministic hard filter
+  if (job.name === "manual-screen") {
+    const data = job.data as ManualScreenJobData;
+    const dealOpportunityId = data.dealOpportunityId ?? data.dealId;
+    console.log(`[screen-deal] ${data.jobId}: Running manual screening for ${dealOpportunityId}`);
+    await job.updateProgress({ step: "Manual screening", percentage: 50 });
+    await upsertDealOpportunityScreening(dealOpportunityId);
+    await job.updateProgress({ step: "Completed", percentage: 100 });
+    return { success: true, message: "Manual screening completed" };
+  }
+
+  const data = job.data as ScreenDealJobData;
+  const { dealId, screenerId, jobId } = data;
+  const dealOpportunityIdFromJob = data.dealOpportunityId;
+  let step = data.step ?? ScreenDealStep.FetchData;
 
   console.log(`[screen-deal] Starting job ${jobId} at step: ${step}`);
 
@@ -115,11 +136,21 @@ export async function screenDealHandler(
         });
         console.log(`[screen-deal] ${jobId}: Fetching data`);
 
-        // Resolve dealId to DealOpportunity + Company (or fallback to legacy Deal)
-        const [opp] = await db
-          .select()
-          .from(dealOpportunities)
-          .where(eq(dealOpportunities.legacyDealId, dealId));
+        // Resolve dealId/dealOpportunityId to DealOpportunity + Company
+        let opp: (typeof dealOpportunities.$inferSelect) | undefined;
+        if (dealOpportunityIdFromJob) {
+          const [row] = await db
+            .select()
+            .from(dealOpportunities)
+            .where(eq(dealOpportunities.id, dealOpportunityIdFromJob));
+          opp = row;
+        } else {
+          const [row] = await db
+            .select()
+            .from(dealOpportunities)
+            .where(eq(dealOpportunities.legacyDealId, dealId));
+          opp = row;
+        }
 
         let fetchedDeal: DealInfo;
         let dealOpportunityIdForSave: string;
@@ -228,7 +259,7 @@ export async function screenDealHandler(
       // Step 2: Process chunks with AI
       // ========================================
       case ScreenDealStep.ProcessChunks: {
-        const fetchResult = job.data.fetchResult;
+        const fetchResult = data.fetchResult;
         if (!fetchResult) {
           throw new Error("Missing fetchResult - job state corrupted");
         }
@@ -237,7 +268,7 @@ export async function screenDealHandler(
         const totalChunks = chunks.length;
 
         // Resume from where we left off if retrying
-        const existingResults = job.data.chunkResults ?? {
+        const existingResults = data.chunkResults ?? {
           processedChunks: 0,
           intermediateSummaries: [],
         };
@@ -303,7 +334,7 @@ export async function screenDealHandler(
           percentage: 80,
         });
 
-        const chunkResults = job.data.chunkResults;
+        const chunkResults = data.chunkResults;
         if (!chunkResults) {
           throw new Error("Missing chunkResults - job state corrupted");
         }
@@ -349,13 +380,13 @@ export async function screenDealHandler(
           percentage: 95,
         });
 
-        const summaryResult = job.data.summaryResult;
+        const summaryResult = data.summaryResult;
         if (!summaryResult) {
           throw new Error("Missing summaryResult - job state corrupted");
         }
 
         const dealOpportunityId =
-          job.data.dealOpportunityIdForSave ??
+          data.dealOpportunityIdForSave ??
           (await db
             .select({ id: dealOpportunities.id })
             .from(dealOpportunities)
