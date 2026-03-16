@@ -76,6 +76,8 @@ export const screenersRouter = createTRPCRouter({
   createTemplate: protectedProcedure
     .input(screenerTemplateSchema)
     .mutation(async ({ input }) => {
+      console.log("createTemplate", input);
+
       const [created] = await db
         .insert(screeners)
         .values({
@@ -125,7 +127,7 @@ export const screenersRouter = createTRPCRouter({
       const nextPosition =
         existingQuestions.length > 0
           ? Math.max(...existingQuestions.map((question) => question.position)) +
-            1
+          1
           : 0;
 
       const [created] = await db
