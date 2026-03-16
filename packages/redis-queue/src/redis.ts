@@ -1,43 +1,31 @@
 import { createClient } from "redis";
 
 const redisUrl = process.env.REDIS_URL as string;
+const defaultUrl = redisUrl ?? "redis://127.0.0.1:6379";
 
-// Create Redis client
-const client = createClient({
-  url: redisUrl,
-});
-
-// Handle connection errors
+const client = createClient({ url: defaultUrl });
 client.on("error", (err) => console.error("Redis Client Error", err));
 
-// Connect to Redis
 let isConnecting = false;
-let connectionPromise: Promise<unknown> | null = null;
+let connectionPromise: Promise<void> | null = null;
 
 async function ensureConnected() {
-  if (client.isOpen) {
-    return;
-  }
-
+  if (client.isOpen) return;
   if (isConnecting && connectionPromise) {
     await connectionPromise;
     return;
   }
-
   isConnecting = true;
   connectionPromise = client.connect().catch((err) => {
     isConnecting = false;
     connectionPromise = null;
     throw err;
   });
-
   await connectionPromise;
   isConnecting = false;
   connectionPromise = null;
 }
 
-// Wrapper to ensure connection before operations
-// Using lowercase method names to match existing codebase usage
 export const redisClient = {
   async incr(key: string) {
     await ensureConnected();
@@ -97,4 +85,25 @@ export async function rateLimit(
   const ok = count <= max;
   const reset = (bucket + 1) * windowMs;
   return { ok, remaining: Math.max(0, max - count), reset };
+}
+
+export function createRedisClient(url?: string) {
+  return createClient({ url: url ?? defaultUrl });
+}
+
+export async function pingRedis(url?: string): Promise<boolean> {
+  const c = createRedisClient(url);
+  try {
+    await c.connect();
+    await c.ping();
+    return true;
+  } catch {
+    return false;
+  } finally {
+    try {
+      await c.quit();
+    } catch {
+      // ignore
+    }
+  }
 }

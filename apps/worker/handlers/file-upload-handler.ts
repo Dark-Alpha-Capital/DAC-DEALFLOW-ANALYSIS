@@ -2,7 +2,7 @@ import { Job } from "bullmq";
 import { db } from "@repo/db";
 import { documents, type DocumentCategory } from "@repo/db/schema";
 import { buildNextcloudFileUrl, fileExists } from "@repo/nextcloud";
-import { ragIngestionQueue } from "../lib/queues";
+import { ragIngestionQueue } from "@repo/redis-queue/queues";
 
 export enum FileUploadStep {
   Validate = "validate",

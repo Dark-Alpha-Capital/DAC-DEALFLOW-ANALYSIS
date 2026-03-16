@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { QUEUE_NAMES } from "@/lib/queue-types";
 import {
+  QUEUE_NAMES,
   getAllUserJobs,
   getLatestUserJobs,
   getJobStatus,
   deleteUserJob,
-} from "@/lib/queue-client";
+} from "@repo/redis-queue";
 import { revalidatePath } from "next/cache";
 
 export const jobsRouter = createTRPCRouter({

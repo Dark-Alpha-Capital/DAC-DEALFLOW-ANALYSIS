@@ -4,7 +4,7 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents } from "@repo/db";
 import { uploadBuffer, deleteFile } from "@repo/nextcloud";
 import { revalidateTag } from "next/cache";
-import { ragIngestionQueue } from "@/lib/queue-client";
+import { ragIngestionQueue } from "@repo/redis-queue";
 import { randomUUID } from "crypto";
 
 const uploadFileSchema = z.object({

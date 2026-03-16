@@ -31,7 +31,7 @@ import {
   ragIngestionQueue,
   type FileUploadJobData,
   type EntityMetadata,
-} from "@/lib/queue-client";
+} from "@repo/redis-queue";
 import { randomUUID } from "crypto";
 import {
   GetDealById,

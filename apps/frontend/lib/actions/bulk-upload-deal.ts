@@ -3,7 +3,7 @@
 import { TransformedDeal } from "../../app/types";
 import db, { DealType, deals as dealsTable } from "@repo/db";
 import { getSession } from "@/lib/auth-server";
-import { rateLimit } from "@/lib/redis";
+import { rateLimit } from "@repo/redis-queue/redis";
 import { headers } from "next/headers";
 import { updateTag } from "next/cache";
 

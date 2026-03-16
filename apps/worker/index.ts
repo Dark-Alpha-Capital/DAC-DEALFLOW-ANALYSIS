@@ -6,30 +6,15 @@ config({ path: resolve(import.meta.dir, ".env") });
 config({ path: resolve(import.meta.dir, ".env.local") });
 
 import { Worker } from "bullmq";
+import { connection } from "@repo/redis-queue/connection";
 import { fileUploadHandler } from "./handlers/file-upload-handler";
 import { screenDealHandler } from "./handlers/screen-deal-handler";
 import { cimExtractionHandler } from "./handlers/cim-extraction-handler";
 import { ragIngestionHandler } from "./handlers/rag-ingestion-handler";
-import IORedis from "ioredis";
 
 if (!process.env.REDIS_URL) {
   throw new Error("REDIS_URL environment variable is not set");
 }
-
-const connection = new IORedis(process.env.REDIS_URL, {
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false, // Disable ready check - Redis user may not have INFO permission
-});
-
-// Suppress Redis INFO permission errors - they're non-fatal
-connection.on("error", (err) => {
-  const errorMessage = err instanceof Error ? err.message : String(err);
-  if (errorMessage.includes("NOPERM") && errorMessage.includes("info")) {
-    // Silently ignore - these are expected when Redis user lacks INFO permission
-    return;
-  }
-  console.error("Redis connection error:", err);
-});
 
 // Worker 1: Handles Emails
 // Concurrency: 10 (Process 10 emails at the same time)

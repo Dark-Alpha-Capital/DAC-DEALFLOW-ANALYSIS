@@ -32,10 +32,9 @@ export interface JobWithMetadata {
   progress: JobProgressData | null;
   createdAt: number;
   updatedAt: number;
-  returnvalue: any;
+  returnvalue: unknown;
   failedReason: string | null;
   attemptsMade: number;
-  // Additional metadata from job.data
   userId: string;
   dealId?: string;
   companyId?: string;
@@ -50,6 +49,70 @@ export const QUEUE_NAMES = {
   CIM_EXTRACTION: "cim-extraction",
   RAG_INGESTION: "rag-ingestion",
 } as const;
+
+export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
+
+// Job data types
+export interface ScreenDealJobData {
+  jobId: string;
+  dealId: string;
+  screenerId: string;
+  userId: string;
+}
+
+export interface CompanyMetadata {
+  name: string;
+  sector: string | null;
+  stage: string | null;
+  headquarters: string | null;
+  revenue: number | null;
+  ebitda: number | null;
+}
+
+export type EntityMetadata = CompanyMetadata;
+
+export interface FileUploadJobData {
+  jobId: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  mimeType: string;
+  userId: string;
+  entityType: "DEAL" | "DEAL_OPPORTUNITY";
+  entityId: string;
+  entityMetadata: EntityMetadata;
+  embedInVectorStore?: boolean;
+  fileCategory?: string;
+  fileDescription?: string;
+  step?: string;
+  validateResult?: {
+    isValid: boolean;
+    fileSize: number;
+    mimeType: string;
+  };
+  nextcloudResult?: {
+    destPath: string;
+    publicUrl: string;
+  };
+  googleFileSearchResult?: {
+    documentName: string | null;
+  };
+}
+
+export interface CIMExtractionJobData {
+  simId: string;
+  documentId?: string;
+  dealOpportunityId?: string;
+  filePath: string;
+  userId?: string;
+}
+
+export interface RagIngestionJobData {
+  jobId: string;
+  documentId: string;
+  userId: string;
+  forceReingest?: boolean;
+}
 
 /**
  * Get job type label for display

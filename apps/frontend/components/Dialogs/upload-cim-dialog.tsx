@@ -17,7 +17,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { useRouter } from "next/navigation";
 import useCurrentUser from "@/hooks/use-current-user";
-import { QUEUE_NAMES } from "@/lib/queue-types";
+import { QUEUE_NAMES } from "@repo/redis-queue/types";
 
 interface UploadCIMDialogProps {
   dealOpportunityId: string;
