@@ -10,7 +10,10 @@ COPY package.json bun.lock* ./
 COPY packages/db/package.json ./packages/db/
 COPY packages/types/package.json ./packages/types/
 COPY packages/typescript-config/package.json ./packages/typescript-config/
-# Copy worker package.json
+COPY packages/cim-extraction/package.json ./packages/cim-extraction/
+COPY packages/nextcloud/package.json ./packages/nextcloud/
+COPY packages/rag-engine/package.json ./packages/rag-engine/
+COPY packages/redis-queue/package.json ./packages/redis-queue/
 COPY apps/worker/package.json ./apps/worker/
 # Install all dependencies
 RUN bun install
@@ -28,6 +31,10 @@ COPY package.json bun.lock* ./
 COPY packages/db ./packages/db
 COPY packages/types ./packages/types
 COPY packages/typescript-config ./packages/typescript-config
+COPY packages/cim-extraction ./packages/cim-extraction
+COPY packages/nextcloud ./packages/nextcloud
+COPY packages/rag-engine ./packages/rag-engine
+COPY packages/redis-queue ./packages/redis-queue
 COPY apps/worker ./apps/worker
 
 # Set working directory to worker
