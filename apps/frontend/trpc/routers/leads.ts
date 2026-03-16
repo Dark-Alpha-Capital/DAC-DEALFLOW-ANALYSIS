@@ -539,11 +539,11 @@ export const leadsRouter = createTRPCRouter({
         const [company] = insertedCompany
           ? [insertedCompany]
           : await tx
-              .select()
-              .from(companies)
-              .where(eq(companies.firstSeenFromLeadId, lead.id))
-              .orderBy(desc(companies.createdAt), desc(companies.id))
-              .limit(1);
+            .select()
+            .from(companies)
+            .where(eq(companies.firstSeenFromLeadId, lead.id))
+            .orderBy(desc(companies.createdAt), desc(companies.id))
+            .limit(1);
 
         if (!company) {
           throw new Error("Failed to resolve company from lead conversion");
@@ -580,20 +580,20 @@ export const leadsRouter = createTRPCRouter({
         const [createdOpp] = existingOpp
           ? [null]
           : await tx
-              .insert(dealOpportunities)
-              .values({
-                companyId: company.id,
-                leadId: lead.id,
-                sourceWebsite: lead.sourceWebsite,
-                brokerage: lead.brokerage,
-                revenue: null,
-                ebitda: null,
-                askingPrice: null,
-                dealTeaser: lead.rawTitle,
-                description: lead.rawDescription,
-                dealType: "MANUAL",
-              })
-              .returning();
+            .insert(dealOpportunities)
+            .values({
+              companyId: company.id,
+              leadId: lead.id,
+              sourceWebsite: lead.sourceWebsite,
+              brokerage: lead.brokerage,
+              revenue: null,
+              ebitda: null,
+              askingPrice: null,
+              dealTeaser: lead.rawTitle,
+              description: lead.rawDescription,
+              dealType: "MANUAL",
+            })
+            .returning();
 
         if (lead.status !== "PROCESSED" || !lead.processedAt) {
           await tx
