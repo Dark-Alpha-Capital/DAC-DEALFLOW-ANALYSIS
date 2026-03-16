@@ -191,8 +191,8 @@ export function GlobalDocumentUploadDialog({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button className="gap-2">
+          Upload
           <Upload className="h-4 w-4" />
-          Upload firm document
         </Button>
       </DialogTrigger>
       <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden">

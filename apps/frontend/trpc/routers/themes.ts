@@ -85,9 +85,9 @@ const coverageUpsertSchema = z.object({
 });
 
 function revalidateThemePaths(themeId: string) {
-  revalidatePath("/themes");
-  revalidatePath(`/themes/${themeId}`);
-  revalidatePath(`/themes/${themeId}/edit`);
+  revalidatePath("/investment-themes");
+  revalidatePath(`/investment-themes/${themeId}`);
+  revalidatePath(`/investment-themes/${themeId}/edit`);
   revalidateTag("themes", "max");
   revalidateTag(`theme-${themeId}`, "max");
 }
@@ -121,7 +121,7 @@ export const themesRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidatePath("/themes");
+      revalidatePath("/investment-themes");
       revalidateTag("themes", "max");
       return { themeId: added?.id };
     }),

@@ -5,7 +5,7 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { aiScreenings, eq, DealType, Sentiment } from "@repo/db";
 import { DeleteReasoningById, UpsertScreenerResponse } from "@repo/db/mutations";
 import { GetDealOpportunityById, GetDealOpportunityByLegacyDealId } from "@repo/db/queries";
-import { screenDealQueue, type ScreenDealJobData } from "@/lib/queue-client";
+import { screenDealQueue, type ScreenDealJobData } from "@repo/redis-queue";
 
 const saveScreeningSchema = z.object({
   dealId: z.string(),

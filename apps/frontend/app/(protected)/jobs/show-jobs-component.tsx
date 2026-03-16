@@ -27,7 +27,7 @@ import {
   getJobTypeLabel,
   type JobWithMetadata,
   type JobType,
-} from "@/lib/queue-types";
+} from "@repo/redis-queue/types";
 import { Loader2, RefreshCw, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";

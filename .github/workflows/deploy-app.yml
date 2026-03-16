@@ -14,10 +14,22 @@ jobs:
 
       - name: Execute remote SSH commands
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NEXTCLOUD_URL: ${{ secrets.NEXTCLOUD_URL }}
+          NEXTCLOUD_USER: ${{ secrets.NEXTCLOUD_USER }}
+          NEXTCLOUD_PASSWORD: ${{ secrets.NEXTCLOUD_PASSWORD }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          WORKER_PORT: ${{ secrets.WORKER_PORT }}
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: DATABASE_URL,REDIS_URL,AI_API_KEY,GOOGLE_AI_API_KEY,GEMINI_API_KEY,NEXTCLOUD_URL,NEXTCLOUD_USER,NEXTCLOUD_PASSWORD,FRONTEND_URL,WORKER_PORT
           script: |
             set -e
 
@@ -25,17 +37,29 @@ jobs:
             git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git || true
             git pull origin main
 
-            # Stop and remove old containers/images
-            docker compose down || true
+            # Write .env from GitHub secrets (envs passed via ssh-action)
+            cat > .env << ENVEOF
+            DATABASE_URL=$DATABASE_URL
+            REDIS_URL=$REDIS_URL
+            AI_API_KEY=$AI_API_KEY
+            GOOGLE_AI_API_KEY=$GOOGLE_AI_API_KEY
+            GEMINI_API_KEY=$GEMINI_API_KEY
+            NEXTCLOUD_URL=$NEXTCLOUD_URL
+            NEXTCLOUD_USER=$NEXTCLOUD_USER
+            NEXTCLOUD_PASSWORD=$NEXTCLOUD_PASSWORD
+            FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+            WORKER_PORT=${WORKER_PORT:-8083}
+            ENVEOF
+
+            # Stop and remove old containers/images (worker-only stack)
+            docker compose -f docker-compose.worker.yml down || true
             docker image prune -f
 
-            # Build without cache (docker-compose.yml handles all build args automatically)
-            docker compose build --no-cache
-
-            # Start containers
-            docker compose up -d --force-recreate
+            # Build and start worker stack
+            docker compose -f docker-compose.worker.yml build --no-cache
+            docker compose -f docker-compose.worker.yml up -d --force-recreate
 
             # Show status
             sleep 3
-            docker compose ps
-            docker compose logs --tail=30
+            docker compose -f docker-compose.worker.yml ps
+            docker compose -f docker-compose.worker.yml logs --tail=30

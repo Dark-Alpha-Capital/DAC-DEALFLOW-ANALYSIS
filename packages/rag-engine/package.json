@@ -1,0 +1,20 @@
+{
+  "name": "@repo/rag-engine",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "exports": {
+    ".": "./index.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^1.44.0",
+    "@repo/cim-extraction": "workspace:*",
+    "@repo/db": "workspace:*"
+  }
+}

@@ -1,7 +1,9 @@
 import { generateText, Output } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
+import mammoth from "mammoth";
 import pdfParse from "pdf-parse";
+import * as XLSX from "xlsx";
 
 // ============================================================================
 // Schema (arrays instead of records - OpenAI rejects z.record / propertyNames)
@@ -67,15 +69,58 @@ function toPayload(
 // ============================================================================
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  console.log(`[cim-extraction] extractTextFromPdf: input buffer size=${buffer.length}`);
+  const { text } = await extractPdfContent(buffer);
+  return text;
+}
+
+export async function extractPdfContent(
+  buffer: Buffer,
+): Promise<{ text: string; numpages: number }> {
+  console.log(`[cim-extraction] extractPdfContent: input buffer size=${buffer.length}`);
   try {
     const data = await pdfParse(buffer);
     const text = data.text?.trim() ?? "";
-    console.log(`[cim-extraction] extractTextFromPdf: extracted ${text.length} chars`);
-    return text;
+    const numpages = data.numpages ?? 0;
+    console.log(`[cim-extraction] extractPdfContent: extracted ${text.length} chars, ${numpages} pages`);
+    return { text, numpages };
   } catch (error) {
     console.error("[cim-extraction] PDF parse error:", error);
     throw new Error("Failed to extract text from PDF");
+  }
+}
+
+export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
+  console.log(`[cim-extraction] extractTextFromDocx: input buffer size=${buffer.length}`);
+  try {
+    const result = await mammoth.extractRawText({ buffer });
+    const text = result.value?.trim() ?? "";
+    console.log(`[cim-extraction] extractTextFromDocx: extracted ${text.length} chars`);
+    return text;
+  } catch (error) {
+    console.error("[cim-extraction] DOCX parse error:", error);
+    throw new Error("Failed to extract text from DOCX");
+  }
+}
+
+export function extractTextFromExcel(buffer: Buffer): string {
+  console.log(`[cim-extraction] extractTextFromExcel: input buffer size=${buffer.length}`);
+  try {
+    const workbook = XLSX.read(buffer, { type: "buffer", raw: true });
+    const chunks: string[] = [];
+    for (const sheetName of workbook.SheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) continue;
+      const csv = XLSX.utils.sheet_to_csv(sheet);
+      if (csv.trim()) {
+        chunks.push(`Sheet: ${sheetName}\n${csv}`);
+      }
+    }
+    const text = chunks.join("\n\n").trim();
+    console.log(`[cim-extraction] extractTextFromExcel: extracted ${text.length} chars from ${workbook.SheetNames.length} sheets`);
+    return text;
+  } catch (error) {
+    console.error("[cim-extraction] Excel parse error:", error);
+    throw new Error("Failed to extract text from Excel");
   }
 }
 

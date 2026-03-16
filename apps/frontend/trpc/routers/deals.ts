@@ -9,7 +9,10 @@ import db, {
   leads,
   eq,
   and,
+  or,
   isNull,
+  ilike,
+  desc,
   DealType,
   DealStatus,
   documents,
@@ -25,9 +28,10 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import {
   fileUploadQueue,
   cimExtractionQueue,
+  ragIngestionQueue,
   type FileUploadJobData,
   type EntityMetadata,
-} from "@/lib/queue-client";
+} from "@repo/redis-queue";
 import { randomUUID } from "crypto";
 import {
   GetDealById,
@@ -46,7 +50,7 @@ import {
   createDealFinancialSnapshot,
   createDealRiskFlag,
 } from "@repo/db/mutations";
-import { uploadBuffer, getNextcloudConfig } from "@repo/nextcloud";
+import { buildNextcloudFileUrl, uploadBuffer } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
 import {
   upsertDealOpportunityScreening,
@@ -212,6 +216,50 @@ const editFinancialsSchema = z.object({
 });
 
 export const dealsRouter = createTRPCRouter({
+  searchForChat: protectedProcedure
+    .input(
+      z
+        .object({
+          query: z.string().trim().optional(),
+          limit: z.number().int().min(1).max(50).default(20),
+        })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const query = input?.query?.trim();
+      const limit = input?.limit ?? 20;
+      const predicates = [isNull(companies.deletedAt)];
+
+      if (query) {
+        const searchTerm = `%${query}%`;
+        predicates.push(
+          or(
+            ilike(companies.name, searchTerm),
+            ilike(dealOpportunities.dealTeaser, searchTerm),
+            ilike(dealOpportunities.sourceWebsite, searchTerm),
+            ilike(dealOpportunities.brokerage, searchTerm),
+          )!,
+        );
+      }
+
+      return db
+        .select({
+          id: dealOpportunities.id,
+          companyId: dealOpportunities.companyId,
+          leadId: dealOpportunities.leadId,
+          dealTeaser: dealOpportunities.dealTeaser,
+          stage: dealOpportunities.stage,
+          status: dealOpportunities.status,
+          companyName: companies.name,
+          sourceWebsite: dealOpportunities.sourceWebsite,
+        })
+        .from(dealOpportunities)
+        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+        .where(and(...predicates))
+        .orderBy(desc(dealOpportunities.updatedAt), desc(dealOpportunities.id))
+        .limit(limit);
+    }),
+
   uploadCIM: protectedProcedure
     .input(uploadCIMSchema)
     .mutation(async ({ input, ctx }) => {
@@ -244,8 +292,7 @@ export const dealsRouter = createTRPCRouter({
 
       await uploadBuffer(buffer, finalPath);
 
-      const { url, user } = getNextcloudConfig();
-      const publicUrl = `${url}/remote.php/dav/files/${user}/${finalPath}`;
+      const publicUrl = buildNextcloudFileUrl(finalPath);
 
       const [documentRecord] = await db
         .insert(documents)
@@ -277,6 +324,17 @@ export const dealsRouter = createTRPCRouter({
         storageKey: finalPath,
         uploadedById: userId,
       });
+
+      const ragJobId = randomUUID();
+      await ragIngestionQueue.add(
+        "ingest",
+        {
+          jobId: ragJobId,
+          documentId: documentRecord.id,
+          userId,
+        },
+        { jobId: ragJobId },
+      );
 
       const jobId = randomUUID();
       await cimExtractionQueue.add(

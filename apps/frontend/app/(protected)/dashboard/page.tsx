@@ -14,7 +14,7 @@ import { isNull } from "@repo/db";
 
 export const metadata: Metadata = {
   title: "Global Dashboard",
-  description: "Pipeline, themes, and top deals in one command view.",
+  description: "Pipeline, investment themes, and top deals in one command view.",
 };
 
 export default function DashboardPage() {
@@ -25,7 +25,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-4xl font-bold md:text-5xl">Global Dashboard</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Pipeline, lead flow, theme coverage, and top-ranked deals by
+            Pipeline, lead flow, investment theme coverage, and top-ranked deals by
             deterministic screening score.
           </p>
         </div>

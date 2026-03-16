@@ -1,12 +1,12 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, Download, ExternalLink } from "lucide-react";
-import Link from "next/link";
+import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatFileSize } from "@/lib/utils";
 import type { Document } from "@repo/db/schema";
+import { DocumentActionsDropdown } from "./document-actions-dropdown";
 
 export type DocumentRow = Document;
 
@@ -14,7 +14,7 @@ export const entityTypeLabels: Record<string, string> = {
   COMPANY: "Company",
   DEAL_OPPORTUNITY: "Deal opportunity",
   LEAD: "Lead",
-  THEME: "Theme",
+  THEME: "Investment theme",
   GLOBAL: "Firm",
 };
 
@@ -30,7 +30,7 @@ export function getEntityRoute(
     case "LEAD":
       return `/leads/${entityId ?? ""}`;
     case "THEME":
-      return `/themes/${entityId ?? ""}`;
+      return `/investment-themes/${entityId ?? ""}`;
     case "GLOBAL":
       return "/documents";
     default:
@@ -53,7 +53,7 @@ export const columns: ColumnDef<DocumentRow>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <span className="block truncate font-medium max-w-[200px]">
+      <span className="block max-w-[200px] truncate font-medium">
         {row.original.title ?? "—"}
       </span>
     ),
@@ -107,7 +107,7 @@ export const columns: ColumnDef<DocumentRow>[] = [
     cell: ({ row }) => {
       const size = row.original.fileSize;
       return (
-        <span className="tabular-nums text-muted-foreground text-sm">
+        <span className="text-muted-foreground text-sm tabular-nums">
           {size != null ? formatFileSize(size) : "—"}
         </span>
       );
@@ -164,40 +164,12 @@ export const columns: ColumnDef<DocumentRow>[] = [
     header: () => <span className="block w-full text-center">Actions</span>,
     cell: ({ row }) => {
       const doc = row.original;
-      const entityRoute = getEntityRoute(doc.entityType, doc.entityId ?? null);
       return (
         <div
-          className="flex justify-center gap-1"
+          className="flex justify-center"
           onClick={(e) => e.stopPropagation()}
         >
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => window.open(doc.fileUrl, "_blank")}
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            View
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => {
-              const link = document.createElement("a");
-              link.href = doc.fileUrl;
-              link.download = doc.title;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }}
-          >
-            <Download className="h-3.5 w-3.5" />
-            Download
-          </Button>
-          <Button asChild size="sm" variant="outline" className="h-8 text-xs">
-            <Link href={entityRoute}>Entity</Link>
-          </Button>
+          <DocumentActionsDropdown doc={doc} />
         </div>
       );
     },

@@ -1,6 +1,10 @@
 import type { FileStat } from "webdav";
 import { getClient } from "./client";
-import { extractFilePathFromUrl, sanitizeFilename } from "./utils";
+import {
+  buildNextcloudFileUrl,
+  extractFilePathFromUrl,
+  sanitizeFilename,
+} from "./utils";
 
 export interface NextcloudFile {
   name: string;
@@ -66,7 +70,7 @@ export const uploadFile = async (
       contentLength: buffer.length,
     });
 
-    return client.getFileDownloadLink(filePath);
+    return buildNextcloudFileUrl(filePath);
   } catch (error) {
     console.error("Error uploading file to Nextcloud:", error);
     return null;
@@ -97,11 +101,11 @@ export const uploadBuffer = async (
     }
   }
 
-  await client.putFileContents(filePath, buffer, {
+  await client.putFileContents(filePath, Buffer.from(buffer), {
     overwrite: true,
   });
 
-  return client.getFileDownloadLink(filePath);
+  return buildNextcloudFileUrl(filePath);
 };
 
 /**
@@ -118,7 +122,7 @@ export const listFiles = async (
     size: item.size,
     lastModified: item.lastmod,
     mimeType: item.mime ?? "",
-    downloadUrl: client.getFileDownloadLink(item.filename),
+    downloadUrl: buildNextcloudFileUrl(item.filename),
   }));
 
   return files.filter((f) => f.mimeType !== "httpd/unix-directory");
@@ -176,4 +180,3 @@ export const createDirectory = async (
     ...options,
   });
 };
-

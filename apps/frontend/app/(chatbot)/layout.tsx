@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Metadata } from "next";
 import "../globals.css";
 import { cn } from "@/lib/utils";
@@ -32,20 +32,13 @@ const layout = ({ children }: { children: React.ReactNode }) => {
         >
           <TRPCReactProvider>
             <SessionProvider>
-              <SidebarProvider>
-                <ChatSidebar />
-                <SidebarInset>
-                  <header className="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b px-4 backdrop-blur">
-                    <SidebarTrigger className="-ml-1" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-foreground truncate text-sm font-medium">
-                        Chat
-                      </p>
-                    </div>
-                    <ModeToggle />
-                  </header>
-                  <div className="flex-1">
-                    <div className="mx-auto w-full max-w-5xl p-4 md:p-6 lg:p-8">
+              <SidebarProvider className="h-svh overflow-hidden">
+                <Suspense fallback={null}>
+                  <ChatSidebar />
+                </Suspense>
+                <SidebarInset className="min-h-0 overflow-hidden">
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden p-4 md:p-6 lg:p-8">
                       {children}
                     </div>
                   </div>

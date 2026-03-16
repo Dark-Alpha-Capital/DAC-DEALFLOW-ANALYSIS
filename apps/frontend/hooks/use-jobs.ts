@@ -2,7 +2,7 @@
 
 import { useTRPC } from "@/trpc/client";
 import { useQuery } from "@tanstack/react-query";
-import type { JobWithMetadata } from "@/lib/queue-types";
+import type { JobWithMetadata } from "@repo/redis-queue/types";
 
 /**
  * Hook for fetching and managing all user jobs

@@ -22,11 +22,11 @@ export const getNextcloudConfig = (): NextcloudConfig => {
 
 export const getClient = (): WebDAVClient => {
   const { url, user, password } = getNextcloudConfig();
-  const clientUrl = `${url}/remote.php/dav/files/${user}`;
+  const normalizedUrl = url.replace(/\/+$/, "");
+  const clientUrl = `${normalizedUrl}/remote.php/dav/files/${encodeURIComponent(user)}`;
 
   return createClient(clientUrl, {
     username: user,
     password,
   });
 };
-

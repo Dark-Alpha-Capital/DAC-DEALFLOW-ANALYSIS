@@ -1,0 +1,24 @@
+{
+  "name": "@repo/redis-queue",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./connection": "./src/connection.ts",
+    "./queues": "./src/queues.ts",
+    "./redis": "./src/redis.ts",
+    "./client": "./src/client.ts"
+  },
+  "dependencies": {
+    "bullmq": "^5.34.8",
+    "ioredis": "^5.4.2",
+    "redis": "^4.7.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
