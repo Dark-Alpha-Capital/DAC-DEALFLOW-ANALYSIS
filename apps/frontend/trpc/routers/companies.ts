@@ -10,6 +10,7 @@ import db, {
   isNull,
   ilike,
 } from "@repo/db";
+import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { asc, desc } from "drizzle-orm";
 import { upsertDealOpportunityScreening } from "@repo/deal-screening";
@@ -103,8 +104,10 @@ export const companiesRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidatePath("/companies");
-      revalidateTag("companies", "max");
+      after(async () => {
+        revalidatePath("/companies");
+        revalidateTag("companies", "max");
+      });
       return { companyId: added?.id };
     }),
 
@@ -136,15 +139,17 @@ export const companiesRouter = createTRPCRouter({
         .from(dealOpportunities)
         .where(eq(dealOpportunities.companyId, id));
 
-      for (const opportunity of companyOpportunities) {
-        await upsertDealOpportunityScreening(opportunity.id);
-      }
+      await Promise.all(
+        companyOpportunities.map((opp) => upsertDealOpportunityScreening(opp.id)),
+      );
 
-      revalidatePath("/companies");
-      revalidatePath(`/companies/${id}`);
-      revalidatePath(`/companies/${id}/edit`);
-      revalidateTag("companies", "max");
-      revalidateTag(`company-${id}`, "max");
+      after(async () => {
+        revalidatePath("/companies");
+        revalidatePath(`/companies/${id}`);
+        revalidatePath(`/companies/${id}/edit`);
+        revalidateTag("companies", "max");
+        revalidateTag(`company-${id}`, "max");
+      });
       return { companyId: id };
     }),
 
@@ -184,11 +189,12 @@ export const companiesRouter = createTRPCRouter({
           and(eq(companies.id, input.companyId), isNull(companies.deletedAt)),
         );
 
-      revalidatePath("/companies");
-      revalidatePath(`/companies/${input.companyId}`);
-      revalidateTag("companies", "max");
-      revalidateTag(`company-${input.companyId}`, "max");
-
+      after(async () => {
+        revalidatePath("/companies");
+        revalidatePath(`/companies/${input.companyId}`);
+        revalidateTag("companies", "max");
+        revalidateTag(`company-${input.companyId}`, "max");
+      });
       return { companyId: input.companyId, themeId: normalizedThemeId };
     }),
 
@@ -199,9 +205,11 @@ export const companiesRouter = createTRPCRouter({
         .update(companies)
         .set({ deletedAt: new Date() })
         .where(and(eq(companies.id, input.id), isNull(companies.deletedAt)));
-      revalidatePath("/companies");
-      revalidateTag("companies", "max");
-      revalidateTag(`company-${input.id}`, "max");
+      after(async () => {
+        revalidatePath("/companies");
+        revalidateTag("companies", "max");
+        revalidateTag(`company-${input.id}`, "max");
+      });
       return { success: true };
     }),
 });

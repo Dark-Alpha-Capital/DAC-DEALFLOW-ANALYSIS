@@ -21,7 +21,9 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "@repo/nextcloud": ["../packages/nextcloud"]
+      "@repo/nextcloud": ["../../packages/nextcloud"],
+      "@repo/redis-queue": ["../../packages/redis-queue/src/index.ts"],
+      "@repo/redis-queue/*": ["../../packages/redis-queue/src/*"]
     }
   },
   "include": [

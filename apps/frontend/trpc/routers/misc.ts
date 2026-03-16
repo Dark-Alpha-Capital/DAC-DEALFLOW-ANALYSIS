@@ -3,6 +3,7 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { deals, eq, DealType } from "@repo/db";
 import { DeleteQuestionnaireById, DeleteReasoningById } from "@repo/db/mutations";
 import { del } from "@vercel/blob";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 
 const inferDealSchema = z.object({
@@ -26,11 +27,14 @@ export const miscRouter = createTRPCRouter({
   deleteBaseline: protectedProcedure
     .input(z.object({ blobUrl: z.string(), questionnaireId: z.string() }))
     .mutation(async ({ input }) => {
-      await del(input.blobUrl);
-      await DeleteQuestionnaireById(input.questionnaireId);
+      await Promise.all([
+        del(input.blobUrl),
+        DeleteQuestionnaireById(input.questionnaireId),
+      ]);
 
-      revalidatePath("/questionnaires");
-
+      after(async () => {
+        revalidatePath("/questionnaires");
+      });
       return { success: true };
     }),
 
@@ -39,8 +43,9 @@ export const miscRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await DeleteReasoningById(input.reasoningId);
 
-      revalidatePath(`/raw-deals/${input.dealId}/reasonings`);
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}/reasonings`);
+      });
       return { success: true };
     }),
 

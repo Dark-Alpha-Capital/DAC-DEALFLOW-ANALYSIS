@@ -31,7 +31,7 @@ import {
 } from "@/lib/schemas";
 import { formatNumberWithCommas } from "@/lib/utils";
 
-function getDefaultValues(lead: Lead): ConvertLeadToCompanyFormValues {
+export function getDefaultValues(lead: Lead): ConvertLeadToCompanyFormValues {
   const name = lead.normalizedCompanyName?.trim() || lead.rawTitle?.trim() || "";
   return {
     name,
@@ -43,7 +43,17 @@ function getDefaultValues(lead: Lead): ConvertLeadToCompanyFormValues {
   };
 }
 
-export default function ConvertLeadToCompanyForm({ lead }: { lead: Lead }) {
+interface ConvertLeadToCompanyFormProps {
+  lead: Lead;
+  onSuccess?: (data: { companyId: string }) => void;
+  compact?: boolean;
+}
+
+export default function ConvertLeadToCompanyForm({
+  lead,
+  onSuccess,
+  compact = false,
+}: ConvertLeadToCompanyFormProps) {
   const router = useRouter();
   const trpc = useTRPC();
 
@@ -51,7 +61,9 @@ export default function ConvertLeadToCompanyForm({ lead }: { lead: Lead }) {
     trpc.leads.convertToCompany.mutationOptions({
       onSuccess: (data) => {
         toast.success("Lead converted to company");
-        if (data.companyId) {
+        if (onSuccess) {
+          onSuccess(data);
+        } else if (data.companyId) {
           router.push(`/companies/${data.companyId}`);
         } else {
           router.refresh();
@@ -199,12 +211,14 @@ export default function ConvertLeadToCompanyForm({ lead }: { lead: Lead }) {
           </FieldGroup>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Button type="button" variant="outline" size="sm" asChild>
-              <Link href={`/leads/${lead.id}`} className="gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Lead
-              </Link>
-            </Button>
+            {!compact && (
+              <Button type="button" variant="outline" size="sm" asChild>
+                <Link href={`/leads/${lead.id}`} className="gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Lead
+                </Link>
+              </Button>
+            )}
             <Button type="submit" disabled={isPending}>
               {isPending ? "Converting..." : "Convert to Company"}
             </Button>

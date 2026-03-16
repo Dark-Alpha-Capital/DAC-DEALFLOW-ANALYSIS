@@ -13,6 +13,7 @@ import db, {
   asc,
   desc,
 } from "@repo/db";
+import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { TRPCError } from "@trpc/server";
 
@@ -84,12 +85,14 @@ const coverageUpsertSchema = z.object({
   notes: z.string().optional(),
 });
 
-function revalidateThemePaths(themeId: string) {
-  revalidatePath("/investment-themes");
-  revalidatePath(`/investment-themes/${themeId}`);
-  revalidatePath(`/investment-themes/${themeId}/edit`);
-  revalidateTag("themes", "max");
-  revalidateTag(`theme-${themeId}`, "max");
+function scheduleRevalidateThemePaths(themeId: string) {
+  after(async () => {
+    revalidatePath("/investment-themes");
+    revalidatePath(`/investment-themes/${themeId}`);
+    revalidatePath(`/investment-themes/${themeId}/edit`);
+    revalidateTag("themes", "max");
+    revalidateTag(`theme-${themeId}`, "max");
+  });
 }
 
 export const themesRouter = createTRPCRouter({
@@ -121,8 +124,7 @@ export const themesRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidatePath("/investment-themes");
-      revalidateTag("themes", "max");
+      if (added?.id) scheduleRevalidateThemePaths(added.id);
       return { themeId: added?.id };
     }),
 
@@ -142,7 +144,7 @@ export const themesRouter = createTRPCRouter({
         })
         .where(and(eq(themes.id, id), isNull(themes.deletedAt)));
 
-      revalidateThemePaths(id);
+      scheduleRevalidateThemePaths(id);
       return { themeId: id };
     }),
 
@@ -154,7 +156,7 @@ export const themesRouter = createTRPCRouter({
         .set({ deletedAt: new Date() })
         .where(and(eq(themes.id, input.id), isNull(themes.deletedAt)));
 
-      revalidateThemePaths(input.id);
+      scheduleRevalidateThemePaths(input.id);
       return { success: true };
     }),
 
@@ -208,7 +210,7 @@ export const themesRouter = createTRPCRouter({
         });
       });
 
-      revalidateThemePaths(input.themeId);
+      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };
     }),
 
@@ -270,7 +272,7 @@ export const themesRouter = createTRPCRouter({
         });
       });
 
-      revalidateThemePaths(input.themeId);
+      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };
     }),
 
@@ -301,7 +303,7 @@ export const themesRouter = createTRPCRouter({
         averageIRR: input.averageIRR ?? null,
       });
 
-      revalidateThemePaths(input.themeId);
+      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };
     }),
 
@@ -317,7 +319,7 @@ export const themesRouter = createTRPCRouter({
           ),
         );
 
-      revalidateThemePaths(input.themeId);
+      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };
     }),
 
@@ -408,7 +410,7 @@ export const themesRouter = createTRPCRouter({
         });
       }
 
-      revalidateThemePaths(input.themeId);
+      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId, companyId: input.companyId };
     }),
 
@@ -424,7 +426,7 @@ export const themesRouter = createTRPCRouter({
           ),
         );
 
-      revalidateThemePaths(input.themeId);
+      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };
     }),
 });

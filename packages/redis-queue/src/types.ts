@@ -58,6 +58,8 @@ export interface ScreenDealJobData {
   dealId: string;
   screenerId: string;
   userId: string;
+  /** When provided, worker uses this directly instead of resolving via legacyDealId */
+  dealOpportunityId?: string;
 }
 
 export interface CompanyMetadata {

@@ -24,6 +24,7 @@ import db, {
   DealRiskType,
 } from "@repo/db";
 import { DeleteDealById, BulkDeleteDeals } from "@repo/db/mutations";
+import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import {
   fileUploadQueue,
@@ -33,6 +34,7 @@ import {
   type EntityMetadata,
 } from "@repo/redis-queue";
 import { randomUUID } from "crypto";
+import { createId } from "@paralleldrive/cuid2";
 import {
   GetDealById,
   GetDealOpportunityById,
@@ -138,6 +140,22 @@ const createDealOpportunitySchema = z.object({
   ebitdaMargin: z.coerce.number().optional(),
   askingPrice: z.coerce.number().optional(),
   dealTeaser: z.string().optional(),
+  description: z.string().optional(),
+  brokerFirstName: z.string().optional(),
+  brokerLastName: z.string().optional(),
+  brokerEmail: z.union([z.string().email(), z.literal("")]).optional(),
+  brokerPhone: z.string().optional(),
+  brokerLinkedIn: z.string().optional(),
+});
+
+const createOpportunityQuickSchema = z.object({
+  dealTeaser: z.string().min(1, "Deal title is required"),
+  sourceWebsite: z.string().optional(),
+  brokerage: z.string().optional(),
+  revenue: z.coerce.number().optional(),
+  ebitda: z.coerce.number().optional(),
+  ebitdaMargin: z.coerce.number().optional(),
+  askingPrice: z.coerce.number().optional(),
   description: z.string().optional(),
   brokerFirstName: z.string().optional(),
   brokerLastName: z.string().optional(),
@@ -349,10 +367,11 @@ export const dealsRouter = createTRPCRouter({
         { jobId },
       );
 
-      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-      revalidateTag("deals", "max");
-      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-
+      after(async () => {
+        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+        revalidateTag("deals", "max");
+        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+      });
       return {
         success: true,
         jobId,
@@ -456,8 +475,10 @@ export const dealsRouter = createTRPCRouter({
         source: "USER",
         updatedByUserId: ctx.session.user.id,
       });
-      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+      after(async () => {
+        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+      });
       return { success: true };
     }),
 
@@ -472,8 +493,10 @@ export const dealsRouter = createTRPCRouter({
         });
       }
       await deleteFinancialsForSim(sim.id);
-      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+      after(async () => {
+        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+      });
       return { success: true, canReExtract: true };
     }),
 
@@ -504,9 +527,10 @@ export const dealsRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidatePath("/manual-deals");
-      revalidateTag("deals", "max");
-
+      after(async () => {
+        revalidatePath("/manual-deals");
+        revalidateTag("deals", "max");
+      });
       return { dealId: addedDeal?.id };
     }),
 
@@ -556,9 +580,89 @@ export const dealsRouter = createTRPCRouter({
         await upsertDealOpportunityScreening(added.id);
       }
 
-      revalidatePath("/deal-opportunities");
-      revalidateTag("deals", "max");
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidateTag("deals", "max");
+      });
       return { dealOpportunityId: added?.id };
+    }),
+
+  createOpportunityQuick: protectedProcedure
+    .input(createOpportunityQuickSchema)
+    .mutation(async ({ input, ctx }) => {
+      const hasFinancials =
+        input.revenue != null ||
+        input.ebitda != null ||
+        input.ebitdaMargin != null ||
+        input.askingPrice != null;
+
+      const result = await db.transaction(async (tx) => {
+        const normalizedName = `quickadd_${createId()}`;
+        const companyName = input.dealTeaser.slice(0, 255);
+
+        const [company] = await tx
+          .insert(companies)
+          .values({
+            name: companyName,
+            normalizedName,
+            location: null,
+            coverageStatus: "UNCONTACTED",
+          })
+          .returning();
+
+        if (!company) throw new Error("Failed to create company");
+
+        const [opp] = await tx
+          .insert(dealOpportunities)
+          .values({
+            companyId: company.id,
+            leadId: null,
+            sourceWebsite: input.sourceWebsite || null,
+            brokerage: input.brokerage || null,
+            revenue: null,
+            ebitda: null,
+            ebitdaMargin: null,
+            askingPrice: null,
+            dealTeaser: input.dealTeaser || null,
+            description: input.description || null,
+            brokerFirstName: input.brokerFirstName || null,
+            brokerLastName: input.brokerLastName || null,
+            brokerEmail: input.brokerEmail || null,
+            brokerPhone: input.brokerPhone || null,
+            brokerLinkedIn: input.brokerLinkedIn || null,
+            userId: ctx.user.id,
+          })
+          .returning();
+
+        if (!opp) throw new Error("Failed to create deal opportunity");
+
+        return { company, opp };
+      });
+
+      if (hasFinancials) {
+        await createDealFinancialSnapshot({
+          dealOpportunityId: result.opp.id,
+          revenue: input.revenue ?? null,
+          ebitda: input.ebitda ?? null,
+          ebitdaMargin: input.ebitdaMargin ?? null,
+          askingPrice: input.askingPrice ?? null,
+          source: "LISTING",
+          createdById: ctx.user.id,
+        });
+      }
+      await upsertDealOpportunityScreening(result.opp.id);
+
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidatePath(`/deal-opportunities/${result.opp.id}`);
+        revalidatePath(`/companies/${result.company.id}`);
+        revalidateTag("deals", "max");
+        revalidateTag("companies", "max");
+      });
+      return {
+        dealOpportunityId: result.opp.id,
+        companyId: result.company.id,
+      };
     }),
 
   updateOpportunityStage: protectedProcedure
@@ -569,10 +673,11 @@ export const dealsRouter = createTRPCRouter({
         .set({ stage: input.stage })
         .where(eq(dealOpportunities.id, input.id));
 
-      revalidatePath("/deal-opportunities");
-      revalidateTag("deals", "max");
-      revalidateTag(`deal-${input.id}`, "max");
-
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidateTag("deals", "max");
+        revalidateTag(`deal-${input.id}`, "max");
+      });
       return { dealOpportunityId: input.id, stage: input.stage };
     }),
 
@@ -593,11 +698,12 @@ export const dealsRouter = createTRPCRouter({
 
       await upsertDealOpportunityScreening(input.dealOpportunityId);
 
-      revalidatePath("/deal-opportunities");
-      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-      revalidateTag("deals", "max");
-      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+        revalidateTag("deals", "max");
+        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+      });
       return { snapshot };
     }),
 
@@ -619,9 +725,10 @@ export const dealsRouter = createTRPCRouter({
         createdById: ctx.user.id,
       });
 
-      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-
+      after(async () => {
+        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+      });
       return { riskFlag };
     }),
 
@@ -636,12 +743,13 @@ export const dealsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const screening = await upsertDealOpportunityScreening(input.id);
 
-      revalidatePath("/deal-opportunities");
-      revalidatePath(`/deal-opportunities/${input.id}`);
-      revalidatePath("/dashboard");
-      revalidateTag("deals", "max");
-      revalidateTag(`deal-${input.id}`, "max");
-
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidatePath(`/deal-opportunities/${input.id}`);
+        revalidatePath("/dashboard");
+        revalidateTag("deals", "max");
+        revalidateTag(`deal-${input.id}`, "max");
+      });
       return { screening };
     }),
 
@@ -657,11 +765,12 @@ export const dealsRouter = createTRPCRouter({
           ),
         );
 
-      revalidatePath("/deal-opportunities");
-      revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-      revalidateTag("deals", "max");
-      revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+        revalidateTag("deals", "max");
+        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+      });
       return { success: true };
     }),
 
@@ -840,11 +949,12 @@ export const dealsRouter = createTRPCRouter({
         screenerId: null,
       });
 
-      revalidatePath("/deal-opportunities");
-      revalidatePath(`/deal-opportunities/${opp.id}`);
-      revalidateTag("deals", "max");
-      revalidateTag(`deal-${opp.id}`, "max");
-
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidatePath(`/deal-opportunities/${opp.id}`);
+        revalidateTag("deals", "max");
+        revalidateTag(`deal-${opp.id}`, "max");
+      });
       return { success: true };
     }),
 
@@ -888,11 +998,13 @@ export const dealsRouter = createTRPCRouter({
 
       await upsertDealOpportunityScreening(id);
 
-      revalidatePath("/deal-opportunities");
-      revalidatePath(`/deal-opportunities/${id}`);
-      revalidatePath(`/deal-opportunities/${id}/edit`);
-      revalidateTag("deals", "max");
-      revalidateTag(`deal-${id}`, "max");
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidatePath(`/deal-opportunities/${id}`);
+        revalidatePath(`/deal-opportunities/${id}/edit`);
+        revalidateTag("deals", "max");
+        revalidateTag(`deal-${id}`, "max");
+      });
       return { dealOpportunityId: id };
     }),
 
@@ -902,9 +1014,11 @@ export const dealsRouter = createTRPCRouter({
       await db
         .delete(dealOpportunities)
         .where(eq(dealOpportunities.id, input.id));
-      revalidatePath("/deal-opportunities");
-      revalidateTag("deals", "max");
-      revalidateTag(`deal-${input.id}`, "max");
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidateTag("deals", "max");
+        revalidateTag(`deal-${input.id}`, "max");
+      });
       return { success: true };
     }),
 
@@ -935,8 +1049,9 @@ export const dealsRouter = createTRPCRouter({
         })
         .where(eq(deals.id, id));
 
-      revalidatePath(`/raw-deals/${id}`);
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${id}`);
+      });
       return { dealId: id };
     }),
 
@@ -945,8 +1060,9 @@ export const dealsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await DeleteDealById(input.id);
 
-      revalidatePath("/raw-deals");
-
+      after(async () => {
+        revalidatePath("/raw-deals");
+      });
       return { success: true };
     }),
 
@@ -955,8 +1071,9 @@ export const dealsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await BulkDeleteDeals(input.dealIds);
 
-      revalidatePath("/raw-deals");
-
+      after(async () => {
+        revalidatePath("/raw-deals");
+      });
       return { success: true };
     }),
 
@@ -968,9 +1085,10 @@ export const dealsRouter = createTRPCRouter({
         .set({ tags: input.tags })
         .where(eq(deals.id, input.dealId));
 
-      revalidatePath(`/raw-deals/${input.dealId}`);
-      revalidatePath("/raw-deals");
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}`);
+        revalidatePath("/raw-deals");
+      });
       return { success: true };
     }),
 
@@ -988,20 +1106,20 @@ export const dealsRouter = createTRPCRouter({
           .update(dealOpportunities)
           .set({ reviewState: reviewState as ReviewState, status })
           .where(eq(dealOpportunities.id, dealId));
-        revalidatePath(`/deal-opportunities/${dealId}`);
       } else {
         await db
           .update(deals)
           .set({ reviewState: reviewState as ReviewState, status })
           .where(eq(deals.id, dealId));
-        revalidatePath(`/raw-deals/${dealId}`);
       }
 
-      revalidateTag(`deal-${dealId}`, "max");
-      revalidateTag("deals", "max");
-      revalidatePath("/raw-deals");
-      revalidatePath("/deal-opportunities");
-
+      after(async () => {
+        revalidatePath(opp ? `/deal-opportunities/${dealId}` : `/raw-deals/${dealId}`);
+        revalidateTag(`deal-${dealId}`, "max");
+        revalidateTag("deals", "max");
+        revalidatePath("/raw-deals");
+        revalidatePath("/deal-opportunities");
+      });
       return { success: true, dealId };
     }),
 
@@ -1151,9 +1269,10 @@ export const dealsRouter = createTRPCRouter({
         fileName: input.fileName,
       });
 
-      revalidateTag(`deal-${input.dealId}`, "max");
-      revalidatePath(`/raw-deals/${input.dealId}`);
-
+      after(async () => {
+        revalidateTag(`deal-${input.dealId}`, "max");
+        revalidatePath(`/raw-deals/${input.dealId}`);
+      });
       return {
         success: true,
         message: "File upload queued",

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { companyNotes, eq } from "@repo/db";
+import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { desc } from "drizzle-orm";
 
@@ -39,11 +40,12 @@ export const companyNotesRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidatePath(`/companies/${input.companyId}`);
-      revalidateTag("companies", "max");
-      revalidateTag(`company-${input.companyId}`, "max");
-      if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
-
+      after(async () => {
+        revalidatePath(`/companies/${input.companyId}`);
+        revalidateTag("companies", "max");
+        revalidateTag(`company-${input.companyId}`, "max");
+        if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
+      });
       return note;
     }),
 
@@ -67,12 +69,13 @@ export const companyNotesRouter = createTRPCRouter({
         .returning();
 
       if (updated) {
-        revalidatePath(`/companies/${updated.companyId}`);
-        revalidateTag("companies", "max");
-        revalidateTag(`company-${updated.companyId}`, "max");
-        if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
+        after(async () => {
+          revalidatePath(`/companies/${updated.companyId}`);
+          revalidateTag("companies", "max");
+          revalidateTag(`company-${updated.companyId}`, "max");
+          if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
+        });
       }
-
       return updated;
     }),
 
@@ -90,12 +93,13 @@ export const companyNotesRouter = createTRPCRouter({
         .returning();
 
       if (deleted) {
-        revalidatePath(`/companies/${deleted.companyId}`);
-        revalidateTag("companies", "max");
-        revalidateTag(`company-${deleted.companyId}`, "max");
-        if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
+        after(async () => {
+          revalidatePath(`/companies/${deleted.companyId}`);
+          revalidateTag("companies", "max");
+          revalidateTag(`company-${deleted.companyId}`, "max");
+          if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
+        });
       }
-
       return { success: true };
     }),
 });

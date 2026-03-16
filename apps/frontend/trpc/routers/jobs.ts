@@ -7,6 +7,7 @@ import {
   getJobStatus,
   deleteUserJob,
 } from "@repo/redis-queue";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 
 export const jobsRouter = createTRPCRouter({
@@ -61,14 +62,14 @@ export const jobsRouter = createTRPCRouter({
       const { jobId, queueName } = input;
 
       // Get job status
-      const jobStatus = await getJobStatus(queueName, jobId);
+      const [jobStatus, userJobs] = await Promise.all([
+        getJobStatus(queueName, jobId),
+        getAllUserJobs(userId),
+      ]);
 
       if (!jobStatus) {
         return null;
       }
-
-      // Verify job belongs to user by checking all user jobs
-      const userJobs = await getAllUserJobs(userId);
       const job = userJobs.find((j) => j.jobId === jobId);
 
       if (!job) {
@@ -107,9 +108,9 @@ export const jobsRouter = createTRPCRouter({
 
       await deleteUserJob(userId, jobId, queueName);
 
-      // Revalidate the jobs page
-      revalidatePath("/jobs");
-
+      after(async () => {
+        revalidatePath("/jobs");
+      });
       return { success: true };
     }),
 
@@ -137,14 +138,13 @@ export const jobsRouter = createTRPCRouter({
       const userId = ctx.user.id as string;
       const { jobs } = input;
 
-      // Delete all jobs in parallel
       await Promise.all(
         jobs.map((job) => deleteUserJob(userId, job.jobId, job.queueName)),
       );
 
-      // Revalidate the jobs page
-      revalidatePath("/jobs");
-
+      after(async () => {
+        revalidatePath("/jobs");
+      });
       return { success: true, deletedCount: jobs.length };
     }),
 });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
@@ -49,14 +50,15 @@ const screenerResponseInputSchema = z.object({
   notes: z.string().optional(),
 });
 
-function revalidateScreenerPaths(screenerId?: string) {
-  revalidatePath("/screeners");
-  revalidateTag("screeners", "max");
-
-  if (screenerId) {
-    revalidatePath(`/screeners/${screenerId}`);
-    revalidateTag(`screener-${screenerId}`, "max");
-  }
+function scheduleRevalidateScreenerPaths(screenerId?: string) {
+  after(async () => {
+    revalidatePath("/screeners");
+    revalidateTag("screeners", "max");
+    if (screenerId) {
+      revalidatePath(`/screeners/${screenerId}`);
+      revalidateTag(`screener-${screenerId}`, "max");
+    }
+  });
 }
 
 export const screenersRouter = createTRPCRouter({
@@ -74,6 +76,8 @@ export const screenersRouter = createTRPCRouter({
   createTemplate: protectedProcedure
     .input(screenerTemplateSchema)
     .mutation(async ({ input }) => {
+      console.log("createTemplate", input);
+
       const [created] = await db
         .insert(screeners)
         .values({
@@ -83,7 +87,7 @@ export const screenersRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidateScreenerPaths(created?.id);
+      scheduleRevalidateScreenerPaths(created?.id);
       return { screenerId: created?.id };
     }),
 
@@ -104,7 +108,7 @@ export const screenersRouter = createTRPCRouter({
         })
         .where(eq(screeners.id, input.screenerId));
 
-      revalidateScreenerPaths(input.screenerId);
+      scheduleRevalidateScreenerPaths(input.screenerId);
       return { screenerId: input.screenerId };
     }),
 
@@ -112,7 +116,7 @@ export const screenersRouter = createTRPCRouter({
     .input(z.object({ screenerId: z.string().min(1) }))
     .mutation(async ({ input }) => {
       await DeleteScreenerById(input.screenerId);
-      revalidateScreenerPaths(input.screenerId);
+      scheduleRevalidateScreenerPaths(input.screenerId);
       return { success: true };
     }),
 
@@ -123,7 +127,7 @@ export const screenersRouter = createTRPCRouter({
       const nextPosition =
         existingQuestions.length > 0
           ? Math.max(...existingQuestions.map((question) => question.position)) +
-            1
+          1
           : 0;
 
       const [created] = await db
@@ -137,7 +141,7 @@ export const screenersRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidateScreenerPaths(input.screenerId);
+      scheduleRevalidateScreenerPaths(input.screenerId);
       return { questionId: created?.id };
     }),
 
@@ -159,7 +163,7 @@ export const screenersRouter = createTRPCRouter({
           ),
         );
 
-      revalidateScreenerPaths(input.screenerId);
+      scheduleRevalidateScreenerPaths(input.screenerId);
       return { questionId: input.id };
     }),
 
@@ -203,7 +207,7 @@ export const screenersRouter = createTRPCRouter({
         });
       }
 
-      revalidateScreenerPaths(input.screenerId);
+      scheduleRevalidateScreenerPaths(input.screenerId);
       return { success: true };
     }),
 
@@ -260,7 +264,7 @@ export const screenersRouter = createTRPCRouter({
         );
       });
 
-      revalidateScreenerPaths(input.screenerId);
+      scheduleRevalidateScreenerPaths(input.screenerId);
       return { success: true };
     }),
 
@@ -318,9 +322,10 @@ export const screenersRouter = createTRPCRouter({
         ),
       );
 
-      revalidatePath(`/raw-deals/${input.dealOpportunityId}/screen`);
-      revalidateTag(`deal-screening-${input.dealOpportunityId}`, "max");
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealOpportunityId}/screen`);
+        revalidateTag(`deal-screening-${input.dealOpportunityId}`, "max");
+      });
       return {
         success: true,
         savedCount: saved.filter(Boolean).length,

@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { z } from "zod";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { aiScreenings, eq, DealType, Sentiment } from "@repo/db";
@@ -49,8 +50,17 @@ const saveEvaluationSchema = z.object({
 });
 
 const bulkScreenSchema = z.object({
-  dealIds: z.array(z.string()).min(1, "At least one deal ID is required"),
+  dealIds: z.array(z.string()).optional(),
+  dealOpportunityIds: z.array(z.string()).optional(),
   screenerId: z.string(),
+}).refine(
+  (data) =>
+    (data.dealIds?.length ?? 0) > 0 || (data.dealOpportunityIds?.length ?? 0) > 0,
+  { message: "At least one deal ID or deal opportunity ID is required" },
+);
+
+const bulkManualScreenSchema = z.object({
+  dealOpportunityIds: z.array(z.string()).min(1, "At least one deal opportunity ID is required"),
 });
 
 async function resolveDealOpportunityId({
@@ -110,8 +120,9 @@ export const screeningsRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidatePath(`/raw-deals/${input.dealId}`);
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}`);
+      });
       return { screeningId: addedScreenResult?.id };
     }),
 
@@ -136,8 +147,9 @@ export const screeningsRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidatePath(`/raw-deals/${input.dealId}`);
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}`);
+      });
       return { screeningId: addedScreenResult?.id };
     }),
 
@@ -153,8 +165,9 @@ export const screeningsRouter = createTRPCRouter({
         })
         .where(eq(aiScreenings.id, input.screeningId));
 
-      revalidatePath(`/raw-deals/${input.dealId}`);
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}`);
+      });
       return { success: true };
     }),
 
@@ -162,7 +175,9 @@ export const screeningsRouter = createTRPCRouter({
     .input(z.object({ screeningId: z.string(), dealId: z.string() }))
     .mutation(async ({ input }) => {
       await DeleteReasoningById(input.screeningId);
-      revalidatePath(`/raw-deals/${input.dealId}`);
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}`);
+      });
       return { success: true };
     }),
 
@@ -206,9 +221,10 @@ export const screeningsRouter = createTRPCRouter({
         ),
       );
 
-      revalidatePath(`/raw-deals/${input.dealId}`);
-      revalidatePath(`/raw-deals/${dealOpportunityId}/screen`);
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}`);
+        revalidatePath(`/raw-deals/${dealOpportunityId}/screen`);
+      });
       return { evaluationId: savedEvaluation?.id, data: savedEvaluation };
     }),
 
@@ -216,22 +232,25 @@ export const screeningsRouter = createTRPCRouter({
     .input(bulkScreenSchema)
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.user.id as string;
+      const ids = input.dealOpportunityIds ?? input.dealIds ?? [];
+      const isDealOpportunityIds = !!input.dealOpportunityIds?.length;
 
       const results = await Promise.all(
-        input.dealIds.map(async (dealId: string) => {
+        ids.map(async (id: string) => {
           const jobId = crypto.randomUUID();
           const jobData: ScreenDealJobData = {
             jobId,
             userId,
-            dealId,
+            dealId: id,
             screenerId: input.screenerId,
+            ...(isDealOpportunityIds && { dealOpportunityId: id }),
           };
 
           const job = await screenDealQueue.add("screen", jobData, {
             jobId,
           });
 
-          return { jobId, dealId, bullmqJobId: job.id };
+          return { jobId, dealId: id, bullmqJobId: job.id };
         }),
       );
 
@@ -240,6 +259,38 @@ export const screeningsRouter = createTRPCRouter({
         jobs: results.map((result) => ({
           jobId: result.jobId,
           dealId: result.dealId,
+        })),
+      };
+    }),
+
+  bulkManualScreen: protectedProcedure
+    .input(bulkManualScreenSchema)
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id as string;
+
+      const results = await Promise.all(
+        input.dealOpportunityIds.map(async (dealOpportunityId: string) => {
+          const jobId = crypto.randomUUID();
+          const jobData = {
+            jobId,
+            userId,
+            dealId: dealOpportunityId,
+            dealOpportunityId,
+          };
+
+          const job = await screenDealQueue.add("manual-screen", jobData, {
+            jobId,
+          });
+
+          return { jobId, dealOpportunityId, bullmqJobId: job.id };
+        }),
+      );
+
+      return {
+        ok: true,
+        jobs: results.map((r) => ({
+          jobId: r.jobId,
+          dealOpportunityId: r.dealOpportunityId,
         })),
       };
     }),

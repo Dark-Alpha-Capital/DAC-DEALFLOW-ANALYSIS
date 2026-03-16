@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { contacts, eq, and } from "@repo/db";
+import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { httpHttpsUrlSchema } from "@/lib/schemas";
 
@@ -62,7 +63,7 @@ export const contactsRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidateForEntity(input.entityType, input.entityId);
+      scheduleRevalidateForEntity(input.entityType, input.entityId);
       return { contactId: added?.id };
     }),
 
@@ -95,7 +96,7 @@ export const contactsRouter = createTRPCRouter({
         })
         .where(eq(contacts.id, id));
 
-      revalidateForEntity(data.entityType, data.entityId);
+      scheduleRevalidateForEntity(data.entityType, data.entityId);
       return { contactId: id };
     }),
 
@@ -110,35 +111,37 @@ export const contactsRouter = createTRPCRouter({
       await db.delete(contacts).where(eq(contacts.id, input.id));
 
       if (existing) {
-        revalidateForEntity(existing.entityType, existing.entityId);
+        scheduleRevalidateForEntity(existing.entityType, existing.entityId);
       }
 
       return { success: true };
     }),
 });
 
-function revalidateForEntity(entityType: string, entityId: string) {
-  switch (entityType) {
-    case "COMPANY": {
-      revalidatePath("/companies");
-      revalidatePath(`/companies/${entityId}`);
-      revalidateTag("companies", "max");
-      revalidateTag(`company-${entityId}`, "max");
-      break;
+function scheduleRevalidateForEntity(entityType: string, entityId: string) {
+  after(async () => {
+    switch (entityType) {
+      case "COMPANY": {
+        revalidatePath("/companies");
+        revalidatePath(`/companies/${entityId}`);
+        revalidateTag("companies", "max");
+        revalidateTag(`company-${entityId}`, "max");
+        break;
+      }
+      case "LEAD": {
+        revalidatePath("/leads");
+        revalidatePath(`/leads/${entityId}`);
+        revalidateTag("leads", "max");
+        revalidateTag(`lead-${entityId}`, "max");
+        break;
+      }
+      case "DEAL_OPPORTUNITY": {
+        revalidateTag("deals", "max");
+        revalidateTag(`deal-${entityId}`, "max");
+        break;
+      }
+      default:
+        break;
     }
-    case "LEAD": {
-      revalidatePath("/leads");
-      revalidatePath(`/leads/${entityId}`);
-      revalidateTag("leads", "max");
-      revalidateTag(`lead-${entityId}`, "max");
-      break;
-    }
-    case "DEAL_OPPORTUNITY": {
-      revalidateTag("deals", "max");
-      revalidateTag(`deal-${entityId}`, "max");
-      break;
-    }
-    default:
-      break;
-  }
+  });
 }
