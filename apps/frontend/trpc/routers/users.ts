@@ -3,6 +3,7 @@ import { createTRPCRouter, adminProcedure } from "../init";
 import { db } from "@repo/db";
 import { users, UserRole } from "@repo/db/schema";
 import { eq } from "drizzle-orm";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { TRPCError } from "@trpc/server";
 
@@ -50,8 +51,9 @@ export const usersRouter = createTRPCRouter({
         .set({ isBlocked: true })
         .where(eq(users.id, input.userId));
 
-      revalidatePath("/admin");
-
+      after(async () => {
+        revalidatePath("/admin");
+      });
       return { success: true };
     }),
 
@@ -63,8 +65,9 @@ export const usersRouter = createTRPCRouter({
         .set({ isBlocked: false })
         .where(eq(users.id, input.userId));
 
-      revalidatePath("/admin");
-
+      after(async () => {
+        revalidatePath("/admin");
+      });
       return { success: true };
     }),
 });

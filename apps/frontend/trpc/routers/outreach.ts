@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { outreach, dealOpportunities, eq, and } from "@repo/db";
+import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 const outreachTypes = ["EMAIL", "CALL", "LINKEDIN", "MEETING"] as const;
@@ -53,15 +54,15 @@ export const outreachRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidatePath("/companies");
-      revalidatePath(`/companies/${input.companyId}`);
-      revalidateTag("companies", "max");
-      revalidateTag(`company-${input.companyId}`, "max");
-
-      if (input.dealOpportunityId) {
-        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-      }
-
+      after(async () => {
+        revalidatePath("/companies");
+        revalidatePath(`/companies/${input.companyId}`);
+        revalidateTag("companies", "max");
+        revalidateTag(`company-${input.companyId}`, "max");
+        if (input.dealOpportunityId) {
+          revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+        }
+      });
       return { outreachId: added?.id };
     }),
 });

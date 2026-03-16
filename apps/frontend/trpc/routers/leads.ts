@@ -12,6 +12,7 @@ import db, {
   ilike,
 } from "@repo/db";
 import { convertLeadToCompanySchema, leadFormSchema } from "@/lib/schemas";
+import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { upsertDealOpportunityScreening } from "@repo/deal-screening";
 import { createDealFinancialSnapshot } from "@repo/db/mutations";
@@ -160,8 +161,10 @@ export const leadsRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidatePath("/leads");
-      revalidateTag("leads", "max");
+      after(async () => {
+        revalidatePath("/leads");
+        revalidateTag("leads", "max");
+      });
       return { leadId: added?.id };
     }),
 
@@ -193,11 +196,13 @@ export const leadsRouter = createTRPCRouter({
         })
         .where(and(eq(leads.id, id), isNull(leads.deletedAt)));
 
-      revalidatePath("/leads");
-      revalidatePath(`/leads/${id}`);
-      revalidatePath(`/leads/${id}/edit`);
-      revalidateTag("leads", "max");
-      revalidateTag(`lead-${id}`, "max");
+      after(async () => {
+        revalidatePath("/leads");
+        revalidatePath(`/leads/${id}`);
+        revalidatePath(`/leads/${id}/edit`);
+        revalidateTag("leads", "max");
+        revalidateTag(`lead-${id}`, "max");
+      });
       return { leadId: id };
     }),
 
@@ -211,9 +216,11 @@ export const leadsRouter = createTRPCRouter({
         .update(leads)
         .set({ deletedAt: new Date() })
         .where(and(eq(leads.id, input.id), isNull(leads.deletedAt)));
-      revalidatePath("/leads");
-      revalidateTag("leads", "max");
-      revalidateTag(`lead-${input.id}`, "max");
+      after(async () => {
+        revalidatePath("/leads");
+        revalidateTag("leads", "max");
+        revalidateTag(`lead-${input.id}`, "max");
+      });
       return { success: true };
     }),
 
@@ -292,15 +299,16 @@ export const leadsRouter = createTRPCRouter({
 
       await db.update(leads).set(payload).where(eq(leads.id, lead.id));
 
-      revalidatePath("/leads");
-      revalidatePath(`/leads/${input.leadId}`);
-      revalidateTag("leads", "max");
-      revalidateTag(`lead-${input.leadId}`, "max");
-      if (payload.duplicateCompanyId) {
-        revalidatePath(`/companies/${payload.duplicateCompanyId}`);
-        revalidateTag(`company-${payload.duplicateCompanyId}`, "max");
-      }
-
+      after(async () => {
+        revalidatePath("/leads");
+        revalidatePath(`/leads/${input.leadId}`);
+        revalidateTag("leads", "max");
+        revalidateTag(`lead-${input.leadId}`, "max");
+        if (payload.duplicateCompanyId) {
+          revalidatePath(`/companies/${payload.duplicateCompanyId}`);
+          revalidateTag(`company-${payload.duplicateCompanyId}`, "max");
+        }
+      });
       return { leadId: input.leadId };
     }),
 
@@ -319,11 +327,12 @@ export const leadsRouter = createTRPCRouter({
         })
         .where(and(eq(leads.id, input.id), isNull(leads.deletedAt)));
 
-      revalidatePath("/leads");
-      revalidatePath(`/leads/${input.id}`);
-      revalidateTag("leads", "max");
-      revalidateTag(`lead-${input.id}`, "max");
-
+      after(async () => {
+        revalidatePath("/leads");
+        revalidatePath(`/leads/${input.id}`);
+        revalidateTag("leads", "max");
+        revalidateTag(`lead-${input.id}`, "max");
+      });
       return { leadId: input.id };
     }),
 
@@ -441,14 +450,15 @@ export const leadsRouter = createTRPCRouter({
         return { leadId: lead.id, companyId: company.id };
       });
 
-      revalidatePath("/leads");
-      revalidatePath(`/leads/${result.leadId}`);
-      revalidateTag("leads", "max");
-      revalidateTag(`lead-${result.leadId}`, "max");
-      revalidatePath(`/companies/${result.companyId}`);
-      revalidateTag("companies", "max");
-      revalidateTag(`company-${result.companyId}`, "max");
-
+      after(async () => {
+        revalidatePath("/leads");
+        revalidatePath(`/leads/${result.leadId}`);
+        revalidateTag("leads", "max");
+        revalidateTag(`lead-${result.leadId}`, "max");
+        revalidatePath(`/companies/${result.companyId}`);
+        revalidateTag("companies", "max");
+        revalidateTag(`company-${result.companyId}`, "max");
+      });
       return result;
     }),
 
@@ -488,12 +498,13 @@ export const leadsRouter = createTRPCRouter({
 
       await db.update(leads).set(updatePayload).where(eq(leads.id, lead.id));
 
-      revalidatePath("/leads");
-      revalidatePath(`/leads/${lead.id}`);
-      revalidateTag("leads", "max");
-      revalidateTag(`lead-${lead.id}`, "max");
-      revalidateTag("companies", "max");
-
+      after(async () => {
+        revalidatePath("/leads");
+        revalidatePath(`/leads/${lead.id}`);
+        revalidateTag("leads", "max");
+        revalidateTag(`lead-${lead.id}`, "max");
+        revalidateTag("companies", "max");
+      });
       return { leadId: lead.id };
     }),
 
@@ -618,13 +629,15 @@ export const leadsRouter = createTRPCRouter({
         };
       });
 
-      revalidatePath("/leads");
-      revalidatePath("/companies");
-      revalidatePath(`/companies/${result.companyId}`);
-      revalidateTag("leads", "max");
-      revalidateTag(`lead-${result.leadId}`, "max");
-      revalidateTag("companies", "max");
-      revalidateTag(`company-${result.companyId}`, "max");
+      after(async () => {
+        revalidatePath("/leads");
+        revalidatePath("/companies");
+        revalidatePath(`/companies/${result.companyId}`);
+        revalidateTag("leads", "max");
+        revalidateTag(`lead-${result.leadId}`, "max");
+        revalidateTag("companies", "max");
+        revalidateTag(`company-${result.companyId}`, "max");
+      });
 
       if (result.dealOpportunityId) {
         if (

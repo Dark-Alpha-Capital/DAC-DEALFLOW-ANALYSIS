@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { z } from "zod";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { aiScreenings, eq, DealType, Sentiment } from "@repo/db";
@@ -119,8 +120,9 @@ export const screeningsRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidatePath(`/raw-deals/${input.dealId}`);
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}`);
+      });
       return { screeningId: addedScreenResult?.id };
     }),
 
@@ -145,8 +147,9 @@ export const screeningsRouter = createTRPCRouter({
         })
         .returning();
 
-      revalidatePath(`/raw-deals/${input.dealId}`);
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}`);
+      });
       return { screeningId: addedScreenResult?.id };
     }),
 
@@ -162,8 +165,9 @@ export const screeningsRouter = createTRPCRouter({
         })
         .where(eq(aiScreenings.id, input.screeningId));
 
-      revalidatePath(`/raw-deals/${input.dealId}`);
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}`);
+      });
       return { success: true };
     }),
 
@@ -171,7 +175,9 @@ export const screeningsRouter = createTRPCRouter({
     .input(z.object({ screeningId: z.string(), dealId: z.string() }))
     .mutation(async ({ input }) => {
       await DeleteReasoningById(input.screeningId);
-      revalidatePath(`/raw-deals/${input.dealId}`);
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}`);
+      });
       return { success: true };
     }),
 
@@ -215,9 +221,10 @@ export const screeningsRouter = createTRPCRouter({
         ),
       );
 
-      revalidatePath(`/raw-deals/${input.dealId}`);
-      revalidatePath(`/raw-deals/${dealOpportunityId}/screen`);
-
+      after(async () => {
+        revalidatePath(`/raw-deals/${input.dealId}`);
+        revalidatePath(`/raw-deals/${dealOpportunityId}/screen`);
+      });
       return { evaluationId: savedEvaluation?.id, data: savedEvaluation };
     }),
 
