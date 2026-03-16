@@ -73,6 +73,7 @@
     "@types/pdf-parse": "^1.1.4",
     "@vercel/blob": "^0.26.0",
     "@xyflow/react": "^12.10.1",
+    "adm-zip": "^0.5.16",
     "ai": "^6.0.116",
     "ansi-to-react": "^6.2.6",
     "axios": "^1.8.4",
@@ -132,6 +133,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "@clerk/types": "^4.35.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^25.0.10",

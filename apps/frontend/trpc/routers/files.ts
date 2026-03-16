@@ -1,11 +1,31 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
+import AdmZip from "adm-zip";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents } from "@repo/db";
-import { uploadBuffer, deleteFile } from "@repo/nextcloud";
+import { uploadBuffer, deleteFile, sanitizeFilename } from "@repo/nextcloud";
 import { revalidateTag } from "next/cache";
 import { ragIngestionQueue } from "@repo/redis-queue";
 import { randomUUID } from "crypto";
+
+const MAX_ZIP_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
+const MAX_FILES = 200;
+
+const ENTITY_SEGMENTS: Record<string, string> = {
+  COMPANY: "companies",
+  DEAL_OPPORTUNITY: "deal_opportunity",
+};
+
+function sanitizePathSegment(segment: string): string {
+  return sanitizeFilename(segment) || "file";
+}
+
+function buildSafeRelativePath(entryPath: string): string | null {
+  const normalized = entryPath.replace(/\\/g, "/").replace(/^\/+/, "");
+  const segments = normalized.split("/").filter(Boolean);
+  const safeSegments = segments.map(sanitizePathSegment);
+  return safeSegments.join("/");
+}
 
 const uploadFileSchema = z.object({
   entityType: z.enum(["LEAD", "COMPANY", "DEAL_OPPORTUNITY", "THEME"]),
@@ -13,6 +33,13 @@ const uploadFileSchema = z.object({
   fileData: z.string(),
   fileName: z.string().min(1, "fileName is required"),
   fileType: z.string().optional(),
+});
+
+const uploadZipSchema = z.object({
+  entityType: z.enum(["COMPANY", "DEAL_OPPORTUNITY"]),
+  entityId: z.string().min(1, "entityId is required"),
+  fileData: z.string(),
+  fileName: z.string().min(1, "fileName is required"),
 });
 
 const uploadGlobalDocumentSchema = z.object({
@@ -122,6 +149,90 @@ export const filesRouter = createTRPCRouter({
         documentId: documentRecord.id,
         fileUrl,
       };
+    }),
+
+  uploadZip: protectedProcedure
+    .input(uploadZipSchema)
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      if (!userId || userId.trim() === "") {
+        throw new Error("User ID is required but not found in session");
+      }
+
+      const base64Data = input.fileData.split(",")[1] || input.fileData;
+      const buffer = Buffer.from(base64Data, "base64");
+
+      if (buffer.length > MAX_ZIP_SIZE_BYTES) {
+        throw new Error(`Zip exceeds max size of ${MAX_ZIP_SIZE_BYTES / 1024 / 1024}MB`);
+      }
+
+      let zip: AdmZip;
+      try {
+        zip = new AdmZip(buffer);
+      } catch {
+        throw new Error("Invalid or corrupted zip file");
+      }
+
+      const entries = zip.getEntries();
+      const documentIds: string[] = [];
+      const entitySegment = ENTITY_SEGMENTS[input.entityType];
+      const basePath = `dealflow/${entitySegment}/${input.entityId}`;
+
+      let processed = 0;
+      for (const entry of entries) {
+        if (processed >= MAX_FILES) break;
+        if (entry.isDirectory) continue;
+        if (entry.entryName.includes("__MACOSX") || entry.entryName.endsWith(".DS_Store")) continue;
+
+        const safeRelative = buildSafeRelativePath(entry.entryName);
+        if (!safeRelative) continue;
+
+        const fileBuffer = entry.getData();
+        if (!fileBuffer || fileBuffer.length === 0) continue;
+
+        const finalPath = `${basePath}/${safeRelative}`;
+        const fileUrl = await uploadBuffer(Buffer.from(fileBuffer), finalPath);
+        const fileName = safeRelative.split("/").pop() ?? "file";
+
+        const [doc] = await db
+          .insert(documents)
+          .values({
+            entityType: input.entityType,
+            entityId: input.entityId,
+            companyId: input.entityType === "COMPANY" ? input.entityId : undefined,
+            dealOpportunityId: input.entityType === "DEAL_OPPORTUNITY" ? input.entityId : undefined,
+            title: fileName,
+            description: null,
+            fileUrl,
+            fileName,
+            fileSize: fileBuffer.length,
+            mimeType: "application/octet-stream",
+            uploadedById: userId,
+          })
+          .returning();
+
+        if (doc) {
+          const ragJobId = randomUUID();
+          await ragIngestionQueue.add(
+            "ingest",
+            { jobId: ragJobId, documentId: doc.id, userId },
+            { jobId: ragJobId },
+          );
+          documentIds.push(doc.id);
+          processed++;
+        }
+      }
+
+      const tags: string[] =
+        input.entityType === "COMPANY"
+          ? [`company-${input.entityId}`, "companies"]
+          : [`deal-${input.entityId}`, "deals"];
+      tags.push("documents");
+      for (const tag of tags) {
+        revalidateTag(tag, "max");
+      }
+
+      return { success: true, documentIds, count: documentIds.length };
     }),
 
   uploadGlobalDocument: protectedProcedure

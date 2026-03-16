@@ -69,7 +69,7 @@ export function FileUploadDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const trpc = useTRPC();
 
-  const { mutate: uploadFile, isPending } = useMutation(
+  const { mutate: uploadFile, isPending: isUploadingFile } = useMutation(
     trpc.files.uploadFile.mutationOptions({
       onSuccess: () => {
         toast.success("File uploaded successfully", {
@@ -89,10 +89,36 @@ export function FileUploadDialog({
     }),
   );
 
+  const { mutate: uploadZip, isPending: isUploadingZip } = useMutation(
+    trpc.files.uploadZip.mutationOptions({
+      onSuccess: (data) => {
+        toast.success("Zip uploaded successfully", {
+          description: `${data.count} files are being processed.`,
+        });
+        setFile(null);
+        setIsOpen(false);
+      },
+      onError: (error) => {
+        console.error("Zip upload failed:", error);
+        toast.error("Zip upload failed", {
+          description:
+            error.message ||
+            "The zip could not be uploaded. Please try again.",
+        });
+      },
+    }),
+  );
+
+  const isPending = isUploadingFile || isUploadingZip;
+  const isZipSupported =
+    entityType === "COMPANY" || entityType === "DEAL_OPPORTUNITY";
+
   const handleSelectedFile = async (selected: File) => {
-    if (selected.size > maxFileSize * 1024 * 1024) {
+    const isZip = selected.name.toLowerCase().endsWith(".zip");
+    const limitMB = isZip && isZipSupported ? 100 : maxFileSize;
+    if (selected.size > limitMB * 1024 * 1024) {
       toast.error("File too large", {
-        description: `File exceeds size limit of ${maxFileSize}MB.`,
+        description: `File exceeds size limit of ${limitMB}MB.`,
       });
       return;
     }
@@ -140,14 +166,25 @@ export function FileUploadDialog({
 
     try {
       const fileData = await readFileAsDataURL(file.file);
+      const isZip =
+        file.file.name.toLowerCase().endsWith(".zip") && isZipSupported;
 
-      uploadFile({
-        entityType,
-        entityId,
-        fileData,
-        fileName: file.file.name,
-        fileType: file.file.type || "application/octet-stream",
-      });
+      if (isZip) {
+        uploadZip({
+          entityType: entityType as "COMPANY" | "DEAL_OPPORTUNITY",
+          entityId,
+          fileData,
+          fileName: file.file.name,
+        });
+      } else {
+        uploadFile({
+          entityType,
+          entityId,
+          fileData,
+          fileName: file.file.name,
+          fileType: file.file.type || "application/octet-stream",
+        });
+      }
     } catch (error) {
       console.error("Upload failed:", error);
       toast.error("Upload failed", {
@@ -191,6 +228,7 @@ export function FileUploadDialog({
             </p>
             <p className="text-muted-foreground text-xs">
               Max size {maxFileSize}MB
+              {isZipSupported && " (100MB for zip)"}
             </p>
             <input
               ref={fileInputRef}
