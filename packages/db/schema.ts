@@ -145,6 +145,40 @@ export const dealRiskSeverityEnum = pgEnum("DealRiskSeverity", [
 
 export const dealRiskSourceEnum = pgEnum("DealRiskSource", ["SYSTEM", "USER"]);
 
+// Capital CRM layer
+export const investorTypeEnum = pgEnum("InvestorType", [
+  "HNWI",
+  "FAMILY_OFFICE",
+  "INSTITUTION",
+]);
+export const investorStatusEnum = pgEnum("InvestorStatus", [
+  "PROSPECT",
+  "QUALIFIED",
+  "ACTIVE",
+  "INACTIVE",
+]);
+export const investorLeadStatusEnum = pgEnum("InvestorLeadStatus", [
+  "RAW",
+  "CONTACTED",
+  "ENGAGED",
+  "QUALIFIED",
+  "REJECTED",
+]);
+export const investorInteractionTypeEnum = pgEnum("InvestorInteractionType", [
+  "EMAIL",
+  "CALL",
+  "MEETING",
+  "EVENT",
+  "INTRO",
+]);
+export const investorRiskProfileEnum = pgEnum("InvestorRiskProfile", [
+  "CONSERVATIVE",
+  "MODERATE",
+  "BALANCED",
+  "GROWTH",
+  "AGGRESSIVE",
+]);
+
 // ============================================================================
 // TABLES
 // ============================================================================
@@ -1205,6 +1239,88 @@ export const chatSessions = pgTable(
   }),
 );
 
+// ----------------------------------------------------------------------------
+// Capital CRM layer
+// ----------------------------------------------------------------------------
+
+export const investors = pgTable("Investor", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  name: text("name").notNull(),
+  type: investorTypeEnum("type").notNull(),
+  primaryContactName: text("primaryContactName"),
+  email: text("email"),
+  phone: text("phone"),
+  geography: text("geography"),
+  minCheckSize: decimal("minCheckSize"),
+  maxCheckSize: decimal("maxCheckSize"),
+  sectorFocus: text("sectorFocus").array(),
+  stagePreference: text("stagePreference").array(),
+  riskProfile: investorRiskProfileEnum("riskProfile"),
+  status: investorStatusEnum("status").default("PROSPECT").notNull(),
+  firstSeenFromInvestorLeadId: text("firstSeenFromInvestorLeadId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
+export const investorLeads = pgTable(
+  "InvestorLead",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    name: text("name"),
+    source: text("source"),
+    email: text("email"),
+    phone: text("phone"),
+    inferredType: text("inferredType"),
+    notes: text("notes"),
+    status: investorLeadStatusEnum("status").default("RAW").notNull(),
+    ownerUserId: text("ownerUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    investorLeadOwnerIdx: index("investor_lead_owner_idx").on(
+      table.ownerUserId,
+    ),
+    investorLeadStatusIdx: index("investor_lead_status_idx").on(table.status),
+  }),
+);
+
+export const investorInteractions = pgTable(
+  "InvestorInteraction",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    investorId: text("investorId").references(() => investors.id, {
+      onDelete: "cascade",
+    }),
+    investorLeadId: text("investorLeadId").references(() => investorLeads.id, {
+      onDelete: "cascade",
+    }),
+    type: investorInteractionTypeEnum("type"),
+    notes: text("notes"),
+    outcome: text("outcome"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    investorInteractionInvestorIdx: index(
+      "investor_interaction_investor_idx",
+    ).on(table.investorId, table.createdAt),
+    investorInteractionLeadIdx: index("investor_interaction_lead_idx").on(
+      table.investorLeadId,
+      table.createdAt,
+    ),
+  }),
+);
+
 // ============================================================================
 // RELATIONS
 // ============================================================================
@@ -1221,6 +1337,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   documents: many(documents),
   outreach: many(outreach),
   chatSessions: many(chatSessions),
+  investorLeads: many(investorLeads),
 }));
 
 export const themesRelations = relations(themes, ({ one, many }) => ({
@@ -1550,6 +1667,40 @@ export const chatSessionsRelations = relations(chatSessions, ({ one }) => ({
   }),
 }));
 
+export const investorsRelations = relations(investors, ({ one, many }) => ({
+  interactions: many(investorInteractions),
+  firstSeenFromInvestorLead: one(investorLeads, {
+    fields: [investors.firstSeenFromInvestorLeadId],
+    references: [investorLeads.id],
+    relationName: "firstSeenFromInvestorLead",
+  }),
+}));
+
+export const investorLeadsRelations = relations(investorLeads, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [investorLeads.ownerUserId],
+    references: [users.id],
+  }),
+  interactions: many(investorInteractions),
+  investorsFirstSeen: many(investors, {
+    relationName: "firstSeenFromInvestorLead",
+  }),
+}));
+
+export const investorInteractionsRelations = relations(
+  investorInteractions,
+  ({ one }) => ({
+    investor: one(investors, {
+      fields: [investorInteractions.investorId],
+      references: [investors.id],
+    }),
+    investorLead: one(investorLeads, {
+      fields: [investorInteractions.investorLeadId],
+      references: [investorLeads.id],
+    }),
+  }),
+);
+
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
@@ -1825,3 +1976,10 @@ export type NewContact = typeof contacts.$inferInsert;
 
 export type ChatSession = typeof chatSessions.$inferSelect;
 export type NewChatSession = typeof chatSessions.$inferInsert;
+
+export type Investor = typeof investors.$inferSelect;
+export type NewInvestor = typeof investors.$inferInsert;
+export type InvestorLead = typeof investorLeads.$inferSelect;
+export type NewInvestorLead = typeof investorLeads.$inferInsert;
+export type InvestorInteraction = typeof investorInteractions.$inferSelect;
+export type NewInvestorInteraction = typeof investorInteractions.$inferInsert;

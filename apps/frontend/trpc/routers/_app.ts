@@ -14,9 +14,13 @@ import { filesRouter } from "./files";
 import { companyNotesRouter } from "./companyNotes";
 import { outreachRouter } from "./outreach";
 import { chatsRouter } from "./chats";
+import { investorsRouter } from "./investors";
+import { investorLeadsRouter } from "./investorLeads";
 
 export const appRouter = createTRPCRouter({
   companies: companiesRouter,
+  investors: investorsRouter,
+  investorLeads: investorLeadsRouter,
   dealOpportunities: dealsRouter,
   deals: dealsRouter, // backward-compatible alias
   themes: themesRouter,
