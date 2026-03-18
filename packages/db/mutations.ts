@@ -9,9 +9,12 @@ import {
   cimExtractions,
   dealSims,
   dealFinancialSnapshots,
+  companyFinancialSnapshots,
+  companies,
   dealRiskFlags,
   dealOpportunities,
   type DealFinancialSnapshotSource,
+  type CompanyFinancialSnapshotSource,
   type DealRiskSeverity,
   type DealRiskType,
   type ScreenerResponseSource,
@@ -39,6 +42,22 @@ export interface CreateDealFinancialSnapshotInput {
   askingPrice?: number | null;
   impliedMultiple?: number | null;
   source: DealFinancialSnapshotSource;
+  notes?: string | null;
+  createdById?: string | null;
+}
+
+export interface CreateCompanyFinancialSnapshotInput {
+  companyId: string;
+  periodEnd: Date;
+  revenue?: number | null;
+  ebitda?: number | null;
+  grossMargin?: number | null;
+  revenueCagr?: number | null;
+  employees?: number | null;
+  totalClients?: number | null;
+  top10Concentration?: number | null;
+  recurringRevenuePct?: number | null;
+  source: CompanyFinancialSnapshotSource;
   notes?: string | null;
   createdById?: string | null;
 }
@@ -382,6 +401,49 @@ export const createDealFinancialSnapshot = async (
         impliedMultiple: snapshot?.impliedMultiple ?? null,
       })
       .where(eq(dealOpportunities.id, input.dealOpportunityId));
+
+    return snapshot ?? null;
+  });
+};
+
+export const createCompanyFinancialSnapshot = async (
+  input: CreateCompanyFinancialSnapshotInput,
+) => {
+  return db.transaction(async (tx) => {
+    const [snapshot] = await tx
+      .insert(companyFinancialSnapshots)
+      .values({
+        companyId: input.companyId,
+        periodEnd: input.periodEnd,
+        revenue: input.revenue ?? null,
+        ebitda: input.ebitda ?? null,
+        grossMargin: input.grossMargin ?? null,
+        revenueCagr: input.revenueCagr ?? null,
+        employees: input.employees ?? null,
+        totalClients: input.totalClients ?? null,
+        top10Concentration: input.top10Concentration ?? null,
+        recurringRevenuePct: input.recurringRevenuePct ?? null,
+        source: input.source,
+        notes: input.notes ?? null,
+        createdById: input.createdById ?? null,
+      })
+      .returning();
+
+    if (snapshot) {
+      await tx
+        .update(companies)
+        .set({
+          revenueTtm: snapshot.revenue ?? null,
+          ebitdaTtm: snapshot.ebitda ?? null,
+          grossMargin: snapshot.grossMargin ?? null,
+          revenueCagr: snapshot.revenueCagr ?? null,
+          employees: snapshot.employees ?? null,
+          totalClients: snapshot.totalClients ?? null,
+          top10Concentration: snapshot.top10Concentration ?? null,
+          recurringRevenuePct: snapshot.recurringRevenuePct ?? null,
+        })
+        .where(eq(companies.id, input.companyId));
+    }
 
     return snapshot ?? null;
   });

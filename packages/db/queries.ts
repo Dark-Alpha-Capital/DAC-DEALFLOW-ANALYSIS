@@ -23,6 +23,7 @@ import {
   cimExtractions,
   dealSims,
   dealFinancialSnapshots,
+  companyFinancialSnapshots,
   dealRiskFlags,
   investors,
   investorLeads,
@@ -113,6 +114,7 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       companyDocuments,
       companyContacts,
       companyNotesRows,
+      companyFinancialSnapshotsRows,
     ] = await Promise.all([
       db
         .select()
@@ -136,6 +138,11 @@ export const GetCompanyWithAllRelations = async (id: string) => {
         .from(companyNotes)
         .where(eq(companyNotes.companyId, id))
         .orderBy(desc(companyNotes.createdAt)),
+      db
+        .select()
+        .from(companyFinancialSnapshots)
+        .where(eq(companyFinancialSnapshots.companyId, id))
+        .orderBy(desc(companyFinancialSnapshots.periodEnd)),
     ]);
 
     const dealOppIds = companyDealOpps.map((o) => o.id);
@@ -173,11 +180,23 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       contacts: companyContacts,
       outreach: outreachRows,
       notes: companyNotesRows,
+      financialSnapshots: companyFinancialSnapshotsRows,
     };
   } catch (error) {
     console.error("Error fetching company with relations", error);
     throw error;
   }
+};
+
+/**
+ * List company financial snapshots ordered by periodEnd desc (time-series)
+ */
+export const ListCompanyFinancialSnapshots = async (companyId: string) => {
+  return db
+    .select()
+    .from(companyFinancialSnapshots)
+    .where(eq(companyFinancialSnapshots.companyId, companyId))
+    .orderBy(desc(companyFinancialSnapshots.periodEnd));
 };
 
 /**

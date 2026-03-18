@@ -129,6 +129,11 @@ export const dealFinancialSnapshotSourceEnum = pgEnum(
   ],
 );
 
+export const companyFinancialSnapshotSourceEnum = pgEnum(
+  "CompanyFinancialSnapshotSource",
+  ["MANAGEMENT", "CIM", "MANUAL"],
+);
+
 export const dealRiskTypeEnum = pgEnum("DealRiskType", [
   "CUSTOMER_CONCENTRATION",
   "CAPEX",
@@ -374,6 +379,23 @@ export const companies = pgTable(
     customerConcentrationPct: doublePrecision("customerConcentrationPct"),
 
     founderAgeEstimate: integer("founderAgeEstimate"),
+
+    // Structured business profile
+    businessModel: text("businessModel"),
+    employees: integer("employees"),
+    revenueTtm: doublePrecision("revenueTtm"),
+    ebitdaTtm: doublePrecision("ebitdaTtm"),
+    grossMargin: doublePrecision("grossMargin"),
+    revenueCagr: doublePrecision("revenueCagr"),
+    totalClients: integer("totalClients"),
+    top10Concentration: doublePrecision("top10Concentration"),
+    customerIndustries: text("customerIndustries").array(),
+    revenueModelType: text("revenueModelType"),
+    expansionModel: text("expansionModel"),
+    concentrationHigh: boolean("concentrationHigh"),
+    marginLow: boolean("marginLow"),
+    vendorDependency: boolean("vendorDependency"),
+    growthLevers: text("growthLevers").array(),
 
     // Strategic alignment
     themeId: text("themeId").references(() => themes.id, { onDelete: "set null" }),
@@ -695,6 +717,41 @@ export const dealFinancialSnapshots = pgTable(
     dealFinancialSnapshotDealOppSourceCreatedAtIdx: index(
       "deal_fin_snapshot_deal_opp_source_created_at_idx",
     ).on(table.dealOpportunityId, table.source, table.createdAt),
+  }),
+);
+
+export const companyFinancialSnapshots = pgTable(
+  "CompanyFinancialSnapshot",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    companyId: text("companyId")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    periodEnd: timestamp("periodEnd").notNull(),
+    revenue: doublePrecision("revenue"),
+    ebitda: doublePrecision("ebitda"),
+    grossMargin: doublePrecision("grossMargin"),
+    revenueCagr: doublePrecision("revenueCagr"),
+    employees: integer("employees"),
+    totalClients: integer("totalClients"),
+    top10Concentration: doublePrecision("top10Concentration"),
+    recurringRevenuePct: doublePrecision("recurringRevenuePct"),
+    source: companyFinancialSnapshotSourceEnum("source").notNull(),
+    notes: text("notes"),
+    createdById: text("createdById").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    companyFinancialSnapshotCompanyIdx: index(
+      "company_fin_snapshot_company_idx",
+    ).on(table.companyId),
+    companyFinancialSnapshotCompanyPeriodIdx: index(
+      "company_fin_snapshot_company_period_idx",
+    ).on(table.companyId, table.periodEnd),
   }),
 );
 
@@ -1480,6 +1537,7 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
   notes: many(companyNotes),
   outreach: many(outreach),
   themeCoverage: many(themeCompanyCoverage),
+  financialSnapshots: many(companyFinancialSnapshots),
 }));
 
 export const dealFinancialSnapshotsRelations = relations(
@@ -1491,6 +1549,20 @@ export const dealFinancialSnapshotsRelations = relations(
     }),
     createdBy: one(users, {
       fields: [dealFinancialSnapshots.createdById],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const companyFinancialSnapshotsRelations = relations(
+  companyFinancialSnapshots,
+  ({ one }) => ({
+    company: one(companies, {
+      fields: [companyFinancialSnapshots.companyId],
+      references: [companies.id],
+    }),
+    createdBy: one(users, {
+      fields: [companyFinancialSnapshots.createdById],
       references: [users.id],
     }),
   }),
@@ -1811,6 +1883,14 @@ export const DealFinancialSnapshotSource = {
 export type DealFinancialSnapshotSource =
   (typeof DealFinancialSnapshotSource)[keyof typeof DealFinancialSnapshotSource];
 
+export const CompanyFinancialSnapshotSource = {
+  MANAGEMENT: "MANAGEMENT",
+  CIM: "CIM",
+  MANUAL: "MANUAL",
+} as const;
+export type CompanyFinancialSnapshotSource =
+  (typeof CompanyFinancialSnapshotSource)[keyof typeof CompanyFinancialSnapshotSource];
+
 export const DealRiskType = {
   CUSTOMER_CONCENTRATION: "CUSTOMER_CONCENTRATION",
   CAPEX: "CAPEX",
@@ -1932,6 +2012,10 @@ export type NewDealRiskFlag = typeof dealRiskFlags.$inferInsert;
 
 export type Company = typeof companies.$inferSelect;
 export type NewCompany = typeof companies.$inferInsert;
+export type CompanyFinancialSnapshot =
+  typeof companyFinancialSnapshots.$inferSelect;
+export type NewCompanyFinancialSnapshot =
+  typeof companyFinancialSnapshots.$inferInsert;
 
 export type CompanyNote = typeof companyNotes.$inferSelect;
 export type NewCompanyNote = typeof companyNotes.$inferInsert;

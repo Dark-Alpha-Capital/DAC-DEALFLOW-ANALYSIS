@@ -4,6 +4,7 @@ import type {
   Document,
   Contact,
   CompanyNote,
+  CompanyFinancialSnapshot,
 } from "@repo/db/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyOverview } from "./CompanyOverview";
@@ -21,6 +22,7 @@ interface CompanyTabsProps {
   contacts: Contact[];
   outreach: OutreachRow[];
   notes: CompanyNote[];
+  financialSnapshots: CompanyFinancialSnapshot[];
 }
 
 export function CompanyTabs({
@@ -30,6 +32,7 @@ export function CompanyTabs({
   contacts,
   outreach,
   notes,
+  financialSnapshots,
 }: CompanyTabsProps) {
   return (
     <Tabs defaultValue="overview" className="w-full space-y-6">
@@ -45,11 +48,17 @@ export function CompanyTabs({
 
       <TabsContent value="overview" className="space-y-6">
         <CompanyOverview company={company} />
-        <CompanyFinancials company={company} />
+        <CompanyFinancials
+          company={company}
+          financialSnapshots={financialSnapshots}
+        />
       </TabsContent>
 
       <TabsContent value="financials">
-        <CompanyFinancials company={company} />
+        <CompanyFinancials
+          company={company}
+          financialSnapshots={financialSnapshots}
+        />
       </TabsContent>
 
       <TabsContent value="deals">
