@@ -51,10 +51,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  EMPTY_CHAT_CONTEXT,
-  type ChatContext,
-} from "@/lib/chat-context";
+import { EMPTY_CHAT_CONTEXT, type ChatContext } from "@/lib/chat-context";
 import {
   DEFAULT_CHAT_SELECTION,
   type ChatSelection,
@@ -581,7 +578,10 @@ export function ChatClient({
                         case "dynamic-tool":
                           return renderToolPart(toolPart, key);
                         default:
-                          if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+                          if (
+                            typeof part.type === "string" &&
+                            part.type.startsWith("tool-")
+                          ) {
                             return renderToolPart(toolPart, key);
                           }
                           return null;
@@ -603,14 +603,19 @@ export function ChatClient({
             {isGenerating ? (
               <div
                 aria-live="polite"
-                className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2 text-sm"
+                className="bg-muted/50 flex items-center justify-between rounded-md border px-3 py-2 text-sm"
                 role="status"
               >
                 <div className="flex items-center gap-2">
                   <Spinner className="size-4" />
                   <span>{statusText}</span>
                 </div>
-                <Button onClick={handleStop} size="sm" type="button" variant="outline">
+                <Button
+                  onClick={handleStop}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
                   Stop response
                 </Button>
               </div>

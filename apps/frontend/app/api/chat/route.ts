@@ -159,7 +159,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: resolvedModel,
     abortSignal: req.signal,
-    system: `${buildDiligenceSystemPrompt()} Prefer these tools for data-backed responses: resolveDiligenceScope, retrieveDiligenceEvidence, compareDiligenceEvidence, runDiligenceChecks, summarizeDiligenceFindings, getDealOpportunityDossier, getEntityDocuments, getEntityCounts, queryBusinessData. Use evidence-first responses and cite documentId/chunkId in outputs.`,
+    system: `${buildDiligenceSystemPrompt()} Prefer these tools for data-backed responses: Investors/leads: listEntities (entity: investors | investorLeads), getEntityById, getEntityCounts. Deals: getDealOpportunityDossier, listEntities (entity: dealOpportunities), getEntityCounts. Diligence: resolveDiligenceScope, retrieveDiligenceEvidence, compareDiligenceEvidence, runDiligenceChecks, summarizeDiligenceFindings. Documents: getEntityDocuments, queryBusinessData. Use evidence-first responses and cite documentId/chunkId for diligence outputs.`,
     messages: await convertToModelMessages(validatedMessages),
     tools: {
       resolveDiligenceScope: tool({
