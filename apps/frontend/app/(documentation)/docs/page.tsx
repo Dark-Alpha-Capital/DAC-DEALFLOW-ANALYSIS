@@ -12,6 +12,11 @@ const sections = [
     body: "How incoming opportunities are captured, reviewed, and triaged.",
   },
   {
+    href: "/docs/investors",
+    title: "Investors",
+    body: "How investor leads, investors, and interactions are managed.",
+  },
+  {
     href: "/docs/deals",
     title: "Deals pipeline",
     body: "How opportunities move from listed to screened, discussed, and closed or declined.",
@@ -40,6 +45,11 @@ const sections = [
     href: "/docs/analytics",
     title: "Analytics",
     body: "Portfolio-level views across themes, pipeline progression, sources, and screening results.",
+  },
+  {
+    href: "/docs/chat",
+    title: "AI assistant",
+    body: "Using the chatbot to query your database with natural language.",
   },
   {
     href: "/docs/jobs",

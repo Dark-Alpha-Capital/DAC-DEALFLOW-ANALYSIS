@@ -21,6 +21,31 @@ export default function DocsLeadsPage() {
         </ul>
       </section>
 
+      <section className="space-y-3">
+        <h3 className="text-xl font-semibold tracking-tight">
+          Company leads vs. investor leads
+        </h3>
+        <p className="text-muted-foreground">
+          The same lead discipline applies to both sides of your market. Company leads
+          capture potential acquisition targets; investor leads capture potential
+          capital partners.
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+          <li>
+            <span className="font-medium text-foreground">Company leads</span> become
+            companies and feed the deals pipeline.
+          </li>
+          <li>
+            <span className="font-medium text-foreground">Investor leads</span> become
+            investors and feed your capital relationships.
+          </li>
+          <li>
+            In both cases, conversion creates a canonical record while preserving a
+            link back to the original lead.
+          </li>
+        </ul>
+      </section>
+
       <section id="lead-resolution-actions" className="space-y-3">
         <h3 className="text-xl font-semibold tracking-tight">Primary decisions supported</h3>
         <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
