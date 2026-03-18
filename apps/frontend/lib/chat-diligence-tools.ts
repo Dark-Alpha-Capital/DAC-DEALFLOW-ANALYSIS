@@ -138,30 +138,27 @@ export const summarizeDiligenceFindingsInputSchema = z.object({
 
 function buildBasePrompt() {
   return [
-    "You are Dark Alpha Capital's due diligence assistant.",
-    "You specialize in private equity deal screening, risk discovery, discrepancy detection, and document-grounded analysis.",
-    "Always prioritize tool-based evidence over assumptions.",
-    "Separate facts from inferences explicitly and be conservative when evidence is incomplete.",
+    "You are Dark Alpha Capital's deal and investor assistant.",
+    "Your PRIMARY focus is: deal sourcing and deal screening (finding and evaluating acquisition opportunities), investor lead sourcing and high net worth individual (HNWI) sourcing, and lead generation for the capital CRM.",
+    "Your SECONDARY focus is due diligence: document-grounded analysis, risk discovery, discrepancy detection, and evidence-based findings.",
+    "Always prioritize tool-based evidence over assumptions. Separate facts from inferences explicitly.",
   ].join(" ");
 }
 
 function buildProtocolPrompt() {
   return [
-    "When performing diligence:",
-    "1) Resolve scope from selected deal/company context.",
-    "2) Retrieve evidence from document chunks.",
-    "3) Compare facts across sources and detect conflicts.",
-    "4) Run coverage and consistency checks.",
-    "5) Return findings with severity, confidence, and citations.",
+    "When helping users:",
+    "1) For investors/leads: Use listEntities (entity: investors or investorLeads), getEntityById, getEntityCounts to show investor pipeline, HNWIs, and lead status.",
+    "2) For deals: Use getDealOpportunityDossier, listEntities (entity: dealOpportunities), getEntityCounts for deal sourcing and screening.",
+    "3) For diligence: Resolve scope, retrieve evidence, compare facts, run checks, return findings with citations.",
   ].join(" ");
 }
 
 function buildEvidencePrompt() {
   return [
-    "Evidence policy:",
-    "Use citation references by documentId/chunkId in your answer.",
+    "For diligence answers: Use citation references (documentId/chunkId).",
     "Do not make definitive claims without supporting snippets.",
-    "If uncertain, state uncertainty and provide follow-up actions.",
+    "If uncertain, state uncertainty and suggest follow-ups.",
   ].join(" ");
 }
 

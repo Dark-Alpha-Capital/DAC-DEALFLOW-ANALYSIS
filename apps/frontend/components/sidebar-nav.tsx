@@ -11,6 +11,8 @@ import {
   FiHome,
   FiBriefcase,
   FiBookOpen,
+  FiDollarSign,
+  FiMessageSquare,
 } from "react-icons/fi";
 import { FaPalette, FaScrewdriver } from "react-icons/fa";
 import {
@@ -37,8 +39,12 @@ const navItems: NavItem[] = [
     url: "/deal-opportunities",
     icon: FiTrendingUp,
   },
+  { title: "Investor Leads", url: "/investor-leads", icon: FiUserPlus },
+  { title: "Investors", url: "/investors", icon: FiDollarSign },
   { title: "Investment Themes", url: "/investment-themes", icon: FaPalette },
   { title: "Docs", url: "/docs", icon: FiBookOpen },
+  { title: "Chat", url: "/chat", icon: FiMessageSquare },
+  ,
 ];
 
 const adminNavItems: NavItem[] = [

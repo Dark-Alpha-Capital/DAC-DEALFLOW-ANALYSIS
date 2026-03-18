@@ -14,6 +14,8 @@ import db, {
   eq,
   ilike,
   isNull,
+  investorLeads,
+  investors,
   leads,
   or,
   screenerQuestions,
@@ -22,6 +24,9 @@ import db, {
 } from "@repo/db";
 import {
   GetDealWithAllRelations,
+  GetInvestorByFirstSeenFromInvestorLeadId,
+  GetInvestorLeadWithRelations,
+  GetInvestorWithRelations,
   GetThemeDocuments,
   GetThemeWorkspaceById,
 } from "@repo/db/queries";
@@ -36,6 +41,8 @@ export const businessEntitySchema = z.enum([
   "screeners",
   "dealOpportunities",
   "documents",
+  "investors",
+  "investorLeads",
 ]);
 
 export type BusinessEntity = z.infer<typeof businessEntitySchema>;
@@ -52,6 +59,7 @@ const listFiltersSchema = z
   .object({
     status: z.string().trim().optional(),
     stage: z.string().trim().optional(),
+    type: z.string().trim().optional(),
     category: z.string().trim().optional(),
     industry: z.string().trim().optional(),
     sourceWebsite: z.string().trim().optional(),
@@ -117,6 +125,7 @@ export const entityDocumentsInputSchema = z.object({
 const aggregateGroupBySchema = z.enum([
   "status",
   "stage",
+  "type",
   "category",
   "entityType",
   "industry",
@@ -268,6 +277,61 @@ function buildDocumentsWhere(
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
+function buildInvestorWhere(
+  query?: string,
+  filters?: z.infer<typeof listFiltersSchema>,
+) {
+  const conditions: SQL[] = [];
+
+  if (query) {
+    const term = `%${query}%`;
+    conditions.push(
+      or(
+        ilike(investors.name, term),
+        ilike(investors.email, term),
+        ilike(investors.primaryContactName, term),
+        ilike(investors.geography, term),
+      )!,
+    );
+  }
+
+  if (filters?.status) {
+    conditions.push(eq(investors.status, filters.status as typeof investors.status._.data));
+  }
+  if (filters?.type) {
+    conditions.push(eq(investors.type, filters.type as typeof investors.type._.data));
+  }
+
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+function buildInvestorLeadWhere(
+  query?: string,
+  filters?: z.infer<typeof listFiltersSchema>,
+) {
+  const conditions: SQL[] = [];
+
+  if (query) {
+    const term = `%${query}%`;
+    conditions.push(
+      or(
+        ilike(investorLeads.name, term),
+        ilike(investorLeads.email, term),
+        ilike(investorLeads.source, term),
+        ilike(investorLeads.notes, term),
+      )!,
+    );
+  }
+
+  if (filters?.status) {
+    conditions.push(
+      eq(investorLeads.status, filters.status as typeof investorLeads.status._.data),
+    );
+  }
+
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
 export async function getEntityCounts(
   input: z.infer<typeof entityCountsInputSchema>,
   context: ChatDbToolContext,
@@ -285,6 +349,8 @@ export async function getEntityCounts(
     screeners: null,
     dealOpportunities: null,
     documents: null,
+    investors: null,
+    investorLeads: null,
   };
 
   if (shouldCount("leads")) {
@@ -370,6 +436,24 @@ export async function getEntityCounts(
       .from(documents)
       .where(buildDocumentsWhere(query, filters));
     counts.documents = Number(row?.value ?? 0);
+  }
+
+  if (shouldCount("investors")) {
+    const whereClause = buildInvestorWhere(query, filters);
+    const [row] = await db
+      .select({ value: count() })
+      .from(investors)
+      .where(whereClause ?? undefined);
+    counts.investors = Number(row?.value ?? 0);
+  }
+
+  if (shouldCount("investorLeads")) {
+    const whereClause = buildInvestorLeadWhere(query, filters);
+    const [row] = await db
+      .select({ value: count() })
+      .from(investorLeads)
+      .where(whereClause ?? undefined);
+    counts.investorLeads = Number(row?.value ?? 0);
   }
 
   return {
@@ -679,6 +763,98 @@ export async function listEntities(
         },
       };
     }
+
+    case "investors": {
+      const whereClause = buildInvestorWhere(query, filters);
+      const [rows, totalRows] = await Promise.all([
+        db
+          .select({
+            id: investors.id,
+            name: investors.name,
+            type: investors.type,
+            email: investors.email,
+            geography: investors.geography,
+            status: investors.status,
+            minCheckSize: investors.minCheckSize,
+            maxCheckSize: investors.maxCheckSize,
+            createdAt: investors.createdAt,
+          })
+          .from(investors)
+          .where(whereClause ?? undefined)
+          .orderBy(
+            input.sort === "alphabetical"
+              ? asc(investors.name)
+              : input.sort === "oldest"
+                ? asc(investors.createdAt)
+                : desc(investors.updatedAt),
+            desc(investors.id),
+          )
+          .limit(limit)
+          .offset(offset),
+        db
+          .select({ value: count() })
+          .from(investors)
+          .where(whereClause ?? undefined),
+      ]);
+
+      return {
+        summary: `Fetched ${rows.length} investors`,
+        data: rows,
+        meta: {
+          entity: input.entity,
+          totalCount: Number(totalRows[0]?.value ?? 0),
+          limit,
+          offset,
+          query: query ?? null,
+          filters,
+        },
+      };
+    }
+
+    case "investorLeads": {
+      const whereClause = buildInvestorLeadWhere(query, filters);
+      const [rows, totalRows] = await Promise.all([
+        db
+          .select({
+            id: investorLeads.id,
+            name: investorLeads.name,
+            source: investorLeads.source,
+            email: investorLeads.email,
+            status: investorLeads.status,
+            inferredType: investorLeads.inferredType,
+            createdAt: investorLeads.createdAt,
+          })
+          .from(investorLeads)
+          .where(whereClause ?? undefined)
+          .orderBy(
+            input.sort === "alphabetical"
+              ? asc(investorLeads.name)
+              : input.sort === "oldest"
+                ? asc(investorLeads.createdAt)
+                : desc(investorLeads.createdAt),
+            desc(investorLeads.id),
+          )
+          .limit(limit)
+          .offset(offset),
+        db
+          .select({ value: count() })
+          .from(investorLeads)
+          .where(whereClause ?? undefined),
+      ]);
+
+      return {
+        summary: `Fetched ${rows.length} investor leads`,
+        data: rows,
+        meta: {
+          entity: input.entity,
+          totalCount: Number(totalRows[0]?.value ?? 0),
+          limit,
+          offset,
+          query: query ?? null,
+          filters,
+        },
+      };
+    }
   }
 }
 
@@ -918,6 +1094,41 @@ export async function getEntityById(
           document: doc,
           extracted,
         },
+        meta: { entity: input.entity, id: input.id },
+      };
+    }
+
+    case "investors": {
+      const data = await GetInvestorWithRelations(input.id);
+      if (!data?.investor) {
+        return { summary: "Investor not found", data: null, meta: { id: input.id } };
+      }
+      return {
+        summary: `Fetched investor ${data.investor.name}`,
+        data: input.includeRelated
+          ? { investor: data.investor, interactions: data.interactions }
+          : { investor: data.investor },
+        meta: { entity: input.entity, id: input.id },
+      };
+    }
+
+    case "investorLeads": {
+      const data = await GetInvestorLeadWithRelations(input.id);
+      if (!data?.lead) {
+        return { summary: "Investor lead not found", data: null, meta: { id: input.id } };
+      }
+      const convertedInvestor = input.includeRelated
+        ? await GetInvestorByFirstSeenFromInvestorLeadId(input.id)
+        : null;
+      return {
+        summary: `Fetched investor lead ${data.lead.name ?? data.lead.email ?? "unknown"}`,
+        data: input.includeRelated
+          ? {
+              lead: data.lead,
+              interactions: data.interactions,
+              convertedInvestor: convertedInvestor ?? undefined,
+            }
+          : { lead: data.lead },
         meta: { entity: input.entity, id: input.id },
       };
     }
@@ -1479,6 +1690,55 @@ async function aggregateBusinessData(
 
       return {
         summary: "Aggregated companies by coverage status.",
+        data: rows.map((row) => ({ key: row.key, value: Number(row.value) })),
+        meta: { entity: input.entity, groupBy },
+      };
+    }
+
+    case "investors": {
+      if (groupBy !== "status" && groupBy !== "type") {
+        return {
+          summary: "For investors, groupBy must be status or type.",
+          data: null,
+          meta: { unsupported: true },
+        };
+      }
+
+      const investorWhere = buildInvestorWhere(input.query, filters);
+      const investorCol = groupBy === "status" ? investors.status : investors.type;
+      const rows = await db
+        .select({ key: investorCol, value: count() })
+        .from(investors)
+        .where(investorWhere ?? undefined)
+        .groupBy(investorCol)
+        .orderBy(asc(investorCol));
+
+      return {
+        summary: `Aggregated investors by ${groupBy}.`,
+        data: rows.map((row) => ({ key: row.key, value: Number(row.value) })),
+        meta: { entity: input.entity, groupBy },
+      };
+    }
+
+    case "investorLeads": {
+      if (groupBy !== "status") {
+        return {
+          summary: "For investor leads, only groupBy=status is supported.",
+          data: null,
+          meta: { unsupported: true },
+        };
+      }
+
+      const leadWhere = buildInvestorLeadWhere(input.query, filters);
+      const rows = await db
+        .select({ key: investorLeads.status, value: count() })
+        .from(investorLeads)
+        .where(leadWhere ?? undefined)
+        .groupBy(investorLeads.status)
+        .orderBy(asc(investorLeads.status));
+
+      return {
+        summary: "Aggregated investor leads by status.",
         data: rows.map((row) => ({ key: row.key, value: Number(row.value) })),
         meta: { entity: input.entity, groupBy },
       };

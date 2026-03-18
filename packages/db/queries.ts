@@ -24,11 +24,16 @@ import {
   dealSims,
   dealFinancialSnapshots,
   dealRiskFlags,
+  investors,
+  investorLeads,
+  investorInteractions,
   type Deal,
   type Lead,
   type Company,
   type DealType,
   type DealStatus,
+  type Investor,
+  type InvestorLead,
 } from "./schema";
 // Import db after schema to ensure proper initialization order
 import { db } from "./index";
@@ -1336,6 +1341,168 @@ export const GetAllCompanies = async ({
     return { data, totalCount, totalPages };
   } catch (error) {
     console.error("Failed query: select from Company", error);
+    throw error;
+  }
+};
+
+// ----------------------------------------------------------------------------
+// Capital CRM layer
+// ----------------------------------------------------------------------------
+
+interface GetInvestorsResult {
+  data: Investor[];
+  totalCount: number;
+  totalPages: number;
+}
+
+export const GetAllInvestors = async ({
+  offset = 0,
+  limit = 50,
+}: {
+  offset?: number;
+  limit?: number;
+}): Promise<GetInvestorsResult> => {
+  try {
+    const [data, countResult] = await Promise.all([
+      db
+        .select()
+        .from(investors)
+        .orderBy(desc(investors.createdAt), desc(investors.id))
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: count() }).from(investors),
+    ]);
+
+    const totalCount = countResult[0]?.count ?? 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return { data, totalCount, totalPages };
+  } catch (error) {
+    console.error("Failed query: select from Investor", error);
+    throw error;
+  }
+};
+
+interface GetInvestorLeadsResult {
+  data: InvestorLead[];
+  totalCount: number;
+  totalPages: number;
+}
+
+export const GetAllInvestorLeads = async ({
+  offset = 0,
+  limit = 50,
+}: {
+  offset?: number;
+  limit?: number;
+}): Promise<GetInvestorLeadsResult> => {
+  try {
+    const [data, countResult] = await Promise.all([
+      db
+        .select()
+        .from(investorLeads)
+        .orderBy(desc(investorLeads.createdAt), desc(investorLeads.id))
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: count() }).from(investorLeads),
+    ]);
+
+    const totalCount = countResult[0]?.count ?? 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return { data, totalCount, totalPages };
+  } catch (error) {
+    console.error("Failed query: select from InvestorLead", error);
+    throw error;
+  }
+};
+
+export const GetInvestorById = async (id: string) => {
+  try {
+    const [investor] = await db
+      .select()
+      .from(investors)
+      .where(eq(investors.id, id));
+    return investor ?? null;
+  } catch (error) {
+    console.error("Error fetching investor by id", error);
+    throw error;
+  }
+};
+
+export const GetInvestorLeadById = async (id: string) => {
+  try {
+    const [lead] = await db
+      .select()
+      .from(investorLeads)
+      .where(eq(investorLeads.id, id));
+    return lead ?? null;
+  } catch (error) {
+    console.error("Error fetching investor lead by id", error);
+    throw error;
+  }
+};
+
+export const GetInvestorWithRelations = async (id: string) => {
+  try {
+    const [investor] = await db
+      .select()
+      .from(investors)
+      .where(eq(investors.id, id));
+
+    if (!investor) return null;
+
+    const interactions = await db
+      .select()
+      .from(investorInteractions)
+      .where(eq(investorInteractions.investorId, id))
+      .orderBy(desc(investorInteractions.createdAt));
+
+    return { investor, interactions };
+  } catch (error) {
+    console.error("Error fetching investor with relations", error);
+    throw error;
+  }
+};
+
+export const GetInvestorLeadWithRelations = async (id: string) => {
+  try {
+    const [lead] = await db
+      .select()
+      .from(investorLeads)
+      .where(eq(investorLeads.id, id));
+
+    if (!lead) return null;
+
+    const interactions = await db
+      .select()
+      .from(investorInteractions)
+      .where(eq(investorInteractions.investorLeadId, id))
+      .orderBy(desc(investorInteractions.createdAt));
+
+    return { lead, interactions };
+  } catch (error) {
+    console.error("Error fetching investor lead with relations", error);
+    throw error;
+  }
+};
+
+export const GetInvestorByFirstSeenFromInvestorLeadId = async (
+  investorLeadId: string,
+) => {
+  try {
+    const [investor] = await db
+      .select()
+      .from(investors)
+      .where(eq(investors.firstSeenFromInvestorLeadId, investorLeadId))
+      .orderBy(desc(investors.createdAt), desc(investors.id))
+      .limit(1);
+    return investor ?? null;
+  } catch (error) {
+    console.error(
+      "Error fetching investor by firstSeenFromInvestorLeadId",
+      error,
+    );
     throw error;
   }
 };

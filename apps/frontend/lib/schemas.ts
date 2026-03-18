@@ -92,6 +92,38 @@ export type ConvertLeadToCompanyInput = z.infer<
   typeof convertLeadToCompanySchema
 >;
 
+export const convertInvestorLeadToInvestorFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  type: z.enum(["HNWI", "FAMILY_OFFICE", "INSTITUTION"]),
+  primaryContactName: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  geography: z.string().optional(),
+  minCheckSize: z.string().optional(),
+  maxCheckSize: z.string().optional(),
+  sectorFocus: z.string().optional(),
+  stagePreference: z.string().optional(),
+  riskProfile: z
+    .enum(["CONSERVATIVE", "MODERATE", "BALANCED", "GROWTH", "AGGRESSIVE"])
+    .optional(),
+  status: z
+    .enum(["PROSPECT", "QUALIFIED", "ACTIVE", "INACTIVE"])
+    .optional(),
+});
+
+export type ConvertInvestorLeadToInvestorFormValues = z.infer<
+  typeof convertInvestorLeadToInvestorFormSchema
+>;
+
+export const convertInvestorLeadToInvestorSchema =
+  convertInvestorLeadToInvestorFormSchema.extend({
+    investorLeadId: z.string(),
+  });
+
+export type ConvertInvestorLeadToInvestorInput = z.infer<
+  typeof convertInvestorLeadToInvestorSchema
+>;
+
 export const leadFormSchema = z.object({
   sourceWebsite: z.string().min(1, "Source website is required"),
   externalListingId: z.string().optional(),
