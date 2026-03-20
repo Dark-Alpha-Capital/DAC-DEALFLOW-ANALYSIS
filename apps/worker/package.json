@@ -21,6 +21,7 @@
     "@ai-sdk/react": "^3.0.118",
     "@google/genai": "^1.34.0",
     "@prisma/client": "^6.12.0",
+    "@repo/ai-core": "workspace:*",
     "@repo/cim-extraction": "workspace:*",
     "@repo/db": "workspace:*",
     "@repo/rag-engine": "workspace:*",

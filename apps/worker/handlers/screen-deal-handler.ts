@@ -13,6 +13,10 @@ import db, {
   desc,
 } from "@repo/db";
 import { upsertDealOpportunityScreening } from "@repo/deal-screening";
+import {
+  buildScreenDealChunkPrompt,
+  buildScreenDealSummaryPrompt,
+} from "@repo/ai-core";
 import { openai } from "../lib/ai/available-models";
 import { splitContentIntoChunks } from "../lib/utils";
 
@@ -283,7 +287,7 @@ export async function screenDealHandler(
 
         // Process remaining chunks
         for (let i = startIndex; i < totalChunks; i++) {
-          const chunk = chunks[i];
+          const chunk = chunks[i] ?? "";
           const chunkPercentage = 15 + Math.round(((i + 1) / totalChunks) * 60);
           await job.updateProgress({
             step: `Processing chunk ${i + 1}/${totalChunks}`,
@@ -292,7 +296,7 @@ export async function screenDealHandler(
 
           const summary = await generateText({
             model: openai("gpt-4o-mini"),
-            prompt: `Evaluate this listing ${JSON.stringify(deal)}: ${chunk}`,
+            prompt: buildScreenDealChunkPrompt(deal, chunk),
           });
 
           intermediateSummaries.push(summary.text);
@@ -347,7 +351,7 @@ export async function screenDealHandler(
 
         const finalSummary = await generateObject({
           model: openai("gpt-4o-mini"),
-          prompt: `Combine the following summaries into a single summary: ${combinedSummary}`,
+          prompt: buildScreenDealSummaryPrompt(combinedSummary),
           schema: z.object({
             title: z.string(),
             score: z.number(),

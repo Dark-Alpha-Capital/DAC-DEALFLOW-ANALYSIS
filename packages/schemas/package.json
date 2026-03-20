@@ -1,0 +1,15 @@
+{
+  "name": "@repo/schemas",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

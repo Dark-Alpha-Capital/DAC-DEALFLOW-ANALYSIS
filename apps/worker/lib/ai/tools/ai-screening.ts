@@ -1,8 +1,7 @@
+import { AI_DEAL_SCREENING_INSTRUCTIONS } from "@repo/ai-core";
 import { openaiClient } from "../available-models";
 import z from "zod";
 import { zodTextFormat } from "openai/helpers/zod";
-import { promises as fs } from "fs";
-import path from "path";
 
 const DealScreeningResult = z.object({
   score: z
@@ -32,13 +31,10 @@ const DealScreeningResult = z.object({
  * @returns
  */
 export async function doAIDealScreening(dealInfo: string) {
-  const promptPath = path.join(__dirname, "prompt.txt");
-  const instructions = await fs.readFile(promptPath, "utf-8");
-
   try {
     const response = await openaiClient.responses.create({
       model: "gpt-4o",
-      instructions,
+      instructions: AI_DEAL_SCREENING_INSTRUCTIONS,
       input: `Can you please evaluate deal ${dealInfo}`,
       tools: [
         {

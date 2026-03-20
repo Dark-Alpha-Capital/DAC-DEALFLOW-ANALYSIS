@@ -1,9 +1,11 @@
 import { generateText, Output } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
-import { QUALITATIVE_SCREENING_PROMPT } from "./prompts";
+import {
+  getOpenAIProvider,
+  QUALITATIVE_SCREENING_PROMPT,
+} from "@repo/ai-core";
 
-export { QUALITATIVE_SCREENING_PROMPT } from "./prompts";
+export { QUALITATIVE_SCREENING_PROMPT } from "@repo/ai-core";
 
 export const qualitativeScreeningOutputSchema = z.object({
   revenuePredictability: z.number().min(1).max(5),
@@ -17,9 +19,7 @@ export type QualitativeScreeningResult = z.infer<
   typeof qualitativeScreeningOutputSchema
 >;
 
-const openai = createOpenAI({
-  apiKey: process.env.AI_API_KEY,
-});
+const openai = getOpenAIProvider();
 
 export async function runAiQualitativeScreening(
   dealDescription: string,

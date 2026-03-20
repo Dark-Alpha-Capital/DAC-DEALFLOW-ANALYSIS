@@ -4,6 +4,7 @@ import http from "http";
 import db, { aiScreenings } from "@repo/db";
 import { splitContentIntoChunks } from "./lib/utils";
 import { generateObject, generateText } from "ai";
+import { SCREENER_CHUNK_SYSTEM } from "@repo/ai-core";
 import { openai } from "./lib/ai/available-models";
 import { z } from "zod";
 
@@ -150,8 +151,7 @@ async function processContentChunks(
       )}, evaluate the following text: ${chunk}`;
 
       const summary = await generateText({
-        system:
-          "You are an expert AI Assistant that specializes in deal sourcing, evaluation and private equity in general",
+        system: SCREENER_CHUNK_SYSTEM,
         model: openai("gpt-4o-mini"),
         prompt,
       });

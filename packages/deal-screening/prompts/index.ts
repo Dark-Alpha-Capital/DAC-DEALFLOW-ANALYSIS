@@ -1,1 +1,1 @@
-export { QUALITATIVE_SCREENING_PROMPT } from "./qualitative-screening";
+export { QUALITATIVE_SCREENING_PROMPT } from "@repo/ai-core";
