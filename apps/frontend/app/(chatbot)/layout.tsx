@@ -1,15 +1,9 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
 import "../globals.css";
-import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
-import { SessionProvider } from "next-auth/react";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import ChatSidebar from "@/components/sidebars/chat-sidebar";
 import { TRPCReactProvider } from "@/trpc/client";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -31,20 +25,18 @@ const layout = ({ children }: { children: React.ReactNode }) => {
           disableTransitionOnChange
         >
           <TRPCReactProvider>
-            <SessionProvider>
-              <SidebarProvider className="h-svh overflow-hidden">
-                <Suspense fallback={null}>
-                  <ChatSidebar />
-                </Suspense>
-                <SidebarInset className="min-h-0 overflow-hidden">
-                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                    <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden p-4 md:p-6 lg:p-8">
-                      {children}
-                    </div>
+            <SidebarProvider className="h-svh overflow-hidden">
+              <Suspense fallback={null}>
+                <ChatSidebar />
+              </Suspense>
+              <SidebarInset className="min-h-0 overflow-hidden">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden p-4 md:p-6 lg:p-8">
+                    {children}
                   </div>
-                </SidebarInset>
-              </SidebarProvider>
-            </SessionProvider>
+                </div>
+              </SidebarInset>
+            </SidebarProvider>
             <Toaster />
           </TRPCReactProvider>
         </ThemeProvider>

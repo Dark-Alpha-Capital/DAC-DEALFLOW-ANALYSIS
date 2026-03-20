@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "devDependencies": {
+    "@faker-js/faker": "^9.4.0",
     "@types/bun": "latest",
     "drizzle-kit": "^0.31.8"
   },
@@ -13,6 +14,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:introspect": "drizzle-kit introspect",
+    "db:seed:dummy-leads": "bun run ./scripts/seed-dummy-leads.ts",
     "screenings:backfill": "bun run --cwd ../deal-screening backfill"
   },
   "peerDependencies": {

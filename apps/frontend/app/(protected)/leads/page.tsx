@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { GetAllLeads } from "@repo/db/queries";
 import LeadContainer from "@/components/LeadContainer";
 import LeadsAuthedSkeleton from "@/components/skeletons/LeadsAuthedSkeleton";
-import LeadCardGridSkeleton from "@/components/skeletons/LeadCardGridSkeleton";
+import DocumentsTableSkeleton from "@/components/skeletons/DocumentsTableSkeleton";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
@@ -62,7 +62,7 @@ async function AuthedLeads(props: {
   }
 
   return (
-    <Suspense fallback={<LeadCardGridSkeleton />}>
+    <Suspense fallback={<DocumentsTableSkeleton />}>
       <ShowLeadsComponent searchParams={resolvedSearchParams} />
     </Suspense>
   );

@@ -21,3 +21,13 @@ bun install
 - `bun run db:push` – syncs schema directly to DB (can hang on large DBs)
 
 Migrations are the source of truth. Run `db:migrate` after pulling schema changes.
+
+## Seed dummy data
+
+To insert 100 fake InvestorLeads and 100 fake Leads:
+
+```bash
+cd packages/db && bun run db:seed:dummy-leads
+```
+
+Ensure `DATABASE_URL` is set (e.g. `bun run --env-file=../../apps/frontend/.env db:seed:dummy-leads`). Re-running appends another 200 rows unless you truncate manually.

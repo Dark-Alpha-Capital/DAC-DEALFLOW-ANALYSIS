@@ -21,8 +21,7 @@ export function DealsWorkspace({
     return Object.keys(rowSelection).filter((id) => rowSelection[id]);
   }, [rowSelection]);
 
-  const allSelected =
-    deals.length > 0 && selectedIds.length === deals.length;
+  const allSelected = deals.length > 0 && selectedIds.length === deals.length;
 
   function toggleAll() {
     setRowSelection(

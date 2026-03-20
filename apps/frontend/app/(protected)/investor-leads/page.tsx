@@ -10,6 +10,7 @@ import InvestorLeadsAuthedSkeleton from "@/components/skeletons/InvestorLeadsAut
 import LeadCardGridSkeleton from "@/components/skeletons/LeadCardGridSkeleton";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import LeadsAuthedSkeleton from "@/components/skeletons/LeadsAuthedSkeleton";
 
 export const metadata: Metadata = {
   title: "Investor Leads",
@@ -62,7 +63,7 @@ async function AuthedInvestorLeads(props: {
   }
 
   return (
-    <Suspense fallback={<LeadCardGridSkeleton />}>
+    <Suspense fallback={<LeadsAuthedSkeleton />}>
       <ShowInvestorLeadsComponent searchParams={resolvedSearchParams} />
     </Suspense>
   );

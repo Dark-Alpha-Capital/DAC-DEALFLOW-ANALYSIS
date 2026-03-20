@@ -10,6 +10,7 @@ import InvestorsAuthedSkeleton from "@/components/skeletons/InvestorsAuthedSkele
 import CompanyCardGridSkeleton from "@/components/skeletons/CompanyCardGridSkeleton";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import LeadsAuthedSkeleton from "@/components/skeletons/LeadsAuthedSkeleton";
 
 export const metadata: Metadata = {
   title: "Investors",
@@ -37,7 +38,7 @@ const InvestorsPage = (props: { searchParams: SearchParams }) => {
         </Button>
       </div>
 
-      <Suspense fallback={<InvestorsAuthedSkeleton />}>
+      <Suspense fallback={<LeadsAuthedSkeleton />}>
         <AuthedInvestors
           searchParams={props.searchParams}
           sessionPromise={sessionPromise}
