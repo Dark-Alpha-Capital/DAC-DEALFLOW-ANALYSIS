@@ -38,7 +38,7 @@ const InvestorLeadsPage = (props: { searchParams: SearchParams }) => {
         </Button>
       </div>
 
-      <Suspense fallback={<InvestorLeadsAuthedSkeleton />}>
+      <Suspense fallback={<LeadsAuthedSkeleton />}>
         <AuthedInvestorLeads
           searchParams={props.searchParams}
           sessionPromise={sessionPromise}
@@ -74,7 +74,7 @@ async function ShowInvestorLeadsComponent(props: {
 }) {
   const searchParams = props.searchParams;
   const currentPage = Math.max(1, asNumber(searchParams.page, 1));
-  const limit = Math.max(1, asNumber(searchParams.limit, 50));
+  const limit = Math.max(1, asNumber(searchParams.limit, 25));
   const offset = (currentPage - 1) * limit;
 
   return (

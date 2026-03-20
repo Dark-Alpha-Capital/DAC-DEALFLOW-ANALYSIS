@@ -73,7 +73,7 @@ async function FetchAndDisplayDocuments(props: {
 }) {
   const searchParams = props.searchParams;
   const currentPage = Math.max(1, asNumber(searchParams.page, 1));
-  const limit = Math.max(1, asNumber(searchParams.limit, 50));
+  const limit = Math.max(1, asNumber(searchParams.limit, 25));
   const offset = (currentPage - 1) * limit;
 
   return (

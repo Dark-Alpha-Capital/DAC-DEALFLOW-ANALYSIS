@@ -238,7 +238,7 @@ async function ShowDealsComponent(props: {
   const industry = asString(searchParams.industry) ?? "";
   const ebitdaMargin = asString(searchParams.ebitdaMargin) ?? "";
   const currentPage = Math.max(1, asNumber(searchParams.page, 1));
-  const limit = Math.max(1, asNumber(searchParams.limit, 50));
+  const limit = Math.max(1, asNumber(searchParams.limit, 25));
   const offset = (currentPage - 1) * limit;
   const ebitda = asString(searchParams.ebitda) ?? "";
   const userId = asString(searchParams.userId) ?? "";

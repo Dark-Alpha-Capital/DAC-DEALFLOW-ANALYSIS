@@ -8,8 +8,8 @@ import {
   type UIMessage,
   validateUIMessages,
 } from "ai";
-import { google } from "@ai-sdk/google";
-import { openai } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { getSession } from "@/lib/auth-server";
 import {
   coerceStoredMessages,
@@ -77,86 +77,128 @@ function dedupeMessagesById(messages: UIMessage[]): UIMessage[] {
 }
 
 export async function POST(req: Request) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const log = (msg: string, data?: unknown) => {
+    console.log(`[chat] ${msg}`, data ?? "");
+  };
 
-  const body = (await req.json()) as ChatRequestBody;
-  const provider = body.provider ?? DEFAULT_CHAT_PROVIDER;
-  const { context, id, message, model } = body;
+  try {
+    log("POST /api/chat started");
 
-  if (!id || typeof id !== "string") {
-    return badRequest("`id` must be a chat id string.");
-  }
+    const session = await getSession();
+    log("session fetched", { hasSession: !!session, userId: session?.user?.id });
 
-  if (provider !== "openai" && provider !== "google") {
-    return badRequest("`provider` must be either `openai` or `google`.");
-  }
-
-  if (!message || typeof message !== "object") {
-    return badRequest("`message` is required.");
-  }
-
-  if (!model || typeof model !== "string") {
-    return badRequest("`model` must be a string.");
-  }
-
-  if (context != null) {
-    if (typeof context !== "object") {
-      return badRequest("`context` must be an object when provided.");
+    if (!session?.user?.id) {
+      log("unauthorized: no session or user id");
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const contextKeys: Array<keyof NonNullable<ChatRequestBody["context"]>> = [
-      "companyId",
-      "leadId",
-      "dealOpportunityId",
-    ];
+    const body = (await req.json()) as ChatRequestBody;
+    const provider = body.provider ?? DEFAULT_CHAT_PROVIDER;
+    const { context, id, message, model } = body;
 
-    for (const key of contextKeys) {
-      const value = context[key];
-      if (value != null && typeof value !== "string") {
-        return badRequest(`\`context.${key}\` must be a string or null.`);
+    log("body parsed", { id, provider, model, hasMessage: !!message });
+
+    if (!id || typeof id !== "string") {
+      return badRequest("`id` must be a chat id string.");
+    }
+
+    if (provider !== "openai" && provider !== "google") {
+      return badRequest("`provider` must be either `openai` or `google`.");
+    }
+
+    if (!message || typeof message !== "object") {
+      return badRequest("`message` is required.");
+    }
+
+    if (!model || typeof model !== "string") {
+      return badRequest("`model` must be a string.");
+    }
+
+    if (context != null) {
+      if (typeof context !== "object") {
+        return badRequest("`context` must be an object when provided.");
+      }
+
+      const contextKeys: Array<keyof NonNullable<ChatRequestBody["context"]>> = [
+        "companyId",
+        "leadId",
+        "dealOpportunityId",
+      ];
+
+      for (const key of contextKeys) {
+        const value = context[key];
+        if (value != null && typeof value !== "string") {
+          return badRequest(`\`context.${key}\` must be a string or null.`);
+        }
       }
     }
-  }
 
-  if (!isAllowedModel(provider, model)) {
-    return badRequest("Unsupported model for provider.");
-  }
-
-  const chat = await getChatSessionForUser(session.user.id, id);
-  if (!chat) {
-    return Response.json({ error: "Chat not found" }, { status: 404 });
-  }
-
-  if (context) {
-    if (context.companyId != null && context.companyId !== chat.companyId) {
-      return badRequest("`context.companyId` does not match chat context.");
+    if (!isAllowedModel(provider, model)) {
+      return badRequest("Unsupported model for provider.");
     }
-    if (context.leadId != null && context.leadId !== chat.leadId) {
-      return badRequest("`context.leadId` does not match chat context.");
+
+    log("fetching chat session", { userId: session.user.id, chatId: id });
+    const chat = await getChatSessionForUser(session.user.id, id);
+    if (!chat) {
+      log("chat not found", { chatId: id });
+      return Response.json({ error: "Chat not found" }, { status: 404 });
     }
-    if (
-      context.dealOpportunityId != null &&
-      context.dealOpportunityId !== chat.dealOpportunityId
-    ) {
-      return badRequest(
-        "`context.dealOpportunityId` does not match chat context.",
+    log("chat session found");
+
+    if (context) {
+      if (context.companyId != null && context.companyId !== chat.companyId) {
+        return badRequest("`context.companyId` does not match chat context.");
+      }
+      if (context.leadId != null && context.leadId !== chat.leadId) {
+        return badRequest("`context.leadId` does not match chat context.");
+      }
+      if (
+        context.dealOpportunityId != null &&
+        context.dealOpportunityId !== chat.dealOpportunityId
+      ) {
+        return badRequest(
+          "`context.dealOpportunityId` does not match chat context.",
+        );
+      }
+    }
+
+    const previousMessages = coerceStoredMessages(chat.messages);
+    const mergedMessages = dedupeMessagesById([...previousMessages, message]);
+    log("validating messages", { count: mergedMessages.length });
+
+    const validatedMessages = await validateUIMessages({
+      messages: mergedMessages,
+    });
+    log("messages validated");
+
+    const openaiKey =
+      process.env.OPENAI_API_KEY ?? process.env.AI_API_KEY ?? "";
+    const googleKey =
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY ??
+      process.env.GOOGLE_AI_API_KEY ??
+      "";
+    if (provider === "openai" && !openaiKey) {
+      log("OPENAI_API_KEY or AI_API_KEY not set");
+      return Response.json(
+        { error: "OpenAI API key not configured" },
+        { status: 500 },
       );
     }
-  }
+    if (provider === "google" && !googleKey) {
+      log("GOOGLE_GENERATIVE_AI_API_KEY or GOOGLE_AI_API_KEY not set");
+      return Response.json(
+        { error: "Google AI API key not configured" },
+        { status: 500 },
+      );
+    }
 
-  const previousMessages = coerceStoredMessages(chat.messages);
-  const mergedMessages = dedupeMessagesById([...previousMessages, message]);
-  const validatedMessages = await validateUIMessages({
-    messages: mergedMessages,
-  });
+    const resolvedModel =
+      provider === "openai"
+        ? createOpenAI({ apiKey: openaiKey })(model)
+        : createGoogleGenerativeAI({ apiKey: googleKey })(model);
+    log("calling streamText", { provider, model });
 
-  const resolvedModel =
-    provider === "openai" ? openai(model) : google(model);
-
-  const result = streamText({
+    const result = streamText({
     model: resolvedModel,
     abortSignal: req.signal,
     system: `${buildDiligenceSystemPrompt()} Prefer these tools for data-backed responses: Investors/leads: listEntities (entity: investors | investorLeads), getEntityById, getEntityCounts. Deals: getDealOpportunityDossier, listEntities (entity: dealOpportunities), getEntityCounts. Diligence: resolveDiligenceScope, retrieveDiligenceEvidence, compareDiligenceEvidence, runDiligenceChecks, summarizeDiligenceFindings. Documents: getEntityDocuments, queryBusinessData. Use evidence-first responses and cite documentId/chunkId for diligence outputs.`,
@@ -288,29 +330,38 @@ export async function POST(req: Request) {
     stopWhen: stepCountIs(8),
   });
 
-  result.consumeStream();
+    result.consumeStream();
 
-  return result.toUIMessageStreamResponse({
-    consumeSseStream: consumeStream,
-    originalMessages: validatedMessages,
-    generateMessageId: createIdGenerator({
-      prefix: "msg",
-      size: 16,
-    }),
-    onFinish: async ({ isAborted, messages }) => {
-      // Keep partial assistant output when a response is stopped by the user.
-      // This preserves transcript continuity and allows explicit regeneration.
-      await saveChatSessionMessages({
-        userId: session.user.id,
-        chatId: id,
-        messages,
-        provider,
-        model,
-      });
-
-      if (isAborted) {
-        return;
-      }
-    },
-  });
+    log("returning stream response");
+    return result.toUIMessageStreamResponse({
+      consumeSseStream: consumeStream,
+      originalMessages: validatedMessages,
+      generateMessageId: createIdGenerator({
+        prefix: "msg",
+        size: 16,
+      }),
+      onFinish: async ({ isAborted, messages }) => {
+        try {
+          await saveChatSessionMessages({
+            userId: session.user.id,
+            chatId: id,
+            messages,
+            provider,
+            model,
+          });
+          log("messages saved on finish", { isAborted });
+        } catch (err) {
+          console.error("[chat] onFinish saveChatSessionMessages failed:", err);
+        }
+        if (isAborted) {
+          return;
+        }
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[chat] POST /api/chat error:", message, stack);
+    return Response.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
