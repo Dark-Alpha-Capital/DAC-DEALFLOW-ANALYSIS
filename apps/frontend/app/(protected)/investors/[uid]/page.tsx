@@ -15,6 +15,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvestorInteractions } from "@/components/investors/InvestorInteractions";
+import { InvestorCompanyLinkTab } from "@/components/investors/InvestorCompanyLinkTab";
 
 type Params = Promise<{ uid: string }>;
 
@@ -90,7 +91,10 @@ async function CachedInvestorContent({ uid }: { uid: string }) {
     );
   }
 
-  const { investor, interactions } = data;
+  const { investor, interactions, company, companyLink } = data;
+
+  const companyLinkInitial =
+    company && companyLink ? { link: companyLink, company } : null;
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
@@ -156,6 +160,7 @@ async function CachedInvestorContent({ uid }: { uid: string }) {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="capital">Capital</TabsTrigger>
+            <TabsTrigger value="company">Company</TabsTrigger>
             <TabsTrigger value="interactions">Interactions</TabsTrigger>
           </TabsList>
         </div>
@@ -250,6 +255,13 @@ async function CachedInvestorContent({ uid }: { uid: string }) {
           </div>
         </TabsContent>
 
+        <TabsContent value="company" className="mt-8">
+          <InvestorCompanyLinkTab
+            investorId={investor.id}
+            initial={companyLinkInitial}
+          />
+        </TabsContent>
+
         <TabsContent value="interactions" className="mt-8">
           <InvestorInteractions
             investorId={investor.id}
@@ -268,6 +280,12 @@ function InvestorPageSkeleton() {
       <div className="space-y-6">
         <Skeleton className="h-8 w-3/4" />
         <Skeleton className="h-5 w-20" />
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-24 rounded-md" />
+          <Skeleton className="h-9 w-20 rounded-md" />
+          <Skeleton className="h-9 w-28 rounded-md" />
+          <Skeleton className="h-9 w-20 rounded-md" />
+        </div>
         <div className="space-y-2">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />

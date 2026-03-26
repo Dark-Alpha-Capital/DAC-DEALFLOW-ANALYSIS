@@ -110,11 +110,14 @@ export interface ScreenDealResult {
 export async function screenDealHandler(
   job: Job<ScreenDealJobData | ManualScreenJobData>,
 ): Promise<ScreenDealResult> {
-  // Manual screening: deterministic hard filter
+  let nums = [1, 2, 3];
+
   if (job.name === "manual-screen") {
     const data = job.data as ManualScreenJobData;
     const dealOpportunityId = data.dealOpportunityId ?? data.dealId;
-    console.log(`[screen-deal] ${data.jobId}: Running manual screening for ${dealOpportunityId}`);
+    console.log(
+      `[screen-deal] ${data.jobId}: Running manual screening for ${dealOpportunityId}`,
+    );
     await job.updateProgress({ step: "Manual screening", percentage: 50 });
     await upsertDealOpportunityScreening(dealOpportunityId);
     await job.updateProgress({ step: "Completed", percentage: 100 });
@@ -141,7 +144,7 @@ export async function screenDealHandler(
         console.log(`[screen-deal] ${jobId}: Fetching data`);
 
         // Resolve dealId/dealOpportunityId to DealOpportunity + Company
-        let opp: (typeof dealOpportunities.$inferSelect) | undefined;
+        let opp: typeof dealOpportunities.$inferSelect | undefined;
         if (dealOpportunityIdFromJob) {
           const [row] = await db
             .select()

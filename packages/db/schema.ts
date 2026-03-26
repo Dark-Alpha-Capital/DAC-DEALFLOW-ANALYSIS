@@ -184,6 +184,11 @@ export const investorRiskProfileEnum = pgEnum("InvestorRiskProfile", [
   "AGGRESSIVE",
 ]);
 
+export const investorCompanyLinkStatusEnum = pgEnum(
+  "InvestorCompanyLinkStatus",
+  ["ACTIVE", "ARCHIVED"],
+);
+
 // ============================================================================
 // TABLES
 // ============================================================================
@@ -398,7 +403,9 @@ export const companies = pgTable(
     growthLevers: text("growthLevers").array(),
 
     // Strategic alignment
-    themeId: text("themeId").references(() => themes.id, { onDelete: "set null" }),
+    themeId: text("themeId").references(() => themes.id, {
+      onDelete: "set null",
+    }),
     attractivenessScore: integer("attractivenessScore"),
     coverageStatus: companyCoverageStatusEnum("coverageStatus")
       .default("UNCONTACTED")
@@ -501,7 +508,9 @@ export const themePerformance = pgTable("ThemePerformance", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
-  themeId: text("themeId").references(() => themes.id, { onDelete: "set null" }),
+  themeId: text("themeId").references(() => themes.id, {
+    onDelete: "set null",
+  }),
   dealsSourced: integer("dealsSourced"),
   meetingsHeld: integer("meetingsHeld"),
   loisIssued: integer("loisIssued"),
@@ -555,9 +564,12 @@ export const leads = pgTable(
 
     // Processing state
     status: leadStatusEnum("status").default("NEW").notNull(),
-    duplicateCompanyId: text("duplicateCompanyId").references(() => companies.id, {
-      onDelete: "set null",
-    }),
+    duplicateCompanyId: text("duplicateCompanyId").references(
+      () => companies.id,
+      {
+        onDelete: "set null",
+      },
+    ),
     processedAt: timestamp("processedAt"),
     deletedAt: timestamp("deletedAt"),
 
@@ -1378,6 +1390,43 @@ export const investorInteractions = pgTable(
   }),
 );
 
+/** Optional one-to-one link: investor discovered in context of a company. */
+export const investorCompanyLinks = pgTable(
+  "InvestorCompanyLink",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    investorId: text("investorId")
+      .notNull()
+      .references(() => investors.id, { onDelete: "cascade" }),
+    companyId: text("companyId")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    status: investorCompanyLinkStatusEnum("status").default("ACTIVE").notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    investorCompanyLinkInvestorUniqueIdx: uniqueIndex(
+      "investor_company_link_investor_unique_idx",
+    ).on(table.investorId),
+    investorCompanyLinkCompanyUniqueIdx: uniqueIndex(
+      "investor_company_link_company_unique_idx",
+    ).on(table.companyId),
+    investorCompanyLinkStatusIdx: index("investor_company_link_status_idx").on(
+      table.status,
+    ),
+    investorCompanyLinkCreatedAtIdx: index(
+      "investor_company_link_created_at_idx",
+    ).on(table.createdAt),
+  }),
+);
+
 // ============================================================================
 // RELATIONS
 // ============================================================================
@@ -1538,6 +1587,10 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
   outreach: many(outreach),
   themeCoverage: many(themeCompanyCoverage),
   financialSnapshots: many(companyFinancialSnapshots),
+  investorLink: one(investorCompanyLinks, {
+    fields: [companies.id],
+    references: [investorCompanyLinks.companyId],
+  }),
 }));
 
 export const dealFinancialSnapshotsRelations = relations(
@@ -1660,15 +1713,12 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
   chunks: many(documentChunks),
 }));
 
-export const documentChunksRelations = relations(
-  documentChunks,
-  ({ one }) => ({
-    document: one(documents, {
-      fields: [documentChunks.documentId],
-      references: [documents.id],
-    }),
+export const documentChunksRelations = relations(documentChunks, ({ one }) => ({
+  document: one(documents, {
+    fields: [documentChunks.documentId],
+    references: [documents.id],
   }),
-);
+}));
 
 export const dealSimsRelations = relations(dealSims, ({ one, many }) => ({
   dealOpportunity: one(dealOpportunities, {
@@ -1741,6 +1791,10 @@ export const chatSessionsRelations = relations(chatSessions, ({ one }) => ({
 
 export const investorsRelations = relations(investors, ({ one, many }) => ({
   interactions: many(investorInteractions),
+  companyLink: one(investorCompanyLinks, {
+    fields: [investors.id],
+    references: [investorCompanyLinks.investorId],
+  }),
   firstSeenFromInvestorLead: one(investorLeads, {
     fields: [investors.firstSeenFromInvestorLeadId],
     references: [investorLeads.id],
@@ -1748,16 +1802,19 @@ export const investorsRelations = relations(investors, ({ one, many }) => ({
   }),
 }));
 
-export const investorLeadsRelations = relations(investorLeads, ({ one, many }) => ({
-  owner: one(users, {
-    fields: [investorLeads.ownerUserId],
-    references: [users.id],
+export const investorLeadsRelations = relations(
+  investorLeads,
+  ({ one, many }) => ({
+    owner: one(users, {
+      fields: [investorLeads.ownerUserId],
+      references: [users.id],
+    }),
+    interactions: many(investorInteractions),
+    investorsFirstSeen: many(investors, {
+      relationName: "firstSeenFromInvestorLead",
+    }),
   }),
-  interactions: many(investorInteractions),
-  investorsFirstSeen: many(investors, {
-    relationName: "firstSeenFromInvestorLead",
-  }),
-}));
+);
 
 export const investorInteractionsRelations = relations(
   investorInteractions,
@@ -1769,6 +1826,20 @@ export const investorInteractionsRelations = relations(
     investorLead: one(investorLeads, {
       fields: [investorInteractions.investorLeadId],
       references: [investorLeads.id],
+    }),
+  }),
+);
+
+export const investorCompanyLinksRelations = relations(
+  investorCompanyLinks,
+  ({ one }) => ({
+    investor: one(investors, {
+      fields: [investorCompanyLinks.investorId],
+      references: [investors.id],
+    }),
+    company: one(companies, {
+      fields: [investorCompanyLinks.companyId],
+      references: [companies.id],
     }),
   }),
 );
@@ -1969,6 +2040,13 @@ export const DocumentChunkModality = {
 export type DocumentChunkModality =
   (typeof DocumentChunkModality)[keyof typeof DocumentChunkModality];
 
+export const InvestorCompanyLinkStatus = {
+  ACTIVE: "ACTIVE",
+  ARCHIVED: "ARCHIVED",
+} as const;
+export type InvestorCompanyLinkStatus =
+  (typeof InvestorCompanyLinkStatus)[keyof typeof InvestorCompanyLinkStatus];
+
 // Model type exports (inferred from tables)
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -2067,3 +2145,5 @@ export type InvestorLead = typeof investorLeads.$inferSelect;
 export type NewInvestorLead = typeof investorLeads.$inferInsert;
 export type InvestorInteraction = typeof investorInteractions.$inferSelect;
 export type NewInvestorInteraction = typeof investorInteractions.$inferInsert;
+export type InvestorCompanyLink = typeof investorCompanyLinks.$inferSelect;
+export type NewInvestorCompanyLink = typeof investorCompanyLinks.$inferInsert;

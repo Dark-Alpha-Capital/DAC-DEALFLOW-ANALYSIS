@@ -63,7 +63,7 @@ async function listFileSearchStoreDocuments(storeId: string, maxPages = 5) {
       if (data.documents && data.documents.length > 0) {
         allDocuments.push(...data.documents);
         console.log(
-          `Fetched ${data.documents.length} documents on page ${pageCount}.`
+          `Fetched ${data.documents.length} documents on page ${pageCount}.`,
         );
       } else {
         console.log(`No documents found on page ${pageCount}.`);
@@ -79,7 +79,7 @@ async function listFileSearchStoreDocuments(storeId: string, maxPages = 5) {
 
       if (pageCount >= maxPages) {
         console.log(
-          `--- Reached maximum page limit of ${maxPages}. Stopping. ---`
+          `--- Reached maximum page limit of ${maxPages}. Stopping. ---`,
         );
         break;
       }
@@ -88,7 +88,7 @@ async function listFileSearchStoreDocuments(storeId: string, maxPages = 5) {
 
       console.error(
         "Error listing documents:",
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
       break; // Stop on error
     }

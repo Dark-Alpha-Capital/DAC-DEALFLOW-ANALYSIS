@@ -3,11 +3,14 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { GetInvestorById } from "@repo/db/queries";
-import EditInvestorForm from "@/components/forms/edit-investor-form";
+import {
+  GetInvestorById,
+  GetInvestorCompanyLinkByInvestorId,
+} from "@repo/db/queries";
+import { InvestorEditTabs } from "@/components/investors/InvestorEditTabs";
 import { cacheLife, cacheTag } from "next/cache";
 import { getSession } from "@/lib/auth-server";
-import { Skeleton } from "@/components/ui/skeleton";
+import EditPageSkeleton from "@/components/skeletons/edit-page-skeleton";
 
 type Params = Promise<{ uid: string }>;
 
@@ -17,10 +20,15 @@ async function CachedEditContent({ uid }: { uid: string }) {
   cacheLife("hours");
 
   let investor = null;
+  let companyLinkData = null;
+
   let error: Error | null = null;
 
   try {
-    investor = await GetInvestorById(uid);
+    [investor, companyLinkData] = await Promise.all([
+      GetInvestorById(uid),
+      GetInvestorCompanyLinkByInvestorId(uid),
+    ]);
   } catch (err) {
     console.error("Error fetching investor", err);
     error = err instanceof Error ? err : new Error(String(err));
@@ -66,24 +74,15 @@ async function CachedEditContent({ uid }: { uid: string }) {
           </Link>
         </Button>
         <h1 className="mt-4">Edit Investor</h1>
-        <p className="text-muted-foreground">Update investor details.</p>
+        <p className="text-muted-foreground">
+          Update profile or manage the linked company.
+        </p>
       </div>
-      <EditInvestorForm investor={investor} />
-    </section>
-  );
-}
-
-function EditPageSkeleton() {
-  return (
-    <section className="big-container block-space min-h-screen">
-      <Skeleton className="mb-6 h-9 w-32" />
-      <Skeleton className="mb-4 h-8 w-48" />
-      <Skeleton className="h-4 w-64" />
-      <div className="mt-8 space-y-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-24 w-full" />
-      </div>
+      <InvestorEditTabs
+        investor={investor}
+        investorId={uid}
+        initialCompanyLink={companyLinkData}
+      />
     </section>
   );
 }
@@ -104,7 +103,10 @@ export default function EditInvestorPage(props: { params: Params }) {
   const sessionPromise = getSession();
   return (
     <Suspense fallback={<EditPageSkeleton />}>
-      <AuthedEditContent params={props.params} sessionPromise={sessionPromise} />
+      <AuthedEditContent
+        params={props.params}
+        sessionPromise={sessionPromise}
+      />
     </Suspense>
   );
 }

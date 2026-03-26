@@ -28,6 +28,7 @@ import {
   investors,
   investorLeads,
   investorInteractions,
+  investorCompanyLinks,
   type Deal,
   type Lead,
   type Company,
@@ -163,9 +164,9 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       .where(
         dealOppIds.length > 0
           ? or(
-            eq(outreach.companyId, id),
-            inArray(outreach.dealOpportunityId, dealOppIds),
-          )
+              eq(outreach.companyId, id),
+              inArray(outreach.dealOpportunityId, dealOppIds),
+            )
           : eq(outreach.companyId, id),
       )
       .orderBy(desc(outreach.createdAt));
@@ -331,10 +332,10 @@ export const GetDealOpportunitiesByLeadId = async (leadId: string) => {
     company:
       company && company.name
         ? {
-          name: company.name,
-          industry: company.industry,
-          location: company.location,
-        }
+            name: company.name,
+            industry: company.industry,
+            location: company.location,
+          }
         : null,
   }));
 };
@@ -573,10 +574,10 @@ export const GetCIMExtractionByDealOpportunityId = async (
         .limit(1);
       return row?.extraction
         ? {
-          ...row.extraction,
-          documentFileName: row.documentFileName,
-          documentCreatedAt: row.documentCreatedAt,
-        }
+            ...row.extraction,
+            documentFileName: row.documentFileName,
+            documentCreatedAt: row.documentCreatedAt,
+          }
         : null;
     }
     // Legacy: extraction by dealOpportunityId (pre-migration or denormalized)
@@ -592,10 +593,10 @@ export const GetCIMExtractionByDealOpportunityId = async (
       .limit(1);
     return legacyRow?.extraction
       ? {
-        ...legacyRow.extraction,
-        documentFileName: legacyRow.documentFileName,
-        documentCreatedAt: legacyRow.documentCreatedAt,
-      }
+          ...legacyRow.extraction,
+          documentFileName: legacyRow.documentFileName,
+          documentCreatedAt: legacyRow.documentCreatedAt,
+        }
       : null;
   } catch {
     return null;
@@ -1477,10 +1478,60 @@ export const GetInvestorWithRelations = async (id: string) => {
       .where(eq(investorInteractions.investorId, id))
       .orderBy(desc(investorInteractions.createdAt));
 
-    return { investor, interactions };
+    let companyLink: (typeof investorCompanyLinks.$inferSelect) | null = null;
+    let company: (typeof companies.$inferSelect) | null = null;
+    try {
+      const [joined] = await db
+        .select({
+          link: investorCompanyLinks,
+          company: companies,
+        })
+        .from(investorCompanyLinks)
+        .innerJoin(companies, eq(investorCompanyLinks.companyId, companies.id))
+        .where(eq(investorCompanyLinks.investorId, id))
+        .limit(1);
+      companyLink = joined?.link ?? null;
+      company = joined?.company ?? null;
+    } catch (linkErr) {
+      console.error(
+        "Investor-company link query failed (ensure InvestorCompanyLink exists: db:push or db:migrate in packages/db)",
+        linkErr,
+      );
+    }
+
+    return {
+      investor,
+      interactions,
+      companyLink,
+      company,
+    };
   } catch (error) {
     console.error("Error fetching investor with relations", error);
     throw error;
+  }
+};
+
+/** Company link for an investor (for edit flows); null if unlinked. */
+export const GetInvestorCompanyLinkByInvestorId = async (
+  investorId: string,
+) => {
+  try {
+    const [row] = await db
+      .select({
+        link: investorCompanyLinks,
+        company: companies,
+      })
+      .from(investorCompanyLinks)
+      .innerJoin(companies, eq(investorCompanyLinks.companyId, companies.id))
+      .where(eq(investorCompanyLinks.investorId, investorId))
+      .limit(1);
+    return row ?? null;
+  } catch (error) {
+    console.error(
+      "Error fetching investor-company link (ensure InvestorCompanyLink exists: db:push or db:migrate in packages/db)",
+      error,
+    );
+    return null;
   }
 };
 
@@ -1578,10 +1629,7 @@ export const GetThemeDocuments = async (themeId: string) => {
       .select()
       .from(documents)
       .where(
-        and(
-          eq(documents.entityType, "THEME"),
-          eq(documents.entityId, themeId),
-        ),
+        and(eq(documents.entityType, "THEME"), eq(documents.entityId, themeId)),
       );
 
     return docs;
@@ -1693,23 +1741,20 @@ export const GetAllDocuments = async ({
     const [data, countResult] = await Promise.all([
       whereClause
         ? db
-          .select()
-          .from(documents)
-          .where(whereClause)
-          .orderBy(desc(documents.createdAt))
-          .limit(limit)
-          .offset(offset)
+            .select()
+            .from(documents)
+            .where(whereClause)
+            .orderBy(desc(documents.createdAt))
+            .limit(limit)
+            .offset(offset)
         : db
-          .select()
-          .from(documents)
-          .orderBy(desc(documents.createdAt))
-          .limit(limit)
-          .offset(offset),
+            .select()
+            .from(documents)
+            .orderBy(desc(documents.createdAt))
+            .limit(limit)
+            .offset(offset),
       whereClause
-        ? db
-          .select({ count: count() })
-          .from(documents)
-          .where(whereClause)
+        ? db.select({ count: count() }).from(documents).where(whereClause)
         : db.select({ count: count() }).from(documents),
     ]);
 
@@ -2046,10 +2091,10 @@ export const GetDealOpportunitiesWithScreenings = async (): Promise<
       const existing = byOpp.get(row.opp.id);
       const company = row.companyName
         ? {
-          name: row.companyName,
-          industry: row.companyIndustry,
-          location: row.companyLocation,
-        }
+            name: row.companyName,
+            industry: row.companyIndustry,
+            location: row.companyLocation,
+          }
         : null;
 
       if (!existing) {

@@ -69,6 +69,7 @@ function dedupeMessagesById(messages: UIMessage[]): UIMessage[] {
   for (const message of messages) {
     deduped.set(message.id, message);
   }
+
   return [...deduped.values()];
 }
 

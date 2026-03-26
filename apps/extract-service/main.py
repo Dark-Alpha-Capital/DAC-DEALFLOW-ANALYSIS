@@ -102,6 +102,7 @@ def extract(req: ExtractRequest):
             model_id=req.model_id,
         )
         # lx.extract returns AnnotatedDocument or list of them
+
         docs = result if isinstance(result, list) else [result]
         out: list[dict[str, Any]] = []
         for doc in docs:

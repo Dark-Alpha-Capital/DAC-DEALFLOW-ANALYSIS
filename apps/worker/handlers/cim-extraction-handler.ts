@@ -16,23 +16,28 @@ export async function cimExtractionHandler(
 ): Promise<void> {
   const { simId, documentId, dealOpportunityId, filePath } = job.data;
 
-  console.log(`[cim-extraction] Step 1: Starting for sim ${simId}, filePath=${filePath}`);
-
   let fileBuffer: Buffer;
   try {
     fileBuffer = (await getFileContents(filePath)) as Buffer;
-    console.log(`[cim-extraction] Step 2: Fetched file from Nextcloud, size=${fileBuffer.length} bytes`);
+    console.log(
+      `[cim-extraction] Step 2: Fetched file from Nextcloud, size=${fileBuffer.length} bytes`,
+    );
   } catch (err) {
-    console.error(`[cim-extraction] Nextcloud getFileContents failed (401 = bad credentials):`, err instanceof Error ? err.message : err);
+    console.error(
+      `[cim-extraction] Nextcloud getFileContents failed (401 = bad credentials):`,
+      err instanceof Error ? err.message : err,
+    );
     throw err;
   }
 
   const rawText = await extractTextFromPdf(fileBuffer);
-  console.log(`[cim-extraction] Step 3: Extracted text from PDF, length=${rawText.length} chars`);
-
+  console.log(
+    `[cim-extraction] Step 3: Extracted text from PDF, length=${rawText.length} chars`,
+  );
   let payload;
   try {
     payload = await runCIMExtractionLLM(rawText);
+
     console.log(`[cim-extraction] Step 4: LLM extraction done`, {
       revenueHistoryKeys: Object.keys(payload.revenueHistory ?? {}).length,
       ebitdaHistoryKeys: Object.keys(payload.ebitdaHistory ?? {}).length,
@@ -40,11 +45,15 @@ export async function cimExtractionHandler(
       keyRisks: payload.keyRisks?.length ?? 0,
     });
   } catch (err) {
-    console.error(`[cim-extraction] LLM extraction failed (401 = bad AI_API_KEY):`, err instanceof Error ? err.message : err);
+    console.error(
+      `[cim-extraction] LLM extraction failed (401 = bad AI_API_KEY):`,
+      err instanceof Error ? err.message : err,
+    );
     throw err;
   }
 
-  console.log(`[cim-extraction] Step 5: Upserting to DB (simId=${simId})...`);
+  console.log("is this real or am i tripping");
+
   try {
     await upsertCIMExtraction({
       simId,

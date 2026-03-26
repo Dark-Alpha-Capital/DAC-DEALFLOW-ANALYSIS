@@ -1,6 +1,13 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { investors, investorInteractions, eq, desc } from "@repo/db";
+import db, {
+  investors,
+  investorInteractions,
+  investorCompanyLinks,
+  eq,
+  desc,
+} from "@repo/db";
 import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 
@@ -112,6 +119,79 @@ export const investorsRouter = createTRPCRouter({
         revalidateTag("investors", "max");
         revalidateTag(`investor-${input.id}`, "max");
       });
+      return { success: true };
+    }),
+
+  setCompanyLink: protectedProcedure
+    .input(
+      z.object({
+        investorId: z.string(),
+        companyId: z.string().nullable(),
+        notes: z.string().optional(),
+        status: z.enum(["ACTIVE", "ARCHIVED"]).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const result = await db.transaction(async (tx) => {
+        const [existing] = await tx
+          .select()
+          .from(investorCompanyLinks)
+          .where(eq(investorCompanyLinks.investorId, input.investorId))
+          .limit(1);
+
+        await tx
+          .delete(investorCompanyLinks)
+          .where(eq(investorCompanyLinks.investorId, input.investorId));
+
+        if (!input.companyId) {
+          return {
+            previousCompanyId: existing?.companyId ?? null,
+            newCompanyId: null as string | null,
+          };
+        }
+
+        const [conflict] = await tx
+          .select()
+          .from(investorCompanyLinks)
+          .where(eq(investorCompanyLinks.companyId, input.companyId))
+          .limit(1);
+
+        if (conflict) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "This company is already linked to another investor. Remove that link first or pick a different company.",
+          });
+        }
+
+        await tx.insert(investorCompanyLinks).values({
+          investorId: input.investorId,
+          companyId: input.companyId,
+          notes: input.notes?.trim() ? input.notes.trim() : null,
+          status: input.status ?? "ACTIVE",
+        });
+
+        return {
+          previousCompanyId: existing?.companyId ?? null,
+          newCompanyId: input.companyId,
+        };
+      });
+
+      after(async () => {
+        revalidatePath(`/investors/${input.investorId}`);
+        revalidatePath(`/investors/${input.investorId}/edit`);
+        revalidateTag(`investor-${input.investorId}`, "max");
+        revalidateTag("investors", "max");
+        if (result.previousCompanyId) {
+          revalidatePath(`/companies/${result.previousCompanyId}`);
+          revalidateTag(`company-${result.previousCompanyId}`, "max");
+        }
+        if (result.newCompanyId) {
+          revalidatePath(`/companies/${result.newCompanyId}`);
+          revalidateTag(`company-${result.newCompanyId}`, "max");
+        }
+      });
+
       return { success: true };
     }),
 

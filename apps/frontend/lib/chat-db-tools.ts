@@ -1106,7 +1106,12 @@ export async function getEntityById(
       return {
         summary: `Fetched investor ${data.investor.name}`,
         data: input.includeRelated
-          ? { investor: data.investor, interactions: data.interactions }
+          ? {
+              investor: data.investor,
+              interactions: data.interactions,
+              company: data.company ?? undefined,
+              companyLink: data.companyLink ?? undefined,
+            }
           : { investor: data.investor },
         meta: { entity: input.entity, id: input.id },
       };

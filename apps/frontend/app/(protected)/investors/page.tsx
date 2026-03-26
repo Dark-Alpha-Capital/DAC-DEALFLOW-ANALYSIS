@@ -6,8 +6,7 @@ import { getSession } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
 import { GetAllInvestors } from "@repo/db/queries";
 import InvestorContainer from "@/components/InvestorContainer";
-import InvestorsAuthedSkeleton from "@/components/skeletons/InvestorsAuthedSkeleton";
-import CompanyCardGridSkeleton from "@/components/skeletons/CompanyCardGridSkeleton";
+import InvestorsDataTableSkeleton from "@/components/skeletons/InvestorsDataTableSkeleton";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import LeadsAuthedSkeleton from "@/components/skeletons/LeadsAuthedSkeleton";
@@ -63,7 +62,7 @@ async function AuthedInvestors(props: {
   }
 
   return (
-    <Suspense fallback={<CompanyCardGridSkeleton />}>
+    <Suspense fallback={<InvestorsDataTableSkeleton />}>
       <ShowInvestorsComponent searchParams={resolvedSearchParams} />
     </Suspense>
   );
