@@ -55,10 +55,6 @@ export function CompanyTabs({
 
       <TabsContent value="overview" className="space-y-6">
         <CompanyOverview company={company} />
-        <CompanyFinancials
-          company={company}
-          financialSnapshots={financialSnapshots}
-        />
       </TabsContent>
 
       <TabsContent value="financials">

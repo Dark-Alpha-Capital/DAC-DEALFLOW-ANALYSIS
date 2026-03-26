@@ -4,11 +4,34 @@ import type { Company } from "@repo/db";
 import type { CompanyFinancialSnapshot } from "@repo/db/schema";
 import {
   formatCurrency,
-  formatDateTimeStable,
   formatPercent,
 } from "@/lib/utils";
 import { DollarSign } from "lucide-react";
 import { AddCompanyFinancialSnapshotDialog } from "./AddCompanyFinancialSnapshotDialog";
+
+const SNAPSHOT_PERIOD_LOCALE = "en-US";
+const SNAPSHOT_PERIOD_TZ = "UTC";
+
+/** Period end is stored as a timestamp; show calendar date + time on each snapshot row. */
+function formatSnapshotPeriodEnd(value: Date | string | number) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return { dateLine: "—", timeLine: null as string | null };
+  const dateLine = new Intl.DateTimeFormat(SNAPSHOT_PERIOD_LOCALE, {
+    timeZone: SNAPSHOT_PERIOD_TZ,
+    weekday: "short",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+  const timeLine = new Intl.DateTimeFormat(SNAPSHOT_PERIOD_LOCALE, {
+    timeZone: SNAPSHOT_PERIOD_TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+  return { dateLine, timeLine: `${timeLine} ${SNAPSHOT_PERIOD_TZ}` };
+}
 
 interface CompanyFinancialsProps {
   company: Company;
@@ -118,7 +141,7 @@ export function CompanyFinancials({
             <table className="min-w-full text-sm">
               <thead className="bg-muted/40 text-left">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Period End</th>
+                  <th className="px-3 py-2 font-medium">Reporting period</th>
                   <th className="px-3 py-2 font-medium">Source</th>
                   <th className="px-3 py-2 font-medium">Revenue</th>
                   <th className="px-3 py-2 font-medium">EBITDA</th>
@@ -131,10 +154,21 @@ export function CompanyFinancials({
                 </tr>
               </thead>
               <tbody>
-                {financialSnapshots.map((snapshot) => (
+                {financialSnapshots.map((snapshot) => {
+                  const { dateLine, timeLine } = formatSnapshotPeriodEnd(
+                    snapshot.periodEnd,
+                  );
+                  return (
                   <tr key={snapshot.id} className="border-t">
-                    <td className="px-3 py-2 tabular-nums">
-                      {formatDateTimeStable(snapshot.periodEnd)}
+                    <td className="px-3 py-2 align-top">
+                      <p className="text-foreground font-medium leading-snug">
+                        {dateLine}
+                      </p>
+                      {timeLine ? (
+                        <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
+                          {timeLine}
+                        </p>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2">
                       {snapshot.source.replace(/_/g, " ")}
@@ -174,7 +208,8 @@ export function CompanyFinancials({
                       {snapshot.notes ?? "—"}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
