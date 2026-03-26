@@ -75,6 +75,7 @@ async function CachedCompanyContent({ uid }: { uid: string }) {
     outreach,
     notes,
     financialSnapshots,
+    linkedInvestors,
   } = companyData;
 
   return (
@@ -99,6 +100,7 @@ async function CachedCompanyContent({ uid }: { uid: string }) {
           outreach={outreach}
           notes={notes ?? []}
           financialSnapshots={financialSnapshots ?? []}
+          linkedInvestors={linkedInvestors ?? []}
         />
 
         <p className="text-muted-foreground text-xs">

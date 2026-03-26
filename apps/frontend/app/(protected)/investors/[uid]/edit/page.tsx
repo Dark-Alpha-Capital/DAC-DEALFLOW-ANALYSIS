@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import {
   GetInvestorById,
-  GetInvestorCompanyLinkByInvestorId,
+  GetInvestorCompanyLinksByInvestorId,
 } from "@repo/db/queries";
 import { InvestorEditTabs } from "@/components/investors/InvestorEditTabs";
 import { cacheLife, cacheTag } from "next/cache";
@@ -20,14 +20,16 @@ async function CachedEditContent({ uid }: { uid: string }) {
   cacheLife("hours");
 
   let investor = null;
-  let companyLinkData = null;
+  let companyLinks: Awaited<
+    ReturnType<typeof GetInvestorCompanyLinksByInvestorId>
+  > = [];
 
   let error: Error | null = null;
 
   try {
-    [investor, companyLinkData] = await Promise.all([
+    [investor, companyLinks] = await Promise.all([
       GetInvestorById(uid),
-      GetInvestorCompanyLinkByInvestorId(uid),
+      GetInvestorCompanyLinksByInvestorId(uid),
     ]);
   } catch (err) {
     console.error("Error fetching investor", err);
@@ -75,13 +77,13 @@ async function CachedEditContent({ uid }: { uid: string }) {
         </Button>
         <h1 className="mt-4">Edit Investor</h1>
         <p className="text-muted-foreground">
-          Update profile or manage the linked company.
+          Update profile or manage linked companies.
         </p>
       </div>
       <InvestorEditTabs
         investor={investor}
         investorId={uid}
-        initialCompanyLink={companyLinkData}
+        companyLinks={companyLinks}
       />
     </section>
   );

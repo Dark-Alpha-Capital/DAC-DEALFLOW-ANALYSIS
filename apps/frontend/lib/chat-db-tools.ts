@@ -1109,8 +1109,7 @@ export async function getEntityById(
           ? {
               investor: data.investor,
               interactions: data.interactions,
-              company: data.company ?? undefined,
-              companyLink: data.companyLink ?? undefined,
+              linkedCompanies: data.linkedCompanies,
             }
           : { investor: data.investor },
         meta: { entity: input.entity, id: input.id },

@@ -91,10 +91,7 @@ async function CachedInvestorContent({ uid }: { uid: string }) {
     );
   }
 
-  const { investor, interactions, company, companyLink } = data;
-
-  const companyLinkInitial =
-    company && companyLink ? { link: companyLink, company } : null;
+  const { investor, interactions, linkedCompanies } = data;
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
@@ -160,7 +157,7 @@ async function CachedInvestorContent({ uid }: { uid: string }) {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="capital">Capital</TabsTrigger>
-            <TabsTrigger value="company">Company</TabsTrigger>
+            <TabsTrigger value="company">Companies</TabsTrigger>
             <TabsTrigger value="interactions">Interactions</TabsTrigger>
           </TabsList>
         </div>
@@ -258,7 +255,7 @@ async function CachedInvestorContent({ uid }: { uid: string }) {
         <TabsContent value="company" className="mt-8">
           <InvestorCompanyLinkTab
             investorId={investor.id}
-            initial={companyLinkInitial}
+            links={linkedCompanies}
           />
         </TabsContent>
 

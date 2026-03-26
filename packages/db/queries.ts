@@ -116,6 +116,7 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       companyContacts,
       companyNotesRows,
       companyFinancialSnapshotsRows,
+      linkedInvestorRows,
     ] = await Promise.all([
       db
         .select()
@@ -144,6 +145,18 @@ export const GetCompanyWithAllRelations = async (id: string) => {
         .from(companyFinancialSnapshots)
         .where(eq(companyFinancialSnapshots.companyId, id))
         .orderBy(desc(companyFinancialSnapshots.periodEnd)),
+      db
+        .select({
+          link: investorCompanyLinks,
+          investor: investors,
+        })
+        .from(investorCompanyLinks)
+        .innerJoin(
+          investors,
+          eq(investorCompanyLinks.investorId, investors.id),
+        )
+        .where(eq(investorCompanyLinks.companyId, id))
+        .orderBy(desc(investorCompanyLinks.createdAt)),
     ]);
 
     const dealOppIds = companyDealOpps.map((o) => o.id);
@@ -182,6 +195,7 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       outreach: outreachRows,
       notes: companyNotesRows,
       financialSnapshots: companyFinancialSnapshotsRows,
+      linkedInvestors: linkedInvestorRows,
     };
   } catch (error) {
     console.error("Error fetching company with relations", error);
@@ -1478,10 +1492,12 @@ export const GetInvestorWithRelations = async (id: string) => {
       .where(eq(investorInteractions.investorId, id))
       .orderBy(desc(investorInteractions.createdAt));
 
-    let companyLink: (typeof investorCompanyLinks.$inferSelect) | null = null;
-    let company: (typeof companies.$inferSelect) | null = null;
+    let linkedCompanies: {
+      link: typeof investorCompanyLinks.$inferSelect;
+      company: typeof companies.$inferSelect;
+    }[] = [];
     try {
-      const [joined] = await db
+      linkedCompanies = await db
         .select({
           link: investorCompanyLinks,
           company: companies,
@@ -1489,9 +1505,7 @@ export const GetInvestorWithRelations = async (id: string) => {
         .from(investorCompanyLinks)
         .innerJoin(companies, eq(investorCompanyLinks.companyId, companies.id))
         .where(eq(investorCompanyLinks.investorId, id))
-        .limit(1);
-      companyLink = joined?.link ?? null;
-      company = joined?.company ?? null;
+        .orderBy(desc(investorCompanyLinks.createdAt));
     } catch (linkErr) {
       console.error(
         "Investor-company link query failed (ensure InvestorCompanyLink exists: db:push or db:migrate in packages/db)",
@@ -1502,8 +1516,7 @@ export const GetInvestorWithRelations = async (id: string) => {
     return {
       investor,
       interactions,
-      companyLink,
-      company,
+      linkedCompanies,
     };
   } catch (error) {
     console.error("Error fetching investor with relations", error);
@@ -1511,12 +1524,12 @@ export const GetInvestorWithRelations = async (id: string) => {
   }
 };
 
-/** Company link for an investor (for edit flows); null if unlinked. */
-export const GetInvestorCompanyLinkByInvestorId = async (
+/** Company links for an investor (for edit flows). */
+export const GetInvestorCompanyLinksByInvestorId = async (
   investorId: string,
 ) => {
   try {
-    const [row] = await db
+    return await db
       .select({
         link: investorCompanyLinks,
         company: companies,
@@ -1524,14 +1537,13 @@ export const GetInvestorCompanyLinkByInvestorId = async (
       .from(investorCompanyLinks)
       .innerJoin(companies, eq(investorCompanyLinks.companyId, companies.id))
       .where(eq(investorCompanyLinks.investorId, investorId))
-      .limit(1);
-    return row ?? null;
+      .orderBy(desc(investorCompanyLinks.createdAt));
   } catch (error) {
     console.error(
-      "Error fetching investor-company link (ensure InvestorCompanyLink exists: db:push or db:migrate in packages/db)",
+      "Error fetching investor-company links (ensure InvestorCompanyLink exists: db:push or db:migrate in packages/db)",
       error,
     );
-    return null;
+    return [];
   }
 };
 

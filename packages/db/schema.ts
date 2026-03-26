@@ -1390,7 +1390,7 @@ export const investorInteractions = pgTable(
   }),
 );
 
-/** Optional one-to-one link: investor discovered in context of a company. */
+/** Many-to-many: investor linked to companies they represent or were sourced from. */
 export const investorCompanyLinks = pgTable(
   "InvestorCompanyLink",
   {
@@ -1412,12 +1412,9 @@ export const investorCompanyLinks = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => ({
-    investorCompanyLinkInvestorUniqueIdx: uniqueIndex(
-      "investor_company_link_investor_unique_idx",
-    ).on(table.investorId),
-    investorCompanyLinkCompanyUniqueIdx: uniqueIndex(
-      "investor_company_link_company_unique_idx",
-    ).on(table.companyId),
+    investorCompanyLinkInvestorCompanyUniqueIdx: uniqueIndex(
+      "investor_company_link_investor_company_unique_idx",
+    ).on(table.investorId, table.companyId),
     investorCompanyLinkStatusIdx: index("investor_company_link_status_idx").on(
       table.status,
     ),
@@ -1587,10 +1584,7 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
   outreach: many(outreach),
   themeCoverage: many(themeCompanyCoverage),
   financialSnapshots: many(companyFinancialSnapshots),
-  investorLink: one(investorCompanyLinks, {
-    fields: [companies.id],
-    references: [investorCompanyLinks.companyId],
-  }),
+  investorLinks: many(investorCompanyLinks),
 }));
 
 export const dealFinancialSnapshotsRelations = relations(
@@ -1791,10 +1785,7 @@ export const chatSessionsRelations = relations(chatSessions, ({ one }) => ({
 
 export const investorsRelations = relations(investors, ({ one, many }) => ({
   interactions: many(investorInteractions),
-  companyLink: one(investorCompanyLinks, {
-    fields: [investors.id],
-    references: [investorCompanyLinks.investorId],
-  }),
+  companyLinks: many(investorCompanyLinks),
   firstSeenFromInvestorLead: one(investorLeads, {
     fields: [investors.firstSeenFromInvestorLeadId],
     references: [investorLeads.id],

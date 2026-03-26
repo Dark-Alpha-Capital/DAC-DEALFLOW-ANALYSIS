@@ -6,7 +6,11 @@ import db, {
   investorInteractions,
   investorCompanyLinks,
   eq,
+  and,
+  or,
+  asc,
   desc,
+  ilike,
 } from "@repo/db";
 import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -50,6 +54,36 @@ const investorSchema = z.object({
 });
 
 export const investorsRouter = createTRPCRouter({
+  listForSelect: protectedProcedure.query(async () => {
+    return db
+      .select({ id: investors.id, name: investors.name })
+      .from(investors)
+      .orderBy(asc(investors.name));
+  }),
+
+  searchForLink: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().trim().min(2).max(200),
+        limit: z.number().int().min(1).max(50).optional().default(20),
+      }),
+    )
+    .query(async ({ input }) => {
+      const pattern = `%${input.query}%`;
+      return db
+        .select({
+          id: investors.id,
+          name: investors.name,
+          email: investors.email,
+        })
+        .from(investors)
+        .where(
+          or(ilike(investors.name, pattern), ilike(investors.email, pattern)),
+        )
+        .orderBy(asc(investors.name))
+        .limit(input.limit);
+    }),
+
   create: protectedProcedure
     .input(investorSchema)
     .mutation(async ({ input }) => {
@@ -122,74 +156,122 @@ export const investorsRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  setCompanyLink: protectedProcedure
+  addInvestorCompanyLink: protectedProcedure
     .input(
       z.object({
         investorId: z.string(),
-        companyId: z.string().nullable(),
+        companyId: z.string(),
         notes: z.string().optional(),
         status: z.enum(["ACTIVE", "ARCHIVED"]).optional(),
       }),
     )
     .mutation(async ({ input }) => {
-      const result = await db.transaction(async (tx) => {
-        const [existing] = await tx
-          .select()
-          .from(investorCompanyLinks)
-          .where(eq(investorCompanyLinks.investorId, input.investorId))
-          .limit(1);
+      const [dup] = await db
+        .select({ id: investorCompanyLinks.id })
+        .from(investorCompanyLinks)
+        .where(
+          and(
+            eq(investorCompanyLinks.investorId, input.investorId),
+            eq(investorCompanyLinks.companyId, input.companyId),
+          ),
+        )
+        .limit(1);
 
-        await tx
-          .delete(investorCompanyLinks)
-          .where(eq(investorCompanyLinks.investorId, input.investorId));
-
-        if (!input.companyId) {
-          return {
-            previousCompanyId: existing?.companyId ?? null,
-            newCompanyId: null as string | null,
-          };
-        }
-
-        const [conflict] = await tx
-          .select()
-          .from(investorCompanyLinks)
-          .where(eq(investorCompanyLinks.companyId, input.companyId))
-          .limit(1);
-
-        if (conflict) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "This company is already linked to another investor. Remove that link first or pick a different company.",
-          });
-        }
-
-        await tx.insert(investorCompanyLinks).values({
-          investorId: input.investorId,
-          companyId: input.companyId,
-          notes: input.notes?.trim() ? input.notes.trim() : null,
-          status: input.status ?? "ACTIVE",
+      if (dup) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This investor is already linked to that company.",
         });
+      }
 
-        return {
-          previousCompanyId: existing?.companyId ?? null,
-          newCompanyId: input.companyId,
-        };
+      await db.insert(investorCompanyLinks).values({
+        investorId: input.investorId,
+        companyId: input.companyId,
+        notes: input.notes?.trim() ? input.notes.trim() : null,
+        status: input.status ?? "ACTIVE",
       });
 
       after(async () => {
         revalidatePath(`/investors/${input.investorId}`);
         revalidatePath(`/investors/${input.investorId}/edit`);
+        revalidatePath(`/companies/${input.companyId}`);
         revalidateTag(`investor-${input.investorId}`, "max");
+        revalidateTag(`company-${input.companyId}`, "max");
         revalidateTag("investors", "max");
-        if (result.previousCompanyId) {
-          revalidatePath(`/companies/${result.previousCompanyId}`);
-          revalidateTag(`company-${result.previousCompanyId}`, "max");
-        }
-        if (result.newCompanyId) {
-          revalidatePath(`/companies/${result.newCompanyId}`);
-          revalidateTag(`company-${result.newCompanyId}`, "max");
-        }
+      });
+
+      return { success: true };
+    }),
+
+  updateInvestorCompanyLink: protectedProcedure
+    .input(
+      z.object({
+        linkId: z.string(),
+        notes: z.string().optional(),
+        status: z.enum(["ACTIVE", "ARCHIVED"]).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const updates: {
+        notes?: string | null;
+        status?: "ACTIVE" | "ARCHIVED";
+      } = {};
+      if (input.notes !== undefined) {
+        updates.notes = input.notes.trim() ? input.notes.trim() : null;
+      }
+      if (input.status !== undefined) updates.status = input.status;
+
+      if (Object.keys(updates).length === 0) {
+        return { success: true as const };
+      }
+
+      const [row] = await db
+        .update(investorCompanyLinks)
+        .set(updates)
+        .where(eq(investorCompanyLinks.id, input.linkId))
+        .returning();
+
+      if (!row) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Link not found.",
+        });
+      }
+
+      after(async () => {
+        revalidatePath(`/investors/${row.investorId}`);
+        revalidatePath(`/investors/${row.investorId}/edit`);
+        revalidatePath(`/companies/${row.companyId}`);
+        revalidateTag(`investor-${row.investorId}`, "max");
+        revalidateTag(`company-${row.companyId}`, "max");
+        revalidateTag("investors", "max");
+      });
+
+      return { success: true };
+    }),
+
+  removeInvestorCompanyLink: protectedProcedure
+    .input(z.object({ linkId: z.string() }))
+    .mutation(async ({ input }) => {
+      const [row] = await db
+        .delete(investorCompanyLinks)
+        .where(eq(investorCompanyLinks.id, input.linkId))
+        .returning();
+
+      if (!row) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Link not found.",
+        });
+      }
+
+      after(async () => {
+        revalidatePath(`/investors/${row.investorId}`);
+        revalidatePath(`/investors/${row.investorId}/edit`);
+        revalidatePath(`/companies/${row.companyId}`);
+        revalidateTag(`investor-${row.investorId}`, "max");
+        revalidateTag(`company-${row.companyId}`, "max");
+        revalidateTag("investors", "max");
       });
 
       return { success: true };

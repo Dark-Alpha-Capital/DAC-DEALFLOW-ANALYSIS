@@ -1,4 +1,4 @@
-import type { Company } from "@repo/db";
+import type { Company, Investor, InvestorCompanyLink } from "@repo/db";
 import type {
   DealOpportunity,
   Document,
@@ -14,6 +14,7 @@ import { CompanyContacts } from "./CompanyContacts";
 import { CompanyDocuments } from "./CompanyDocuments";
 import { CompanyNotes } from "./CompanyNotes";
 import { CompanyOutreach, type OutreachRow } from "./CompanyOutreach";
+import { CompanyLinkedInvestors } from "./CompanyLinkedInvestors";
 
 interface CompanyTabsProps {
   company: Company & { themeName?: string | null };
@@ -23,6 +24,10 @@ interface CompanyTabsProps {
   outreach: OutreachRow[];
   notes: CompanyNote[];
   financialSnapshots: CompanyFinancialSnapshot[];
+  linkedInvestors: {
+    link: InvestorCompanyLink;
+    investor: Investor;
+  }[];
 }
 
 export function CompanyTabs({
@@ -33,6 +38,7 @@ export function CompanyTabs({
   outreach,
   notes,
   financialSnapshots,
+  linkedInvestors,
 }: CompanyTabsProps) {
   return (
     <Tabs defaultValue="overview" className="w-full space-y-6">
@@ -41,6 +47,7 @@ export function CompanyTabs({
         <TabsTrigger value="financials">Financials</TabsTrigger>
         <TabsTrigger value="deals">Deal opportunities</TabsTrigger>
         <TabsTrigger value="contacts">Contacts</TabsTrigger>
+        <TabsTrigger value="investors">Investors</TabsTrigger>
         <TabsTrigger value="outreach">Outreach</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="notes">Notes</TabsTrigger>
@@ -70,6 +77,13 @@ export function CompanyTabs({
 
       <TabsContent value="contacts">
         <CompanyContacts company={company} initialContacts={contacts} />
+      </TabsContent>
+
+      <TabsContent value="investors">
+        <CompanyLinkedInvestors
+          companyId={company.id}
+          linkedInvestors={linkedInvestors}
+        />
       </TabsContent>
 
       <TabsContent value="outreach">

@@ -15,6 +15,7 @@
     "db:studio": "drizzle-kit studio",
     "db:introspect": "drizzle-kit introspect",
     "db:seed:dummy-leads": "bun run ./scripts/seed-dummy-leads.ts",
+    "db:seed:dummy-deal-pipeline": "bun run ./scripts/seed-dummy-deal-pipeline.ts",
     "screenings:backfill": "bun run --cwd ../deal-screening backfill"
   },
   "peerDependencies": {

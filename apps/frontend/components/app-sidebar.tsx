@@ -31,20 +31,26 @@ async function AppSidebarContent() {
 
 export async function AppSidebar() {
   return (
-    <Sidebar collapsible="icon" variant="inset">
-      {/* <SidebarHeader>
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg">
-              <Link href="/">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+              <Link href="/dashboard">
+                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
                   <span className="text-sm font-bold">DAC</span>
+                </div>
+                <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">DealFlow</span>
+                  <span className="text-muted-foreground truncate text-xs">
+                    M&A Platform
+                  </span>
                 </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarHeader> */}
+      </SidebarHeader>
       <Suspense fallback={<AppSidebarSkeleton />}>
         <AppSidebarContent />
       </Suspense>
