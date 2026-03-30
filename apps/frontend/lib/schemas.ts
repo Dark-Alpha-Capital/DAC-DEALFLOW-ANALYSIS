@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { DealDocumentCategory, DealStatus, ReviewState } from "@repo/db/schema";
+import { DealDocumentCategory, DealStatus, ReviewState } from "@repo/db/enums";
 
 const optionalNumberFromInputSchema = z.preprocess(
   (value) => (value === "" || value === null ? undefined : value),

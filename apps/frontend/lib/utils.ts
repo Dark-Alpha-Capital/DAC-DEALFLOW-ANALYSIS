@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { UserRole } from "@repo/db/schema";
+import { UserRole } from "@repo/db/enums";
 import { ImageIcon } from "lucide-react";
 
 export const adminEmails = [

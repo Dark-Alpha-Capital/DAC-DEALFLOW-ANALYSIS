@@ -1,5 +1,3 @@
-import "server-only";
-
 import { type UIMessage } from "ai";
 import { and, chatSessions, db, desc, eq } from "@repo/db";
 import {
@@ -29,14 +27,6 @@ function deriveTitleFromMessages(messages: UIMessage[]): string {
   }
 
   return firstTextPart.text.trim().slice(0, 80);
-}
-
-export function coerceStoredMessages(value: unknown): UIMessage[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value as UIMessage[];
 }
 
 export async function createChatSessionForUser(userId: string): Promise<string> {

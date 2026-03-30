@@ -1,5 +1,4 @@
-import { Suspense } from "react";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import {
   Sidebar,
   SidebarContent,
@@ -9,34 +8,18 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { getSession } from "@/lib/auth-server";
+import type { Session } from "@/auth";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { SidebarUser } from "@/components/sidebar-user";
-import { AppSidebarSkeleton } from "@/components/skeletons/app-sidebar-skeleton";
 
-async function AppSidebarContent() {
-  const session = await getSession();
-
-  return (
-    <>
-      <SidebarContent>
-        <SidebarNav session={session as { user?: { role?: string } } | null} />
-      </SidebarContent>
-      <SidebarFooter>
-        <SidebarUser session={session} />
-      </SidebarFooter>
-    </>
-  );
-}
-
-export async function AppSidebar() {
+export function AppSidebar({ session }: { session: Session | null }) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg">
-              <Link href="/dashboard">
+              <Link to="/dashboard">
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
                   <span className="text-sm font-bold">DAC</span>
                 </div>
@@ -51,9 +34,12 @@ export async function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <Suspense fallback={<AppSidebarSkeleton />}>
-        <AppSidebarContent />
-      </Suspense>
+      <SidebarContent>
+        <SidebarNav session={session as { user?: { role?: string } } | null} />
+      </SidebarContent>
+      <SidebarFooter>
+        <SidebarUser session={session} />
+      </SidebarFooter>
     </Sidebar>
   );
 }

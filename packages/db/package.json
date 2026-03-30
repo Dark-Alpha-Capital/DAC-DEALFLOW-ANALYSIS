@@ -28,6 +28,7 @@
   },
   "exports": {
     ".": "./index.ts",
+    "./enums": "./enums.ts",
     "./schema": "./schema.ts",
     "./queries": "./queries.ts",
     "./mutations": "./mutations.ts",

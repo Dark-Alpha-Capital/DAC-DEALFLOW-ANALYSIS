@@ -1,4 +1,3 @@
-"use client";
 
 import type { ComponentProps, HTMLAttributes } from "react";
 

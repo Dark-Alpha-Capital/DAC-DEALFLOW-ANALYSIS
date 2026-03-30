@@ -1,5 +1,5 @@
 import type { Contact } from "@repo/db";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
 import { sanitizeHttpUrl } from "@/lib/utils";
 

@@ -1,8 +1,7 @@
-"use client";
 
 import { useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
 import { useTRPC } from "@/trpc/client";
 import { CoverageRowForm } from "./CoverageRowForm";

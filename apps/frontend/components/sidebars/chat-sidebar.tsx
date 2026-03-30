@@ -1,7 +1,6 @@
-"use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link } from "@tanstack/react-router";
+import { usePathname } from "@/lib/navigation-shim";
 import { NewChatSidebarButton } from "./new-chat-sidebar-button";
 import { useQuery } from "@tanstack/react-query";
 import { MessageSquarePlus, LayoutDashboard, BookOpen } from "lucide-react";
@@ -60,7 +59,7 @@ export default function ChatSidebar() {
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={isActive}>
-                      <Link href={item.url}>
+                      <Link to={item.url}>
                         <item.icon className="size-4" />
                         <span>{item.title}</span>
                       </Link>

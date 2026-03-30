@@ -1,7 +1,9 @@
-"use client";
 // ^-- to make sure we can mount the Provider from a server component
 import type { QueryClient } from "@tanstack/react-query";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { TanStackDevtools } from "@tanstack/react-devtools";
+import { ReactQueryDevtoolsPanel } from "@tanstack/react-query-devtools";
+import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { useState } from "react";
@@ -30,6 +32,29 @@ function getUrl() {
   })();
   return `${base}/api/trpc`;
 }
+
+function TanStackAppDevtools() {
+  if (!import.meta.env.DEV) return null;
+  // Set VITE_DISABLE_TANSTACK_DEVTOOLS=true if an invisible devtools layer blocks clicks (localStorage can also persist "open").
+  if (import.meta.env.VITE_DISABLE_TANSTACK_DEVTOOLS === "true") return null;
+  return (
+    <TanStackDevtools
+      plugins={[
+        {
+          id: "tanstack-router",
+          name: "TanStack Router",
+          render: <TanStackRouterDevtoolsPanel />,
+        },
+        {
+          id: "tanstack-query",
+          name: "TanStack Query",
+          render: <ReactQueryDevtoolsPanel style={{ height: "100%" }} />,
+        },
+      ]}
+    />
+  );
+}
+
 export function TRPCReactProvider(
   props: Readonly<{
     children: React.ReactNode;
@@ -54,6 +79,7 @@ export function TRPCReactProvider(
     <QueryClientProvider client={queryClient}>
       <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
         {props.children}
+        <TanStackAppDevtools />
       </TRPCProvider>
     </QueryClientProvider>
   );

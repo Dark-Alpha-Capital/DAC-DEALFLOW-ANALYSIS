@@ -1,8 +1,10 @@
 import { betterAuth } from "better-auth";
+import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@repo/db";
-import { users, accounts, sessions, verifications, UserRole } from "@repo/db/schema";
+import { UserRole } from "@repo/db/enums";
+import { users, accounts, sessions, verifications } from "@repo/db/schema";
 import { eq } from "drizzle-orm";
 import { adminEmails } from "./lib/utils";
 import {
@@ -43,8 +45,19 @@ function isAllowedEmail(email: string | null | undefined) {
   return email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
 }
 
+/**
+ * Canonical site URL for OAuth redirects and cookies. Set in production
+ * (`BETTER_AUTH_URL` or `NEXT_PUBLIC_APP_URL`). If unset, Better Auth derives
+ * the origin from each request so dev works on any localhost port.
+ */
+const explicitPublicUrl =
+  process.env.BETTER_AUTH_URL?.trim() ||
+  process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+  undefined;
+
 export const auth: ReturnType<typeof betterAuth> = betterAuth({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  ...(explicitPublicUrl ? { baseURL: explicitPublicUrl } : {}),
+  plugins: [tanstackStartCookies()],
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {
@@ -174,7 +187,7 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
       };
     },
   },
-  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
+  ...(explicitPublicUrl ? { trustedOrigins: [explicitPublicUrl] } : {}),
   onAPIError: {
     errorURL: "/auth/error",
   },

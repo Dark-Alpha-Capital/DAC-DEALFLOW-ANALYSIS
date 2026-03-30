@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { z } from "zod";
-import { after } from "next/server";
-import { revalidatePath } from "next/cache";
+import { after } from "@/lib/after";
+import { revalidatePath } from "@/lib/cache-invalidation";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { aiScreenings, eq, DealType, Sentiment } from "@repo/db";
 import { DeleteReasoningById, UpsertScreenerResponse } from "@repo/db/mutations";

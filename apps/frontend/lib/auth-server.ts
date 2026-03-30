@@ -1,21 +1,15 @@
+import "@tanstack/react-start/server-only";
+
 import { auth } from "@/auth";
-import { headers } from "next/headers";
-import { cache } from "react";
+import { getRequest } from "@tanstack/react-start/server";
 
-/**
- * Get the current session on the server side
- * Use this in Server Components and Server Actions
- * Cached per-request to prevent duplicate calls
- */
-export const getSession = cache(async () => {
+export async function getSession() {
+  const request = getRequest();
   return auth.api.getSession({
-    headers: await headers(),
+    headers: request.headers,
   });
-});
+}
 
-/**
- * Get the current user from the session
- */
 export async function getCurrentUser() {
   const session = await getSession();
   return session?.user;

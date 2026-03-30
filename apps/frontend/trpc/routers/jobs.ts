@@ -7,8 +7,8 @@ import {
   getJobStatus,
   deleteUserJob,
 } from "@repo/redis-queue";
-import { after } from "next/server";
-import { revalidatePath } from "next/cache";
+import { after } from "@/lib/after";
+import { revalidatePath } from "@/lib/cache-invalidation";
 
 export const jobsRouter = createTRPCRouter({
   /**

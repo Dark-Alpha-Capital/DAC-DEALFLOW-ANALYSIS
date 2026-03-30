@@ -24,8 +24,8 @@ import db, {
   DealRiskType,
 } from "@repo/db";
 import { DeleteDealById, BulkDeleteDeals } from "@repo/db/mutations";
-import { after } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "@/lib/after";
+import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import {
   fileUploadQueue,
   cimExtractionQueue,

@@ -3,8 +3,8 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { deals, eq, DealType } from "@repo/db";
 import { DeleteQuestionnaireById, DeleteReasoningById } from "@repo/db/mutations";
 import { del } from "@vercel/blob";
-import { after } from "next/server";
-import { revalidatePath } from "next/cache";
+import { after } from "@/lib/after";
+import { revalidatePath } from "@/lib/cache-invalidation";
 
 const inferDealSchema = z.object({
   sourceWebsite: z.string().optional().nullable(),

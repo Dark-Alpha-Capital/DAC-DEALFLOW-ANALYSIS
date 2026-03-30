@@ -1,4 +1,3 @@
-"use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EditInvestorForm from "@/components/forms/edit-investor-form";

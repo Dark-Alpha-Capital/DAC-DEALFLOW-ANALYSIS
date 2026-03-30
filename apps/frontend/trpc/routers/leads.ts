@@ -12,8 +12,8 @@ import db, {
   ilike,
 } from "@repo/db";
 import { convertLeadToCompanySchema, leadFormSchema } from "@/lib/schemas";
-import { after } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "@/lib/after";
+import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { upsertDealOpportunityScreening } from "@repo/deal-screening";
 import { createDealFinancialSnapshot } from "@repo/db/mutations";
 

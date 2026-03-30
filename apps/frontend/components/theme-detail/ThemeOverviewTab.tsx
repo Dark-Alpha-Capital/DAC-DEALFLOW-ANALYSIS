@@ -1,4 +1,3 @@
-"use client";
 
 import ThemeAnalytics from "@/components/ThemeAnalytics";
 import ThemeCompaniesList from "@/components/ThemeCompaniesList";

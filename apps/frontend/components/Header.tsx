@@ -1,8 +1,7 @@
-"use client";
 
 import clsx from "clsx";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { Link } from "@tanstack/react-router";
+import { usePathname, useRouter } from "@/lib/navigation-shim";
 import React, { useEffect, useState } from "react";
 import { MdMenu, MdClose } from "react-icons/md";
 import {
@@ -257,7 +256,7 @@ function AuthDialogNavs() {
   return (
     <div className="flex items-center gap-2">
       <Button asChild variant="ghost" size="sm" className="text-sm font-medium">
-        <Link href="/auth/login">Sign In</Link>
+        <Link to="/auth/login">Sign In</Link>
       </Button>
     </div>
   );

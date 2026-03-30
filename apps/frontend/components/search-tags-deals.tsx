@@ -1,7 +1,6 @@
-"use client";
 
 import React, { useOptimistic, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "@/lib/navigation-shim";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

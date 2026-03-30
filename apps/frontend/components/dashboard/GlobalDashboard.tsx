@@ -1,6 +1,5 @@
-"use client";
 
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
@@ -254,7 +253,7 @@ function TopDeals({ data }: { data: TopDeal[] }) {
               <TableRow key={row.dealOpportunityId}>
                 <TableCell className="font-medium">#{index + 1}</TableCell>
                 <TableCell>
-                  <Link href={`/deal-opportunities/${row.dealOpportunityId}`} className="hover:underline">
+                  <Link to={`/deal-opportunities/${row.dealOpportunityId}`} className="hover:underline">
                     {row.companyName}
                   </Link>
                 </TableCell>

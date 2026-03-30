@@ -1,4 +1,3 @@
-"use client";
 
 import { useJobWebSocket } from "@/hooks/use-job-websocket";
 import { Button } from "@/components/ui/button";

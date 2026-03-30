@@ -1,9 +1,8 @@
-"use client";
 
 import { useState } from "react";
 import { MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
 import type { Lead } from "@repo/db";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
 import DeleteEntityDialog from "@/components/DeleteEntityDialog";
@@ -69,7 +68,7 @@ export default function LeadActionsMenu({
             View
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href={`/leads/${lead.id}/edit`}>
+            <Link to={`/leads/${lead.id}/edit`}>
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Link>

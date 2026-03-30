@@ -32,11 +32,10 @@ import {
   type Deal,
   type Lead,
   type Company,
-  type DealType,
-  type DealStatus,
   type Investor,
   type InvestorLead,
 } from "./schema";
+import type { DealType, DealStatus } from "./enums";
 // Import db after schema to ensure proper initialization order
 import { db } from "./index";
 import {
@@ -55,7 +54,6 @@ import {
   sql,
   isNull,
 } from "drizzle-orm";
-import { cacheTag, cacheLife } from "next/cache";
 import type { AdminUser } from "./types";
 
 /**
@@ -678,11 +676,6 @@ export const GetAllDeals = async ({
   tags?: string[];
   showRecent?: boolean;
 }): Promise<GetDealsResult> => {
-  "use cache";
-
-  cacheTag("deals");
-  cacheLife("hours");
-
   const ebitdaValue = ebitda ? parseFloat(ebitda) : undefined;
   const revenueValue = revenue ? parseFloat(revenue) : undefined;
   const locationValue = location ? location : undefined;

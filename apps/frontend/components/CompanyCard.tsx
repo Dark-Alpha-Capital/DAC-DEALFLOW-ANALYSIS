@@ -1,6 +1,5 @@
-"use client";
 
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Building2, MapPin, Eye, Pencil, Trash2 } from "lucide-react";
 import type { Company } from "@repo/db";
@@ -17,7 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
 
@@ -102,13 +101,13 @@ export default function CompanyCard({ company }: { company: CompanyWithTheme }) 
 
       <div className="mt-4 flex gap-2 border-t border-border pt-4">
         <Button size="sm" className="flex-1 gap-1.5" asChild>
-          <Link href={detailLink}>
+          <Link to={detailLink}>
             <Eye className="h-3.5 w-3.5" />
             View
           </Link>
         </Button>
         <Button size="sm" variant="outline" className="gap-1.5" asChild>
-          <Link href={`/companies/${company.id}/edit`}>
+          <Link to={`/companies/${company.id}/edit`}>
             <Pencil className="h-3.5 w-3.5" />
             Edit
           </Link>

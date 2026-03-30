@@ -1,17 +1,20 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import superjson from "superjson";
-import { cache } from "react";
-import { getSession } from "@/lib/auth-server";
+import { auth } from "@/auth";
+import { getRequest } from "@tanstack/react-start/server";
 
-export const createTRPCContext = cache(async () => {
-  const session = await getSession();
+export async function createTRPCContext() {
+  const request = getRequest();
+  const session = await auth.api.getSession({
+    headers: request.headers,
+  });
 
   return {
     session,
     user: session?.user ?? null,
   };
-});
+}
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 
@@ -34,10 +37,8 @@ const t = initTRPC.context<Context>().create({
 export const createTRPCRouter = t.router;
 export const createCallerFactory = t.createCallerFactory;
 
-// Public procedure - no authentication required
 export const publicProcedure = t.procedure;
 
-// Protected procedure - requires authentication
 export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.session || !ctx.user) {
     throw new TRPCError({
@@ -54,9 +55,8 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   });
 });
 
-// Admin procedure - requires admin role
 export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  if ((ctx.user as any).role !== "ADMIN") {
+  if ((ctx.user as { role?: string }).role !== "ADMIN") {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You must be an admin to perform this action",

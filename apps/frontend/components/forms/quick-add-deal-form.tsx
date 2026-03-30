@@ -1,15 +1,14 @@
- "use client";
 
- import * as React from "react";
- import { zodResolver } from "@hookform/resolvers/zod";
- import { useForm } from "react-hook-form";
- import { z } from "zod";
- import { useRouter } from "next/navigation";
- import { toast } from "sonner";
- import { useMutation } from "@tanstack/react-query";
- import { useTRPC } from "@/trpc/client";
- import { Button } from "@/components/ui/button";
- import {
+import * as React from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { useRouter } from "@/lib/navigation-shim";
+import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/trpc/client";
+import { Button } from "@/components/ui/button";
+import {
    Form,
    FormControl,
    FormField,
@@ -17,9 +16,9 @@
    FormLabel,
    FormMessage,
  } from "@/components/ui/form";
- import { Input } from "@/components/ui/input";
- import { Textarea } from "@/components/ui/textarea";
- import {
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
    formatNumberWithCommas,
    unformatNumber,
  } from "@/lib/utils";

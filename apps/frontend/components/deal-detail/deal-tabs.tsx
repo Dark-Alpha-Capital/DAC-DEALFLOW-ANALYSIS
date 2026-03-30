@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,7 +14,7 @@ import {
   CreditCard,
   BarChart3,
 } from "lucide-react";
-import { Deal, Document, AiScreening } from "@repo/db/schema";
+import type { Deal, Document, AiScreening } from "@repo/db/schema";
 import { DealMetricCard } from "./deal-metric-card";
 import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
 import FetchDealDocuments from "@/components/fetch-deal-documents";
@@ -178,10 +178,10 @@ export function DealTabs({
             </h2>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/raw-deals/${uid}/reasonings`}>View all</Link>
+                <Link to={`/raw-deals/${uid}/reasonings`}>View all</Link>
               </Button>
               <Button size="sm" asChild>
-                <Link href={`/raw-deals/${uid}/screen`}>
+                <Link to={`/raw-deals/${uid}/screen`}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add analysis
                 </Link>

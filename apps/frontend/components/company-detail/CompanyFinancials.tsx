@@ -1,4 +1,3 @@
-"use client";
 
 import type { Company } from "@repo/db";
 import type { CompanyFinancialSnapshot } from "@repo/db/schema";

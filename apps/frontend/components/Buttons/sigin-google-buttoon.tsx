@@ -1,4 +1,3 @@
-"use client";
 
 import React from "react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,7 @@ const SigninGoogle = () => {
           });
           console.log(response);
         } catch (error) {
-          console.error(error);
+          console.log(error);
           toast.error("Failed to sign in with Google");
         }
       }}

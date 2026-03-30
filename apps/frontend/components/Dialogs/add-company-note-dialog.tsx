@@ -1,4 +1,3 @@
-"use client";
 
 import * as React from "react";
 import type { CompanyNote } from "@repo/db/schema";

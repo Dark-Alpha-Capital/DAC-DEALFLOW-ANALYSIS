@@ -1,6 +1,7 @@
 import { Job } from "bullmq";
 import { db } from "@repo/db";
-import { documents, type DocumentCategory } from "@repo/db/schema";
+import type { DocumentCategory } from "@repo/db/enums";
+import { documents } from "@repo/db/schema";
 import { buildNextcloudFileUrl, fileExists } from "@repo/nextcloud";
 import { ragIngestionQueue } from "@repo/redis-queue/queues";
 

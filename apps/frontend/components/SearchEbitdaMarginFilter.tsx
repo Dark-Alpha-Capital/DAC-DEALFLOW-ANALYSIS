@@ -1,6 +1,5 @@
-"use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "@/lib/navigation-shim";
 
 import { useRef, useTransition, useState } from "react";
 

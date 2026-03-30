@@ -1,20 +1,15 @@
-"use server";
-
-// lib/bitrix.js
 import axios from "axios";
-import { Deal } from "@repo/db";
-import { getSession } from "@/lib/auth-server";
-import db, { deals, eq } from "@repo/db";
-import { revalidatePath } from "next/cache";
+import type { Deal } from "@repo/db/schema";
+import { createServerFn } from "@tanstack/react-start";
+import { revalidatePath } from "@/lib/cache-invalidation";
 
-/**
- * Exports a deal to Bitrix24 using the CRM API.
- *
- * @param {Object} deal - The deal object from your application.
- * @returns {Promise<Object>} - The response from Bitrix24 API.
- */
-const exportDealToBitrix = async (deal: Deal) => {
-  const session = await getSession();
+async function exportDealToBitrixImpl(deal: Deal) {
+  const { getRequest } = await import("@tanstack/react-start/server");
+  const { auth } = await import("@/auth");
+  const request = getRequest();
+  const session = await auth.api.getSession({
+    headers: request.headers,
+  });
   if (!session) {
     return {
       error: "Unauthorized",
@@ -22,7 +17,6 @@ const exportDealToBitrix = async (deal: Deal) => {
   }
 
   const rawFields = {
-    // Standard field: Deal name
     TITLE: deal.dealCaption,
     OPPORTUNITY: Number(deal.revenue),
     UF_CRM_1715146259470: Number(deal.revenue),
@@ -37,7 +31,7 @@ const exportDealToBitrix = async (deal: Deal) => {
     ORIGINATOR_ID: "DARK_ALPHA_APP",
     ORIGIN_ID: deal.id.toString(),
     UF_CRM_1727869474151:
-      deal.askingPrice != null && !isNaN(deal.askingPrice as any)
+      deal.askingPrice != null && !isNaN(deal.askingPrice as number)
         ? {
             VALUE: Number(deal.askingPrice),
             CURRENCY: "USD",
@@ -62,23 +56,30 @@ const exportDealToBitrix = async (deal: Deal) => {
     console.log("response data", responseData);
 
     if (responseData.result) {
-      await db.update(deals).set({
-        bitrixId: responseData.result.toString(),
-        bitrixCreatedAt: new Date(),
-      }).where(eq(deals.id, deal.id));
+      const { default: db, deals, eq } = await import("@repo/db");
+      await db
+        .update(deals)
+        .set({
+          bitrixId: responseData.result.toString(),
+          bitrixCreatedAt: new Date(),
+        })
+        .where(eq(deals.id, deal.id));
     }
 
     revalidatePath(`/raw-deals/${deal.id}`);
     revalidatePath(`/raw-deals`);
 
     return response.data;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: unknown }; message?: string };
     console.error(
       "Error exporting deal to Bitrix24:",
-      error.response?.data || error.message,
+      err.response?.data || err.message,
     );
     throw error;
   }
-};
+}
 
-export { exportDealToBitrix };
+export const exportDealToBitrix = createServerFn({ method: "POST" })
+  .inputValidator((deal: unknown) => deal as Deal)
+  .handler(async ({ data: deal }) => exportDealToBitrixImpl(deal));

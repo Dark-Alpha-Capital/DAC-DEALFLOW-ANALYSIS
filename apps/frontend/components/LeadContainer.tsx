@@ -1,10 +1,9 @@
-"use client";
 
 import { useState } from "react";
 import type { Lead } from "@repo/db";
 import Pagination from "@/components/pagination";
-import { LeadsDataTable } from "@/app/(protected)/leads/data-table";
-import { columns } from "@/app/(protected)/leads/columns";
+import { LeadsDataTable } from "@/components/leads/data-table";
+import { columns } from "@/components/leads/columns";
 import LeadDetailsDrawer from "@/components/LeadDetailsDrawer";
 
 interface LeadContainerProps {

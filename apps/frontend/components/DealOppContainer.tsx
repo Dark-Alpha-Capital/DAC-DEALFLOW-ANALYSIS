@@ -1,4 +1,3 @@
-"use client";
 
 import DealOppCard from "@/components/DealOppCard";
 import Pagination from "@/components/pagination";

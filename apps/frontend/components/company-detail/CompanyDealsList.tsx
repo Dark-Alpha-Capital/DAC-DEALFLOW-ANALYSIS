@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import type { DealOpportunity, Company } from "@repo/db";
 import { formatCurrency, formatDateStable } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";

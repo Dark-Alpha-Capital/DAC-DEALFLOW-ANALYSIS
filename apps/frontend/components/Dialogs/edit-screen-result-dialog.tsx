@@ -1,4 +1,3 @@
-"use client";
 
 import React from "react";
 import {
@@ -11,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
 import EditScreeningResultForm from "../forms/edit-screening-result-form";
-import { DealType, Sentiment } from "@repo/db/schema";
+import { DealType, Sentiment } from "@repo/db/enums";
 
 const EditScreeningResultDialog = ({
   screeningId,

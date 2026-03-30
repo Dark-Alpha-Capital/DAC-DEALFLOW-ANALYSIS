@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { createTRPCRouter, adminProcedure } from "../init";
 import { db } from "@repo/db";
-import { users, UserRole } from "@repo/db/schema";
+import { UserRole } from "@repo/db/enums";
+import { users } from "@repo/db/schema";
 import { eq } from "drizzle-orm";
-import { after } from "next/server";
-import { revalidatePath } from "next/cache";
+import { after } from "@/lib/after";
+import { revalidatePath } from "@/lib/cache-invalidation";
 import { TRPCError } from "@trpc/server";
 
 export const usersRouter = createTRPCRouter({

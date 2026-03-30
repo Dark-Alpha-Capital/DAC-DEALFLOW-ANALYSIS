@@ -1,9 +1,8 @@
-"use client";
 
 import { FieldLegend, FieldSet } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,7 +29,7 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 import { Building2, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 
 export function InvestorCompanyLinkSection({
@@ -100,7 +99,7 @@ export function InvestorCompanyLinkSection({
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button asChild variant="ghost" size="sm">
-                  <Link href={`/companies/${row.company.id}`} className="gap-1">
+                  <Link to={`/companies/${row.company.id}`} className="gap-1">
                     <ExternalLink className="h-3.5 w-3.5" />
                     View
                   </Link>

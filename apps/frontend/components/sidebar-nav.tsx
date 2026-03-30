@@ -1,7 +1,6 @@
-"use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link } from "@tanstack/react-router";
+import { usePathname } from "@/lib/navigation-shim";
 import { useEffect, useState } from "react";
 import {
   FiUserPlus,
@@ -80,7 +79,7 @@ function SimpleNavItems({ items }: { items: NavItem[] }) {
         return (
           <SidebarMenuItem key={item.title}>
             <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-              <Link href={item.url}>
+              <Link to={item.url}>
                 <item.icon className="size-4" />
                 <span>{item.title}</span>
               </Link>
@@ -129,7 +128,7 @@ function LeadsCollapsible() {
                   pathname === "/leads" || pathname.startsWith("/leads/")
                 }
               >
-                <Link href="/leads">Company leads</Link>
+                <Link to="/leads">Company leads</Link>
               </SidebarMenuSubButton>
             </SidebarMenuSubItem>
             <SidebarMenuSubItem>
@@ -140,7 +139,7 @@ function LeadsCollapsible() {
                   pathname.startsWith("/investor-leads/")
                 }
               >
-                <Link href="/investor-leads">Investor leads</Link>
+                <Link to="/investor-leads">Investor leads</Link>
               </SidebarMenuSubButton>
             </SidebarMenuSubItem>
           </SidebarMenuSub>
@@ -171,7 +170,7 @@ export function SidebarNav({ session }: SidebarNavProps) {
                 isActive={dashboardActive}
                 tooltip="Dashboard"
               >
-                <Link href="/dashboard">
+                <Link to="/dashboard">
                   <FiHome className="size-4" />
                   <span>Dashboard</span>
                 </Link>

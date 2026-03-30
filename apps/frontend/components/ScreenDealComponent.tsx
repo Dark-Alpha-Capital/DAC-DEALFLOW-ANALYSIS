@@ -1,4 +1,3 @@
-"use client";
 
 import React, { useState, useTransition } from "react";
 import { Button } from "./ui/button";
@@ -20,7 +19,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Slider } from "./ui/slider";
-import { EvalOptions } from "@/app/types";
+import { EvalOptions } from "@/lib/route-domain-types";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 

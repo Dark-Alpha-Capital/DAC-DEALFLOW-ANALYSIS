@@ -1,4 +1,3 @@
-"use client";
 
 import type { Company, Contact } from "@repo/db";
 import { useState } from "react";

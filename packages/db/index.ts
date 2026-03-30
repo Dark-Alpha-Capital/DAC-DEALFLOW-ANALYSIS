@@ -2,6 +2,8 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
+// Re-export enums first (no drizzle/postgres) for shared types/constants
+export * from "./enums";
 // Re-export everything from schema
 export * from "./schema";
 

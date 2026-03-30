@@ -1,7 +1,6 @@
-"use client";
 
 import React from "react";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import type { Deal } from "@repo/db";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -135,7 +134,7 @@ export default function DealListItem({ deal, selected, onToggle }: Props) {
 
       <div className="shrink-0">
         <Button variant="ghost" size="sm" className="gap-1.5 text-xs" asChild>
-          <Link href={`/raw-deals/${deal.id}`}>
+          <Link to={`/raw-deals/${deal.id}`}>
             View
             <ExternalLink className="h-3 w-3" />
           </Link>

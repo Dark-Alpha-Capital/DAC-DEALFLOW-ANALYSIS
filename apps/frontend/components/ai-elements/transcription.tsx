@@ -1,4 +1,3 @@
-"use client";
 
 import type { Experimental_TranscriptionResult as TranscriptionResult } from "ai";
 import type { ComponentProps, ReactNode } from "react";

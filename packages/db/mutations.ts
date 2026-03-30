@@ -13,12 +13,14 @@ import {
   companies,
   dealRiskFlags,
   dealOpportunities,
-  type DealFinancialSnapshotSource,
-  type CompanyFinancialSnapshotSource,
-  type DealRiskSeverity,
-  type DealRiskType,
-  type ScreenerResponseSource,
 } from "./schema";
+import type {
+  DealFinancialSnapshotSource,
+  CompanyFinancialSnapshotSource,
+  DealRiskSeverity,
+  DealRiskType,
+  ScreenerResponseSource,
+} from "./enums";
 import { eq, inArray, and, desc } from "drizzle-orm";
 
 export interface CIMExtractionPayload {

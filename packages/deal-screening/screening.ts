@@ -1,11 +1,11 @@
 import db, { and, desc, eq, isNull } from "@repo/db";
+import type { DealScreeningStatus } from "@repo/db/enums";
 import {
   companies,
   dealFinancialSnapshots,
   dealOpportunities,
   dealOpportunityScreenings,
   type DealOpportunityScreening,
-  type DealScreeningStatus,
 } from "@repo/db/schema";
 
 type PreferredIndustry = {

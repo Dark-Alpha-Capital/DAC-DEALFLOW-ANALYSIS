@@ -1,8 +1,7 @@
-"use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -18,7 +17,7 @@ import {
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
@@ -213,7 +212,7 @@ export default function ConvertLeadToCompanyForm({
           <div className="mt-6 flex flex-wrap items-center gap-3">
             {!compact && (
               <Button type="button" variant="outline" size="sm" asChild>
-                <Link href={`/leads/${lead.id}`} className="gap-2">
+                <Link to={`/leads/${lead.id}`} className="gap-2">
                   <ArrowLeft className="h-4 w-4" />
                   Back to Lead
                 </Link>

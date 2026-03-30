@@ -1,9 +1,8 @@
-"use client";
 
 import type { InvestorLead } from "@repo/db";
 import Pagination from "@/components/pagination";
-import { InvestorLeadsDataTable } from "@/app/(protected)/investor-leads/data-table";
-import { columns } from "@/app/(protected)/investor-leads/columns";
+import { InvestorLeadsDataTable } from "@/components/investor-leads/data-table";
+import { columns } from "@/components/investor-leads/columns";
 
 interface InvestorLeadContainerProps {
   data: InvestorLead[];

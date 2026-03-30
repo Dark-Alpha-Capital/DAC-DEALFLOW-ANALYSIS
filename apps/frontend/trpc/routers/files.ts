@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import AdmZip from "adm-zip";
-import { after } from "next/server";
+import { after } from "@/lib/after";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents } from "@repo/db";
 import { uploadBuffer, deleteFile, sanitizeFilename } from "@repo/nextcloud";
-import { revalidateTag } from "next/cache";
+import { revalidateTag } from "@/lib/cache-invalidation";
 import { ragIngestionQueue } from "@repo/redis-queue";
 import { randomUUID } from "crypto";
 
