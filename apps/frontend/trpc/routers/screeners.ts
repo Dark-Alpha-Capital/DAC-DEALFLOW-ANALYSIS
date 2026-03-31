@@ -77,7 +77,6 @@ export const screenersRouter = createTRPCRouter({
     .input(screenerTemplateSchema)
     .mutation(async ({ input }) => {
       console.log("createTemplate", input);
-
       const [created] = await db
         .insert(screeners)
         .values({

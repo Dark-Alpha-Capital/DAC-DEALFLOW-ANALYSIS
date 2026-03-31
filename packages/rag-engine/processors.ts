@@ -87,18 +87,38 @@ async function processInlineBinary(
   ];
 }
 
+export type ProcessContentOptions = {
+  /** Use text chunking for all PDFs (needed when chunk text must be retrieved for RAG Q&A). */
+  forcePdfTextChunks?: boolean;
+};
+
 export async function processContent(
   fileBuffer: Buffer,
   mimeType: string,
   doc: DocumentContext,
   metadata: MetadataBase,
-  job: ProgressReporter
+  job: ProgressReporter,
+  options?: ProcessContentOptions,
 ): Promise<ProcessResult> {
   if (mimeType === MIME.PDF) {
     const { text, numpages } = await extractPdfContent(fileBuffer);
-    if (numpages > 6) {
-      console.log("[rag-ingestion] PDF >6 pages, using text extraction path", { numpages });
-      const chunks = await processTextChunks(text, doc, metadata, job, "Embedding PDF (text-extracted)");
+    if (options?.forcePdfTextChunks || numpages > 6) {
+      if (options?.forcePdfTextChunks && numpages <= 6) {
+        console.log("[rag-ingestion] PDF text chunks forced (SIM/RAG Q&A path)", {
+          numpages,
+        });
+      } else {
+        console.log("[rag-ingestion] PDF >6 pages, using text extraction path", {
+          numpages,
+        });
+      }
+      const chunks = await processTextChunks(
+        text,
+        doc,
+        metadata,
+        job,
+        "Embedding PDF (text-extracted)",
+      );
       return { chunks };
     }
     const chunks = await processInlineBinary(

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createId } from "@paralleldrive/cuid2";
 import { timingSafeEqual } from "crypto";
 import db, { companies, dealOpportunities } from "@repo/db";
+import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
 import { z } from "zod";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 
@@ -146,7 +147,8 @@ async function postDealOpportunitiesQuickAdd(request: Request) {
 export const Route = createFileRoute("/api/deal-opportunities/quick-add")({
   server: {
     handlers: {
-      POST: ({ request }) => postDealOpportunitiesQuickAdd(request),
+      POST: ({ request }) =>
+        withWorkerDbIfNeeded(() => postDealOpportunitiesQuickAdd(request)),
     },
   },
 });

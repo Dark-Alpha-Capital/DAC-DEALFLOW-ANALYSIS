@@ -67,6 +67,7 @@ export const documentCategoryEnum = pgEnum("DocumentCategory", [
   "VALUE_CREATION_PLAYBOOK",
   "PAST_DEAL_ANALYSIS",
   "DUE_DILIGENCE_CHECKLIST",
+  "SIM_SCREENING",
 ]);
 
 // Entity type enum for polymorphic association
@@ -111,6 +112,11 @@ export const dealSimStatusEnum = pgEnum("DealSimStatus", [
   "ACTIVE",
   "ARCHIVED",
 ]);
+
+export const simScreeningSessionStatusEnum = pgEnum(
+  "SimScreeningSessionStatus",
+  ["PENDING", "INGESTING", "SCREENING", "COMPLETED", "FAILED"],
+);
 
 export const cimExtractionSourceEnum = pgEnum("CIMExtractionSource", [
   "AI",
@@ -1192,6 +1198,72 @@ export const workflowJobs = pgTable(
   }),
 );
 
+/** Standalone SIM (PDF) screening run: RAG over one document + template questions */
+export const simScreeningSessions = pgTable(
+  "SimScreeningSession",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    documentId: text("documentId")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    screenerId: text("screenerId")
+      .notNull()
+      .references(() => screenerTemplates.id, { onDelete: "cascade" }),
+    workflowInstanceId: text("workflowInstanceId"),
+    status: simScreeningSessionStatusEnum("status").default("PENDING").notNull(),
+    errorMessage: text("errorMessage"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    simScreeningSessionUserIdx: index("sim_screening_session_user_idx").on(
+      table.userId,
+    ),
+    simScreeningSessionDocumentIdx: index(
+      "sim_screening_session_document_idx",
+    ).on(table.documentId),
+  }),
+);
+
+export const simScreeningAnswers = pgTable(
+  "SimScreeningAnswer",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    sessionId: text("sessionId")
+      .notNull()
+      .references(() => simScreeningSessions.id, { onDelete: "cascade" }),
+    questionId: text("questionId")
+      .notNull()
+      .references(() => screenerQuestions.id, { onDelete: "cascade" }),
+    score: integer("score").notNull(),
+    rationale: text("rationale").notNull(),
+    evidenceChunkIds: jsonb("evidenceChunkIds").$type<string[]>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    simScreeningAnswerSessionQuestionUnique: uniqueIndex(
+      "sim_screening_answer_session_question_unique",
+    ).on(table.sessionId, table.questionId),
+    simScreeningAnswerSessionIdx: index("sim_screening_answer_session_idx").on(
+      table.sessionId,
+    ),
+  }),
+);
+
 /**
  * Deal SIMs (CIMs) - one active per deal opportunity.
  * Latest upload becomes active; previous is archived.
@@ -1471,6 +1543,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   outreach: many(outreach),
   chatSessions: many(chatSessions),
   investorLeads: many(investorLeads),
+  simScreeningSessions: many(simScreeningSessions),
 }));
 
 export const themesRelations = relations(themes, ({ one, many }) => ({
@@ -1670,6 +1743,7 @@ export const companyNotesRelations = relations(companyNotes, ({ one }) => ({
 export const screenersRelations = relations(screeners, ({ many }) => ({
   questions: many(screenerQuestions),
   aiScreenings: many(aiScreenings),
+  simScreeningSessions: many(simScreeningSessions),
 }));
 
 export const screenerQuestionsRelations = relations(
@@ -1680,6 +1754,40 @@ export const screenerQuestionsRelations = relations(
       references: [screeners.id],
     }),
     responses: many(screenerResponses),
+    simScreeningAnswers: many(simScreeningAnswers),
+  }),
+);
+
+export const simScreeningSessionsRelations = relations(
+  simScreeningSessions,
+  ({ one, many }) => ({
+    user: one(users, {
+      fields: [simScreeningSessions.userId],
+      references: [users.id],
+    }),
+    document: one(documents, {
+      fields: [simScreeningSessions.documentId],
+      references: [documents.id],
+    }),
+    screener: one(screeners, {
+      fields: [simScreeningSessions.screenerId],
+      references: [screeners.id],
+    }),
+    answers: many(simScreeningAnswers),
+  }),
+);
+
+export const simScreeningAnswersRelations = relations(
+  simScreeningAnswers,
+  ({ one }) => ({
+    session: one(simScreeningSessions, {
+      fields: [simScreeningAnswers.sessionId],
+      references: [simScreeningSessions.id],
+    }),
+    question: one(screenerQuestions, {
+      fields: [simScreeningAnswers.questionId],
+      references: [screenerQuestions.id],
+    }),
   }),
 );
 
@@ -1735,6 +1843,7 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
     references: [themes.id],
   }),
   chunks: many(documentChunks),
+  simScreeningSessions: many(simScreeningSessions),
 }));
 
 export const documentChunksRelations = relations(documentChunks, ({ one }) => ({
@@ -1954,6 +2063,11 @@ export type NewDealSim = typeof dealSims.$inferInsert;
 
 export type CIMExtraction = typeof cimExtractions.$inferSelect;
 export type NewCIMExtraction = typeof cimExtractions.$inferInsert;
+
+export type SimScreeningSession = typeof simScreeningSessions.$inferSelect;
+export type NewSimScreeningSession = typeof simScreeningSessions.$inferInsert;
+export type SimScreeningAnswer = typeof simScreeningAnswers.$inferSelect;
+export type NewSimScreeningAnswer = typeof simScreeningAnswers.$inferInsert;
 
 export type Outreach = typeof outreach.$inferSelect;
 export type NewOutreach = typeof outreach.$inferInsert;

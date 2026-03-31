@@ -11,12 +11,9 @@
     "@repo/db": "workspace:*",
     "ai": "^6.0.124",
     "mammoth": "^1.10.0",
-    "pdf-parse": "^1.1.1",
+    "unpdf": "^1.4.0",
     "xlsx": "^0.18.5",
     "zod": "^4.3.5"
-  },
-  "devDependencies": {
-    "@types/pdf-parse": "^1.1.4"
   },
   "exports": {
     ".": "./index.ts"

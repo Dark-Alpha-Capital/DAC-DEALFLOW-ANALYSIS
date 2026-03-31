@@ -11,6 +11,7 @@ const repoPackages = [
   "@repo/deal-screening",
   "@repo/nextcloud",
   "@repo/rag-engine",
+  "@repo/cim-extraction",
   "@repo/ai-core",
   "@repo/redis-queue",
   "@repo/schemas",

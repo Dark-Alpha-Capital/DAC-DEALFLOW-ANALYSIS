@@ -45,6 +45,7 @@ const DOCUMENT_CATEGORIES = [
   { value: "VALUE_CREATION_PLAYBOOK", label: "Value creation playbook" },
   { value: "PAST_DEAL_ANALYSIS", label: "Past deal analysis" },
   { value: "DUE_DILIGENCE_CHECKLIST", label: "Due diligence checklist" },
+  { value: "SIM_SCREENING", label: "SIM screening" },
 ] as const;
 
 interface EditDocumentDialogProps {

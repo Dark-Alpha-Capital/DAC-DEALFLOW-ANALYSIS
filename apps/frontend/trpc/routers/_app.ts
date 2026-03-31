@@ -16,6 +16,7 @@ import { outreachRouter } from "./outreach";
 import { chatsRouter } from "./chats";
 import { investorsRouter } from "./investors";
 import { investorLeadsRouter } from "./investorLeads";
+import { simScreeningRouter } from "./sim-screening";
 
 export const appRouter = createTRPCRouter({
   companies: companiesRouter,
@@ -36,6 +37,7 @@ export const appRouter = createTRPCRouter({
   companyNotes: companyNotesRouter,
   outreach: outreachRouter,
   chats: chatsRouter,
+  simScreening: simScreeningRouter,
 });
 
 export type AppRouter = typeof appRouter;

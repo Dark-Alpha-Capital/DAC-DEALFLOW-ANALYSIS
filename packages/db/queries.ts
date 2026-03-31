@@ -29,6 +29,8 @@ import {
   investorLeads,
   investorInteractions,
   investorCompanyLinks,
+  simScreeningSessions,
+  simScreeningAnswers,
   type Deal,
   type Lead,
   type Company,
@@ -2218,3 +2220,63 @@ export const GetThemeWorkspaceById = async (id: string) => {
     throw error;
   }
 };
+
+export async function getSimScreeningSessionByIdForUser(
+  sessionId: string,
+  userId: string,
+) {
+  const [row] = await db
+    .select()
+    .from(simScreeningSessions)
+    .where(
+      and(
+        eq(simScreeningSessions.id, sessionId),
+        eq(simScreeningSessions.userId, userId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+export async function listSimScreeningSessionsForUser(
+  userId: string,
+  limit = 50,
+) {
+  return db
+    .select()
+    .from(simScreeningSessions)
+    .where(eq(simScreeningSessions.userId, userId))
+    .orderBy(desc(simScreeningSessions.createdAt))
+    .limit(limit);
+}
+
+export async function getSimScreeningAnswersBySessionId(sessionId: string) {
+  return db
+    .select()
+    .from(simScreeningAnswers)
+    .where(eq(simScreeningAnswers.sessionId, sessionId));
+}
+
+export async function listSimScreeningSessionsForUserWithScreener(
+  userId: string,
+  limit = 50,
+) {
+  return db
+    .select({
+      id: simScreeningSessions.id,
+      status: simScreeningSessions.status,
+      createdAt: simScreeningSessions.createdAt,
+      documentId: simScreeningSessions.documentId,
+      screenerId: simScreeningSessions.screenerId,
+      workflowInstanceId: simScreeningSessions.workflowInstanceId,
+      errorMessage: simScreeningSessions.errorMessage,
+      screenerName: screeners.name,
+      fileName: documents.fileName,
+    })
+    .from(simScreeningSessions)
+    .innerJoin(screeners, eq(simScreeningSessions.screenerId, screeners.id))
+    .innerJoin(documents, eq(simScreeningSessions.documentId, documents.id))
+    .where(eq(simScreeningSessions.userId, userId))
+    .orderBy(desc(simScreeningSessions.createdAt))
+    .limit(limit);
+}

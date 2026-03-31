@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { timingSafeEqual } from "crypto";
 import db, { investorLeads } from "@repo/db";
+import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
 import { z } from "zod";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 
@@ -113,7 +114,8 @@ async function postInvestorLeadsIngest(request: Request) {
 export const Route = createFileRoute("/api/investor-leads/ingest")({
   server: {
     handlers: {
-      POST: ({ request }) => postInvestorLeadsIngest(request),
+      POST: ({ request }) =>
+        withWorkerDbIfNeeded(() => postInvestorLeadsIngest(request)),
     },
   },
 });

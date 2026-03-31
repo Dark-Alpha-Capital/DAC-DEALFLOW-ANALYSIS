@@ -14,6 +14,7 @@ import {
   FiDollarSign,
   FiMessageSquare,
   FiChevronRight,
+  FiClipboard,
 } from "react-icons/fi";
 import { FaPalette, FaScrewdriver } from "react-icons/fa";
 import {
@@ -63,6 +64,7 @@ const adminNavItems: NavItem[] = [
   { title: "Jobs", url: "/jobs", icon: FiBriefcase },
   { title: "Analytics", url: "/analytics", icon: FiBarChart2 },
   { title: "Screeners", url: "/screeners", icon: FaScrewdriver },
+  { title: "SIM screening", url: "/sim-screening/", icon: FiClipboard },
   { title: "Documents", url: "/documents", icon: FiFileText },
 ];
 

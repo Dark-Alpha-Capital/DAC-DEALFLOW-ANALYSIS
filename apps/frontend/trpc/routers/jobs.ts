@@ -40,6 +40,7 @@ export const jobsRouter = createTRPCRouter({
           QUEUE_NAMES.FILE_UPLOAD,
           QUEUE_NAMES.CIM_EXTRACTION,
           QUEUE_NAMES.RAG_INGESTION,
+          QUEUE_NAMES.SIM_SCREENING,
         ]),
       }),
     )
@@ -74,6 +75,7 @@ export const jobsRouter = createTRPCRouter({
           QUEUE_NAMES.FILE_UPLOAD,
           QUEUE_NAMES.CIM_EXTRACTION,
           QUEUE_NAMES.RAG_INGESTION,
+          QUEUE_NAMES.SIM_SCREENING,
         ]),
       }),
     )
@@ -100,6 +102,7 @@ export const jobsRouter = createTRPCRouter({
               QUEUE_NAMES.FILE_UPLOAD,
               QUEUE_NAMES.CIM_EXTRACTION,
               QUEUE_NAMES.RAG_INGESTION,
+              QUEUE_NAMES.SIM_SCREENING,
             ]),
           }),
         ),

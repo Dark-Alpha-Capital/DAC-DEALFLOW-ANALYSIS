@@ -27,6 +27,11 @@
       "name": "rag-ingestion",
       "binding": "RAG_INGESTION_WORKFLOW",
       "class_name": "RagIngestionWorkflow"
+    },
+    {
+      "name": "sim-screening",
+      "binding": "SIM_SCREENING_WORKFLOW",
+      "class_name": "SimScreeningWorkflow"
     }
   ]
 }

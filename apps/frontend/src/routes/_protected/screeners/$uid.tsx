@@ -22,7 +22,7 @@ function ScreenerDetailRoute() {
   const { uid } = Route.useParams();
   const { screener } = Route.useLoaderData();
   return (
-    <section className="block-space big-container">
+    <section className="block-space-mini big-container">
       <Suspense fallback={<ScreenerPageSkeleton />}>
         <ScreenerEditor screenerId={uid} initialScreener={screener} />
       </Suspense>

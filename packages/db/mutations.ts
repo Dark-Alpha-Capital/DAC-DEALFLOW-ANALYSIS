@@ -13,6 +13,8 @@ import {
   companies,
   dealRiskFlags,
   dealOpportunities,
+  simScreeningSessions,
+  simScreeningAnswers,
 } from "./schema";
 import type {
   DealFinancialSnapshotSource,
@@ -542,3 +544,79 @@ export const upsertCustomerConcentrationSystemRiskFlag = async ({
 export const deleteFinancialsForSim = async (simId: string) => {
   await db.delete(cimExtractions).where(eq(cimExtractions.simId, simId));
 };
+
+export type SimScreeningSessionStatus =
+  | "PENDING"
+  | "INGESTING"
+  | "SCREENING"
+  | "COMPLETED"
+  | "FAILED";
+
+export async function insertSimScreeningSession(input: {
+  userId: string;
+  documentId: string;
+  screenerId: string;
+  workflowInstanceId: string | null;
+}) {
+  const [row] = await db
+    .insert(simScreeningSessions)
+    .values({
+      userId: input.userId,
+      documentId: input.documentId,
+      screenerId: input.screenerId,
+      workflowInstanceId: input.workflowInstanceId,
+      status: "PENDING",
+    })
+    .returning();
+  return row ?? null;
+}
+
+export async function updateSimScreeningSession(
+  sessionId: string,
+  patch: Partial<{
+    status: SimScreeningSessionStatus;
+    workflowInstanceId: string | null;
+    errorMessage: string | null;
+  }>,
+) {
+  await db
+    .update(simScreeningSessions)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(simScreeningSessions.id, sessionId));
+}
+
+export async function upsertSimScreeningAnswer(input: {
+  sessionId: string;
+  questionId: string;
+  score: number;
+  rationale: string;
+  evidenceChunkIds?: string[] | null;
+}) {
+  await db
+    .insert(simScreeningAnswers)
+    .values({
+      sessionId: input.sessionId,
+      questionId: input.questionId,
+      score: input.score,
+      rationale: input.rationale,
+      evidenceChunkIds: input.evidenceChunkIds ?? null,
+    })
+    .onConflictDoUpdate({
+      target: [
+        simScreeningAnswers.sessionId,
+        simScreeningAnswers.questionId,
+      ],
+      set: {
+        score: input.score,
+        rationale: input.rationale,
+        evidenceChunkIds: input.evidenceChunkIds ?? null,
+        updatedAt: new Date(),
+      },
+    });
+}
+
+export async function deleteSimScreeningAnswersForSession(sessionId: string) {
+  await db
+    .delete(simScreeningAnswers)
+    .where(eq(simScreeningAnswers.sessionId, sessionId));
+}

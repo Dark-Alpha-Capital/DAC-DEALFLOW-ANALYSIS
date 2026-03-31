@@ -8,7 +8,7 @@ export {
 } from "./embedding";
 export type { MultimodalPart } from "./embedding";
 
-export { processContent } from "./processors";
+export { processContent, type ProcessContentOptions } from "./processors";
 export { resolveMimeType, MIME, TEXT_LIKE, EXCEL, isMedia } from "./mime";
 export { splitContentIntoChunks } from "./chunking";
 export type {
