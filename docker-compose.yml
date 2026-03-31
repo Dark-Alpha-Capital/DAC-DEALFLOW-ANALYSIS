@@ -35,32 +35,6 @@ services:
       - app-network
     restart: unless-stopped
 
-  # Worker (Bun + BullMQ)
-  worker:
-    build:
-      context: .
-      dockerfile: apps/worker/Dockerfile
-    image: dealflow-worker
-    container_name: dealflow-worker
-    ports:
-      - "${WORKER_PORT:-8083}:8081"
-    environment:
-      - NODE_ENV=production
-      - PORT=8081
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - AI_API_KEY=${AI_API_KEY}
-      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
-      - NEXTCLOUD_URL=${NEXTCLOUD_URL}
-      - NEXTCLOUD_USER=${NEXTCLOUD_USER}
-      - NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD}
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - app-network
-    restart: unless-stopped
-
   # Web (Next.js) - Frontend application
   web:
     build:

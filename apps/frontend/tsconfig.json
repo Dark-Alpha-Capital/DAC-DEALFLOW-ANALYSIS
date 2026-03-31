@@ -27,7 +27,8 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "src/routeTree.gen.ts"
+    "src/routeTree.gen.ts",
+    "worker-configuration.d.ts"
   ],
   "exclude": ["node_modules"]
 }

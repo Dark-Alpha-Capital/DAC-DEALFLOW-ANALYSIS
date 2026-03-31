@@ -1162,6 +1162,36 @@ export const documentChunks = pgTable(
   }),
 );
 
+/** Tracks Cloudflare Workflow instances for job list / progress in the app UI */
+export const workflowJobs = pgTable(
+  "WorkflowJob",
+  {
+    instanceId: text("instanceId").primaryKey(),
+    workflowKind: text("workflowKind").notNull(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dealId: text("dealId"),
+    fileName: text("fileName"),
+    screenerId: text("screenerId"),
+    progressStep: text("progressStep"),
+    progressPercent: integer("progressPercent").default(0).notNull(),
+    /** UI state: waiting | active | completed | failed | delayed */
+    state: text("state").notNull().default("waiting"),
+    failedReason: text("failedReason"),
+    returnValue: jsonb("returnValue"),
+    attemptsMade: integer("attemptsMade").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    workflowJobUserCreatedIdx: index("workflow_job_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+  }),
+);
+
 /**
  * Deal SIMs (CIMs) - one active per deal opportunity.
  * Latest upload becomes active; previous is archived.
@@ -1942,3 +1972,6 @@ export type InvestorInteraction = typeof investorInteractions.$inferSelect;
 export type NewInvestorInteraction = typeof investorInteractions.$inferInsert;
 export type InvestorCompanyLink = typeof investorCompanyLinks.$inferSelect;
 export type NewInvestorCompanyLink = typeof investorCompanyLinks.$inferInsert;
+
+export type WorkflowJob = typeof workflowJobs.$inferSelect;
+export type NewWorkflowJob = typeof workflowJobs.$inferInsert;

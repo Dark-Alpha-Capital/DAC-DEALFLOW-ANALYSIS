@@ -49,7 +49,7 @@ const client =
     max: 10,
     idle_timeout: 20,
     connect_timeout: 10,
-    onnotice: () => {},
+    onnotice: () => { },
     debug: process.env.NODE_ENV === "development" ? console.log : undefined,
   });
 

@@ -1,6 +1,7 @@
 
 import type { ComponentProps, ReactNode } from "react";
 
+import { ClientOnly } from "@tanstack/react-router";
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import {
   Collapsible,
@@ -216,9 +217,17 @@ export const ReasoningContent = memo(
       )}
       {...props}
     >
-      <Streamdown plugins={streamdownPlugins} {...props}>
-        {children}
-      </Streamdown>
+      <ClientOnly
+        fallback={
+          <div className="whitespace-pre-wrap text-muted-foreground">
+            {children}
+          </div>
+        }
+      >
+        <Streamdown plugins={streamdownPlugins} {...props}>
+          {children}
+        </Streamdown>
+      </ClientOnly>
     </CollapsibleContent>
   )
 );

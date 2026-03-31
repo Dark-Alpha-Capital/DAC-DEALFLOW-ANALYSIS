@@ -1,6 +1,6 @@
 import type { TransformedDeal } from "@/lib/route-domain-types";
 import { DealType } from "@repo/db/enums";
-import { rateLimit } from "@repo/redis-queue/redis";
+import { rateLimit } from "@/src/lib/rate-limit";
 import { createServerFn } from "@tanstack/react-start";
 import { updateTag } from "@/lib/cache-invalidation";
 

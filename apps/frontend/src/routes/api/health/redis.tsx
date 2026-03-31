@@ -1,17 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { pingRedis } from "@repo/redis-queue/redis";
+import db, { sql } from "@repo/db";
 
+/** Legacy path name; checks Postgres (background jobs no longer use Redis). */
 export const Route = createFileRoute("/api/health/redis")({
   server: {
     handlers: {
       GET: async () => {
-        const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
-        const ok = await pingRedis(redisUrl);
-        if (ok) return Response.json({ ok: true });
-        return Response.json(
-          { ok: false, error: "Redis ping failed" },
-          { status: 503 },
-        );
+        try {
+          await db.execute(sql`SELECT 1`);
+          return Response.json({ ok: true, backend: "postgres" });
+        } catch {
+          return Response.json(
+            { ok: false, error: "Database ping failed" },
+            { status: 503 },
+          );
+        }
       },
     },
   },

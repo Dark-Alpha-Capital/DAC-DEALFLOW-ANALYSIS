@@ -33,6 +33,7 @@
     "./queries": "./queries.ts",
     "./mutations": "./mutations.ts",
     "./types": "./types.ts",
-    "./types-only": "./types-only.ts"
+    "./types-only": "./types-only.ts",
+    "./workflow-jobs": "./workflow-jobs.ts"
   }
 }

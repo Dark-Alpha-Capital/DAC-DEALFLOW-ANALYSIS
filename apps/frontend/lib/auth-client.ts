@@ -5,7 +5,6 @@ function getAuthBaseURL(): string {
     return window.location.origin;
   }
   return (
-    import.meta.env.NEXT_PUBLIC_APP_URL ||
     import.meta.env.VITE_PUBLIC_APP_URL ||
     "http://localhost:3000"
   );

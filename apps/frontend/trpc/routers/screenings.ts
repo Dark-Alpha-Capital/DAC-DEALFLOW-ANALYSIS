@@ -6,7 +6,10 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { aiScreenings, eq, DealType, Sentiment } from "@repo/db";
 import { DeleteReasoningById, UpsertScreenerResponse } from "@repo/db/mutations";
 import { GetDealOpportunityById, GetDealOpportunityByLegacyDealId } from "@repo/db/queries";
-import { screenDealQueue, type ScreenDealJobData } from "@repo/redis-queue";
+import {
+  insertWorkflowJob,
+  startScreenDealWorkflow,
+} from "@/src/lib/workflow-jobs-api";
 
 const saveScreeningSchema = z.object({
   dealId: z.string(),
@@ -238,19 +241,23 @@ export const screeningsRouter = createTRPCRouter({
       const results = await Promise.all(
         ids.map(async (id: string) => {
           const jobId = crypto.randomUUID();
-          const jobData: ScreenDealJobData = {
+          await insertWorkflowJob({
+            instanceId: jobId,
+            workflowKind: "screen-deal",
+            userId,
+            dealId: id,
+            screenerId: input.screenerId,
+          });
+          await startScreenDealWorkflow(jobId, {
+            mode: "ai",
             jobId,
             userId,
             dealId: id,
             screenerId: input.screenerId,
-            ...(isDealOpportunityIds && { dealOpportunityId: id }),
-          };
-
-          const job = await screenDealQueue.add("screen", jobData, {
-            jobId,
+            ...(isDealOpportunityIds ? { dealOpportunityId: id } : {}),
           });
 
-          return { jobId, dealId: id, bullmqJobId: job.id };
+          return { jobId, dealId: id };
         }),
       );
 
@@ -271,18 +278,21 @@ export const screeningsRouter = createTRPCRouter({
       const results = await Promise.all(
         input.dealOpportunityIds.map(async (dealOpportunityId: string) => {
           const jobId = crypto.randomUUID();
-          const jobData = {
+          await insertWorkflowJob({
+            instanceId: jobId,
+            workflowKind: "screen-deal",
+            userId,
+            dealId: dealOpportunityId,
+          });
+          await startScreenDealWorkflow(jobId, {
+            mode: "manual",
             jobId,
             userId,
             dealId: dealOpportunityId,
             dealOpportunityId,
-          };
-
-          const job = await screenDealQueue.add("manual-screen", jobData, {
-            jobId,
           });
 
-          return { jobId, dealOpportunityId, bullmqJobId: job.id };
+          return { jobId, dealOpportunityId };
         }),
       );
 

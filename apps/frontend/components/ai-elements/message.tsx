@@ -2,6 +2,7 @@
 import type { UIMessage } from "ai";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 
+import { ClientOnly } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   ButtonGroup,
@@ -325,14 +326,27 @@ const streamdownPlugins = { cjk, code, math, mermaid };
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown
-      className={cn(
-        "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        className
-      )}
-      plugins={streamdownPlugins}
-      {...props}
-    />
+    <ClientOnly
+      fallback={
+        <div
+          className={cn(
+            "size-full whitespace-pre-wrap [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+            className
+          )}
+        >
+          {props.children}
+        </div>
+      }
+    >
+      <Streamdown
+        className={cn(
+          "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+          className
+        )}
+        plugins={streamdownPlugins}
+        {...props}
+      />
+    </ClientOnly>
   ),
   (prevProps, nextProps) => prevProps.children === nextProps.children
 );

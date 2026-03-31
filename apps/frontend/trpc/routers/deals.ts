@@ -26,13 +26,13 @@ import db, {
 import { DeleteDealById, BulkDeleteDeals } from "@repo/db/mutations";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
+import type { FileUploadJobData, EntityMetadata } from "@repo/redis-queue/types";
 import {
-  fileUploadQueue,
-  cimExtractionQueue,
-  ragIngestionQueue,
-  type FileUploadJobData,
-  type EntityMetadata,
-} from "@repo/redis-queue";
+  insertWorkflowJob,
+  startCimExtractionWorkflow,
+  startFileUploadWorkflow,
+  startRagIngestionWorkflow,
+} from "@/src/lib/workflow-jobs-api";
 import { randomUUID } from "crypto";
 import { createId } from "@paralleldrive/cuid2";
 import {
@@ -344,28 +344,33 @@ export const dealsRouter = createTRPCRouter({
       });
 
       const ragJobId = randomUUID();
-      await ragIngestionQueue.add(
-        "ingest",
-        {
-          jobId: ragJobId,
-          documentId: documentRecord.id,
-          userId,
-        },
-        { jobId: ragJobId },
-      );
+      await insertWorkflowJob({
+        instanceId: ragJobId,
+        workflowKind: "rag-ingestion",
+        userId,
+        dealId: input.dealOpportunityId,
+        fileName: input.fileName,
+      });
+      await startRagIngestionWorkflow(ragJobId, {
+        documentId: documentRecord.id,
+        userId,
+      });
 
       const jobId = randomUUID();
-      await cimExtractionQueue.add(
-        "extract",
-        {
-          simId: sim.id,
-          documentId: documentRecord.id,
-          dealOpportunityId: input.dealOpportunityId,
-          filePath: finalPath,
-          userId,
-        },
-        { jobId },
-      );
+      await insertWorkflowJob({
+        instanceId: jobId,
+        workflowKind: "cim-extraction",
+        userId,
+        dealId: input.dealOpportunityId,
+        fileName: input.fileName,
+      });
+      await startCimExtractionWorkflow(jobId, {
+        simId: sim.id,
+        documentId: documentRecord.id,
+        dealOpportunityId: input.dealOpportunityId,
+        filePath: finalPath,
+        userId,
+      });
 
       after(async () => {
         revalidateTag(`deal-${input.dealOpportunityId}`, "max");
@@ -1260,12 +1265,16 @@ export const dealsRouter = createTRPCRouter({
         entityMetadata: jobData.entityMetadata,
       });
 
-      // Add job to queue - pass data directly
-      const job = await fileUploadQueue.add("upload", jobData, {
-        jobId, // Use our own jobId for easier tracking
+      await insertWorkflowJob({
+        instanceId: jobId,
+        workflowKind: "file-upload",
+        userId,
+        dealId: entityId,
+        fileName: input.fileName,
       });
+      await startFileUploadWorkflow(jobId, jobData);
 
-      console.log(`[deal-upload] Job ${job.id} added to queue successfully`, {
+      console.log(`[deal-upload] Workflow ${jobId} started`, {
         fileName: input.fileName,
       });
 
@@ -1276,7 +1285,7 @@ export const dealsRouter = createTRPCRouter({
       return {
         success: true,
         message: "File upload queued",
-        jobId: job.id,
+        jobId,
         fileName: input.fileName,
       };
     }),

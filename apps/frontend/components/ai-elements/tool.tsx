@@ -2,6 +2,7 @@
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import type { ComponentProps, ReactNode } from "react";
 
+import { ClientOnly } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
@@ -116,16 +117,25 @@ export type ToolInputProps = ComponentProps<"div"> & {
   input: ToolPart["input"];
 };
 
-export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
-  <div className={cn("space-y-2 overflow-hidden", className)} {...props}>
-    <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-      Parameters
-    </h4>
-    <div className="rounded-md bg-muted/50">
-      <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
+export const ToolInput = ({ className, input, ...props }: ToolInputProps) => {
+  const json = JSON.stringify(input, null, 2);
+  return (
+    <div className={cn("space-y-2 overflow-hidden", className)} {...props}>
+      <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+        Parameters
+      </h4>
+      <div className="rounded-md bg-muted/50">
+        <ClientOnly
+          fallback={
+            <pre className="overflow-x-auto p-3 font-mono text-xs">{json}</pre>
+          }
+        >
+          <CodeBlock code={json} language="json" />
+        </ClientOnly>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export type ToolOutputProps = ComponentProps<"div"> & {
   output: ToolPart["output"];
@@ -145,11 +155,26 @@ export const ToolOutput = ({
   let Output = <div>{output as ReactNode}</div>;
 
   if (typeof output === "object" && !isValidElement(output)) {
+    const json = JSON.stringify(output, null, 2);
     Output = (
-      <CodeBlock code={JSON.stringify(output, null, 2)} language="json" />
+      <ClientOnly
+        fallback={
+          <pre className="overflow-x-auto p-3 font-mono text-xs">{json}</pre>
+        }
+      >
+        <CodeBlock code={json} language="json" />
+      </ClientOnly>
     );
   } else if (typeof output === "string") {
-    Output = <CodeBlock code={output} language="json" />;
+    Output = (
+      <ClientOnly
+        fallback={
+          <pre className="overflow-x-auto p-3 font-mono text-xs">{output}</pre>
+        }
+      >
+        <CodeBlock code={output} language="json" />
+      </ClientOnly>
+    );
   }
 
   return (

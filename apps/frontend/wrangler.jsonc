@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dealflow-dark-alpha-capital",
+  "compatibility_date": "2025-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/server.ts",
+  "observability": {
+    "enabled": true
+  },
+  "workflows": [
+    {
+      "name": "screen-deal",
+      "binding": "SCREEN_DEAL_WORKFLOW",
+      "class_name": "ScreenDealWorkflow"
+    },
+    {
+      "name": "file-upload",
+      "binding": "FILE_UPLOAD_WORKFLOW",
+      "class_name": "FileUploadWorkflow"
+    },
+    {
+      "name": "cim-extraction",
+      "binding": "CIM_EXTRACTION_WORKFLOW",
+      "class_name": "CimExtractionWorkflow"
+    },
+    {
+      "name": "rag-ingestion",
+      "binding": "RAG_INGESTION_WORKFLOW",
+      "class_name": "RagIngestionWorkflow"
+    }
+  ]
+}

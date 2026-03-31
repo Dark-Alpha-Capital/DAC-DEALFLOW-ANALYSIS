@@ -52,7 +52,7 @@ function isAllowedEmail(email: string | null | undefined) {
  */
 const explicitPublicUrl =
   process.env.BETTER_AUTH_URL?.trim() ||
-  process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+  process.env.VITE_PUBLIC_APP_URL?.trim() ||
   undefined;
 
 export const auth: ReturnType<typeof betterAuth> = betterAuth({
