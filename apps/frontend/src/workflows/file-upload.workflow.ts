@@ -3,7 +3,7 @@ import {
   type WorkflowEvent,
   type WorkflowStep,
 } from "cloudflare:workers";
-import { db } from "@repo/db";
+import { db, runDbWithWorkerNeonPool } from "@repo/db";
 import type { DocumentCategory } from "@repo/db/enums";
 import { documents } from "@repo/db/schema";
 import { buildNextcloudFileUrl, fileExists } from "@repo/nextcloud";
@@ -54,134 +54,136 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
     fileId?: string;
     message?: string;
   }> {
-    const instanceId = event.instanceId;
-    const p = event.payload;
-    const { jobId, fileName, filePath, fileSize, mimeType, userId, entityType, entityId } =
-      p;
+    return runDbWithWorkerNeonPool(async () => {
+      const instanceId = event.instanceId;
+      const p = event.payload;
+      const { jobId, fileName, filePath, fileSize, mimeType, userId, entityType, entityId } =
+        p;
 
-    try {
-      await markWorkflowRunning(instanceId);
+      try {
+        await markWorkflowRunning(instanceId);
 
-      if (!userId?.trim()) {
-        throw new Error(`[file-upload] ${jobId}: userId is required`);
-      }
-      if (entityType !== "DEAL_OPPORTUNITY") {
-        throw new Error(
-          `[file-upload] ${jobId}: entityType must be "DEAL_OPPORTUNITY"`,
-        );
-      }
-      if (!entityId?.trim()) {
-        throw new Error(`[file-upload] ${jobId}: entityId is required`);
-      }
-
-      await step.do("validate", async () => {
-        await updateWorkflowJobProgress(instanceId, {
-          step: "Validating file",
-          percentage: 10,
-        });
-        return {
-          isValid: true,
-          fileSize,
-          mimeType,
-        } as const;
-      });
-
-      const nextcloudResult = await step.do("verify-nextcloud", async () => {
-        await updateWorkflowJobProgress(instanceId, {
-          step: "Verifying Nextcloud upload",
-          percentage: 40,
-        });
-        if (!filePath) throw new Error("Missing filePath");
-        const exists = await fileExists(filePath);
-        if (!exists) {
+        if (!userId?.trim()) {
+          throw new Error(`[file-upload] ${jobId}: userId is required`);
+        }
+        if (entityType !== "DEAL_OPPORTUNITY") {
           throw new Error(
-            `File not found at ${filePath} - upload may have failed`,
+            `[file-upload] ${jobId}: entityType must be "DEAL_OPPORTUNITY"`,
           );
         }
-        return {
-          destPath: filePath,
-          publicUrl: buildNextcloudFileUrl(filePath),
-        } as const;
-      });
+        if (!entityId?.trim()) {
+          throw new Error(`[file-upload] ${jobId}: entityId is required`);
+        }
 
-      const saveResult = await step.do(
-        "save-db",
-        { timeout: "5 minutes" },
-        async () => {
+        await step.do("validate", async () => {
           await updateWorkflowJobProgress(instanceId, {
-            step: "Saving to database",
-            percentage: 90,
+            step: "Validating file",
+            percentage: 10,
           });
-
-          const category = (p.fileCategory as DocumentCategory) || "OTHER";
-
-          const insertResult = await db
-            .insert(documents)
-            .values({
-              title: fileName,
-              description: p.fileDescription || null,
-              category,
-              fileUrl: nextcloudResult.publicUrl,
-              fileName,
-              fileSize,
-              mimeType,
-              entityType: "DEAL_OPPORTUNITY",
-              entityId,
-              dealOpportunityId: entityId,
-              uploadedById: userId,
-            })
-            .returning();
-
-          const documentRecord = insertResult[0];
-          if (!documentRecord) {
-            throw new Error("Failed to insert document record");
-          }
-
-          const ragJobId = `${jobId}-rag`;
-          await insertWorkflowJob({
-            instanceId: ragJobId,
-            workflowKind: "rag-ingestion",
-            userId,
-            dealId: entityId,
-            fileName,
-          });
-          await this.env.RAG_INGESTION_WORKFLOW.create({
-            id: ragJobId,
-            params: {
-              documentId: documentRecord.id,
-              userId,
-            },
-          });
-
-          const cacheTags: string[] = [`deal-${entityId}`, "deals"];
-          if (cacheTags.length > 0) {
-            await revalidateCacheTags(cacheTags);
-          }
-
-          await updateWorkflowJobProgress(instanceId, {
-            step: "Completed",
-            percentage: 100,
-          });
-
           return {
-            fileId: documentRecord.id,
-            nextcloudUrl: nextcloudResult.publicUrl,
+            isValid: true,
+            fileSize,
+            mimeType,
           } as const;
-        },
-      );
+        });
 
-      const out = {
-        success: true,
-        fileName,
-        nextcloudUrl: saveResult.nextcloudUrl,
-        fileId: saveResult.fileId,
-        message: "File uploaded successfully",
-      };
-      await markWorkflowCompleted(instanceId, out);
-      return out;
-    } catch (err) {
-      await markWorkflowFailed(instanceId, err);
-      throw err;
-    }
+        const nextcloudResult = await step.do("verify-nextcloud", async () => {
+          await updateWorkflowJobProgress(instanceId, {
+            step: "Verifying Nextcloud upload",
+            percentage: 40,
+          });
+          if (!filePath) throw new Error("Missing filePath");
+          const exists = await fileExists(filePath);
+          if (!exists) {
+            throw new Error(
+              `File not found at ${filePath} - upload may have failed`,
+            );
+          }
+          return {
+            destPath: filePath,
+            publicUrl: buildNextcloudFileUrl(filePath),
+          } as const;
+        });
+
+        const saveResult = await step.do(
+          "save-db",
+          { timeout: "5 minutes" },
+          async () => {
+            await updateWorkflowJobProgress(instanceId, {
+              step: "Saving to database",
+              percentage: 90,
+            });
+
+            const category = (p.fileCategory as DocumentCategory) || "OTHER";
+
+            const insertResult = await db
+              .insert(documents)
+              .values({
+                title: fileName,
+                description: p.fileDescription || null,
+                category,
+                fileUrl: nextcloudResult.publicUrl,
+                fileName,
+                fileSize,
+                mimeType,
+                entityType: "DEAL_OPPORTUNITY",
+                entityId,
+                dealOpportunityId: entityId,
+                uploadedById: userId,
+              })
+              .returning();
+
+            const documentRecord = insertResult[0];
+            if (!documentRecord) {
+              throw new Error("Failed to insert document record");
+            }
+
+            const ragJobId = `${jobId}-rag`;
+            await insertWorkflowJob({
+              instanceId: ragJobId,
+              workflowKind: "rag-ingestion",
+              userId,
+              dealId: entityId,
+              fileName,
+            });
+            await this.env.RAG_INGESTION_WORKFLOW.create({
+              id: ragJobId,
+              params: {
+                documentId: documentRecord.id,
+                userId,
+              },
+            });
+
+            const cacheTags: string[] = [`deal-${entityId}`, "deals"];
+            if (cacheTags.length > 0) {
+              await revalidateCacheTags(cacheTags);
+            }
+
+            await updateWorkflowJobProgress(instanceId, {
+              step: "Completed",
+              percentage: 100,
+            });
+
+            return {
+              fileId: documentRecord.id,
+              nextcloudUrl: nextcloudResult.publicUrl,
+            } as const;
+          },
+        );
+
+        const out = {
+          success: true,
+          fileName,
+          nextcloudUrl: saveResult.nextcloudUrl,
+          fileId: saveResult.fileId,
+          message: "File uploaded successfully",
+        };
+        await markWorkflowCompleted(instanceId, out);
+        return out;
+      } catch (err) {
+        await markWorkflowFailed(instanceId, err);
+        throw err;
+      }
+    });
   }
 }

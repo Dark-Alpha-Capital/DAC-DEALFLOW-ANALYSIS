@@ -35,20 +35,20 @@ export type CimExtractionParams = {
 
 export type ScreenDealParams =
   | {
-      mode: "manual";
-      jobId: string;
-      userId: string;
-      dealId: string;
-      dealOpportunityId: string;
-    }
+    mode: "manual";
+    jobId: string;
+    userId: string;
+    dealId: string;
+    dealOpportunityId: string;
+  }
   | {
-      mode: "ai";
-      jobId: string;
-      userId: string;
-      dealId: string;
-      screenerId: string;
-      dealOpportunityId?: string;
-    };
+    mode: "ai";
+    jobId: string;
+    userId: string;
+    dealId: string;
+    screenerId: string;
+    dealOpportunityId?: string;
+  };
 
 /** Cloudflare Worker env with workflow bindings (see wrangler.jsonc) */
 export interface WorkflowWorkerEnv {

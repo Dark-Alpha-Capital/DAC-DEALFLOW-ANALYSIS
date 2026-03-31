@@ -419,11 +419,11 @@ export const dealsRouter = createTRPCRouter({
       return {
         activeSim: activeSim
           ? {
-              id: activeSim.id,
-              status: hasFinancials
-                ? ("ready" as const)
-                : ("processing" as const),
-            }
+            id: activeSim.id,
+            status: hasFinancials
+              ? ("ready" as const)
+              : ("processing" as const),
+          }
           : null,
         revenueHistory: extraction?.revenueHistory ?? {},
         ebitdaHistory: extraction?.ebitdaHistory ?? {},
@@ -813,8 +813,8 @@ export const dealsRouter = createTRPCRouter({
         leadFromOpp[0] ??
         (leadId
           ? ((
-              await db.select().from(leads).where(eq(leads.id, leadId)).limit(1)
-            )[0] ?? null)
+            await db.select().from(leads).where(eq(leads.id, leadId)).limit(1)
+          )[0] ?? null)
           : null);
 
       const sections: string[] = [];
@@ -822,7 +822,7 @@ export const dealsRouter = createTRPCRouter({
       if (opp.dealTeaser || opp.description) {
         sections.push(
           "## Deal Listing\n" +
-            [opp.dealTeaser, opp.description].filter(Boolean).join("\n\n"),
+          [opp.dealTeaser, opp.description].filter(Boolean).join("\n\n"),
         );
       }
 

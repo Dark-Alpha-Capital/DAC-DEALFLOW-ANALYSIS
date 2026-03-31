@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import { useRouter } from "@/lib/navigation-shim";
 import { DealsDataTable } from "./data-table";
