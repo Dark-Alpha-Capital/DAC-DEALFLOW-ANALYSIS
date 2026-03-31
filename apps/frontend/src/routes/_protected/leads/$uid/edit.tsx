@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { loadLeadForEditData } from "@/lib/server/leads-route-data";
 import EditLeadForm from "@/components/forms/edit-lead-form";
@@ -56,7 +56,7 @@ function EditLeadRoute() {
             Lead not found
           </h1>
           <Button asChild>
-            <BackButton href="/leads" label="Back to Leads" />
+            <Link to="/leads">Back to Leads</Link>
           </Button>
         </div>
       </section>

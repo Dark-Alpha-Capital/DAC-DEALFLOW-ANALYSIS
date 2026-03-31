@@ -1,5 +1,5 @@
 import { redirect } from "@tanstack/react-router";
-import { fetchSession } from "@/lib/fetch-session-server-fn";
+import { fetchSession } from "@/lib/server/fetch-session-server-fn";
 
 /**
  * Use in a route's `beforeLoad`. Layout routes `_protected/route.tsx` and

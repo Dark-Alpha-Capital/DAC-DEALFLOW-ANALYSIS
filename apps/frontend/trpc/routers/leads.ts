@@ -175,6 +175,8 @@ export const leadsRouter = createTRPCRouter({
     .input(leadFormSchema.extend({ id: z.string() }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
+      console.log("input", input);
+      console.log("data", data);
       await db
         .update(leads)
         .set({

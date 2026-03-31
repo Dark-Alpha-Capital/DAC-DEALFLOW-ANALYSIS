@@ -1,4 +1,3 @@
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -41,6 +40,7 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
         router.push(`/leads/${lead.id}`);
       },
       onError: (error) => {
+        console.error(error);
         toast.error(error.message || "Failed to update lead");
       },
     }),
@@ -84,7 +84,11 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                 <FormItem>
                   <FormLabel>Source Website *</FormLabel>
                   <FormControl>
-                    <Input type="url" placeholder="https://example.com/listing" {...field} />
+                    <Input
+                      type="url"
+                      placeholder="https://example.com/listing"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -110,7 +114,10 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                 <FormItem className="md:col-span-2">
                   <FormLabel>Title *</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Profitable SaaS Business for Sale" {...field} />
+                    <Input
+                      placeholder="e.g., Profitable SaaS Business for Sale"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -123,7 +130,11 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                 <FormItem className="md:col-span-2">
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Deal description..." className="min-h-[100px]" {...field} />
+                    <Textarea
+                      placeholder="Deal description..."
+                      className="min-h-[100px]"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -171,7 +182,9 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                           : ""
                       }
                       onChange={(e) => {
-                        const parsed = parseOptionalNumericInput(e.target.value);
+                        const parsed = parseOptionalNumericInput(
+                          e.target.value,
+                        );
                         if (parsed === null) return;
                         field.onChange(parsed);
                       }}
@@ -197,7 +210,9 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                           : ""
                       }
                       onChange={(e) => {
-                        const parsed = parseOptionalNumericInput(e.target.value);
+                        const parsed = parseOptionalNumericInput(
+                          e.target.value,
+                        );
                         if (parsed === null) return;
                         field.onChange(parsed);
                       }}
@@ -223,7 +238,9 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                           : ""
                       }
                       onChange={(e) => {
-                        const parsed = parseOptionalNumericInput(e.target.value);
+                        const parsed = parseOptionalNumericInput(
+                          e.target.value,
+                        );
                         if (parsed === null) return;
                         field.onChange(parsed);
                       }}
@@ -284,7 +301,11 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
                 <FormItem>
                   <FormLabel>Broker Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="broker@example.com" {...field} />
+                    <Input
+                      type="email"
+                      placeholder="broker@example.com"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -319,7 +340,12 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
           </FieldGroup>
 
           <div className="mt-6 flex gap-3">
-            <Button type="button" variant="outline" size="sm" onClick={() => router.back()}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => router.back()}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>

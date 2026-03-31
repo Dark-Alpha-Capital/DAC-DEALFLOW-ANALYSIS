@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import React, { useState } from "react";
+import React, { useTransition } from "react";
 import { Link } from "@tanstack/react-router";
 import { useRouter } from "@/lib/navigation-shim";
 import { useForm } from "react-hook-form";
@@ -9,7 +9,6 @@ import { authClient } from "@/lib/auth-client";
 import { FaGoogle } from "react-icons/fa6";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -32,8 +31,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 function LoginPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -43,59 +41,59 @@ function LoginPage() {
     },
   });
 
-  async function onSubmit(data: LoginFormValues) {
-    setIsLoading(true);
-    try {
-      const response = await authClient.signIn.email({
-        email: data.email,
-        password: data.password,
-        callbackURL: DEFAULT_LOGIN_REDIRECT,
-      });
+  function onSubmit(data: LoginFormValues) {
+    startTransition(async () => {
+      try {
+        const response = await authClient.signIn.email({
+          email: data.email,
+          password: data.password,
+          callbackURL: "/",
+        });
 
-      if (response.error) {
-        // Handle email verification required
-        if (response.error.status === 403) {
-          toast.error("Please verify your email before signing in");
-          router.push("/auth/verify-email?email=" + encodeURIComponent(data.email));
+        if (response.error) {
+          if (response.error.status === 403) {
+            toast.error("Please verify your email before signing in");
+            router.push(
+              "/auth/verify-email?email=" + encodeURIComponent(data.email),
+            );
+            return;
+          }
+          toast.error(response.error.message || "Invalid email or password");
           return;
         }
-        toast.error(response.error.message || "Invalid email or password");
-        return;
-      }
 
-      toast.success("Welcome back!");
-      router.push(DEFAULT_LOGIN_REDIRECT);
-    } catch (error) {
-      console.error(error);
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+        toast.success("Welcome back!");
+        router.push("/");
+      } catch (error) {
+        console.error(error);
+        toast.error("Something went wrong. Please try again.");
+      }
+    });
   }
 
-  async function handleGoogleSignIn() {
-    setIsGoogleLoading(true);
-    try {
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: DEFAULT_LOGIN_REDIRECT,
-      });
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to sign in with Google");
-      setIsGoogleLoading(false);
-    }
+  function handleGoogleSignIn() {
+    startTransition(async () => {
+      try {
+        await authClient.signIn.social({
+          provider: "google",
+          callbackURL: "/",
+        });
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to sign in with Google");
+      }
+    });
   }
 
   return (
     <div className="w-full max-w-md space-y-8">
       <header className="space-y-3">
-        <div className="text-xs font-semibold tracking-[0.2em] text-muted-foreground">
+        <div className="text-muted-foreground text-xs font-semibold tracking-[0.2em]">
           DAC DEALFLOW
         </div>
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Welcome back</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Sign in to access your internal dealflow workspace.
           </p>
         </div>
@@ -106,13 +104,9 @@ function LoginPage() {
           variant="outline"
           className="w-full justify-center gap-2"
           onClick={handleGoogleSignIn}
-          disabled={isGoogleLoading || isLoading}
+          disabled={isPending}
         >
-          {isGoogleLoading ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <FaGoogle className="size-4" />
-          )}
+          <FaGoogle className="size-4" />
           <span className="text-sm font-medium">Sign in with Google</span>
         </Button>
 
@@ -121,7 +115,7 @@ function LoginPage() {
             <Separator className="w-full" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
+            <span className="bg-background text-muted-foreground px-2">
               Or continue with email
             </span>
           </div>
@@ -140,7 +134,7 @@ function LoginPage() {
                       type="email"
                       placeholder="you@darkalphacapital.com"
                       {...field}
-                      disabled={isLoading}
+                      disabled={isPending}
                     />
                   </FormControl>
                   <FormMessage />
@@ -155,8 +149,8 @@ function LoginPage() {
                   <div className="flex items-center justify-between gap-2">
                     <FormLabel>Password</FormLabel>
                     <Link
-                      href="/auth/forgot-password"
-                      className="text-xs text-muted-foreground hover:text-primary underline-offset-4 hover:underline"
+                      to="/auth/forgot-password"
+                      className="text-muted-foreground hover:text-primary text-xs underline-offset-4 hover:underline"
                     >
                       Forgot password?
                     </Link>
@@ -165,15 +159,15 @@ function LoginPage() {
                     <PasswordInput
                       placeholder="Enter your password"
                       {...field}
-                      disabled={isLoading}
+                      disabled={isPending}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Sign in
             </Button>
           </form>
@@ -181,21 +175,21 @@ function LoginPage() {
       </section>
 
       <footer className="space-y-2 text-center">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Don&apos;t have an account?{" "}
           <Link
-            href="/auth/signup"
-            className="font-medium text-primary underline-offset-4 hover:underline"
+            to="/auth/signup"
+            className="text-primary font-medium underline-offset-4 hover:underline"
           >
             Sign up
           </Link>
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           Access is limited to Dark Alpha Capital team members.
         </p>
-        <p className="text-xs text-muted-foreground/80">
+        <p className="text-muted-foreground/80 text-xs">
           Powered by{" "}
-          <span className="font-semibold text-primary">Dark Alpha Capital</span>
+          <span className="text-primary font-semibold">Dark Alpha Capital</span>
         </p>
       </footer>
     </div>

@@ -34,6 +34,7 @@ import { Route as ProtectedInvestorLeadsIndexRouteImport } from './routes/_prote
 import { Route as ProtectedInvestmentThemesIndexRouteImport } from './routes/_protected/investment-themes/index'
 import { Route as ProtectedDealOpportunitiesIndexRouteImport } from './routes/_protected/deal-opportunities/index'
 import { Route as ProtectedCompaniesIndexRouteImport } from './routes/_protected/companies/index'
+import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc.$'
 import { Route as ApiLeadsIngestRouteImport } from './routes/api/leads/ingest'
 import { Route as ApiInvestorLeadsIngestRouteImport } from './routes/api/investor-leads/ingest'
 import { Route as ApiHealthRedisRouteImport } from './routes/api/health/redis'
@@ -207,6 +208,11 @@ const ProtectedCompaniesIndexRoute = ProtectedCompaniesIndexRouteImport.update({
   id: '/companies/',
   path: '/companies/',
   getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => ApiTrpcRoute,
 } as any)
 const ApiLeadsIngestRoute = ApiLeadsIngestRouteImport.update({
   id: '/api/leads/ingest',
@@ -495,7 +501,7 @@ export interface FileRoutesByFullPath {
   '/screenings': typeof ProtectedScreeningsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/revalidate': typeof ApiRevalidateRoute
-  '/api/trpc': typeof ApiTrpcRoute
+  '/api/trpc': typeof ApiTrpcRouteWithChildren
   '/auth/error': typeof AuthenticationAuthErrorRoute
   '/auth/forgot-password': typeof AuthenticationAuthForgotPasswordRoute
   '/auth/login': typeof AuthenticationAuthLoginRoute
@@ -532,6 +538,7 @@ export interface FileRoutesByFullPath {
   '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
+  '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/companies/': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
   '/investment-themes/': typeof ProtectedInvestmentThemesIndexRoute
@@ -567,7 +574,7 @@ export interface FileRoutesByTo {
   '/screenings': typeof ProtectedScreeningsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/revalidate': typeof ApiRevalidateRoute
-  '/api/trpc': typeof ApiTrpcRoute
+  '/api/trpc': typeof ApiTrpcRouteWithChildren
   '/auth/error': typeof AuthenticationAuthErrorRoute
   '/auth/forgot-password': typeof AuthenticationAuthForgotPasswordRoute
   '/auth/login': typeof AuthenticationAuthLoginRoute
@@ -604,6 +611,7 @@ export interface FileRoutesByTo {
   '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
+  '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/companies': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities': typeof ProtectedDealOpportunitiesIndexRoute
   '/investment-themes': typeof ProtectedInvestmentThemesIndexRoute
@@ -643,7 +651,7 @@ export interface FileRoutesById {
   '/_protected/screenings': typeof ProtectedScreeningsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/revalidate': typeof ApiRevalidateRoute
-  '/api/trpc': typeof ApiTrpcRoute
+  '/api/trpc': typeof ApiTrpcRouteWithChildren
   '/_protected/': typeof ProtectedIndexRoute
   '/_authentication/auth/error': typeof AuthenticationAuthErrorRoute
   '/_authentication/auth/forgot-password': typeof AuthenticationAuthForgotPasswordRoute
@@ -681,6 +689,7 @@ export interface FileRoutesById {
   '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
+  '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/_protected/companies/': typeof ProtectedCompaniesIndexRoute
   '/_protected/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
   '/_protected/investment-themes/': typeof ProtectedInvestmentThemesIndexRoute
@@ -755,6 +764,7 @@ export interface FileRouteTypes {
     | '/api/health/redis'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
+    | '/api/trpc/$'
     | '/companies/'
     | '/deal-opportunities/'
     | '/investment-themes/'
@@ -827,6 +837,7 @@ export interface FileRouteTypes {
     | '/api/health/redis'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
+    | '/api/trpc/$'
     | '/companies'
     | '/deal-opportunities'
     | '/investment-themes'
@@ -903,6 +914,7 @@ export interface FileRouteTypes {
     | '/api/health/redis'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
+    | '/api/trpc/$'
     | '/_protected/companies/'
     | '/_protected/deal-opportunities/'
     | '/_protected/investment-themes/'
@@ -931,7 +943,7 @@ export interface RootRouteChildren {
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
   ApiRevalidateRoute: typeof ApiRevalidateRoute
-  ApiTrpcRoute: typeof ApiTrpcRoute
+  ApiTrpcRoute: typeof ApiTrpcRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDealOpportunitiesQuickAddRoute: typeof ApiDealOpportunitiesQuickAddRoute
   ApiHealthRedisRoute: typeof ApiHealthRedisRoute
@@ -1115,6 +1127,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/companies/'
       preLoaderRoute: typeof ProtectedCompaniesIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
+    }
+    '/api/trpc/$': {
+      id: '/api/trpc/$'
+      path: '/$'
+      fullPath: '/api/trpc/$'
+      preLoaderRoute: typeof ApiTrpcSplatRouteImport
+      parentRoute: typeof ApiTrpcRoute
     }
     '/api/leads/ingest': {
       id: '/api/leads/ingest'
@@ -1677,6 +1696,17 @@ const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(
   ProtectedRouteRouteChildren,
 )
 
+interface ApiTrpcRouteChildren {
+  ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
+}
+
+const ApiTrpcRouteChildren: ApiTrpcRouteChildren = {
+  ApiTrpcSplatRoute: ApiTrpcSplatRoute,
+}
+
+const ApiTrpcRouteWithChildren =
+  ApiTrpcRoute._addFileChildren(ApiTrpcRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   AuthenticationRouteRoute: AuthenticationRouteRouteWithChildren,
   ChatbotRouteRoute: ChatbotRouteRouteWithChildren,
@@ -1684,7 +1714,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
   ApiRevalidateRoute: ApiRevalidateRoute,
-  ApiTrpcRoute: ApiTrpcRoute,
+  ApiTrpcRoute: ApiTrpcRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDealOpportunitiesQuickAddRoute: ApiDealOpportunitiesQuickAddRoute,
   ApiHealthRedisRoute: ApiHealthRedisRoute,

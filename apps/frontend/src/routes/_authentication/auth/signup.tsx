@@ -9,7 +9,6 @@ import { authClient } from "@/lib/auth-client";
 import { FaGoogle } from "react-icons/fa6";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -59,7 +58,7 @@ function SignupPage() {
         name: data.name,
         email: data.email,
         password: data.password,
-        callbackURL: DEFAULT_LOGIN_REDIRECT,
+        callbackURL: "/",
       });
 
       if (response.error) {
@@ -82,7 +81,7 @@ function SignupPage() {
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: DEFAULT_LOGIN_REDIRECT,
+        callbackURL: "/",
       });
     } catch (error) {
       console.error(error);
@@ -94,13 +93,14 @@ function SignupPage() {
   return (
     <div className="w-full max-w-md space-y-8">
       <header className="space-y-3">
-        <div className="text-xs font-semibold tracking-[0.2em] text-muted-foreground">
+        <div className="text-muted-foreground text-xs font-semibold tracking-[0.2em]">
           DAC DEALFLOW
         </div>
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Create an account</h1>
-          <p className="text-sm text-muted-foreground">
-            Use your Dark Alpha Capital email to join the internal dealflow workspace.
+          <p className="text-muted-foreground text-sm">
+            Use your Dark Alpha Capital email to join the internal dealflow
+            workspace.
           </p>
         </div>
       </header>
@@ -125,7 +125,7 @@ function SignupPage() {
             <Separator className="w-full" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
+            <span className="bg-background text-muted-foreground px-2">
               Or continue with email
             </span>
           </div>
@@ -211,18 +211,18 @@ function SignupPage() {
       </section>
 
       <footer className="space-y-2 text-center">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Already have an account?{" "}
           <Link
-            href="/auth/login"
-            className="font-medium text-primary underline-offset-4 hover:underline"
+            to="/auth/login"
+            className="text-primary font-medium underline-offset-4 hover:underline"
           >
             Sign in
           </Link>
         </p>
-        <p className="text-xs text-muted-foreground/80">
+        <p className="text-muted-foreground/80 text-xs">
           Powered by{" "}
-          <span className="font-semibold text-primary">Dark Alpha Capital</span>
+          <span className="text-primary font-semibold">Dark Alpha Capital</span>
         </p>
       </footer>
     </div>
