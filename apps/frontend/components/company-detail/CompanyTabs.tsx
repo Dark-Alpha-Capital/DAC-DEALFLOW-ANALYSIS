@@ -6,6 +6,7 @@ import type {
   CompanyNote,
   CompanyFinancialSnapshot,
 } from "@repo/db/schema";
+import { ClientOnly } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyOverview } from "./CompanyOverview";
 import { CompanyFinancials } from "./CompanyFinancials";
@@ -83,15 +84,17 @@ export function CompanyTabs({
       </TabsContent>
 
       <TabsContent value="outreach">
-        <CompanyOutreach
-          outreach={outreach}
-          companyId={company.id}
-          dealOpportunities={dealOpportunities.map((deal) => ({
-            id: deal.id,
-            stage: deal.stage,
-            createdAt: deal.createdAt,
-          }))}
-        />
+        <ClientOnly fallback={<div className="h-48 rounded-md border bg-muted/30" />}>
+          <CompanyOutreach
+            outreach={outreach}
+            companyId={company.id}
+            dealOpportunities={dealOpportunities.map((deal) => ({
+              id: deal.id,
+              stage: deal.stage,
+              createdAt: deal.createdAt,
+            }))}
+          />
+        </ClientOnly>
       </TabsContent>
 
       <TabsContent value="documents">
@@ -99,7 +102,9 @@ export function CompanyTabs({
       </TabsContent>
 
       <TabsContent value="notes">
-        <CompanyNotes company={company} notes={notes} />
+        <ClientOnly fallback={<div className="min-h-[200px] rounded-md border bg-muted/30" />}>
+          <CompanyNotes company={company} notes={notes} />
+        </ClientOnly>
       </TabsContent>
     </Tabs>
   );

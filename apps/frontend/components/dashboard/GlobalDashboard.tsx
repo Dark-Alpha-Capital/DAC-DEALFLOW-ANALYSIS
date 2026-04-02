@@ -1,13 +1,5 @@
-
-import { Link } from "@tanstack/react-router";
+import { ClientOnly, Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -18,6 +10,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  GlobalDashboardPipelineCharts,
+  GlobalDashboardThemeCharts,
+} from "./global-dashboard-charts";
 
 const STAGE_LABELS: Record<string, string> = {
   LISTED: "Listed",
@@ -31,43 +27,6 @@ const STAGE_LABELS: Record<string, string> = {
   DEAD: "Dead",
   UNKNOWN: "Unknown",
 };
-
-const LEAD_STATUS_LABELS: Record<string, string> = {
-  NEW: "New",
-  PROCESSED: "Processed",
-  DUPLICATE: "Duplicate",
-  REJECTED: "Rejected",
-  UNKNOWN: "Unknown",
-};
-
-const barConfig = {
-  count: {
-    label: "Count",
-    color: "var(--chart-1)",
-  },
-} satisfies ChartConfig;
-
-const leadFlowConfig = {
-  count: {
-    label: "Leads",
-    color: "var(--chart-3)",
-  },
-} satisfies ChartConfig;
-
-const stageOrder = [
-  "LISTED",
-  "INITIAL_REVIEW",
-  "SCREENED",
-  "MEETING_HELD",
-  "IOI_SUBMITTED",
-  "LOI_SUBMITTED",
-  "DILIGENCE",
-  "CLOSED",
-  "DEAD",
-  "UNKNOWN",
-] as const;
-
-const leadStatusOrder = ["NEW", "PROCESSED", "DUPLICATE", "REJECTED", "UNKNOWN"] as const;
 
 type PipelineData = {
   dealsByStage: Array<{ stage: string; count: number }>;
@@ -140,97 +99,6 @@ function KpiStrip({ title, value }: { title: string; value: number }) {
   );
 }
 
-function DealsByStage({ data }: { data: PipelineData["dealsByStage"] }) {
-  const chartData = stageOrder
-    .map((stage) => ({
-      stage: STAGE_LABELS[stage] ?? stage,
-      count: data.find((row) => row.stage === stage)?.count ?? 0,
-    }))
-    .filter((row) => row.count > 0);
-
-  return (
-    <SegmentedPanel
-      title="Deals by Stage"
-      description="Opportunity distribution across pipeline stages."
-    >
-      <div className="h-[280px]">
-        <ChartContainer config={barConfig} className="h-full w-full">
-          <BarChart data={chartData} margin={{ left: 12, right: 12, top: 8, bottom: 28 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="stage" tickLine={false} axisLine={false} tickMargin={8} />
-            <YAxis tickLine={false} axisLine={false} />
-            <ChartTooltip
-              content={<ChartTooltipContent labelFormatter={(v) => String(v)} nameKey="stage" />}
-            />
-            <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ChartContainer>
-      </div>
-    </SegmentedPanel>
-  );
-}
-
-function LeadFlow({ data }: { data: PipelineData["leadFlow"] }) {
-  const chartData = leadStatusOrder.map((status) => ({
-    status: LEAD_STATUS_LABELS[status] ?? status,
-    count: data.find((row) => row.status === status)?.count ?? 0,
-  }));
-
-  return (
-    <SegmentedPanel
-      title="Lead Flow"
-      description="Lead status funnel across intake and processing."
-    >
-      <div className="h-[280px]">
-        <ChartContainer config={leadFlowConfig} className="h-full w-full">
-          <BarChart data={chartData} margin={{ left: 12, right: 12, top: 8, bottom: 24 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="status" tickLine={false} axisLine={false} tickMargin={8} />
-            <YAxis tickLine={false} axisLine={false} />
-            <ChartTooltip
-              content={<ChartTooltipContent labelFormatter={(v) => String(v)} nameKey="status" />}
-            />
-            <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ChartContainer>
-      </div>
-    </SegmentedPanel>
-  );
-}
-
-function ThemeChart({
-  title,
-  description,
-  data,
-}: {
-  title: string;
-  description: string;
-  data: Array<{ themeName: string; count: number }>;
-}) {
-  const chartData = data.map((row) => ({
-    label: row.themeName,
-    count: row.count,
-  }));
-
-  return (
-    <SegmentedPanel title={title} description={description}>
-      <div className="h-[340px]">
-        <ChartContainer config={barConfig} className="h-full w-full">
-          <BarChart data={chartData} layout="vertical" margin={{ left: 70, right: 16, top: 8, bottom: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} />
-            <XAxis type="number" tickLine={false} axisLine={false} />
-            <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={120} />
-            <ChartTooltip
-              content={<ChartTooltipContent labelFormatter={(_, p) => p?.[0]?.payload?.label ?? ""} />}
-            />
-            <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
-          </BarChart>
-        </ChartContainer>
-      </div>
-    </SegmentedPanel>
-  );
-}
-
 function TopDeals({ data }: { data: TopDeal[] }) {
   return (
     <SegmentedPanel title="Top Deals" description="Ranked by deterministic screening score.">
@@ -274,6 +142,13 @@ function TopDeals({ data }: { data: TopDeal[] }) {
   );
 }
 
+const chartGridFallback = (
+  <div className="grid gap-4 lg:grid-cols-2">
+    <div className="h-[280px] rounded-md border bg-muted/30" />
+    <div className="h-[280px] rounded-md border bg-muted/30" />
+  </div>
+);
+
 export function GlobalDashboard({ pipeline, themes, topDeals }: GlobalDashboardProps) {
   return (
     <Tabs defaultValue="pipeline" className="space-y-5">
@@ -308,10 +183,9 @@ export function GlobalDashboard({ pipeline, themes, topDeals }: GlobalDashboardP
           <KpiStrip title="Processed Leads" value={pipeline.kpis.processedLeads} />
           <KpiStrip title="Duplicates" value={pipeline.kpis.duplicates} />
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <DealsByStage data={pipeline.dealsByStage} />
-          <LeadFlow data={pipeline.leadFlow} />
-        </div>
+        <ClientOnly fallback={chartGridFallback}>
+          <GlobalDashboardPipelineCharts pipeline={pipeline} />
+        </ClientOnly>
       </TabsContent>
 
       <TabsContent value="themes" className="mt-0 space-y-4">
@@ -322,18 +196,16 @@ export function GlobalDashboard({ pipeline, themes, topDeals }: GlobalDashboardP
         <div className="grid gap-3 md:grid-cols-3">
           <KpiStrip title="Active investment themes" value={themes.activeThemes} />
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <ThemeChart
-            title="Companies per investment theme"
-            description="Company concentration across strategic investment themes."
-            data={themes.companiesPerTheme}
-          />
-          <ThemeChart
-            title="Deals per investment theme"
-            description="Deal opportunity concentration across investment themes."
-            data={themes.dealsPerTheme}
-          />
-        </div>
+        <ClientOnly
+          fallback={
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="h-[340px] rounded-md border bg-muted/30" />
+              <div className="h-[340px] rounded-md border bg-muted/30" />
+            </div>
+          }
+        >
+          <GlobalDashboardThemeCharts themes={themes} />
+        </ClientOnly>
       </TabsContent>
 
       <TabsContent value="deals" className="mt-0 space-y-4">

@@ -5,17 +5,21 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents, eq } from "@repo/db";
 import { uploadBuffer, sanitizeFilename } from "@repo/nextcloud";
 import {
-  deleteSimScreeningAnswersForSession,
+  deleteSimScreeningAnswersForRun,
   insertSimScreeningSession,
-  updateSimScreeningSession,
+  insertSimScreeningRun,
+  updateSimScreeningRun,
 } from "@repo/db/mutations";
 import { deleteWorkflowJobRow } from "@repo/db/workflow-jobs";
 import {
   getSimScreeningSessionByIdForUser,
-  listSimScreeningSessionsForUserWithScreener,
+  listSimScreeningSessionsForUserWithMeta,
   getScreenerQuestions,
-  getSimScreeningAnswersBySessionId,
+  getSimScreeningAnswersByRunId,
   getScreenerById,
+  getSimScreeningRunsBySessionId,
+  getSimScreeningRunByIdForUser,
+  simScreeningSessionHasActiveRun,
 } from "@repo/db/queries";
 import {
   insertWorkflowJob,
@@ -82,18 +86,29 @@ export const simScreeningRouter = createTRPCRouter({
       });
     }
 
-    const jobId = randomUUID();
     const session = await insertSimScreeningSession({
       userId,
       documentId: documentRecord.id,
-      screenerId: input.screenerId,
-      workflowInstanceId: jobId,
     });
 
     if (!session) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Failed to create screening session",
+      });
+    }
+
+    const jobId = randomUUID();
+    const run = await insertSimScreeningRun({
+      sessionId: session.id,
+      screenerId: input.screenerId,
+      workflowInstanceId: jobId,
+    });
+
+    if (!run) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to create screening run",
       });
     }
 
@@ -111,18 +126,118 @@ export const simScreeningRouter = createTRPCRouter({
       documentId: documentRecord.id,
       screenerId: input.screenerId,
       sessionId: session.id,
+      runId: run.id,
+      skipIngest: false,
     });
 
     return {
       sessionId: session.id,
+      runId: run.id,
       documentId: documentRecord.id,
       jobId,
       queueName: QUEUE_NAMES.SIM_SCREENING,
     };
   }),
 
+  startRun: protectedProcedure
+    .input(
+      z.object({
+        sessionId: z.string().min(1),
+        screenerId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      if (!userId?.trim()) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "User ID required" });
+      }
+
+      const session = await getSimScreeningSessionByIdForUser(
+        input.sessionId,
+        userId,
+      );
+      if (!session) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
+      }
+
+      const [docRow] = await db
+        .select()
+        .from(documents)
+        .where(eq(documents.id, session.documentId))
+        .limit(1);
+
+      if (!docRow || docRow.ingestionStatus !== "PROCESSED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Document must be fully ingested before screening with another template. Wait for the first run to finish or retry a failed run.",
+        });
+      }
+
+      const screener = await getScreenerById(input.screenerId);
+      if (!screener) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Screener template not found",
+        });
+      }
+
+      if (await simScreeningSessionHasActiveRun(input.sessionId)) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Another screening run is already in progress for this document.",
+        });
+      }
+
+      const jobId = randomUUID();
+      const run = await insertSimScreeningRun({
+        sessionId: session.id,
+        screenerId: input.screenerId,
+        workflowInstanceId: jobId,
+      });
+
+      if (!run) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create screening run",
+        });
+      }
+
+      const fileLabel = docRow.fileName ?? docRow.title ?? "SIM.pdf";
+
+      await insertWorkflowJob({
+        instanceId: jobId,
+        workflowKind: "sim-screening",
+        userId,
+        fileName: fileLabel,
+        screenerId: input.screenerId,
+      });
+
+      await startSimScreeningWorkflow(jobId, {
+        jobId,
+        userId,
+        documentId: session.documentId,
+        screenerId: input.screenerId,
+        sessionId: session.id,
+        runId: run.id,
+        skipIngest: true,
+      });
+
+      return {
+        sessionId: session.id,
+        runId: run.id,
+        jobId,
+        queueName: QUEUE_NAMES.SIM_SCREENING,
+      };
+    }),
+
   getSession: protectedProcedure
-    .input(z.object({ sessionId: z.string().min(1) }))
+    .input(
+      z.object({
+        sessionId: z.string().min(1),
+        runId: z.string().min(1).optional(),
+      }),
+    )
     .query(async ({ input, ctx }) => {
       const userId = ctx.user.id;
       const session = await getSimScreeningSessionByIdForUser(
@@ -133,17 +248,36 @@ export const simScreeningRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
       }
 
-      const [documentRow, screener, questions, answers] = await Promise.all([
+      const runs = await getSimScreeningRunsBySessionId(session.id);
+
+      let selectedRun = input.runId
+        ? runs.find((r) => r.id === input.runId) ?? null
+        : null;
+      if (!selectedRun && runs.length > 0) {
+        selectedRun =
+          runs.find((r) => r.status !== "COMPLETED" && r.status !== "FAILED") ??
+          runs[0] ??
+          null;
+      }
+
+      const [documentRow, questions, answers] = await Promise.all([
         db
           .select()
           .from(documents)
           .where(eq(documents.id, session.documentId))
           .limit(1)
           .then((r) => r[0] ?? null),
-        getScreenerById(session.screenerId),
-        getScreenerQuestions(session.screenerId),
-        getSimScreeningAnswersBySessionId(session.id),
+        selectedRun
+          ? getScreenerQuestions(selectedRun.screenerId)
+          : Promise.resolve([]),
+        selectedRun
+          ? getSimScreeningAnswersByRunId(selectedRun.id)
+          : Promise.resolve([]),
       ]);
+
+      const screener = selectedRun
+        ? await getScreenerById(selectedRun.screenerId)
+        : null;
 
       const answerByQuestionId = new Map(answers.map((a) => [a.questionId, a]));
 
@@ -161,11 +295,11 @@ export const simScreeningRouter = createTRPCRouter({
       });
 
       let job: Awaited<ReturnType<typeof getJobByIdForUser>> = null;
-      if (session.workflowInstanceId) {
+      if (selectedRun?.workflowInstanceId) {
         job = await getJobByIdForUser(
           userId,
           QUEUE_NAMES.SIM_SCREENING,
-          session.workflowInstanceId,
+          selectedRun.workflowInstanceId,
         );
       }
 
@@ -184,6 +318,26 @@ export const simScreeningRouter = createTRPCRouter({
               createdAt: documentRow.createdAt,
             }
           : null,
+        runs: runs.map((r) => ({
+          id: r.id,
+          screenerId: r.screenerId,
+          screenerName: r.screenerName,
+          screenerCategory: r.screenerCategory,
+          status: r.status,
+          errorMessage: r.errorMessage,
+          workflowInstanceId: r.workflowInstanceId,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+        })),
+        selectedRunId: selectedRun?.id ?? null,
+        run: selectedRun
+          ? {
+              id: selectedRun.id,
+              status: selectedRun.status,
+              errorMessage: selectedRun.errorMessage,
+              workflowInstanceId: selectedRun.workflowInstanceId,
+            }
+          : null,
         screener: screener
           ? { id: screener.id, name: screener.name, category: screener.category }
           : null,
@@ -193,25 +347,22 @@ export const simScreeningRouter = createTRPCRouter({
     }),
 
   retry: protectedProcedure
-    .input(z.object({ sessionId: z.string().min(1) }))
+    .input(z.object({ runId: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.user.id;
       if (!userId?.trim()) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "User ID required" });
       }
 
-      const session = await getSimScreeningSessionByIdForUser(
-        input.sessionId,
-        userId,
-      );
-      if (!session) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
+      const run = await getSimScreeningRunByIdForUser(input.runId, userId);
+      if (!run) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Run not found" });
       }
 
       if (
-        session.status === "PENDING" ||
-        session.status === "INGESTING" ||
-        session.status === "SCREENING"
+        run.status === "PENDING" ||
+        run.status === "INGESTING" ||
+        run.status === "SCREENING"
       ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -219,14 +370,30 @@ export const simScreeningRouter = createTRPCRouter({
         });
       }
 
-      if (session.status !== "FAILED") {
+      if (run.status !== "FAILED") {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Only failed sessions can be retried.",
+          message: "Only failed runs can be retried.",
         });
       }
 
-      const oldJobId = session.workflowInstanceId;
+      const session = await getSimScreeningSessionByIdForUser(
+        run.sessionId,
+        userId,
+      );
+      if (!session) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
+      }
+
+      const [docRow] = await db
+        .select()
+        .from(documents)
+        .where(eq(documents.id, session.documentId))
+        .limit(1);
+
+      const skipIngest = docRow?.ingestionStatus === "PROCESSED";
+
+      const oldJobId = run.workflowInstanceId;
       if (oldJobId) {
         try {
           await terminateWorkflowInstance("sim-screening", oldJobId);
@@ -236,21 +403,15 @@ export const simScreeningRouter = createTRPCRouter({
         await deleteWorkflowJobRow(oldJobId);
       }
 
-      await deleteSimScreeningAnswersForSession(input.sessionId);
+      await deleteSimScreeningAnswersForRun(input.runId);
 
       const newJobId = randomUUID();
 
-      await updateSimScreeningSession(input.sessionId, {
+      await updateSimScreeningRun(input.runId, {
         status: "PENDING",
         errorMessage: null,
         workflowInstanceId: newJobId,
       });
-
-      const [docRow] = await db
-        .select()
-        .from(documents)
-        .where(eq(documents.id, session.documentId))
-        .limit(1);
 
       const fileLabel = docRow?.fileName ?? docRow?.title ?? "SIM.pdf";
 
@@ -259,19 +420,22 @@ export const simScreeningRouter = createTRPCRouter({
         workflowKind: "sim-screening",
         userId,
         fileName: fileLabel,
-        screenerId: session.screenerId,
+        screenerId: run.screenerId,
       });
 
       await startSimScreeningWorkflow(newJobId, {
         jobId: newJobId,
         userId,
         documentId: session.documentId,
-        screenerId: session.screenerId,
+        screenerId: run.screenerId,
         sessionId: session.id,
+        runId: run.id,
+        skipIngest,
       });
 
       return {
         sessionId: session.id,
+        runId: run.id,
         jobId: newJobId,
         queueName: QUEUE_NAMES.SIM_SCREENING,
       };
@@ -282,6 +446,6 @@ export const simScreeningRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const userId = ctx.user.id;
       const limit = input?.limit ?? 50;
-      return listSimScreeningSessionsForUserWithScreener(userId, limit);
+      return listSimScreeningSessionsForUserWithMeta(userId, limit);
     }),
 });

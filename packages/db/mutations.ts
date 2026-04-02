@@ -14,6 +14,7 @@ import {
   dealRiskFlags,
   dealOpportunities,
   simScreeningSessions,
+  simScreeningRuns,
   simScreeningAnswers,
 } from "./schema";
 import type {
@@ -555,14 +556,26 @@ export type SimScreeningSessionStatus =
 export async function insertSimScreeningSession(input: {
   userId: string;
   documentId: string;
-  screenerId: string;
-  workflowInstanceId: string | null;
 }) {
   const [row] = await db
     .insert(simScreeningSessions)
     .values({
       userId: input.userId,
       documentId: input.documentId,
+    })
+    .returning();
+  return row ?? null;
+}
+
+export async function insertSimScreeningRun(input: {
+  sessionId: string;
+  screenerId: string;
+  workflowInstanceId: string | null;
+}) {
+  const [row] = await db
+    .insert(simScreeningRuns)
+    .values({
+      sessionId: input.sessionId,
       screenerId: input.screenerId,
       workflowInstanceId: input.workflowInstanceId,
       status: "PENDING",
@@ -571,8 +584,8 @@ export async function insertSimScreeningSession(input: {
   return row ?? null;
 }
 
-export async function updateSimScreeningSession(
-  sessionId: string,
+export async function updateSimScreeningRun(
+  runId: string,
   patch: Partial<{
     status: SimScreeningSessionStatus;
     workflowInstanceId: string | null;
@@ -580,13 +593,13 @@ export async function updateSimScreeningSession(
   }>,
 ) {
   await db
-    .update(simScreeningSessions)
+    .update(simScreeningRuns)
     .set({ ...patch, updatedAt: new Date() })
-    .where(eq(simScreeningSessions.id, sessionId));
+    .where(eq(simScreeningRuns.id, runId));
 }
 
 export async function upsertSimScreeningAnswer(input: {
-  sessionId: string;
+  runId: string;
   questionId: string;
   score: number;
   rationale: string;
@@ -595,17 +608,14 @@ export async function upsertSimScreeningAnswer(input: {
   await db
     .insert(simScreeningAnswers)
     .values({
-      sessionId: input.sessionId,
+      runId: input.runId,
       questionId: input.questionId,
       score: input.score,
       rationale: input.rationale,
       evidenceChunkIds: input.evidenceChunkIds ?? null,
     })
     .onConflictDoUpdate({
-      target: [
-        simScreeningAnswers.sessionId,
-        simScreeningAnswers.questionId,
-      ],
+      target: [simScreeningAnswers.runId, simScreeningAnswers.questionId],
       set: {
         score: input.score,
         rationale: input.rationale,
@@ -615,8 +625,8 @@ export async function upsertSimScreeningAnswer(input: {
     });
 }
 
-export async function deleteSimScreeningAnswersForSession(sessionId: string) {
+export async function deleteSimScreeningAnswersForRun(runId: string) {
   await db
     .delete(simScreeningAnswers)
-    .where(eq(simScreeningAnswers.sessionId, sessionId));
+    .where(eq(simScreeningAnswers.runId, runId));
 }

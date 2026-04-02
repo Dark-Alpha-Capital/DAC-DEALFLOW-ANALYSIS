@@ -1,9 +1,7 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { FaGoogle } from "react-icons/fa6";
-import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 import { toast } from "sonner";
 
 const SigninGoogle = () => {
@@ -11,11 +9,10 @@ const SigninGoogle = () => {
     <Button
       onClick={async () => {
         console.log("clicked google sign in");
-
         try {
           const response = await authClient.signIn.social({
             provider: "google",
-            callbackURL: DEFAULT_LOGIN_REDIRECT,
+            callbackURL: "/",
           });
           console.log(response);
         } catch (error) {

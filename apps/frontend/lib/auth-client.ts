@@ -1,17 +1,7 @@
 import { createAuthClient } from "better-auth/react";
 
-function getAuthBaseURL(): string {
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-  return (
-    import.meta.env.VITE_PUBLIC_APP_URL ||
-    "http://localhost:3000"
-  );
-}
-
 export const authClient = createAuthClient({
-  baseURL: getAuthBaseURL(),
+  baseURL: process.env.VITE_PUBLIC_APP_URL || "http://localhost:3000",
 });
 
 // Export useSession hook for convenience

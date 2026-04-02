@@ -12,7 +12,7 @@ import {
   SearchDocumentChunks,
 } from "@repo/db/queries";
 import {
-  updateSimScreeningSession,
+  updateSimScreeningRun,
   upsertSimScreeningAnswer,
 } from "@repo/db/mutations";
 import { extractFilePathFromUrl, getFileContents } from "@repo/nextcloud";
@@ -60,7 +60,14 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
     step: WorkflowStep,
   ): Promise<{ success: boolean; sessionId: string }> {
     const instanceId = event.instanceId;
-    const { userId, documentId, screenerId, sessionId } = event.payload;
+    const {
+      userId,
+      documentId,
+      screenerId,
+      sessionId,
+      runId,
+      skipIngest,
+    } = event.payload;
 
     try {
       await runDbWithWorkerNeonPool(async () => markWorkflowRunning(instanceId));
@@ -69,7 +76,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
         runDbWithWorkerNeonPool(async () => {
           let ingestStarted = false;
           try {
-            await updateSimScreeningSession(sessionId, { status: "INGESTING" });
+            await updateSimScreeningRun(runId, { status: "INGESTING" });
             await updateWorkflowJobProgress(instanceId, {
               step: "Loading document",
               percentage: 5,
@@ -89,6 +96,17 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             }
             if (document.category !== "SIM_SCREENING") {
               throw new Error("Document is not a SIM screening upload");
+            }
+
+            if (
+              skipIngest &&
+              document.ingestionStatus === "PROCESSED"
+            ) {
+              await updateWorkflowJobProgress(instanceId, {
+                step: "Document already ingested",
+                percentage: 40,
+              });
+              return { skipped: true as const };
             }
 
             await updateWorkflowJobProgress(instanceId, {
@@ -205,7 +223,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
 
       await step.do("screen-questions", { timeout: "60 minutes" }, async () =>
         runDbWithWorkerNeonPool(async () => {
-          await updateSimScreeningSession(sessionId, { status: "SCREENING" });
+          await updateSimScreeningRun(runId, { status: "SCREENING" });
           await updateWorkflowJobProgress(instanceId, {
             step: "Loading screener questions",
             percentage: 45,
@@ -268,7 +286,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             );
 
             await upsertSimScreeningAnswer({
-              sessionId,
+              runId,
               questionId: q.id,
               score,
               rationale: object.rationale,
@@ -276,7 +294,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             });
           }
 
-          await updateSimScreeningSession(sessionId, { status: "COMPLETED" });
+          await updateSimScreeningRun(runId, { status: "COMPLETED" });
           await updateWorkflowJobProgress(instanceId, {
             step: "Completed",
             percentage: 100,
@@ -284,7 +302,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
         }),
       );
 
-      const out = { success: true as const, sessionId };
+      const out = { success: true as const, sessionId, runId };
       await runDbWithWorkerNeonPool(async () =>
         markWorkflowCompleted(instanceId, out),
       );
@@ -293,7 +311,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
       const message = err instanceof Error ? err.message : String(err);
       try {
         await runDbWithWorkerNeonPool(async () =>
-          updateSimScreeningSession(sessionId, {
+          updateSimScreeningRun(runId, {
             status: "FAILED",
             errorMessage: message,
           }),

@@ -56,6 +56,9 @@ export type SimScreeningParams = {
   documentId: string;
   screenerId: string;
   sessionId: string;
+  runId: string;
+  /** When false, skip RAG ingest if document is already PROCESSED */
+  skipIngest?: boolean;
 };
 
 /** Cloudflare Worker env with workflow bindings (see wrangler.jsonc) */

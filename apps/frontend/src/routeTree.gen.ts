@@ -28,20 +28,19 @@ import { Route as ProtectedAnalyticsRouteImport } from './routes/_protected/anal
 import { Route as ProtectedAdminRouteImport } from './routes/_protected/admin'
 import { Route as DocumentationDocsRouteImport } from './routes/_documentation/docs'
 import { Route as ChatbotChatRouteImport } from './routes/_chatbot/chat'
-import { Route as ProtectedSimScreeningIndexRouteImport } from './routes/_protected/sim-screening/index'
 import { Route as ProtectedScreenersIndexRouteImport } from './routes/_protected/screeners/index'
 import { Route as ProtectedLeadsIndexRouteImport } from './routes/_protected/leads/index'
 import { Route as ProtectedInvestorLeadsIndexRouteImport } from './routes/_protected/investor-leads/index'
 import { Route as ProtectedInvestmentThemesIndexRouteImport } from './routes/_protected/investment-themes/index'
 import { Route as ProtectedDealOpportunitiesIndexRouteImport } from './routes/_protected/deal-opportunities/index'
 import { Route as ProtectedCompaniesIndexRouteImport } from './routes/_protected/companies/index'
+import { Route as ProtectedCimScreeningIndexRouteImport } from './routes/_protected/cim-screening/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc.$'
 import { Route as ApiLeadsIngestRouteImport } from './routes/api/leads/ingest'
 import { Route as ApiInvestorLeadsIngestRouteImport } from './routes/api/investor-leads/ingest'
 import { Route as ApiHealthRedisRouteImport } from './routes/api/health/redis'
 import { Route as ApiDealOpportunitiesQuickAddRouteImport } from './routes/api/deal-opportunities/quick-add'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ProtectedSimScreeningSessionIdRouteImport } from './routes/_protected/sim-screening/$sessionId'
 import { Route as ProtectedScreenersUidRouteImport } from './routes/_protected/screeners/$uid'
 import { Route as ProtectedProfileUidRouteImport } from './routes/_protected/profile/$uid'
 import { Route as ProtectedNewDocumentRouteImport } from './routes/_protected/new/document'
@@ -53,6 +52,7 @@ import { Route as ProtectedDealOpportunitiesQuickAddRouteImport } from './routes
 import { Route as ProtectedDealOpportunitiesNewRouteImport } from './routes/_protected/deal-opportunities/new'
 import { Route as ProtectedCompaniesNewRouteImport } from './routes/_protected/companies/new'
 import { Route as ProtectedCompaniesUidRouteImport } from './routes/_protected/companies/$uid'
+import { Route as ProtectedCimScreeningSessionIdRouteImport } from './routes/_protected/cim-screening/$sessionId'
 import { Route as DocumentationDocsThemesRouteImport } from './routes/_documentation/docs/themes'
 import { Route as DocumentationDocsScreeningsRouteImport } from './routes/_documentation/docs/screenings'
 import { Route as DocumentationDocsLeadsRouteImport } from './routes/_documentation/docs/leads'
@@ -178,12 +178,6 @@ const ChatbotChatRoute = ChatbotChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => ChatbotRouteRoute,
 } as any)
-const ProtectedSimScreeningIndexRoute =
-  ProtectedSimScreeningIndexRouteImport.update({
-    id: '/sim-screening/',
-    path: '/sim-screening/',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ProtectedScreenersIndexRoute = ProtectedScreenersIndexRouteImport.update({
   id: '/screeners/',
   path: '/screeners/',
@@ -217,6 +211,12 @@ const ProtectedCompaniesIndexRoute = ProtectedCompaniesIndexRouteImport.update({
   path: '/companies/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedCimScreeningIndexRoute =
+  ProtectedCimScreeningIndexRouteImport.update({
+    id: '/cim-screening/',
+    path: '/cim-screening/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   id: '/$',
   path: '/$',
@@ -248,12 +248,6 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProtectedSimScreeningSessionIdRoute =
-  ProtectedSimScreeningSessionIdRouteImport.update({
-    id: '/sim-screening/$sessionId',
-    path: '/sim-screening/$sessionId',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ProtectedScreenersUidRoute = ProtectedScreenersUidRouteImport.update({
   id: '/screeners/$uid',
   path: '/screeners/$uid',
@@ -313,6 +307,12 @@ const ProtectedCompaniesUidRoute = ProtectedCompaniesUidRouteImport.update({
   path: '/companies/$uid',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedCimScreeningSessionIdRoute =
+  ProtectedCimScreeningSessionIdRouteImport.update({
+    id: '/cim-screening/$sessionId',
+    path: '/cim-screening/$sessionId',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const DocumentationDocsThemesRoute = DocumentationDocsThemesRouteImport.update({
   id: '/themes',
   path: '/themes',
@@ -536,6 +536,7 @@ export interface FileRoutesByFullPath {
   '/docs/leads': typeof DocumentationDocsLeadsRoute
   '/docs/screenings': typeof DocumentationDocsScreeningsRoute
   '/docs/themes': typeof DocumentationDocsThemesRoute
+  '/cim-screening/$sessionId': typeof ProtectedCimScreeningSessionIdRoute
   '/companies/$uid': typeof ProtectedCompaniesUidRouteWithChildren
   '/companies/new': typeof ProtectedCompaniesNewRoute
   '/deal-opportunities/new': typeof ProtectedDealOpportunitiesNewRoute
@@ -547,20 +548,19 @@ export interface FileRoutesByFullPath {
   '/new/document': typeof ProtectedNewDocumentRoute
   '/profile/$uid': typeof ProtectedProfileUidRoute
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
-  '/sim-screening/$sessionId': typeof ProtectedSimScreeningSessionIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/cim-screening/': typeof ProtectedCimScreeningIndexRoute
   '/companies/': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
   '/investment-themes/': typeof ProtectedInvestmentThemesIndexRoute
   '/investor-leads/': typeof ProtectedInvestorLeadsIndexRoute
   '/leads/': typeof ProtectedLeadsIndexRoute
   '/screeners/': typeof ProtectedScreenersIndexRoute
-  '/sim-screening/': typeof ProtectedSimScreeningIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/investment-themes/$uid/edit': typeof ProtectedInvestmentThemesUidEditRoute
@@ -611,6 +611,7 @@ export interface FileRoutesByTo {
   '/docs/leads': typeof DocumentationDocsLeadsRoute
   '/docs/screenings': typeof DocumentationDocsScreeningsRoute
   '/docs/themes': typeof DocumentationDocsThemesRoute
+  '/cim-screening/$sessionId': typeof ProtectedCimScreeningSessionIdRoute
   '/companies/$uid': typeof ProtectedCompaniesUidRouteWithChildren
   '/companies/new': typeof ProtectedCompaniesNewRoute
   '/deal-opportunities/new': typeof ProtectedDealOpportunitiesNewRoute
@@ -622,20 +623,19 @@ export interface FileRoutesByTo {
   '/new/document': typeof ProtectedNewDocumentRoute
   '/profile/$uid': typeof ProtectedProfileUidRoute
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
-  '/sim-screening/$sessionId': typeof ProtectedSimScreeningSessionIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/cim-screening': typeof ProtectedCimScreeningIndexRoute
   '/companies': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities': typeof ProtectedDealOpportunitiesIndexRoute
   '/investment-themes': typeof ProtectedInvestmentThemesIndexRoute
   '/investor-leads': typeof ProtectedInvestorLeadsIndexRoute
   '/leads': typeof ProtectedLeadsIndexRoute
   '/screeners': typeof ProtectedScreenersIndexRoute
-  '/sim-screening': typeof ProtectedSimScreeningIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/investment-themes/$uid/edit': typeof ProtectedInvestmentThemesUidEditRoute
@@ -691,6 +691,7 @@ export interface FileRoutesById {
   '/_documentation/docs/leads': typeof DocumentationDocsLeadsRoute
   '/_documentation/docs/screenings': typeof DocumentationDocsScreeningsRoute
   '/_documentation/docs/themes': typeof DocumentationDocsThemesRoute
+  '/_protected/cim-screening/$sessionId': typeof ProtectedCimScreeningSessionIdRoute
   '/_protected/companies/$uid': typeof ProtectedCompaniesUidRouteWithChildren
   '/_protected/companies/new': typeof ProtectedCompaniesNewRoute
   '/_protected/deal-opportunities/new': typeof ProtectedDealOpportunitiesNewRoute
@@ -702,20 +703,19 @@ export interface FileRoutesById {
   '/_protected/new/document': typeof ProtectedNewDocumentRoute
   '/_protected/profile/$uid': typeof ProtectedProfileUidRoute
   '/_protected/screeners/$uid': typeof ProtectedScreenersUidRoute
-  '/_protected/sim-screening/$sessionId': typeof ProtectedSimScreeningSessionIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/_protected/cim-screening/': typeof ProtectedCimScreeningIndexRoute
   '/_protected/companies/': typeof ProtectedCompaniesIndexRoute
   '/_protected/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
   '/_protected/investment-themes/': typeof ProtectedInvestmentThemesIndexRoute
   '/_protected/investor-leads/': typeof ProtectedInvestorLeadsIndexRoute
   '/_protected/leads/': typeof ProtectedLeadsIndexRoute
   '/_protected/screeners/': typeof ProtectedScreenersIndexRoute
-  '/_protected/sim-screening/': typeof ProtectedSimScreeningIndexRoute
   '/_protected/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/_protected/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/_protected/investment-themes/$uid/edit': typeof ProtectedInvestmentThemesUidEditRoute
@@ -768,6 +768,7 @@ export interface FileRouteTypes {
     | '/docs/leads'
     | '/docs/screenings'
     | '/docs/themes'
+    | '/cim-screening/$sessionId'
     | '/companies/$uid'
     | '/companies/new'
     | '/deal-opportunities/new'
@@ -779,20 +780,19 @@ export interface FileRouteTypes {
     | '/new/document'
     | '/profile/$uid'
     | '/screeners/$uid'
-    | '/sim-screening/$sessionId'
     | '/api/auth/$'
     | '/api/deal-opportunities/quick-add'
     | '/api/health/redis'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/trpc/$'
+    | '/cim-screening/'
     | '/companies/'
     | '/deal-opportunities/'
     | '/investment-themes/'
     | '/investor-leads/'
     | '/leads/'
     | '/screeners/'
-    | '/sim-screening/'
     | '/companies/$uid/edit'
     | '/deal-opportunities/$uid/edit'
     | '/investment-themes/$uid/edit'
@@ -843,6 +843,7 @@ export interface FileRouteTypes {
     | '/docs/leads'
     | '/docs/screenings'
     | '/docs/themes'
+    | '/cim-screening/$sessionId'
     | '/companies/$uid'
     | '/companies/new'
     | '/deal-opportunities/new'
@@ -854,20 +855,19 @@ export interface FileRouteTypes {
     | '/new/document'
     | '/profile/$uid'
     | '/screeners/$uid'
-    | '/sim-screening/$sessionId'
     | '/api/auth/$'
     | '/api/deal-opportunities/quick-add'
     | '/api/health/redis'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/trpc/$'
+    | '/cim-screening'
     | '/companies'
     | '/deal-opportunities'
     | '/investment-themes'
     | '/investor-leads'
     | '/leads'
     | '/screeners'
-    | '/sim-screening'
     | '/companies/$uid/edit'
     | '/deal-opportunities/$uid/edit'
     | '/investment-themes/$uid/edit'
@@ -922,6 +922,7 @@ export interface FileRouteTypes {
     | '/_documentation/docs/leads'
     | '/_documentation/docs/screenings'
     | '/_documentation/docs/themes'
+    | '/_protected/cim-screening/$sessionId'
     | '/_protected/companies/$uid'
     | '/_protected/companies/new'
     | '/_protected/deal-opportunities/new'
@@ -933,20 +934,19 @@ export interface FileRouteTypes {
     | '/_protected/new/document'
     | '/_protected/profile/$uid'
     | '/_protected/screeners/$uid'
-    | '/_protected/sim-screening/$sessionId'
     | '/api/auth/$'
     | '/api/deal-opportunities/quick-add'
     | '/api/health/redis'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/trpc/$'
+    | '/_protected/cim-screening/'
     | '/_protected/companies/'
     | '/_protected/deal-opportunities/'
     | '/_protected/investment-themes/'
     | '/_protected/investor-leads/'
     | '/_protected/leads/'
     | '/_protected/screeners/'
-    | '/_protected/sim-screening/'
     | '/_protected/companies/$uid/edit'
     | '/_protected/deal-opportunities/$uid/edit'
     | '/_protected/investment-themes/$uid/edit'
@@ -1112,13 +1112,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatbotChatRouteImport
       parentRoute: typeof ChatbotRouteRoute
     }
-    '/_protected/sim-screening/': {
-      id: '/_protected/sim-screening/'
-      path: '/sim-screening'
-      fullPath: '/sim-screening/'
-      preLoaderRoute: typeof ProtectedSimScreeningIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
     '/_protected/screeners/': {
       id: '/_protected/screeners/'
       path: '/screeners'
@@ -1159,6 +1152,13 @@ declare module '@tanstack/react-router' {
       path: '/companies'
       fullPath: '/companies/'
       preLoaderRoute: typeof ProtectedCompaniesIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/cim-screening/': {
+      id: '/_protected/cim-screening/'
+      path: '/cim-screening'
+      fullPath: '/cim-screening/'
+      preLoaderRoute: typeof ProtectedCimScreeningIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/api/trpc/$': {
@@ -1202,13 +1202,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_protected/sim-screening/$sessionId': {
-      id: '/_protected/sim-screening/$sessionId'
-      path: '/sim-screening/$sessionId'
-      fullPath: '/sim-screening/$sessionId'
-      preLoaderRoute: typeof ProtectedSimScreeningSessionIdRouteImport
-      parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/screeners/$uid': {
       id: '/_protected/screeners/$uid'
@@ -1285,6 +1278,13 @@ declare module '@tanstack/react-router' {
       path: '/companies/$uid'
       fullPath: '/companies/$uid'
       preLoaderRoute: typeof ProtectedCompaniesUidRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/cim-screening/$sessionId': {
+      id: '/_protected/cim-screening/$sessionId'
+      path: '/cim-screening/$sessionId'
+      fullPath: '/cim-screening/$sessionId'
+      preLoaderRoute: typeof ProtectedCimScreeningSessionIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_documentation/docs/themes': {
@@ -1663,6 +1663,7 @@ interface ProtectedRouteRouteChildren {
   ProtectedNewRoute: typeof ProtectedNewRouteWithChildren
   ProtectedScreeningsRoute: typeof ProtectedScreeningsRoute
   ProtectedIndexRoute: typeof ProtectedIndexRoute
+  ProtectedCimScreeningSessionIdRoute: typeof ProtectedCimScreeningSessionIdRoute
   ProtectedCompaniesUidRoute: typeof ProtectedCompaniesUidRouteWithChildren
   ProtectedCompaniesNewRoute: typeof ProtectedCompaniesNewRoute
   ProtectedDealOpportunitiesNewRoute: typeof ProtectedDealOpportunitiesNewRoute
@@ -1672,14 +1673,13 @@ interface ProtectedRouteRouteChildren {
   ProtectedLeadsNewRoute: typeof ProtectedLeadsNewRoute
   ProtectedProfileUidRoute: typeof ProtectedProfileUidRoute
   ProtectedScreenersUidRoute: typeof ProtectedScreenersUidRoute
-  ProtectedSimScreeningSessionIdRoute: typeof ProtectedSimScreeningSessionIdRoute
+  ProtectedCimScreeningIndexRoute: typeof ProtectedCimScreeningIndexRoute
   ProtectedCompaniesIndexRoute: typeof ProtectedCompaniesIndexRoute
   ProtectedDealOpportunitiesIndexRoute: typeof ProtectedDealOpportunitiesIndexRoute
   ProtectedInvestmentThemesIndexRoute: typeof ProtectedInvestmentThemesIndexRoute
   ProtectedInvestorLeadsIndexRoute: typeof ProtectedInvestorLeadsIndexRoute
   ProtectedLeadsIndexRoute: typeof ProtectedLeadsIndexRoute
   ProtectedScreenersIndexRoute: typeof ProtectedScreenersIndexRoute
-  ProtectedSimScreeningIndexRoute: typeof ProtectedSimScreeningIndexRoute
   ProtectedDealOpportunitiesUidEditRoute: typeof ProtectedDealOpportunitiesUidEditRoute
   ProtectedInvestmentThemesUidEditRoute: typeof ProtectedInvestmentThemesUidEditRoute
   ProtectedInvestorLeadsUidConvertRoute: typeof ProtectedInvestorLeadsUidConvertRoute
@@ -1703,6 +1703,7 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedNewRoute: ProtectedNewRouteWithChildren,
   ProtectedScreeningsRoute: ProtectedScreeningsRoute,
   ProtectedIndexRoute: ProtectedIndexRoute,
+  ProtectedCimScreeningSessionIdRoute: ProtectedCimScreeningSessionIdRoute,
   ProtectedCompaniesUidRoute: ProtectedCompaniesUidRouteWithChildren,
   ProtectedCompaniesNewRoute: ProtectedCompaniesNewRoute,
   ProtectedDealOpportunitiesNewRoute: ProtectedDealOpportunitiesNewRoute,
@@ -1713,14 +1714,13 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedLeadsNewRoute: ProtectedLeadsNewRoute,
   ProtectedProfileUidRoute: ProtectedProfileUidRoute,
   ProtectedScreenersUidRoute: ProtectedScreenersUidRoute,
-  ProtectedSimScreeningSessionIdRoute: ProtectedSimScreeningSessionIdRoute,
+  ProtectedCimScreeningIndexRoute: ProtectedCimScreeningIndexRoute,
   ProtectedCompaniesIndexRoute: ProtectedCompaniesIndexRoute,
   ProtectedDealOpportunitiesIndexRoute: ProtectedDealOpportunitiesIndexRoute,
   ProtectedInvestmentThemesIndexRoute: ProtectedInvestmentThemesIndexRoute,
   ProtectedInvestorLeadsIndexRoute: ProtectedInvestorLeadsIndexRoute,
   ProtectedLeadsIndexRoute: ProtectedLeadsIndexRoute,
   ProtectedScreenersIndexRoute: ProtectedScreenersIndexRoute,
-  ProtectedSimScreeningIndexRoute: ProtectedSimScreeningIndexRoute,
   ProtectedDealOpportunitiesUidEditRoute:
     ProtectedDealOpportunitiesUidEditRoute,
   ProtectedInvestmentThemesUidEditRoute: ProtectedInvestmentThemesUidEditRoute,

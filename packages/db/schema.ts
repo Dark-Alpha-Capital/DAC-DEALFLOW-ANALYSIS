@@ -1198,7 +1198,7 @@ export const workflowJobs = pgTable(
   }),
 );
 
-/** Standalone SIM (PDF) screening run: RAG over one document + template questions */
+/** SIM screening workspace: one uploaded document per session; runs hold per-template executions */
 export const simScreeningSessions = pgTable(
   "SimScreeningSession",
   {
@@ -1211,12 +1211,6 @@ export const simScreeningSessions = pgTable(
     documentId: text("documentId")
       .notNull()
       .references(() => documents.id, { onDelete: "cascade" }),
-    screenerId: text("screenerId")
-      .notNull()
-      .references(() => screenerTemplates.id, { onDelete: "cascade" }),
-    workflowInstanceId: text("workflowInstanceId"),
-    status: simScreeningSessionStatusEnum("status").default("PENDING").notNull(),
-    errorMessage: text("errorMessage"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()
@@ -1233,8 +1227,9 @@ export const simScreeningSessions = pgTable(
   }),
 );
 
-export const simScreeningAnswers = pgTable(
-  "SimScreeningAnswer",
+/** One screening execution: screener template + workflow job + answers */
+export const simScreeningRuns = pgTable(
+  "SimScreeningRun",
   {
     id: text("id")
       .primaryKey()
@@ -1242,6 +1237,34 @@ export const simScreeningAnswers = pgTable(
     sessionId: text("sessionId")
       .notNull()
       .references(() => simScreeningSessions.id, { onDelete: "cascade" }),
+    screenerId: text("screenerId")
+      .notNull()
+      .references(() => screenerTemplates.id, { onDelete: "cascade" }),
+    workflowInstanceId: text("workflowInstanceId"),
+    status: simScreeningSessionStatusEnum("status").default("PENDING").notNull(),
+    errorMessage: text("errorMessage"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    simScreeningRunSessionIdx: index("sim_screening_run_session_idx").on(
+      table.sessionId,
+    ),
+  }),
+);
+
+export const simScreeningAnswers = pgTable(
+  "SimScreeningAnswer",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    runId: text("runId")
+      .notNull()
+      .references(() => simScreeningRuns.id, { onDelete: "cascade" }),
     questionId: text("questionId")
       .notNull()
       .references(() => screenerQuestions.id, { onDelete: "cascade" }),
@@ -1255,11 +1278,11 @@ export const simScreeningAnswers = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => ({
-    simScreeningAnswerSessionQuestionUnique: uniqueIndex(
-      "sim_screening_answer_session_question_unique",
-    ).on(table.sessionId, table.questionId),
-    simScreeningAnswerSessionIdx: index("sim_screening_answer_session_idx").on(
-      table.sessionId,
+    simScreeningAnswerRunQuestionUnique: uniqueIndex(
+      "sim_screening_answer_run_question_unique",
+    ).on(table.runId, table.questionId),
+    simScreeningAnswerRunIdx: index("sim_screening_answer_run_idx").on(
+      table.runId,
     ),
   }),
 );
@@ -1743,7 +1766,7 @@ export const companyNotesRelations = relations(companyNotes, ({ one }) => ({
 export const screenersRelations = relations(screeners, ({ many }) => ({
   questions: many(screenerQuestions),
   aiScreenings: many(aiScreenings),
-  simScreeningSessions: many(simScreeningSessions),
+  simScreeningRuns: many(simScreeningRuns),
 }));
 
 export const screenerQuestionsRelations = relations(
@@ -1769,8 +1792,19 @@ export const simScreeningSessionsRelations = relations(
       fields: [simScreeningSessions.documentId],
       references: [documents.id],
     }),
+    runs: many(simScreeningRuns),
+  }),
+);
+
+export const simScreeningRunsRelations = relations(
+  simScreeningRuns,
+  ({ one, many }) => ({
+    session: one(simScreeningSessions, {
+      fields: [simScreeningRuns.sessionId],
+      references: [simScreeningSessions.id],
+    }),
     screener: one(screeners, {
-      fields: [simScreeningSessions.screenerId],
+      fields: [simScreeningRuns.screenerId],
       references: [screeners.id],
     }),
     answers: many(simScreeningAnswers),
@@ -1780,9 +1814,9 @@ export const simScreeningSessionsRelations = relations(
 export const simScreeningAnswersRelations = relations(
   simScreeningAnswers,
   ({ one }) => ({
-    session: one(simScreeningSessions, {
-      fields: [simScreeningAnswers.sessionId],
-      references: [simScreeningSessions.id],
+    run: one(simScreeningRuns, {
+      fields: [simScreeningAnswers.runId],
+      references: [simScreeningRuns.id],
     }),
     question: one(screenerQuestions, {
       fields: [simScreeningAnswers.questionId],
@@ -2066,6 +2100,8 @@ export type NewCIMExtraction = typeof cimExtractions.$inferInsert;
 
 export type SimScreeningSession = typeof simScreeningSessions.$inferSelect;
 export type NewSimScreeningSession = typeof simScreeningSessions.$inferInsert;
+export type SimScreeningRun = typeof simScreeningRuns.$inferSelect;
+export type NewSimScreeningRun = typeof simScreeningRuns.$inferInsert;
 export type SimScreeningAnswer = typeof simScreeningAnswers.$inferSelect;
 export type NewSimScreeningAnswer = typeof simScreeningAnswers.$inferInsert;
 

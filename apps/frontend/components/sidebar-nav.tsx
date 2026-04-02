@@ -1,4 +1,3 @@
-
 import { Link } from "@tanstack/react-router";
 import { usePathname } from "@/lib/navigation-shim";
 import { useEffect, useState } from "react";
@@ -64,7 +63,7 @@ const adminNavItems: NavItem[] = [
   { title: "Jobs", url: "/jobs", icon: FiBriefcase },
   { title: "Analytics", url: "/analytics", icon: FiBarChart2 },
   { title: "Screeners", url: "/screeners", icon: FaScrewdriver },
-  { title: "SIM screening", url: "/sim-screening/", icon: FiClipboard },
+  { title: "CIM screening", url: "/cim-screening/", icon: FiClipboard },
   { title: "Documents", url: "/documents", icon: FiFileText },
 ];
 
@@ -183,7 +182,9 @@ export function SidebarNav({ session }: SidebarNavProps) {
       </SidebarGroup>
 
       <SidebarGroup>
-        <SidebarGroupLabel className={groupLabelClass}>Deal flow</SidebarGroupLabel>
+        <SidebarGroupLabel className={groupLabelClass}>
+          Deal flow
+        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu className="gap-1">
             <LeadsCollapsible />
@@ -193,7 +194,9 @@ export function SidebarNav({ session }: SidebarNavProps) {
       </SidebarGroup>
 
       <SidebarGroup>
-        <SidebarGroupLabel className={groupLabelClass}>Investors</SidebarGroupLabel>
+        <SidebarGroupLabel className={groupLabelClass}>
+          Investors
+        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu className="gap-1">
             <SimpleNavItems items={investorItems} />
@@ -202,7 +205,9 @@ export function SidebarNav({ session }: SidebarNavProps) {
       </SidebarGroup>
 
       <SidebarGroup>
-        <SidebarGroupLabel className={groupLabelClass}>Workspace</SidebarGroupLabel>
+        <SidebarGroupLabel className={groupLabelClass}>
+          Workspace
+        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu className="gap-1">
             <SimpleNavItems items={workspaceItems} />
@@ -212,7 +217,9 @@ export function SidebarNav({ session }: SidebarNavProps) {
 
       {isAdmin && (
         <SidebarGroup>
-          <SidebarGroupLabel className={groupLabelClass}>Admin</SidebarGroupLabel>
+          <SidebarGroupLabel className={groupLabelClass}>
+            Admin
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
               <SimpleNavItems items={adminNavItems} />

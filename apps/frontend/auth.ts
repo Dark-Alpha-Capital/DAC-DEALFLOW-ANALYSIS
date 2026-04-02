@@ -45,18 +45,8 @@ function isAllowedEmail(email: string | null | undefined) {
   return email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
 }
 
-/**
- * Canonical site URL for OAuth redirects and cookies. Set in production
- * (`BETTER_AUTH_URL` or `NEXT_PUBLIC_APP_URL`). If unset, Better Auth derives
- * the origin from each request so dev works on any localhost port.
- */
-const explicitPublicUrl =
-  process.env.BETTER_AUTH_URL?.trim() ||
-  process.env.VITE_PUBLIC_APP_URL?.trim() ||
-  undefined;
-
 export const auth: ReturnType<typeof betterAuth> = betterAuth({
-  ...(explicitPublicUrl ? { baseURL: explicitPublicUrl } : {}),
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
   plugins: [tanstackStartCookies()],
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -187,7 +177,6 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
       };
     },
   },
-  ...(explicitPublicUrl ? { trustedOrigins: [explicitPublicUrl] } : {}),
   onAPIError: {
     errorURL: "/auth/error",
   },
