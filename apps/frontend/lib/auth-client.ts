@@ -1,6 +1,6 @@
 import { createAuthClient } from "better-auth/react";
 
-function getAuthClientBaseUrl(): string {
+export function getAuthClientBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_PUBLIC_APP_URL as string | undefined;
   if (fromEnv?.trim()) return fromEnv.replace(/\/+$/, "");
   if (typeof window !== "undefined" && window.location?.origin)

@@ -5,7 +5,7 @@ import { useRouter } from "@/lib/navigation-shim";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { authClient } from "@/lib/auth-client";
+import { authClient, getAuthClientBaseUrl } from "@/lib/auth-client";
 import { FaGoogle } from "react-icons/fa6";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -73,6 +73,8 @@ function LoginPage() {
 
   function handleGoogleSignIn() {
     startTransition(async () => {
+      console.log("clicked google sign in");
+      console.log("authClient.baseURL", getAuthClientBaseUrl());
       try {
         await authClient.signIn.social({
           provider: "google",

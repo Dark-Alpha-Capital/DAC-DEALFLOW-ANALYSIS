@@ -1,0 +1,4 @@
+{
+  "typescript.tsdk": "apps/frontend/node_modules/typescript/lib",
+  "eslint.workingDirectories": ["apps/frontend"]
+}

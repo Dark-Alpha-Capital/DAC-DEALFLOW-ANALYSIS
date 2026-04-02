@@ -15,6 +15,9 @@
     "baseUrl": ".",
     "incremental": true,
     "paths": {
+      "@/components/*": ["./components/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/hooks/*": ["./hooks/*"],
       "@/*": ["./*"],
       "@repo/db": ["../../packages/db/index.ts"],
       "@repo/db/*": ["../../packages/db/*"],
