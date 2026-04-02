@@ -1,7 +1,7 @@
 
 import type React from "react";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,10 @@ import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 
 const GLOBAL_CATEGORIES = [
+  {
+    value: "CIM",
+    label: "CIM (Confidential Information Memorandum)",
+  },
   { value: "OPERATING_PLAYBOOK", label: "Operating playbook" },
   { value: "INVESTMENT_MEMO", label: "Investment memo" },
   { value: "IC_TEMPLATE", label: "IC template" },
@@ -85,6 +89,24 @@ export function GlobalDocumentUploadDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const trpc = useTRPC();
 
+  const fileAccept = useMemo(
+    () =>
+      category === "CIM"
+        ? ["application/pdf", ".pdf"]
+        : acceptedTypes,
+    [category, acceptedTypes],
+  );
+
+  useEffect(() => {
+    if (category !== "CIM" || !file) return;
+    if (!file.file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("CIM must be a PDF", {
+        description: "Choose another file or change category.",
+      });
+      setFile(null);
+    }
+  }, [category, file]);
+
   const { mutate: uploadGlobalDocument, isPending } = useMutation(
     trpc.files.uploadGlobalDocument.mutationOptions({
       onSuccess: () => {
@@ -113,6 +135,14 @@ export function GlobalDocumentUploadDialog({
       toast.error("File too large", {
         description: `File exceeds size limit of ${maxFileSize}MB.`,
       });
+      return;
+    }
+
+    if (
+      category === "CIM" &&
+      !selected.name.toLowerCase().endsWith(".pdf")
+    ) {
+      toast.error("CIM must be a PDF file");
       return;
     }
 
@@ -173,7 +203,10 @@ export function GlobalDocumentUploadDialog({
         description: description.trim() || undefined,
         fileData,
         fileName: file.file.name,
-        fileType: file.file.type || "application/octet-stream",
+        fileType:
+          category === "CIM"
+            ? "application/pdf"
+            : file.file.type || "application/octet-stream",
       });
     } catch (error) {
       console.error("Upload failed:", error);
@@ -253,12 +286,14 @@ export function GlobalDocumentUploadDialog({
               Drop a file or click to browse
             </p>
             <p className="text-muted-foreground text-xs">
-              Max size {maxFileSize}MB
+              {category === "CIM"
+                ? `PDF only · max ${maxFileSize}MB`
+                : `Max size ${maxFileSize}MB`}
             </p>
             <input
               ref={fileInputRef}
               type="file"
-              accept={acceptedTypes.join(",")}
+              accept={fileAccept.join(",")}
               onChange={handleFileSelect}
               className="hidden"
             />

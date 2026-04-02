@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import AdmZip from "adm-zip";
 import { after } from "@/lib/after";
@@ -56,6 +57,7 @@ const uploadGlobalDocumentSchema = z.object({
     "VALUE_CREATION_PLAYBOOK",
     "PAST_DEAL_ANALYSIS",
     "DUE_DILIGENCE_CHECKLIST",
+    "CIM",
   ]),
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
@@ -268,6 +270,16 @@ export const filesRouter = createTRPCRouter({
 
       if (!userId || userId.trim() === "") {
         throw new Error("User ID is required but not found in session");
+      }
+
+      if (
+        input.category === "CIM" &&
+        !input.fileName.toLowerCase().endsWith(".pdf")
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "CIM uploads must be PDF files",
+        });
       }
 
       const base64Data = input.fileData.split(",")[1] || input.fileData;

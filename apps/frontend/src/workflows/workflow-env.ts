@@ -61,8 +61,6 @@ export type SimScreeningParams = {
   documentId?: string;
   /** Template screening across all ingested chunks for this deal */
   dealOpportunityId?: string;
-  /** When true, skip RAG ingest if document is already PROCESSED (SIM only) */
-  skipIngest?: boolean;
 };
 
 /** Cloudflare Worker env with workflow bindings (see wrangler.jsonc) */

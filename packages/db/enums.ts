@@ -164,6 +164,7 @@ export const DocumentCategory = {
   PAST_DEAL_ANALYSIS: "PAST_DEAL_ANALYSIS",
   DUE_DILIGENCE_CHECKLIST: "DUE_DILIGENCE_CHECKLIST",
   SIM_SCREENING: "SIM_SCREENING",
+  CIM: "CIM",
 } as const;
 export type DocumentCategory =
   (typeof DocumentCategory)[keyof typeof DocumentCategory];

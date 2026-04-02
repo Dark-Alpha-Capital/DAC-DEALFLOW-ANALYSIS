@@ -3,7 +3,6 @@ import { randomUUID } from "crypto";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents, dealOpportunities, eq } from "@repo/db";
-import { uploadBuffer, sanitizeFilename } from "@repo/nextcloud";
 import {
   deleteSimScreeningAnswersForRun,
   insertSimScreeningSession,
@@ -21,7 +20,11 @@ import {
   getSimScreeningRunByIdForUser,
   simScreeningSessionHasActiveRun,
   countDocumentChunksByDealOpportunityId,
+  countDocumentChunksByDocumentId,
+  listSimScreeningLibraryDocumentsForUser,
+  getDocumentChunksByIds,
 } from "@repo/db/queries";
+import { mapEvidenceChunkIdsToCitations } from "@/lib/map-sim-screening-evidence";
 import {
   insertWorkflowJob,
   startSimScreeningWorkflow,
@@ -31,23 +34,25 @@ import {
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 
 const startSchema = z.object({
-  fileName: z.string().min(1),
-  fileData: z.string(),
+  documentId: z.string().min(1),
   screenerId: z.string().min(1),
 });
 
+const SCREENING_LIBRARY_CATEGORIES = ["CIM", "SIM_SCREENING"] as const;
+
 export const simScreeningRouter = createTRPCRouter({
-  start: protectedProcedure.input(startSchema).mutation(async ({ input, ctx }) => {
+  listLibraryDocuments: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.user.id;
     if (!userId?.trim()) {
       throw new TRPCError({ code: "UNAUTHORIZED", message: "User ID required" });
     }
+    return listSimScreeningLibraryDocumentsForUser(userId);
+  }),
 
-    if (!input.fileName.toLowerCase().endsWith(".pdf")) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "SIM must be a PDF file",
-      });
+  start: protectedProcedure.input(startSchema).mutation(async ({ input, ctx }) => {
+    const userId = ctx.user.id;
+    if (!userId?.trim()) {
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "User ID required" });
     }
 
     const screener = await getScreenerById(input.screenerId);
@@ -58,38 +63,69 @@ export const simScreeningRouter = createTRPCRouter({
       });
     }
 
-    const base64Data = input.fileData.split(",")[1] || input.fileData;
-    const buffer = Buffer.from(base64Data, "base64");
-    const safeName = sanitizeFilename(input.fileName) || "sim.pdf";
-    const finalPath = `dealflow/sim_screening/${userId}/${randomUUID()}-${safeName}`;
-    const fileUrl = await uploadBuffer(buffer, finalPath);
+    const [docRow] = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.id, input.documentId))
+      .limit(1);
 
-    const [documentRecord] = await db
-      .insert(documents)
-      .values({
-        entityType: "GLOBAL",
-        entityId: null,
-        title: input.fileName,
-        description: "SIM screening upload",
-        category: "SIM_SCREENING",
-        fileUrl,
-        fileName: input.fileName,
-        fileSize: buffer.length,
-        mimeType: "application/pdf",
-        uploadedById: userId,
-      })
-      .returning();
+    if (!docRow) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" });
+    }
 
-    if (!documentRecord) {
+    if (docRow.entityType !== "GLOBAL") {
       throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to save document",
+        code: "BAD_REQUEST",
+        message: "Only firm library documents can be used for CIM screening",
+      });
+    }
+
+    if (docRow.uploadedById !== userId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You can only screen documents you uploaded",
+      });
+    }
+
+    if (
+      !(SCREENING_LIBRARY_CATEGORIES as readonly string[]).includes(
+        docRow.category,
+      )
+    ) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Document must be a CIM library upload or legacy SIM screening file",
+      });
+    }
+
+    if (docRow.ingestionStatus !== "PROCESSED") {
+      const hint =
+        docRow.ingestionStatus === "PENDING" ||
+        docRow.ingestionStatus === "PROCESSING"
+          ? "Wait for ingestion to finish (Firm documents), then try again."
+          : docRow.ingestionStatus === "FAILED"
+            ? docRow.ingestionError
+              ? `Ingestion failed: ${docRow.ingestionError}`
+              : "Ingestion failed; re-upload or retry from documents."
+            : "This document was skipped during ingestion and cannot be screened.";
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Document is not ready for screening. ${hint}`,
+      });
+    }
+
+    const chunkCount = await countDocumentChunksByDocumentId(docRow.id);
+    if (chunkCount === 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "No ingested chunks for this document. Re-ingest from firm documents or contact support.",
       });
     }
 
     const session = await insertSimScreeningSession({
       userId,
-      documentId: documentRecord.id,
+      documentId: docRow.id,
     });
 
     if (!session) {
@@ -113,28 +149,30 @@ export const simScreeningRouter = createTRPCRouter({
       });
     }
 
+    const fileLabel = docRow.fileName ?? docRow.title ?? "CIM.pdf";
+
     await insertWorkflowJob({
       instanceId: jobId,
       workflowKind: "sim-screening",
       userId,
-      fileName: input.fileName,
+      fileName: fileLabel,
       screenerId: input.screenerId,
     });
 
     await startSimScreeningWorkflow(jobId, {
       jobId,
       userId,
-      documentId: documentRecord.id,
+      documentId: docRow.id,
       screenerId: input.screenerId,
       sessionId: session.id,
       runId: run.id,
-      skipIngest: false,
     });
 
     return {
       sessionId: session.id,
       runId: run.id,
-      documentId: documentRecord.id,
+      documentId: docRow.id,
+      jobLabel: fileLabel,
       jobId,
       queueName: QUEUE_NAMES.SIM_SCREENING,
     };
@@ -186,6 +224,14 @@ export const simScreeningRouter = createTRPCRouter({
             code: "BAD_REQUEST",
             message:
               "Document must be fully ingested before screening with another template. Wait for the first run to finish or retry a failed run.",
+          });
+        }
+        const docChunks = await countDocumentChunksByDocumentId(simDocId);
+        if (docChunks === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "No chunks for this document. Re-ingest from Firm documents, then try again.",
           });
         }
       } else {
@@ -261,7 +307,7 @@ export const simScreeningRouter = createTRPCRouter({
         userId,
         ...(dealOppId
           ? { dealOpportunityId: dealOppId }
-          : { documentId: simDocId!, skipIngest: true }),
+          : { documentId: simDocId! }),
         screenerId: input.screenerId,
         sessionId: session.id,
         runId: run.id,
@@ -307,23 +353,23 @@ export const simScreeningRouter = createTRPCRouter({
       const [documentRow, dealRow, questions, answers] = await Promise.all([
         session.documentId
           ? db
-              .select()
-              .from(documents)
-              .where(eq(documents.id, session.documentId))
-              .limit(1)
-              .then((r) => r[0] ?? null)
+            .select()
+            .from(documents)
+            .where(eq(documents.id, session.documentId))
+            .limit(1)
+            .then((r) => r[0] ?? null)
           : Promise.resolve(null),
         session.dealOpportunityId
           ? db
-              .select({
-                id: dealOpportunities.id,
-                dealTeaser: dealOpportunities.dealTeaser,
-                description: dealOpportunities.description,
-              })
-              .from(dealOpportunities)
-              .where(eq(dealOpportunities.id, session.dealOpportunityId))
-              .limit(1)
-              .then((r) => r[0] ?? null)
+            .select({
+              id: dealOpportunities.id,
+              dealTeaser: dealOpportunities.dealTeaser,
+              description: dealOpportunities.description,
+            })
+            .from(dealOpportunities)
+            .where(eq(dealOpportunities.id, session.dealOpportunityId))
+            .limit(1)
+            .then((r) => r[0] ?? null)
           : Promise.resolve(null),
         selectedRun
           ? getScreenerQuestions(selectedRun.screenerId)
@@ -339,6 +385,16 @@ export const simScreeningRouter = createTRPCRouter({
 
       const answerByQuestionId = new Map(answers.map((a) => [a.questionId, a]));
 
+      const allEvidenceIds = [
+        ...new Set(
+          answers.flatMap((a) => a.evidenceChunkIds ?? []).filter(Boolean),
+        ),
+      ];
+      const evidenceChunkRows =
+        allEvidenceIds.length > 0
+          ? await getDocumentChunksByIds(allEvidenceIds)
+          : [];
+
       const rows = questions.map((q) => {
         const ans = answerByQuestionId.get(q.id);
         return {
@@ -349,6 +405,10 @@ export const simScreeningRouter = createTRPCRouter({
           score: ans?.score ?? null,
           rationale: ans?.rationale ?? null,
           evidenceChunkIds: ans?.evidenceChunkIds ?? null,
+          evidenceCitations: mapEvidenceChunkIdsToCitations(
+            ans?.evidenceChunkIds ?? null,
+            evidenceChunkRows,
+          ),
         };
       });
 
@@ -456,7 +516,7 @@ export const simScreeningRouter = createTRPCRouter({
       let fileLabel = "SIM.pdf";
       let workflowPayload:
         | { dealOpportunityId: string }
-        | { documentId: string; skipIngest: boolean };
+        | { documentId: string };
 
       if (dealOppId) {
         const chunkCount =
@@ -483,9 +543,23 @@ export const simScreeningRouter = createTRPCRouter({
           .from(documents)
           .where(eq(documents.id, simDocId))
           .limit(1);
-        const skipIngest = docRow?.ingestionStatus === "PROCESSED";
-        fileLabel = docRow?.fileName ?? docRow?.title ?? "SIM.pdf";
-        workflowPayload = { documentId: simDocId, skipIngest };
+        if (!docRow || docRow.ingestionStatus !== "PROCESSED") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Document must be fully ingested before retry. Fix ingestion from Firm documents, then retry.",
+          });
+        }
+        const chunks = await countDocumentChunksByDocumentId(simDocId);
+        if (chunks === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "No chunks for this document. Re-ingest from Firm documents, then retry.",
+          });
+        }
+        fileLabel = docRow.fileName ?? docRow.title ?? "SIM.pdf";
+        workflowPayload = { documentId: simDocId };
       } else {
         throw new TRPCError({
           code: "BAD_REQUEST",

@@ -68,6 +68,7 @@ export const documentCategoryEnum = pgEnum("DocumentCategory", [
   "PAST_DEAL_ANALYSIS",
   "DUE_DILIGENCE_CHECKLIST",
   "SIM_SCREENING",
+  "CIM",
 ]);
 
 // Entity type enum for polymorphic association

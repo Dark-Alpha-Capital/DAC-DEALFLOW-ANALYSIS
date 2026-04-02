@@ -5,28 +5,16 @@ import {
 } from "cloudflare:workers";
 import { generateObject } from "ai";
 import { z } from "zod";
-import db, { count, eq, runDbWithWorkerNeonPool, sql } from "@repo/db";
+import db, { count, eq, runDbWithWorkerNeonPool } from "@repo/db";
 import { documents, documentChunks } from "@repo/db/schema";
 import { getScreenerQuestions } from "@repo/db/queries";
 import {
   updateSimScreeningRun,
   upsertSimScreeningAnswer,
 } from "@repo/db/mutations";
-import { extractFilePathFromUrl, getFileContents } from "@repo/nextcloud";
-import {
-  EMBEDDING_DIMENSION,
-  getEmbedding,
-  processContent,
-  resolveMimeType,
-  type MetadataBase,
-  type ProcessResult,
-} from "@repo/rag-engine";
+import { getEmbedding } from "@repo/rag-engine";
 import { updateWorkflowJobProgress } from "@repo/db/workflow-jobs";
-import {
-  deleteChunkVectorsForDocument,
-  searchDocumentChunksVector,
-  upsertDocumentChunkVectors,
-} from "@/lib/document-chunk-vectorize";
+import { searchDocumentChunksVector } from "@/lib/document-chunk-vectorize";
 import {
   buildSimScreeningQuestionPrompt,
   getOpenAIProvider,
@@ -35,7 +23,6 @@ import {
   markWorkflowCompleted,
   markWorkflowFailed,
   markWorkflowRunning,
-  workflowProgressReporter,
 } from "./progress";
 import type { SimScreeningParams, WorkflowWorkerEnv } from "./workflow-env";
 
@@ -63,17 +50,6 @@ function logError(phase: string, err: unknown, extra: Record<string, unknown> = 
   });
 }
 
-async function markDocumentIngestionFailed(documentId: string, message: string) {
-  await db
-    .update(documents)
-    .set({
-      ingestionStatus: "FAILED",
-      ingestionCompletedAt: new Date(),
-      ingestionError: message,
-    })
-    .where(eq(documents.id, documentId));
-}
-
 export class SimScreeningWorkflow extends WorkflowEntrypoint<
   WorkflowWorkerEnv,
   SimScreeningParams
@@ -90,7 +66,6 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
       screenerId,
       sessionId,
       runId,
-      skipIngest,
     } = event.payload;
 
     const dealOppId = payloadDealOppId?.trim();
@@ -110,7 +85,6 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
       documentId: simDocumentId ?? null,
       dealOpportunityId: dealOppId ?? null,
       screenerId,
-      skipIngest: skipIngest ?? false,
       scope: isDealScope ? "deal_opportunity" : "sim_document",
     });
 
@@ -152,23 +126,23 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
           }),
         );
       } else {
-        await step.do("validate-and-ingest", { timeout: "30 minutes" }, async () =>
-        runDbWithWorkerNeonPool(async () => {
-          const documentId = simDocumentId!;
-          const ingestT0 = Date.now();
-          let ingestStarted = false;
-          try {
-            logDetail("step.validate-and-ingest.enter", { instanceId, runId });
+        await step.do("validate-library-document", { timeout: "5 minutes" }, async () =>
+          runDbWithWorkerNeonPool(async () => {
+            const documentId = simDocumentId!;
+            logDetail("step.validate-library-document.enter", {
+              instanceId,
+              runId,
+              documentId,
+            });
             if (!this.env.DOCUMENT_CHUNKS_INDEX) {
               throw new Error(
                 "DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config",
               );
             }
-            const vectorIndex = this.env.DOCUMENT_CHUNKS_INDEX;
             await updateSimScreeningRun(runId, { status: "INGESTING" });
             await updateWorkflowJobProgress(instanceId, {
-              step: "Loading document",
-              percentage: 5,
+              step: "Validating ingested document",
+              percentage: 10,
             });
 
             const [document] = await db
@@ -184,22 +158,9 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             logDetail("validate.document.loaded", {
               documentId,
               fileName: document.fileName,
-              mimeType: document.mimeType,
               category: document.category,
               ingestionStatus: document.ingestionStatus,
-              fileSize: document.fileSize,
               uploadedById: document.uploadedById,
-              entityType: document.entityType,
-              dealOpportunityId: document.dealOpportunityId,
-              companyId: document.companyId,
-              themeId: document.themeId,
-              fileUrlHost: (() => {
-                try {
-                  return new URL(document.fileUrl).hostname;
-                } catch {
-                  return "invalid_url";
-                }
-              })(),
             });
             if (document.uploadedById !== userId) {
               logDetail("validate.document.forbidden_user", {
@@ -209,270 +170,44 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
               });
               throw new Error("Document does not belong to this user");
             }
-            if (document.category !== "SIM_SCREENING") {
+            if (
+              document.category !== "SIM_SCREENING" &&
+              document.category !== "CIM"
+            ) {
               logDetail("validate.document.bad_category", {
                 documentId,
                 category: document.category,
               });
-              throw new Error("Document is not a SIM screening upload");
-            }
-
-            if (
-              skipIngest &&
-              document.ingestionStatus === "PROCESSED"
-            ) {
-              logDetail("ingest.skipped_already_processed", {
-                documentId,
-                skipIngest,
-                elapsedMs: Date.now() - ingestT0,
-              });
-              await updateWorkflowJobProgress(instanceId, {
-                step: "Document already ingested",
-                percentage: 40,
-              });
-              return { skipped: true as const };
-            }
-
-            await updateWorkflowJobProgress(instanceId, {
-              step: "Fetching SIM file",
-              percentage: 15,
-            });
-
-            const filePath = extractFilePathFromUrl(document.fileUrl);
-            if (!filePath) {
-              logDetail("ingest.file_path.unresolved", {
-                documentId,
-                fileUrlHost: (() => {
-                  try {
-                    return new URL(document.fileUrl).hostname;
-                  } catch {
-                    return "invalid_url";
-                  }
-                })(),
-              });
-              throw new Error("Could not resolve storage path from document.fileUrl");
-            }
-            logDetail("ingest.file_path.resolved", {
-              documentId,
-              pathSuffix: filePath.slice(-96),
-            });
-
-            const fetchT0 = Date.now();
-            const fileBuffer = await getFileContents(filePath);
-            logDetail("ingest.file_fetched", {
-              documentId,
-              byteLength: fileBuffer?.length ?? 0,
-              elapsedMs: Date.now() - fetchT0,
-            });
-
-            const normalizedMime = resolveMimeType(
-              document.fileName,
-              document.mimeType,
-            );
-            logDetail("ingest.mime_resolved", {
-              documentId,
-              normalizedMime,
-              declaredMime: document.mimeType,
-            });
-
-            await db
-              .update(documents)
-              .set({
-                ingestionStatus: "PROCESSING",
-                ingestionStartedAt: new Date(),
-                ingestionCompletedAt: null,
-                ingestionError: null,
-                ingestionAttemptCount: sql`${documents.ingestionAttemptCount} + 1`,
-              })
-              .where(eq(documents.id, documentId));
-            ingestStarted = true;
-            logDetail("ingest.document_status.processing", { documentId });
-
-            const vecDelT0 = Date.now();
-            await deleteChunkVectorsForDocument(db, vectorIndex, documentId);
-            logDetail("ingest.vectorize.deleted_old_vectors", {
-              documentId,
-              elapsedMs: Date.now() - vecDelT0,
-            });
-
-            const sqlDelT0 = Date.now();
-            await db
-              .delete(documentChunks)
-              .where(eq(documentChunks.documentId, documentId));
-            logDetail("ingest.sql.deleted_old_chunks", {
-              documentId,
-              elapsedMs: Date.now() - sqlDelT0,
-            });
-
-            const reporter = workflowProgressReporter(instanceId);
-            const metadataBase: MetadataBase = {
-              fileName: document.fileName,
-              mimeType: normalizedMime,
-              source: "rag-ingestion",
-            };
-
-            const docContext = {
-              id: document.id,
-              entityType: document.entityType,
-              entityId: document.entityId,
-              dealOpportunityId: document.dealOpportunityId,
-              companyId: document.companyId,
-              themeId: document.themeId,
-            };
-
-            const buf = Buffer.from(fileBuffer);
-            const extractT0 = Date.now();
-            logDetail("ingest.processContent.start", {
-              documentId,
-              bufferLength: buf.length,
-              normalizedMime,
-              forcePdfTextChunks: true,
-            });
-            const processResult: ProcessResult = await processContent(
-              buf,
-              normalizedMime,
-              docContext,
-              metadataBase,
-              reporter,
-              { forcePdfTextChunks: true },
-            );
-            logDetail("ingest.processContent.done", {
-              documentId,
-              elapsedMs: Date.now() - extractT0,
-              unsupported: "unsupported" in processResult,
-            });
-
-            if ("unsupported" in processResult) {
-              const reason =
-                processResult.reason ?? `Unsupported mime type: ${normalizedMime}`;
-              logDetail("ingest.unsupported_mime", { reason, normalizedMime });
-              await db
-                .update(documents)
-                .set({
-                  ingestionStatus: "SKIPPED",
-                  ingestionCompletedAt: new Date(),
-                  ingestionError: reason,
-                })
-                .where(eq(documents.id, documentId));
-              throw new Error(reason);
-            }
-
-            const processed = processResult.chunks;
-            if (!processed.length) {
-              logDetail("ingest.no_chunks", { documentId, normalizedMime });
-              await db
-                .update(documents)
-                .set({
-                  ingestionStatus: "SKIPPED",
-                  ingestionCompletedAt: new Date(),
-                  ingestionError: "No valid chunks produced during ingestion",
-                })
-                .where(eq(documents.id, documentId));
-              throw new Error("No valid chunks produced during ingestion");
-            }
-
-            const textChunkCount = processed.filter(
-              (c) => (c.row.chunkText?.trim().length ?? 0) > 0,
-            ).length;
-            const sampleDim = processed[0]?.embedding?.length ?? 0;
-            logDetail("ingest.chunks_ready", {
-              documentId,
-              chunkCount: processed.length,
-              textChunkCount,
-              expectedEmbeddingDim: EMBEDDING_DIMENSION,
-              sampleEmbeddingDim: sampleDim,
-              embeddingDimOk: sampleDim === EMBEDDING_DIMENSION,
-              modalities: [...new Set(processed.map((c) => c.row.modality))],
-              sampleChunkIds: processed.slice(0, 3).map((c) => c.row.id),
-            });
-            if (textChunkCount === 0) {
-              logDetail("ingest.chunks_ready.warn_no_text", {
-                documentId,
-                message:
-                  "No chunks with chunkText; SIM excerpts will be empty unless ingestion path changes",
-              });
-            }
-
-            await updateWorkflowJobProgress(instanceId, {
-              step: "Persisting embeddings",
-              percentage: 40,
-            });
-            const chunkRows = processed.map((c) => c.row);
-            const sqlInsT0 = Date.now();
-            const inserted = await db
-              .insert(documentChunks)
-              .values(chunkRows)
-              .returning({ id: documentChunks.id });
-            if (inserted.length !== chunkRows.length) {
-              logDetail("ingest.sql.insert.mismatch", {
-                documentId,
-                inserted: inserted.length,
-                expected: chunkRows.length,
-              });
               throw new Error(
-                `Chunk insert count mismatch: inserted ${inserted.length}, expected ${chunkRows.length}`,
+                "Document is not a CIM library or SIM screening upload",
               );
             }
-            for (let i = 0; i < chunkRows.length; i++) {
-              if (inserted[i]!.id !== chunkRows[i]!.id) {
-                logDetail("ingest.sql.insert.id_mismatch", {
-                  documentId,
-                  index: i,
-                  dbId: inserted[i]!.id,
-                  rowId: chunkRows[i]!.id,
-                });
-                throw new Error(
-                  `Chunk id mismatch after insert at ${i}: db=${inserted[i]!.id}, row=${chunkRows[i]!.id}`,
-                );
-              }
+            if (document.ingestionStatus !== "PROCESSED") {
+              throw new Error(
+                "Document is not ingested. Finish firm document (RAG) ingestion first, then start screening.",
+              );
             }
-            logDetail("ingest.sql.chunks_inserted", {
-              documentId,
-              rowCount: chunkRows.length,
-              elapsedMs: Date.now() - sqlInsT0,
-            });
 
-            const vzT0 = Date.now();
-            await upsertDocumentChunkVectors(vectorIndex, processed);
-            logDetail("ingest.vectorize.upserted", {
-              documentId,
-              vectorCount: processed.length,
-              vectorizeNamespace: documentId,
-              elapsedMs: Date.now() - vzT0,
-            });
-
-            await db
-              .update(documents)
-              .set({
-                ingestionStatus: "PROCESSED",
-                ingestionCompletedAt: new Date(),
-                ingestionError: null,
-              })
-              .where(eq(documents.id, documentId));
-
-            logDetail("step.validate-and-ingest.ok", {
-              documentId,
-              chunksInserted: processed.length,
-              textChunkCount,
-              totalIngestElapsedMs: Date.now() - ingestT0,
-            });
-            return { chunksInserted: processed.length };
-          } catch (ingestErr) {
-            logError("step.validate-and-ingest.failed", ingestErr, {
-              instanceId,
-              documentId,
-              ingestStarted,
-              elapsedMs: Date.now() - ingestT0,
-            });
-            const msg =
-              ingestErr instanceof Error ? ingestErr.message : String(ingestErr);
-            if (ingestStarted) {
-              await markDocumentIngestionFailed(documentId, msg);
+            const [chunkCountRow] = await db
+              .select({ n: count() })
+              .from(documentChunks)
+              .where(eq(documentChunks.documentId, documentId));
+            const chunkRowsInDb = Number(chunkCountRow?.n ?? 0);
+            if (chunkRowsInDb === 0) {
+              throw new Error(
+                "No document chunks in the store for this file. Re-ingest from Firm documents.",
+              );
             }
-            throw ingestErr;
-          }
-        }),
-      );
+            logDetail("step.validate-library-document.ok", {
+              documentId,
+              chunkRowsInDb,
+            });
+            await updateWorkflowJobProgress(instanceId, {
+              step: "Ready to screen",
+              percentage: 40,
+            });
+          }),
+        );
       }
 
       await step.do("screen-questions", { timeout: "60 minutes" }, async () =>
@@ -495,28 +230,28 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
 
           const [chunkCountRow] = isDealScope
             ? await db
-                .select({ n: count() })
-                .from(documentChunks)
-                .where(eq(documentChunks.dealOpportunityId, dealOppId!))
+              .select({ n: count() })
+              .from(documentChunks)
+              .where(eq(documentChunks.dealOpportunityId, dealOppId!))
             : await db
-                .select({ n: count() })
-                .from(documentChunks)
-                .where(eq(documentChunks.documentId, simDocumentId!));
+              .select({ n: count() })
+              .from(documentChunks)
+              .where(eq(documentChunks.documentId, simDocumentId!));
           const chunkRowsInDb = Number(chunkCountRow?.n ?? 0);
 
           const [screeningDoc] = isDealScope
             ? [null]
             : await db
-                .select({
-                  entityType: documents.entityType,
-                  entityId: documents.entityId,
-                  dealOpportunityId: documents.dealOpportunityId,
-                  companyId: documents.companyId,
-                  themeId: documents.themeId,
-                })
-                .from(documents)
-                .where(eq(documents.id, simDocumentId!))
-                .limit(1);
+              .select({
+                entityType: documents.entityType,
+                entityId: documents.entityId,
+                dealOpportunityId: documents.dealOpportunityId,
+                companyId: documents.companyId,
+                themeId: documents.themeId,
+              })
+              .from(documents)
+              .where(eq(documents.id, simDocumentId!))
+              .limit(1);
 
           logDetail("screen.rag.preflight", {
             documentId: simDocumentId ?? null,
@@ -526,17 +261,17 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             retrievalTopK: isDealScope ? RETRIEVAL_TOP_K_DEAL : RETRIEVAL_TOP_K,
             vectorMetadataScope: isDealScope
               ? {
-                  entityType: "DEAL_OPPORTUNITY" as const,
-                  dealOpportunityId: dealOppId,
-                }
+                entityType: "DEAL_OPPORTUNITY" as const,
+                dealOpportunityId: dealOppId,
+              }
               : screeningDoc
                 ? {
-                    entityType: screeningDoc.entityType,
-                    entityId: screeningDoc.entityId,
-                    dealOpportunityId: screeningDoc.dealOpportunityId,
-                    companyId: screeningDoc.companyId,
-                    themeId: screeningDoc.themeId,
-                  }
+                  entityType: screeningDoc.entityType,
+                  entityId: screeningDoc.entityId,
+                  dealOpportunityId: screeningDoc.dealOpportunityId,
+                  companyId: screeningDoc.companyId,
+                  themeId: screeningDoc.themeId,
+                }
                 : null,
           });
           if (chunkRowsInDb === 0) {
@@ -600,25 +335,25 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             const ragT0 = Date.now();
             const hits = isDealScope
               ? await searchDocumentChunksVector(db, vectorIndex, {
-                  queryEmbedding,
-                  limit: RETRIEVAL_TOP_K_DEAL,
-                  entityType: "DEAL_OPPORTUNITY",
-                  dealOpportunityId: dealOppId!,
-                })
+                queryEmbedding,
+                limit: RETRIEVAL_TOP_K_DEAL,
+                entityType: "DEAL_OPPORTUNITY",
+                dealOpportunityId: dealOppId!,
+              })
               : await searchDocumentChunksVector(db, vectorIndex, {
-                  queryEmbedding,
-                  limit: RETRIEVAL_TOP_K,
-                  documentId: simDocumentId!,
-                  ...(screeningDoc
-                    ? {
-                        entityType: screeningDoc.entityType,
-                        entityId: screeningDoc.entityId ?? null,
-                        dealOpportunityId: screeningDoc.dealOpportunityId ?? "",
-                        companyId: screeningDoc.companyId ?? "",
-                        themeId: screeningDoc.themeId ?? "",
-                      }
-                    : {}),
-                });
+                queryEmbedding,
+                limit: RETRIEVAL_TOP_K,
+                documentId: simDocumentId!,
+                ...(screeningDoc
+                  ? {
+                    entityType: screeningDoc.entityType,
+                    entityId: screeningDoc.entityId ?? null,
+                    dealOpportunityId: screeningDoc.dealOpportunityId ?? "",
+                    companyId: screeningDoc.companyId ?? "",
+                    themeId: screeningDoc.themeId ?? "",
+                  }
+                  : {}),
+              });
             const textHits = hits.filter(
               (h) => h.chunkText && h.chunkText.trim().length > 0,
             );

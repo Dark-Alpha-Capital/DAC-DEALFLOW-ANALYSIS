@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useTRPC } from "@/trpc/client";
@@ -34,16 +34,6 @@ import {
 import useCurrentUser from "@/hooks/use-current-user";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import { loadCimScreeningIndexData } from "@/lib/server/cim-screening-route-data";
-import { Link } from "@tanstack/react-router";
-
-const readFileAsDataURL = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = () =>
-      reject(new Error(`Failed to read file: ${file.name}`));
-    reader.readAsDataURL(file);
-  });
 
 export const Route = createFileRoute("/_protected/cim-screening/")({
   head: () => ({
@@ -60,10 +50,13 @@ function SimScreeningPage() {
   const queryClient = useQueryClient();
   const trpc = useTRPC();
   const user = useCurrentUser();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [screenerId, setScreenerId] = useState<string>("");
-  const [file, setFile] = useState<File | null>(null);
+  const [documentId, setDocumentId] = useState<string>("");
   const [isNewRunDialogOpen, setIsNewRunDialogOpen] = useState(false);
+
+  const { data: libraryDocs = [], isLoading: libraryLoading } = useQuery(
+    trpc.simScreening.listLibraryDocuments.queryOptions(),
+  );
 
   const startMutation = useMutation(
     trpc.simScreening.start.mutationOptions({
@@ -73,7 +66,7 @@ function SimScreeningPage() {
             detail: [
               {
                 jobId: data.jobId,
-                fileName: file?.name ?? "SIM.pdf",
+                fileName: data.jobLabel,
                 userId: user?.id ?? "",
                 queueName: QUEUE_NAMES.SIM_SCREENING,
               },
@@ -83,13 +76,13 @@ function SimScreeningPage() {
         void queryClient.invalidateQueries({
           queryKey: trpc.simScreening.listSessions.queryKey({ limit: 20 }),
         });
-        toast.success("SIM screening started");
-        setFile(null);
+        void queryClient.invalidateQueries({
+          queryKey: trpc.simScreening.listLibraryDocuments.queryKey(),
+        });
+        toast.success("CIM screening started");
+        setDocumentId("");
         setScreenerId("");
         setIsNewRunDialogOpen(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
         void navigate({
           to: "/cim-screening/$sessionId",
           params: { sessionId: data.sessionId },
@@ -102,25 +95,15 @@ function SimScreeningPage() {
     }),
   );
 
-  const handleStart = async () => {
-    if (!screenerId) {
-      toast.error("Select a screener template");
-      return;
-    }
-    if (!file) {
-      toast.error("Choose a PDF");
-      return;
-    }
-    try {
-      const fileData = await readFileAsDataURL(file);
-      startMutation.mutate({
-        fileName: file.name,
-        fileData,
-        screenerId,
-      });
-    } catch {
-      toast.error("Could not read file");
-    }
+  const selectedDoc = libraryDocs.find((d) => d.id === documentId);
+  const canStart =
+    Boolean(screenerId) &&
+    Boolean(documentId) &&
+    selectedDoc?.ingestionStatus === "PROCESSED";
+
+  const handleStart = () => {
+    if (!screenerId || !documentId) return;
+    startMutation.mutate({ documentId, screenerId });
   };
 
   return (
@@ -129,8 +112,16 @@ function SimScreeningPage() {
         <div>
           <h1 className="text-3xl font-semibold md:text-4xl">CIM screening</h1>
           <p className="text-muted-foreground mt-2 text-sm">
-            Screen uploaded CIM PDFs against your template library and keep each
-            run in one session timeline.
+            Screen ingested CIM PDFs from your firm library against templates.
+            Upload CIMs under{" "}
+            <Link
+              to="/documents"
+              className="text-foreground font-medium underline underline-offset-4"
+            >
+              Firm documents
+            </Link>{" "}
+            (category &quot;CIM&quot;), wait for processing, then start a run
+            here—reusing the same document never re-embeds it.
           </p>
         </div>
 
@@ -145,11 +136,59 @@ function SimScreeningPage() {
             <DialogHeader>
               <DialogTitle>Start a new CIM screening run</DialogTitle>
               <DialogDescription>
-                Choose a screener template and upload a PDF.
+                Pick an ingested document from your library and a screener
+                template.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>CIM document</Label>
+                {libraryLoading ? (
+                  <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading library…
+                  </div>
+                ) : libraryDocs.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    No CIM uploads yet.{" "}
+                    <Link
+                      to="/documents"
+                      className="text-foreground font-medium underline underline-offset-4"
+                    >
+                      Upload a PDF
+                    </Link>{" "}
+                    as firm document category CIM and wait until status is
+                    processed.
+                  </p>
+                ) : (
+                  <Select value={documentId} onValueChange={setDocumentId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select document" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {libraryDocs.map((d) => {
+                        const ready = d.ingestionStatus === "PROCESSED";
+                        const label = `${d.title || d.fileName} · ${d.ingestionStatus}`;
+                        return (
+                          <SelectItem
+                            key={d.id}
+                            value={d.id}
+                            disabled={!ready}
+                            textValue={label}
+                          >
+                            <span className="truncate">{d.title}</span>
+                            <span className="text-muted-foreground ml-2 text-xs">
+                              ({d.ingestionStatus})
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label>Screener template</Label>
                 <Select value={screenerId} onValueChange={setScreenerId}>
@@ -165,48 +204,18 @@ function SimScreeningPage() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label>SIM (PDF)</Label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    if (!f.name.toLowerCase().endsWith(".pdf")) {
-                      toast.error("PDF only");
-                      return;
-                    }
-                    if (f.size > 50 * 1024 * 1024) {
-                      toast.error("Max 50MB");
-                      return;
-                    }
-                    setFile(f);
-                  }}
-                />
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Choose file
-                  </Button>
-                  <p className="text-muted-foreground truncate text-sm">
-                    {file ? file.name : "No file selected"}
-                  </p>
-                </div>
-              </div>
             </div>
 
             <DialogFooter>
               <Button
                 type="button"
-                disabled={startMutation.isPending || !screenerId || !file}
-                onClick={() => void handleStart()}
+                disabled={
+                  startMutation.isPending ||
+                  !canStart ||
+                  libraryLoading ||
+                  libraryDocs.length === 0
+                }
+                onClick={() => handleStart()}
               >
                 {startMutation.isPending ? (
                   <>
@@ -265,6 +274,7 @@ function SimScreeningPage() {
                       <Link
                         to="/cim-screening/$sessionId"
                         params={{ sessionId: session.id }}
+                        search={{ runId: undefined }}
                       >
                         View
                       </Link>

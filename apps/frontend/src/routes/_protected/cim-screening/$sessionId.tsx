@@ -268,8 +268,7 @@ function CimScreeningSessionDetailPage() {
   const running =
     runStatus != null && runStatus !== "COMPLETED" && runStatus !== "FAILED";
 
-  const canAddRun =
-    doc?.ingestionStatus === "PROCESSED" || Boolean(dealOpp);
+  const canAddRun = doc?.ingestionStatus === "PROCESSED" || Boolean(dealOpp);
   const selectedRunId = data.selectedRunId;
   const statusBadge = runStatusBadgeProps(runStatus);
 
@@ -319,9 +318,15 @@ function CimScreeningSessionDetailPage() {
           <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
               {dealOpp ? (
-                <Briefcase className="text-muted-foreground size-4" aria-hidden />
+                <Briefcase
+                  className="text-muted-foreground size-4"
+                  aria-hidden
+                />
               ) : (
-                <FileText className="text-muted-foreground size-4" aria-hidden />
+                <FileText
+                  className="text-muted-foreground size-4"
+                  aria-hidden
+                />
               )}
               <CardTitle className="text-base">
                 {dealOpp ? "Deal opportunity" : "Source document"}
@@ -371,7 +376,12 @@ function CimScreeningSessionDetailPage() {
                     </span>
                   </MetaRow>
                 ) : null}
-                <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  asChild
+                >
                   <Link
                     to="/deal-opportunities/$uid"
                     params={{ uid: dealOpp.id }}
@@ -395,9 +405,9 @@ function CimScreeningSessionDetailPage() {
               <CardTitle className="text-base">Runs & templates</CardTitle>
             </div>
             <CardDescription>
-              Switch runs to view scores. For SIM uploads, start another template
-              after ingestion completes. Deal sessions can add runs anytime if
-              chunks exist.
+              Switch runs to view scores. For SIM uploads, start another
+              template after ingestion completes. Deal sessions can add runs
+              anytime if chunks exist.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -592,7 +602,7 @@ function CimScreeningSessionDetailPage() {
           <CardDescription>
             {runs.length === 0 || !selectedRunId
               ? "Start a run to see scores here."
-              : "Scores and rationale for the selected run."}
+              : "Scores, rationale, and RAG citation excerpts for the selected run."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -611,7 +621,12 @@ function CimScreeningSessionDetailPage() {
                       Question
                     </TableHead>
                     <TableHead className="w-24">Score</TableHead>
-                    <TableHead className="pr-4">Rationale</TableHead>
+                    <TableHead className="max-w-xl min-w-[14rem]">
+                      Rationale
+                    </TableHead>
+                    <TableHead className="max-w-md min-w-[16rem] pr-4">
+                      References
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -623,8 +638,43 @@ function CimScreeningSessionDetailPage() {
                       <TableCell className="font-medium tabular-nums">
                         {row.score ?? "—"}
                       </TableCell>
-                      <TableCell className="text-muted-foreground max-w-xl pr-4 text-sm leading-relaxed">
+                      <TableCell className="text-muted-foreground max-w-xl text-sm leading-relaxed">
                         {row.rationale ?? "—"}
+                      </TableCell>
+                      <TableCell className="max-w-md pr-4 align-top text-sm">
+                        {row.evidenceCitations &&
+                        row.evidenceCitations.length > 0 ? (
+                          <ol className="max-h-64 list-decimal space-y-3 overflow-y-auto pl-4">
+                            {row.evidenceCitations.map((c, i) => (
+                              <li
+                                key={`${row.questionId}-${c.chunkId}-${i}`}
+                                className="leading-relaxed"
+                              >
+                                <div className="text-muted-foreground mb-1 text-xs">
+                                  {c.pageNumber != null
+                                    ? `Page ${c.pageNumber}`
+                                    : "Retrieved excerpt"}
+                                </div>
+                                {c.excerpt ? (
+                                  <p className="text-foreground whitespace-pre-wrap">
+                                    {c.excerpt}
+                                  </p>
+                                ) : (
+                                  <p className="text-muted-foreground text-xs italic">
+                                    No stored text for chunk{" "}
+                                    <code className="bg-muted rounded px-1 font-mono text-[0.65rem]">
+                                      {c.chunkId.length > 14
+                                        ? `${c.chunkId.slice(0, 12)}…`
+                                        : c.chunkId}
+                                    </code>
+                                  </p>
+                                )}
+                              </li>
+                            ))}
+                          </ol>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

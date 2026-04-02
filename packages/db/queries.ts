@@ -178,9 +178,9 @@ export const GetCompanyWithAllRelations = async (id: string) => {
       .where(
         dealOppIds.length > 0
           ? or(
-              eq(outreach.companyId, id),
-              inArray(outreach.dealOpportunityId, dealOppIds),
-            )
+            eq(outreach.companyId, id),
+            inArray(outreach.dealOpportunityId, dealOppIds),
+          )
           : eq(outreach.companyId, id),
       )
       .orderBy(desc(outreach.createdAt));
@@ -347,10 +347,10 @@ export const GetDealOpportunitiesByLeadId = async (leadId: string) => {
     company:
       company && company.name
         ? {
-            name: company.name,
-            industry: company.industry,
-            location: company.location,
-          }
+          name: company.name,
+          industry: company.industry,
+          location: company.location,
+        }
         : null,
   }));
 };
@@ -589,10 +589,10 @@ export const GetCIMExtractionByDealOpportunityId = async (
         .limit(1);
       return row?.extraction
         ? {
-            ...row.extraction,
-            documentFileName: row.documentFileName,
-            documentCreatedAt: row.documentCreatedAt,
-          }
+          ...row.extraction,
+          documentFileName: row.documentFileName,
+          documentCreatedAt: row.documentCreatedAt,
+        }
         : null;
     }
     // Legacy: extraction by dealOpportunityId (pre-migration or denormalized)
@@ -608,10 +608,10 @@ export const GetCIMExtractionByDealOpportunityId = async (
       .limit(1);
     return legacyRow?.extraction
       ? {
-          ...legacyRow.extraction,
-          documentFileName: legacyRow.documentFileName,
-          documentCreatedAt: legacyRow.documentCreatedAt,
-        }
+        ...legacyRow.extraction,
+        documentFileName: legacyRow.documentFileName,
+        documentCreatedAt: legacyRow.documentCreatedAt,
+      }
       : null;
   } catch {
     return null;
@@ -1691,18 +1691,18 @@ export const GetAllDocuments = async ({
     const [data, countResult] = await Promise.all([
       whereClause
         ? db
-            .select()
-            .from(documents)
-            .where(whereClause)
-            .orderBy(desc(documents.createdAt))
-            .limit(limit)
-            .offset(offset)
+          .select()
+          .from(documents)
+          .where(whereClause)
+          .orderBy(desc(documents.createdAt))
+          .limit(limit)
+          .offset(offset)
         : db
-            .select()
-            .from(documents)
-            .orderBy(desc(documents.createdAt))
-            .limit(limit)
-            .offset(offset),
+          .select()
+          .from(documents)
+          .orderBy(desc(documents.createdAt))
+          .limit(limit)
+          .offset(offset),
       whereClause
         ? db.select({ count: count() }).from(documents).where(whereClause)
         : db.select({ count: count() }).from(documents),
@@ -2041,10 +2041,10 @@ export const GetDealOpportunitiesWithScreenings = async (): Promise<
       const existing = byOpp.get(row.opp.id);
       const company = row.companyName
         ? {
-            name: row.companyName,
-            industry: row.companyIndustry,
-            location: row.companyLocation,
-          }
+          name: row.companyName,
+          industry: row.companyIndustry,
+          location: row.companyLocation,
+        }
         : null;
 
       if (!existing) {
@@ -2200,6 +2200,20 @@ export async function getSimScreeningAnswersByRunId(runId: string) {
     .where(eq(simScreeningAnswers.runId, runId));
 }
 
+/** Load chunk excerpts for SIM screening evidence IDs (RAG retrieval citations). */
+export async function getDocumentChunksByIds(ids: string[]) {
+  const unique = [...new Set(ids.filter((id) => id?.trim()))];
+  if (unique.length === 0) return [];
+  return db
+    .select({
+      id: documentChunks.id,
+      chunkText: documentChunks.chunkText,
+      pageNumber: documentChunks.pageNumber,
+    })
+    .from(documentChunks)
+    .where(inArray(documentChunks.id, unique));
+}
+
 export async function getSimScreeningRunsBySessionId(sessionId: string) {
   return db
     .select({
@@ -2247,6 +2261,37 @@ export async function countDocumentChunksByDealOpportunityId(
     .from(documentChunks)
     .where(eq(documentChunks.dealOpportunityId, dealOpportunityId));
   return Number(row?.n ?? 0);
+}
+
+export async function countDocumentChunksByDocumentId(documentId: string) {
+  const [row] = await db
+    .select({ n: count() })
+    .from(documentChunks)
+    .where(eq(documentChunks.documentId, documentId));
+  return Number(row?.n ?? 0);
+}
+
+/** Global CIM / legacy SIM screening uploads owned by the user (for picker + screening). */
+export async function listSimScreeningLibraryDocumentsForUser(userId: string) {
+  return db
+    .select({
+      id: documents.id,
+      title: documents.title,
+      fileName: documents.fileName,
+      ingestionStatus: documents.ingestionStatus,
+      ingestionError: documents.ingestionError,
+      createdAt: documents.createdAt,
+      category: documents.category,
+    })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.entityType, "GLOBAL"),
+        eq(documents.uploadedById, userId),
+        inArray(documents.category, ["CIM", "SIM_SCREENING"]),
+      ),
+    )
+    .orderBy(desc(documents.createdAt));
 }
 
 export async function simScreeningSessionHasActiveRun(sessionId: string) {

@@ -9,7 +9,9 @@ import {
   getSimScreeningRunsBySessionId,
   getSimScreeningSessionByIdForUser,
   listSimScreeningSessionsForUserWithMeta,
+  getDocumentChunksByIds,
 } from "@repo/db/queries";
+import { mapEvidenceChunkIdsToCitations } from "@/lib/map-sim-screening-evidence";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import { getJobByIdForUser } from "@/src/lib/workflow-jobs-api";
 import { fetchSession } from "./fetch-session-server-fn";
@@ -101,6 +103,16 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
 
     const answerByQuestionId = new Map(answers.map((a) => [a.questionId, a]));
 
+    const allEvidenceIds = [
+      ...new Set(
+        answers.flatMap((a) => a.evidenceChunkIds ?? []).filter(Boolean),
+      ),
+    ];
+    const evidenceChunkRows =
+      allEvidenceIds.length > 0
+        ? await getDocumentChunksByIds(allEvidenceIds)
+        : [];
+
     const rows = questions.map((q) => {
       const ans = answerByQuestionId.get(q.id);
       return {
@@ -111,6 +123,10 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
         score: ans?.score ?? null,
         rationale: ans?.rationale ?? null,
         evidenceChunkIds: ans?.evidenceChunkIds ?? null,
+        evidenceCitations: mapEvidenceChunkIdsToCitations(
+          ans?.evidenceChunkIds ?? null,
+          evidenceChunkRows,
+        ),
       };
     });
 
