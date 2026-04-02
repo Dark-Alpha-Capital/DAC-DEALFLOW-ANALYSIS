@@ -44,8 +44,23 @@ function isAllowedEmail(email: string | null | undefined) {
   return email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
 }
 
+function getAuthBaseUrl(): string {
+  const fromEnv = process.env.BETTER_AUTH_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  return "http://localhost:3000";
+}
+
 export const auth: ReturnType<typeof betterAuth> = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL: getAuthBaseUrl(),
+  /** When env is missing/wrong, still trust the origin this request hit (same as browser Origin on same-host deploys). */
+  trustedOrigins: (request) => {
+    if (!request?.url) return [];
+    try {
+      return [new URL(request.url).origin];
+    } catch {
+      return [];
+    }
+  },
   plugins: [tanstackStartCookies()],
   database: drizzleAdapter(db, {
     provider: "pg",

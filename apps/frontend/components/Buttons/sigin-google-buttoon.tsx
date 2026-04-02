@@ -10,6 +10,7 @@ const SigninGoogle = () => {
       onClick={async () => {
         console.log("clicked google sign in");
         try {
+          console.log("authClient.baseURL", authClient);
           const response = await authClient.signIn.social({
             provider: "google",
             callbackURL: "/",
