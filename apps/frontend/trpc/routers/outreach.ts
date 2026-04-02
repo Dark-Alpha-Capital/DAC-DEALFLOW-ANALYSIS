@@ -2,8 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { outreach, dealOpportunities, eq, and } from "@repo/db";
-import { after } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "@/lib/after";
+import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 
 const outreachTypes = ["EMAIL", "CALL", "LINKEDIN", "MEETING"] as const;
 

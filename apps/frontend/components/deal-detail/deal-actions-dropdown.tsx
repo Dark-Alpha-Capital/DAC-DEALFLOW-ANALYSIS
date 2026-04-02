@@ -1,4 +1,3 @@
-"use client";
 
 import {
   DropdownMenu,
@@ -15,8 +14,8 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
-import Link from "next/link";
-import { Deal } from "@repo/db/schema";
+import { Link } from "@tanstack/react-router";
+import type { Deal } from "@repo/db/schema";
 import { useTransition, useState } from "react";
 import { exportDealToBitrix } from "@/lib/actions/upload-bitrix";
 import { toast } from "sonner";
@@ -33,7 +32,7 @@ export function DealActionsDropdown({ deal, uid }: DealActionsDropdownProps) {
   const handleUploadToBitrix = async () => {
     startTransition(async () => {
       try {
-        await exportDealToBitrix(deal);
+        await exportDealToBitrix({ data: deal });
         toast.success("Successfully published deal to Bitrix");
       } catch (error) {
         console.error(error);
@@ -53,7 +52,7 @@ export function DealActionsDropdown({ deal, uid }: DealActionsDropdownProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuItem asChild>
-          <Link href={`/raw-deals/${uid}/tags`} className="flex items-center">
+          <Link to={`/raw-deals/${uid}/tags`} className="flex items-center">
             <Tag className="mr-2 h-4 w-4" />
             Add Tags
           </Link>

@@ -1,8 +1,7 @@
-"use client";
 
 import { Button } from "@/components/ui/button";
 import { XIcon } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "@/lib/navigation-shim";
 import React, { useTransition } from "react";
 
 const DeleteFiltersButton = () => {

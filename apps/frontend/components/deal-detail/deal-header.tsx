@@ -1,8 +1,9 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit, ArrowLeft, Link as LinkIcon } from "lucide-react";
-import { Deal, DealOpportunity, DealStatus, DealType } from "@repo/db/schema";
+import type { Deal, DealOpportunity } from "@repo/db/schema";
+import { DealStatus, DealType } from "@repo/db/enums";
 import { DealActionsDropdown } from "./deal-actions-dropdown";
 import { DealStatusControls } from "./DealStatusControls";
 import { DealPipelineSection } from "./DealPipelineSection";
@@ -98,7 +99,7 @@ export function DealHeader({
         asChild
         className="gap-2 pl-0 transition-all hover:pl-2"
       >
-        <Link href={backHref}>
+        <Link to={backHref}>
           <ArrowLeft className="h-4 w-4" />
           {backLabel}
         </Link>
@@ -194,7 +195,7 @@ export function DealHeader({
       <div className="space-y-4">
         <div className="border-border flex flex-wrap items-center gap-3 border-b pb-4">
           <Button asChild>
-            <Link href={editHref}>
+            <Link to={editHref}>
               <Edit className="mr-2 h-4 w-4" />
               Edit deal opportunity
             </Link>

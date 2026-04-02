@@ -1,12 +1,15 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import AdmZip from "adm-zip";
-import { after } from "next/server";
+import { after } from "@/lib/after";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents } from "@repo/db";
 import { uploadBuffer, deleteFile, sanitizeFilename } from "@repo/nextcloud";
-import { revalidateTag } from "next/cache";
-import { ragIngestionQueue } from "@repo/redis-queue";
+import { revalidateTag } from "@/lib/cache-invalidation";
+import {
+  insertWorkflowJob,
+  startRagIngestionWorkflow,
+} from "@/src/lib/workflow-jobs-api";
 import { randomUUID } from "crypto";
 
 const MAX_ZIP_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
@@ -115,15 +118,17 @@ export const filesRouter = createTRPCRouter({
         .returning();
 
       const ragJobId = randomUUID();
-      await ragIngestionQueue.add(
-        "ingest",
-        {
-          jobId: ragJobId,
-          documentId: documentRecord.id,
-          userId,
-        },
-        { jobId: ragJobId },
-      );
+      await insertWorkflowJob({
+        instanceId: ragJobId,
+        workflowKind: "rag-ingestion",
+        userId,
+        dealId: input.entityId,
+        fileName: input.fileName,
+      });
+      await startRagIngestionWorkflow(ragJobId, {
+        documentId: documentRecord.id,
+        userId,
+      });
 
       const tags: string[] = [];
       switch (input.entityType) {
@@ -223,11 +228,17 @@ export const filesRouter = createTRPCRouter({
 
             if (doc) {
               const ragJobId = randomUUID();
-              await ragIngestionQueue.add(
-                "ingest",
-                { jobId: ragJobId, documentId: doc.id, userId },
-                { jobId: ragJobId },
-              );
+              await insertWorkflowJob({
+                instanceId: ragJobId,
+                workflowKind: "rag-ingestion",
+                userId,
+                dealId: input.entityId,
+                fileName: fileName,
+              });
+              await startRagIngestionWorkflow(ragJobId, {
+                documentId: doc.id,
+                userId,
+              });
               return doc.id;
             }
             return null;
@@ -284,15 +295,16 @@ export const filesRouter = createTRPCRouter({
         .returning();
 
       const ragJobId = randomUUID();
-      await ragIngestionQueue.add(
-        "ingest",
-        {
-          jobId: ragJobId,
-          documentId: documentRecord.id,
-          userId,
-        },
-        { jobId: ragJobId },
-      );
+      await insertWorkflowJob({
+        instanceId: ragJobId,
+        workflowKind: "rag-ingestion",
+        userId,
+        fileName: input.fileName,
+      });
+      await startRagIngestionWorkflow(ragJobId, {
+        documentId: documentRecord.id,
+        userId,
+      });
 
       after(async () => {
         revalidateTag("documents", "max");
@@ -335,6 +347,7 @@ export const filesRouter = createTRPCRouter({
             "VALUE_CREATION_PLAYBOOK",
             "PAST_DEAL_ANALYSIS",
             "DUE_DILIGENCE_CHECKLIST",
+            "SIM_SCREENING",
           ])
           .optional(),
       })

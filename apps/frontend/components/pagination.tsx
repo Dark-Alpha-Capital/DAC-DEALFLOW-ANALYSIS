@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { Link } from "@tanstack/react-router";
+import { usePathname, useSearchParams } from "@/lib/navigation-shim";
 
 import { Button } from "@/components/ui/button";
 
@@ -13,7 +11,7 @@ const SIBLING_COUNT = 2;
 
 function getVisiblePageNumbers(
   totalPages: number,
-  currentPage: number
+  currentPage: number,
 ): (number | "ellipsis")[] {
   if (totalPages <= 0) return [];
   if (totalPages <= 1) return [1];
@@ -46,11 +44,9 @@ export default function Pagination({ totalPages }: IPagination) {
     <div className="mt-4 flex flex-wrap items-center justify-center gap-1 md:mt-8">
       <Button asChild variant="outline" size="sm">
         <Link
-          href={createPageURL(currentPage - 1)}
-          className={
-            currentPage <= 1 ? "pointer-events-none opacity-50" : ""
-          }
-          prefetch={true}
+          to={createPageURL(currentPage - 1)}
+          className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
+          preload="intent"
         >
           Previous
         </Link>
@@ -58,7 +54,7 @@ export default function Pagination({ totalPages }: IPagination) {
       <nav className="flex items-center gap-1" aria-label="Pagination">
         {visiblePages.map((item, i) =>
           item === "ellipsis" ? (
-            <span key={`ellipsis-${i}`} className="px-2 text-muted-foreground">
+            <span key={`ellipsis-${i}`} className="text-muted-foreground px-2">
               …
             </span>
           ) : (
@@ -69,23 +65,23 @@ export default function Pagination({ totalPages }: IPagination) {
               size="sm"
             >
               <Link
-                href={createPageURL(item)}
-                prefetch={true}
+                to={createPageURL(item)}
+                preload="intent"
                 aria-current={item === currentPage ? "page" : undefined}
               >
                 {item}
               </Link>
             </Button>
-          )
+          ),
         )}
       </nav>
       <Button asChild variant="outline" size="sm">
         <Link
-          href={createPageURL(currentPage + 1)}
+          to={createPageURL(currentPage + 1)}
           className={
             currentPage >= totalPages ? "pointer-events-none opacity-50" : ""
           }
-          prefetch={true}
+          preload="intent"
         >
           Next
         </Link>

@@ -1,6 +1,5 @@
-"use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 import { Grid, List } from "lucide-react";
 import DealCard from "@/components/DealCard";
 import DealListItem from "@/components/DealListItem";

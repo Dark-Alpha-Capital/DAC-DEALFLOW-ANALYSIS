@@ -1,8 +1,7 @@
-"use client";
 
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
-import { DealType, Sentiment } from "@repo/db/schema";
+import { DealType, Sentiment } from "@repo/db/enums";
 import EditScreeningResultDialog from "./Dialogs/edit-screen-result-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";

@@ -1,4 +1,3 @@
-"use client";
 
 import React, { useState, useCallback, useMemo } from "react";
 import { useDropzone } from "react-dropzone";
@@ -23,9 +22,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "../ui/scroll-area";
-import { TransformedDeal } from "@/app/types";
+import { TransformedDeal } from "@/lib/route-domain-types";
 import { useToast } from "@/hooks/use-toast";
-import BulkUploadDealsToDB from "@/lib/actions/bulk-upload-deal";
+import bulkUploadDealsToDB from "@/lib/actions/bulk-upload-deal";
 import {
   Collapsible,
   CollapsibleContent,
@@ -338,7 +337,7 @@ export function BulkImportDialog() {
 
     const formattedDeals = transformDeals(dealsMarkedForUpload);
     console.log("formattedDeals", formattedDeals);
-    const response = await BulkUploadDealsToDB(formattedDeals);
+    const response = await bulkUploadDealsToDB({ data: formattedDeals });
 
     if (response.error) {
       setError(response.error);

@@ -1,7 +1,6 @@
-"use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@tanstack/react-router";
+import { useRouter } from "@/lib/navigation-shim";
 import { User2, LogOut, ChevronUp, Lock, Moon, Sun } from "lucide-react";
 import {
   DropdownMenu,
@@ -63,7 +62,7 @@ export function UserDropdown({ session, userInitials }: UserDropdownProps) {
       >
         {session.user?.id && (
           <DropdownMenuItem asChild>
-            <Link href={`/profile/${session.user.id}`}>
+            <Link to={`/profile/${session.user.id}`}>
               <User2 />
               <span>Profile</span>
             </Link>
@@ -71,7 +70,7 @@ export function UserDropdown({ session, userInitials }: UserDropdownProps) {
         )}
         {isAdmin && (
           <DropdownMenuItem asChild>
-            <Link href="/admin">
+            <Link to="/admin">
               <Lock />
               <span>Admin</span>
             </Link>

@@ -1,4 +1,4 @@
-import type { UserRole } from "./schema";
+import type { UserRole } from "./enums";
 
 export type AdminUser = {
   id: string;

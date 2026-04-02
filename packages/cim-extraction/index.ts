@@ -6,7 +6,7 @@ import {
 } from "@repo/ai-core";
 import { z } from "zod";
 import mammoth from "mammoth";
-import pdfParse from "pdf-parse";
+import { extractText } from "unpdf";
 import * as XLSX from "xlsx";
 
 // ============================================================================
@@ -82,9 +82,16 @@ export async function extractPdfContent(
 ): Promise<{ text: string; numpages: number }> {
   console.log(`[cim-extraction] extractPdfContent: input buffer size=${buffer.length}`);
   try {
-    const data = await pdfParse(buffer);
-    const text = data.text?.trim() ?? "";
-    const numpages = data.numpages ?? 0;
+    const data = new Uint8Array(
+      buffer.buffer,
+      buffer.byteOffset,
+      buffer.byteLength,
+    );
+    const { totalPages, text: rawText } = await extractText(data, {
+      mergePages: true,
+    });
+    const text = (typeof rawText === "string" ? rawText : "").trim();
+    const numpages = totalPages ?? 0;
     console.log(`[cim-extraction] extractPdfContent: extracted ${text.length} chars, ${numpages} pages`);
     return { text, numpages };
   } catch (error) {

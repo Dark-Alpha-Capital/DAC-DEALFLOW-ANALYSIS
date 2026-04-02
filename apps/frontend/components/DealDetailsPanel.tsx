@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import DealScreeningSummary from "@/components/DealScreeningSummary";
@@ -90,7 +90,7 @@ export default function DealDetailsPanel({ row }: DealDetailsPanelProps) {
 
       <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3">
         <Button asChild size="sm" className="flex-1">
-          <Link href={detailHref}>Open deal</Link>
+          <Link to={detailHref}>Open deal</Link>
         </Button>
       </div>
     </aside>

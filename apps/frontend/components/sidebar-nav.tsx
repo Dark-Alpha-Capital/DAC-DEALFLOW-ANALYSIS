@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link } from "@tanstack/react-router";
+import { usePathname } from "@/lib/navigation-shim";
 import { useEffect, useState } from "react";
 import {
   FiUserPlus,
@@ -15,6 +13,7 @@ import {
   FiDollarSign,
   FiMessageSquare,
   FiChevronRight,
+  FiClipboard,
 } from "react-icons/fi";
 import { FaPalette, FaScrewdriver } from "react-icons/fa";
 import {
@@ -64,6 +63,7 @@ const adminNavItems: NavItem[] = [
   { title: "Jobs", url: "/jobs", icon: FiBriefcase },
   { title: "Analytics", url: "/analytics", icon: FiBarChart2 },
   { title: "Screeners", url: "/screeners", icon: FaScrewdriver },
+  { title: "CIM screening", url: "/cim-screening/", icon: FiClipboard },
   { title: "Documents", url: "/documents", icon: FiFileText },
 ];
 
@@ -80,7 +80,7 @@ function SimpleNavItems({ items }: { items: NavItem[] }) {
         return (
           <SidebarMenuItem key={item.title}>
             <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-              <Link href={item.url}>
+              <Link to={item.url}>
                 <item.icon className="size-4" />
                 <span>{item.title}</span>
               </Link>
@@ -129,7 +129,7 @@ function LeadsCollapsible() {
                   pathname === "/leads" || pathname.startsWith("/leads/")
                 }
               >
-                <Link href="/leads">Company leads</Link>
+                <Link to="/leads">Company leads</Link>
               </SidebarMenuSubButton>
             </SidebarMenuSubItem>
             <SidebarMenuSubItem>
@@ -140,7 +140,7 @@ function LeadsCollapsible() {
                   pathname.startsWith("/investor-leads/")
                 }
               >
-                <Link href="/investor-leads">Investor leads</Link>
+                <Link to="/investor-leads">Investor leads</Link>
               </SidebarMenuSubButton>
             </SidebarMenuSubItem>
           </SidebarMenuSub>
@@ -171,7 +171,7 @@ export function SidebarNav({ session }: SidebarNavProps) {
                 isActive={dashboardActive}
                 tooltip="Dashboard"
               >
-                <Link href="/dashboard">
+                <Link to="/dashboard">
                   <FiHome className="size-4" />
                   <span>Dashboard</span>
                 </Link>
@@ -182,7 +182,9 @@ export function SidebarNav({ session }: SidebarNavProps) {
       </SidebarGroup>
 
       <SidebarGroup>
-        <SidebarGroupLabel className={groupLabelClass}>Deal flow</SidebarGroupLabel>
+        <SidebarGroupLabel className={groupLabelClass}>
+          Deal flow
+        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu className="gap-1">
             <LeadsCollapsible />
@@ -192,7 +194,9 @@ export function SidebarNav({ session }: SidebarNavProps) {
       </SidebarGroup>
 
       <SidebarGroup>
-        <SidebarGroupLabel className={groupLabelClass}>Investors</SidebarGroupLabel>
+        <SidebarGroupLabel className={groupLabelClass}>
+          Investors
+        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu className="gap-1">
             <SimpleNavItems items={investorItems} />
@@ -201,7 +205,9 @@ export function SidebarNav({ session }: SidebarNavProps) {
       </SidebarGroup>
 
       <SidebarGroup>
-        <SidebarGroupLabel className={groupLabelClass}>Workspace</SidebarGroupLabel>
+        <SidebarGroupLabel className={groupLabelClass}>
+          Workspace
+        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu className="gap-1">
             <SimpleNavItems items={workspaceItems} />
@@ -211,7 +217,9 @@ export function SidebarNav({ session }: SidebarNavProps) {
 
       {isAdmin && (
         <SidebarGroup>
-          <SidebarGroupLabel className={groupLabelClass}>Admin</SidebarGroupLabel>
+          <SidebarGroupLabel className={groupLabelClass}>
+            Admin
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
               <SimpleNavItems items={adminNavItems} />

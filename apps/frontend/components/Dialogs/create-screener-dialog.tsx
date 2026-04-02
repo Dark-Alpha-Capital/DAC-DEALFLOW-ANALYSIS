@@ -1,7 +1,5 @@
-"use client";
-
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,7 +32,9 @@ const createScreenerTemplateSchema = z.object({
   description: z.string().optional(),
 });
 
-type CreateScreenerTemplateValues = z.infer<typeof createScreenerTemplateSchema>;
+type CreateScreenerTemplateValues = z.infer<
+  typeof createScreenerTemplateSchema
+>;
 
 export default function AddScreenerDialog() {
   const [open, setOpen] = useState(false);
@@ -98,7 +98,10 @@ export default function AddScreenerDialog() {
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Financial Quality Screener" {...field} />
+                    <Input
+                      placeholder="Financial Quality Screener"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -112,7 +115,10 @@ export default function AddScreenerDialog() {
                 <FormItem>
                   <FormLabel>Category</FormLabel>
                   <FormControl>
-                    <Input placeholder="Financial / Market / Management" {...field} />
+                    <Input
+                      placeholder="Financial / Market / Management"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

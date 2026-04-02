@@ -1,9 +1,8 @@
-"use client";
 
 import type { Investor } from "@repo/db";
 import Pagination from "@/components/pagination";
-import { InvestorsDataTable } from "@/app/(protected)/investors/data-table";
-import { columns } from "@/app/(protected)/investors/columns";
+import { InvestorsDataTable } from "@/components/investors/data-table";
+import { columns } from "@/components/investors/columns";
 
 interface InvestorContainerProps {
   data: Investor[];

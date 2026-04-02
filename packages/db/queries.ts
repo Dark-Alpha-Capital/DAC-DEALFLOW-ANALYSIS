@@ -29,14 +29,16 @@ import {
   investorLeads,
   investorInteractions,
   investorCompanyLinks,
+  simScreeningSessions,
+  simScreeningRuns,
+  simScreeningAnswers,
   type Deal,
   type Lead,
   type Company,
-  type DealType,
-  type DealStatus,
   type Investor,
   type InvestorLead,
 } from "./schema";
+import type { DealType, DealStatus } from "./enums";
 // Import db after schema to ensure proper initialization order
 import { db } from "./index";
 import {
@@ -55,7 +57,6 @@ import {
   sql,
   isNull,
 } from "drizzle-orm";
-import { cacheTag, cacheLife } from "next/cache";
 import type { AdminUser } from "./types";
 
 /**
@@ -678,11 +679,6 @@ export const GetAllDeals = async ({
   tags?: string[];
   showRecent?: boolean;
 }): Promise<GetDealsResult> => {
-  "use cache";
-
-  cacheTag("deals");
-  cacheLife("hours");
-
   const ebitdaValue = ebitda ? parseFloat(ebitda) : undefined;
   const revenueValue = revenue ? parseFloat(revenue) : undefined;
   const locationValue = location ? location : undefined;
@@ -2225,3 +2221,156 @@ export const GetThemeWorkspaceById = async (id: string) => {
     throw error;
   }
 };
+
+export async function getSimScreeningSessionByIdForUser(
+  sessionId: string,
+  userId: string,
+) {
+  const [row] = await db
+    .select()
+    .from(simScreeningSessions)
+    .where(
+      and(
+        eq(simScreeningSessions.id, sessionId),
+        eq(simScreeningSessions.userId, userId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+export async function listSimScreeningSessionsForUser(
+  userId: string,
+  limit = 50,
+) {
+  return db
+    .select()
+    .from(simScreeningSessions)
+    .where(eq(simScreeningSessions.userId, userId))
+    .orderBy(desc(simScreeningSessions.createdAt))
+    .limit(limit);
+}
+
+export async function getSimScreeningAnswersByRunId(runId: string) {
+  return db
+    .select()
+    .from(simScreeningAnswers)
+    .where(eq(simScreeningAnswers.runId, runId));
+}
+
+export async function getSimScreeningRunsBySessionId(sessionId: string) {
+  return db
+    .select({
+      id: simScreeningRuns.id,
+      sessionId: simScreeningRuns.sessionId,
+      screenerId: simScreeningRuns.screenerId,
+      workflowInstanceId: simScreeningRuns.workflowInstanceId,
+      status: simScreeningRuns.status,
+      errorMessage: simScreeningRuns.errorMessage,
+      createdAt: simScreeningRuns.createdAt,
+      updatedAt: simScreeningRuns.updatedAt,
+      screenerName: screeners.name,
+      screenerCategory: screeners.category,
+    })
+    .from(simScreeningRuns)
+    .innerJoin(screeners, eq(simScreeningRuns.screenerId, screeners.id))
+    .where(eq(simScreeningRuns.sessionId, sessionId))
+    .orderBy(desc(simScreeningRuns.createdAt));
+}
+
+export async function getSimScreeningRunByIdForUser(runId: string, userId: string) {
+  const [row] = await db
+    .select({ run: simScreeningRuns })
+    .from(simScreeningRuns)
+    .innerJoin(
+      simScreeningSessions,
+      eq(simScreeningRuns.sessionId, simScreeningSessions.id),
+    )
+    .where(
+      and(
+        eq(simScreeningRuns.id, runId),
+        eq(simScreeningSessions.userId, userId),
+      ),
+    )
+    .limit(1);
+  return row?.run ?? null;
+}
+
+/** True if this session has any run still in flight */
+export async function simScreeningSessionHasActiveRun(sessionId: string) {
+  const row = await db
+    .select({ id: simScreeningRuns.id })
+    .from(simScreeningRuns)
+    .where(
+      and(
+        eq(simScreeningRuns.sessionId, sessionId),
+        inArray(simScreeningRuns.status, [
+          "PENDING",
+          "INGESTING",
+          "SCREENING",
+        ]),
+      ),
+    )
+    .limit(1);
+  return row.length > 0;
+}
+
+export async function listSimScreeningSessionsForUserWithMeta(
+  userId: string,
+  limit = 50,
+) {
+  const base = await db
+    .select({
+      id: simScreeningSessions.id,
+      createdAt: simScreeningSessions.createdAt,
+      documentId: simScreeningSessions.documentId,
+      fileName: documents.fileName,
+      title: documents.title,
+    })
+    .from(simScreeningSessions)
+    .innerJoin(documents, eq(simScreeningSessions.documentId, documents.id))
+    .where(eq(simScreeningSessions.userId, userId))
+    .orderBy(desc(simScreeningSessions.createdAt))
+    .limit(limit);
+
+  if (base.length === 0) return [];
+
+  const sessionIds = base.map((b) => b.id);
+  const allRuns = await db
+    .select({
+      sessionId: simScreeningRuns.sessionId,
+      status: simScreeningRuns.status,
+      screenerName: screeners.name,
+      createdAt: simScreeningRuns.createdAt,
+    })
+    .from(simScreeningRuns)
+    .innerJoin(screeners, eq(simScreeningRuns.screenerId, screeners.id))
+    .where(inArray(simScreeningRuns.sessionId, sessionIds))
+    .orderBy(desc(simScreeningRuns.createdAt));
+
+  const runCountBySession = new Map<string, number>();
+  const latestBySession = new Map<
+    string,
+    (typeof allRuns)[number]
+  >();
+  for (const r of allRuns) {
+    runCountBySession.set(
+      r.sessionId,
+      (runCountBySession.get(r.sessionId) ?? 0) + 1,
+    );
+    if (!latestBySession.has(r.sessionId)) {
+      latestBySession.set(r.sessionId, r);
+    }
+  }
+
+  return base.map((s) => {
+    const latest = latestBySession.get(s.id);
+    return {
+      ...s,
+      runCount: runCountBySession.get(s.id) ?? 0,
+      latestRunStatus: latest?.status ?? null,
+      latestScreenerName: latest?.screenerName ?? null,
+      latestRunAt: latest?.createdAt ?? null,
+    };
+  });
+}

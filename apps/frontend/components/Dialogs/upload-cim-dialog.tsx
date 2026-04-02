@@ -1,4 +1,3 @@
-"use client";
 
 import React, { useRef, useState } from "react";
 import {
@@ -15,7 +14,7 @@ import { FileText, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 import useCurrentUser from "@/hooks/use-current-user";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 

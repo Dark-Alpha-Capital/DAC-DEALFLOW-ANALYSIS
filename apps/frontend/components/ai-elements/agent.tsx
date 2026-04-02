@@ -1,8 +1,8 @@
-"use client";
 
 import type { Tool } from "ai";
 import type { ComponentProps } from "react";
 
+import { ClientOnly } from "@tanstack/react-router";
 import {
   Accordion,
   AccordionContent,
@@ -108,7 +108,18 @@ export const AgentTool = memo(
         </AccordionTrigger>
         <AccordionContent className="px-3 pb-3">
           <div className="rounded-md bg-muted/50">
-            <CodeBlock code={JSON.stringify(schema, null, 2)} language="json" />
+            <ClientOnly
+              fallback={
+                <pre className="overflow-x-auto p-3 font-mono text-xs">
+                  {JSON.stringify(schema, null, 2)}
+                </pre>
+              }
+            >
+              <CodeBlock
+                code={JSON.stringify(schema, null, 2)}
+                language="json"
+              />
+            </ClientOnly>
           </div>
         </AccordionContent>
       </AccordionItem>
@@ -127,7 +138,13 @@ export const AgentOutput = memo(
         Output Schema
       </span>
       <div className="rounded-md bg-muted/50">
-        <CodeBlock code={schema} language="typescript" />
+        <ClientOnly
+          fallback={
+            <pre className="overflow-x-auto p-3 font-mono text-xs">{schema}</pre>
+          }
+        >
+          <CodeBlock code={schema} language="typescript" />
+        </ClientOnly>
       </div>
     </div>
   )

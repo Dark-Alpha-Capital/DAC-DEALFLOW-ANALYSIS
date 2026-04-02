@@ -1,4 +1,3 @@
-"use client";
 
 import React from "react";
 import {
@@ -33,7 +32,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { dealDocumentFormSchema, DealDocumentFormValues } from "@/lib/schemas";
-import { DealType, DealDocumentCategory } from "@repo/db/schema";
+import { DealType, DealDocumentCategory } from "@repo/db/enums";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";

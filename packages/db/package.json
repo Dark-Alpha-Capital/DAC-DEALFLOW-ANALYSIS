@@ -22,16 +22,20 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
     "@paralleldrive/cuid2": "^3.0.6",
     "drizzle-orm": "^0.45.1",
     "postgres": "^3.4.7"
   },
   "exports": {
     ".": "./index.ts",
+    "./enums": "./enums.ts",
     "./schema": "./schema.ts",
     "./queries": "./queries.ts",
     "./mutations": "./mutations.ts",
     "./types": "./types.ts",
-    "./types-only": "./types-only.ts"
+    "./types-only": "./types-only.ts",
+    "./workflow-jobs": "./workflow-jobs.ts",
+    "./worker-neon-context": "./worker-neon-context.ts"
   }
 }

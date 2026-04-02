@@ -1,4 +1,3 @@
-"use client";
 
 import ThemeCard from "@/components/ThemeCard";
 import type { Theme } from "@repo/db";

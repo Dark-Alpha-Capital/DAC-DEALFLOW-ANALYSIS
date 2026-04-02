@@ -1,4 +1,3 @@
-"use client";
 
 import type { Lead } from "@repo/db";
 import {

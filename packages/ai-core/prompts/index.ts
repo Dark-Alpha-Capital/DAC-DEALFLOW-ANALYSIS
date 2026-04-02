@@ -14,3 +14,4 @@ export {
   CIM_EXTRACTION_USER,
 } from "./cim-extraction";
 export { AI_DEAL_SCREENING_INSTRUCTIONS } from "./ai-deal-screening";
+export { buildSimScreeningQuestionPrompt } from "./sim-screening";

@@ -1,6 +1,5 @@
-"use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
@@ -12,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import type { DealStatus, ReviewState } from "@repo/db/schema";
+import type { DealStatus, ReviewState } from "@repo/db/enums";
 
 const STATUS_LABELS: Record<string, string> = {
   AVAILABLE: "Available",

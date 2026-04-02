@@ -1,4 +1,4 @@
-import pdfParse from "pdf-parse";
+import { extractText } from "unpdf";
 
 export class PDFLoader {
   /**
@@ -7,12 +7,10 @@ export class PDFLoader {
    */
   async loadFromBuffer(buffer: ArrayBuffer): Promise<string> {
     try {
-      // Convert ArrayBuffer to Node Buffer
-      const nodeBuffer = Buffer.from(buffer);
-
-      // Parse PDF to get text
-      const data = await pdfParse(nodeBuffer);
-      return data.text; // All extracted text, pages concatenated
+      const { text } = await extractText(new Uint8Array(buffer), {
+        mergePages: true,
+      });
+      return typeof text === "string" ? text : "";
     } catch (error) {
       console.error("Error parsing PDF:", error);
       throw new Error("Failed to parse PDF file");

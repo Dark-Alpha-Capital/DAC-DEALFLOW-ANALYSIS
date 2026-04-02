@@ -1,8 +1,7 @@
-"use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@tanstack/react-router";
+import { useRouter } from "@/lib/navigation-shim";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
@@ -246,7 +245,7 @@ function DealPipelineCard({
           className="h-8 px-2 text-[11px]"
           onClick={(e) => e.stopPropagation()}
         >
-          <Link href={detailHref}>View</Link>
+          <Link to={detailHref}>View</Link>
         </Button>
       </div>
     </div>

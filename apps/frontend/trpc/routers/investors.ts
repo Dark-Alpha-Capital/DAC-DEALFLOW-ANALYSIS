@@ -12,8 +12,8 @@ import db, {
   desc,
   ilike,
 } from "@repo/db";
-import { after } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "@/lib/after";
+import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 
 const investorInteractionTypeEnum = z.enum([
   "EMAIL",

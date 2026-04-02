@@ -1,9 +1,8 @@
-"use client";
 
 import type { Company } from "@repo/db";
 import Pagination from "@/components/pagination";
-import { CompaniesDataTable } from "@/app/(protected)/companies/data-table";
-import { columns } from "@/app/(protected)/companies/columns";
+import { CompaniesDataTable } from "@/components/companies/data-table";
+import { columns } from "@/components/companies/columns";
 
 type CompanyWithTheme = Company & { themeName?: string | null };
 

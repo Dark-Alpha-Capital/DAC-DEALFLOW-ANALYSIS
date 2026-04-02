@@ -1,7 +1,6 @@
-"use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import { Building2, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,7 @@ import {
 } from "@/components/investors/InvestorCompanyLinkForm";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 
 function LinkCard({
   row,

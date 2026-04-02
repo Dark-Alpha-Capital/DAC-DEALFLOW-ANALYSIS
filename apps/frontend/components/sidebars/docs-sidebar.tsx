@@ -1,7 +1,6 @@
-"use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link } from "@tanstack/react-router";
+import { usePathname } from "@/lib/navigation-shim";
 import {
   Sidebar,
   SidebarContent,
@@ -69,7 +68,7 @@ export function DocsSidebar() {
   return (
     <Sidebar collapsible="offcanvas" variant="inset">
       <SidebarHeader className="border-b px-4 py-3">
-        <Link href="/docs" className="text-sm font-semibold tracking-tight">
+        <Link to="/docs" className="text-sm font-semibold tracking-tight">
           Documentation
         </Link>
       </SidebarHeader>
@@ -84,7 +83,7 @@ export function DocsSidebar() {
               {topLevelLinks.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={getIsActive(pathname, item)}>
-                    <Link href={item.href}>{item.title}</Link>
+                    <Link to={item.href}>{item.title}</Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -104,7 +103,7 @@ export function DocsSidebar() {
                     asChild
                     isActive={pathname === "/docs/companies"}
                   >
-                    <Link href={item.href}>{item.title}</Link>
+                    <Link to={item.href}>{item.title}</Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
               ))}
@@ -121,7 +120,7 @@ export function DocsSidebar() {
               {leadWorkflowLinks.map((item) => (
                 <SidebarMenuSubItem key={item.href}>
                   <SidebarMenuSubButton asChild isActive={pathname === "/docs/leads"}>
-                    <Link href={item.href}>{item.title}</Link>
+                    <Link to={item.href}>{item.title}</Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
               ))}

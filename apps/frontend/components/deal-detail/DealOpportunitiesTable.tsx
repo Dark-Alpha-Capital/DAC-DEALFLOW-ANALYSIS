@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import type { DealOpportunity, Company } from "@repo/db";
 import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -111,7 +111,7 @@ export function DealOpportunitiesTable({
                   <td className="py-3">
                     {!isCurrent && (
                       <Button size="sm" variant="ghost" asChild>
-                        <Link href={`/deal-opportunities/${opp.id}`} className="gap-1">
+                        <Link to={`/deal-opportunities/${opp.id}`} className="gap-1">
                           <Eye className="h-3.5 w-3.5" />
                           View
                         </Link>

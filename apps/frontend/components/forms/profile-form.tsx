@@ -1,7 +1,5 @@
-"use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import type { User } from "@repo/db";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";

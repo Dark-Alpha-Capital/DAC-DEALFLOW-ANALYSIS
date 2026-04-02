@@ -1,8 +1,7 @@
-"use client";
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import {
   DollarSign,
   Edit,
@@ -145,7 +144,7 @@ export default function DealCard({
                     className="h-8 w-8 text-muted-foreground hover:text-foreground"
                     asChild
                   >
-                    <Link href={editLink}>
+                    <Link to={editLink}>
                       <Edit className="h-3.5 w-3.5" />
                     </Link>
                   </Button>
@@ -216,14 +215,14 @@ export default function DealCard({
 
       <div className="mt-4 flex gap-2 border-t border-border pt-4">
         <Button size="sm" className="flex-1 gap-1.5" asChild>
-          <Link href={detailLink}>
+          <Link to={detailLink}>
             <Eye className="h-3.5 w-3.5" />
             View
           </Link>
         </Button>
         {showScreenButton && (
           <Button variant="outline" size="sm" className="flex-1 gap-1.5" asChild>
-            <Link href={screenLink}>
+            <Link to={screenLink}>
               <Zap className="h-3.5 w-3.5" />
               Screen
             </Link>

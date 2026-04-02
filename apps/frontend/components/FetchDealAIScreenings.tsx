@@ -1,7 +1,8 @@
 import { AlertTriangle } from "lucide-react";
-import { DealType, AiScreening } from "@repo/db/schema";
+import type { AiScreening } from "@repo/db/schema";
+import { DealType } from "@repo/db/enums";
 import AIReasoning from "./AiReasoning";
-import { RunAiScreeningButton } from "@/app/(protected)/deal-opportunities/run-ai-screening-button";
+import { RunAiScreeningButton } from "@/components/deal-opportunities/run-ai-screening-button";
 
 const FetchDealAIScreenings = ({
   dealId,

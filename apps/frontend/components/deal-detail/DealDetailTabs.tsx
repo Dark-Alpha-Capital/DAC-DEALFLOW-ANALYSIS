@@ -8,6 +8,7 @@ import type {
   DealOpportunityScreening,
   DealFinancialSnapshot,
 } from "@repo/db/schema";
+import { ClientOnly } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealHeader } from "./deal-header";
 import { DealFinancialsSection } from "./DealFinancialsSection";
@@ -238,15 +239,17 @@ export function DealDetailTabs({
         )}
 
         <TabsContent value="outreach">
-          <CompanyOutreach
-            outreach={dealOutreach}
-            companyId={company.id}
-            dealOpportunities={dealOpportunities.map((o) => ({
-              id: o.id,
-              stage: o.stage ?? "LISTED",
-              createdAt: o.createdAt ?? new Date(),
-            }))}
-          />
+          <ClientOnly fallback={<div className="h-48 rounded-md border bg-muted/30" />}>
+            <CompanyOutreach
+              outreach={dealOutreach}
+              companyId={company.id}
+              dealOpportunities={dealOpportunities.map((o) => ({
+                id: o.id,
+                stage: o.stage ?? "LISTED",
+                createdAt: o.createdAt ?? new Date(),
+              }))}
+            />
+          </ClientOnly>
         </TabsContent>
 
         <TabsContent value="documents" className="space-y-8">
@@ -288,7 +291,9 @@ export function DealDetailTabs({
         </TabsContent>
 
         <TabsContent value="notes">
-          <CompanyNotes company={company} notes={companyNotes} dealUid={uid} />
+          <ClientOnly fallback={<div className="min-h-[200px] rounded-md border bg-muted/30" />}>
+            <CompanyNotes company={company} notes={companyNotes} dealUid={uid} />
+          </ClientOnly>
         </TabsContent>
       </Tabs>
     </div>

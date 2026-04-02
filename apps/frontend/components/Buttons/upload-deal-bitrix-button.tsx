@@ -1,4 +1,3 @@
-"use client";
 
 import { Upload, Loader2 } from "lucide-react";
 import React, { useTransition } from "react";
@@ -13,7 +12,7 @@ const UploadDealToBitrixButton = ({ specificDeal }: { specificDeal: Deal }) => {
   const uploadDealToBitrix = async () => {
     startTransition(async () => {
       try {
-        const response = await exportDealToBitrix(specificDeal);
+        const response = await exportDealToBitrix({ data: specificDeal });
         console.log(response);
         toast.success("Successfully published deal to Bitrix");
       } catch (error) {

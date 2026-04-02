@@ -1,8 +1,7 @@
-"use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { Link } from "@tanstack/react-router";
+import { usePathname, useRouter } from "@/lib/navigation-shim";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MoreVertical, Pencil, Trash2, ExternalLink } from "lucide-react";
 import {
@@ -97,7 +96,7 @@ export function ChatSidebarItem({ chat }: { chat: Chat }) {
     <>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={pathname === `/chat/${chat.id}`}>
-          <Link href={`/chat/${chat.id}`}>
+          <Link to={`/chat/${chat.id}`}>
             <span className="truncate">{chat.title}</span>
           </Link>
         </SidebarMenuButton>
@@ -109,7 +108,7 @@ export function ChatSidebarItem({ chat }: { chat: Chat }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link href={`/chat/${chat.id}`}>
+              <Link to={`/chat/${chat.id}`}>
                 <ExternalLink className="size-4" />
                 View
               </Link>

@@ -12,8 +12,8 @@ import db, {
   ilike,
 } from "@repo/db";
 import { convertLeadToCompanySchema, leadFormSchema } from "@/lib/schemas";
-import { after } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "@/lib/after";
+import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { upsertDealOpportunityScreening } from "@repo/deal-screening";
 import { createDealFinancialSnapshot } from "@repo/db/mutations";
 
@@ -175,6 +175,8 @@ export const leadsRouter = createTRPCRouter({
     .input(leadFormSchema.extend({ id: z.string() }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
+      console.log("input", input);
+      console.log("data", data);
       await db
         .update(leads)
         .set({

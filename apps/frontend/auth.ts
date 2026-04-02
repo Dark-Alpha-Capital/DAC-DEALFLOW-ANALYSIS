@@ -1,8 +1,10 @@
 import { betterAuth } from "better-auth";
+import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@repo/db";
-import { users, accounts, sessions, verifications, UserRole } from "@repo/db/schema";
+import { UserRole } from "@repo/db/enums";
+import { users, accounts, sessions, verifications } from "@repo/db/schema";
 import { eq } from "drizzle-orm";
 import { adminEmails } from "./lib/utils";
 import {
@@ -44,7 +46,8 @@ function isAllowedEmail(email: string | null | undefined) {
 }
 
 export const auth: ReturnType<typeof betterAuth> = betterAuth({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  plugins: [tanstackStartCookies()],
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {
@@ -174,7 +177,6 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
       };
     },
   },
-  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
   onAPIError: {
     errorURL: "/auth/error",
   },

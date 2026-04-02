@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -15,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 import type { Company, InvestorCompanyLink } from "@repo/db";
 import { FieldGroup } from "@/components/ui/field";
 

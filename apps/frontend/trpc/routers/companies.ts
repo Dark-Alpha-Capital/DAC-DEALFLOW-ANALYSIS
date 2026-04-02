@@ -15,8 +15,8 @@ import {
   ListCompanyFinancialSnapshots,
 } from "@repo/db/queries";
 import { createCompanyFinancialSnapshot } from "@repo/db/mutations";
-import { after } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "@/lib/after";
+import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { asc, desc } from "drizzle-orm";
 import { upsertDealOpportunityScreening } from "@repo/deal-screening";
 

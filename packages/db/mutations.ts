@@ -13,12 +13,17 @@ import {
   companies,
   dealRiskFlags,
   dealOpportunities,
-  type DealFinancialSnapshotSource,
-  type CompanyFinancialSnapshotSource,
-  type DealRiskSeverity,
-  type DealRiskType,
-  type ScreenerResponseSource,
+  simScreeningSessions,
+  simScreeningRuns,
+  simScreeningAnswers,
 } from "./schema";
+import type {
+  DealFinancialSnapshotSource,
+  CompanyFinancialSnapshotSource,
+  DealRiskSeverity,
+  DealRiskType,
+  ScreenerResponseSource,
+} from "./enums";
 import { eq, inArray, and, desc } from "drizzle-orm";
 
 export interface CIMExtractionPayload {
@@ -540,3 +545,88 @@ export const upsertCustomerConcentrationSystemRiskFlag = async ({
 export const deleteFinancialsForSim = async (simId: string) => {
   await db.delete(cimExtractions).where(eq(cimExtractions.simId, simId));
 };
+
+export type SimScreeningSessionStatus =
+  | "PENDING"
+  | "INGESTING"
+  | "SCREENING"
+  | "COMPLETED"
+  | "FAILED";
+
+export async function insertSimScreeningSession(input: {
+  userId: string;
+  documentId: string;
+}) {
+  const [row] = await db
+    .insert(simScreeningSessions)
+    .values({
+      userId: input.userId,
+      documentId: input.documentId,
+    })
+    .returning();
+  return row ?? null;
+}
+
+export async function insertSimScreeningRun(input: {
+  sessionId: string;
+  screenerId: string;
+  workflowInstanceId: string | null;
+}) {
+  const [row] = await db
+    .insert(simScreeningRuns)
+    .values({
+      sessionId: input.sessionId,
+      screenerId: input.screenerId,
+      workflowInstanceId: input.workflowInstanceId,
+      status: "PENDING",
+    })
+    .returning();
+  return row ?? null;
+}
+
+export async function updateSimScreeningRun(
+  runId: string,
+  patch: Partial<{
+    status: SimScreeningSessionStatus;
+    workflowInstanceId: string | null;
+    errorMessage: string | null;
+  }>,
+) {
+  await db
+    .update(simScreeningRuns)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(simScreeningRuns.id, runId));
+}
+
+export async function upsertSimScreeningAnswer(input: {
+  runId: string;
+  questionId: string;
+  score: number;
+  rationale: string;
+  evidenceChunkIds?: string[] | null;
+}) {
+  await db
+    .insert(simScreeningAnswers)
+    .values({
+      runId: input.runId,
+      questionId: input.questionId,
+      score: input.score,
+      rationale: input.rationale,
+      evidenceChunkIds: input.evidenceChunkIds ?? null,
+    })
+    .onConflictDoUpdate({
+      target: [simScreeningAnswers.runId, simScreeningAnswers.questionId],
+      set: {
+        score: input.score,
+        rationale: input.rationale,
+        evidenceChunkIds: input.evidenceChunkIds ?? null,
+        updatedAt: new Date(),
+      },
+    });
+}
+
+export async function deleteSimScreeningAnswersForRun(runId: string) {
+  await db
+    .delete(simScreeningAnswers)
+    .where(eq(simScreeningAnswers.runId, runId));
+}

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Building2, MapPin } from "lucide-react";
 
 interface ThemeCompaniesListProps {

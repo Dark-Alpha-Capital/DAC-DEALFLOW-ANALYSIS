@@ -1,31 +1,22 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
+import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import {
-  QUEUE_NAMES,
   getAllUserJobs,
+  getJobByIdForUser,
   getLatestUserJobs,
-  getJobStatus,
   deleteUserJob,
-} from "@repo/redis-queue";
-import { after } from "next/server";
-import { revalidatePath } from "next/cache";
+  getJobStatus,
+} from "@/src/lib/workflow-jobs-api";
+import { after } from "@/lib/after";
+import { revalidatePath } from "@/lib/cache-invalidation";
 
 export const jobsRouter = createTRPCRouter({
-  /**
-   * Get all jobs for the current user
-   * Returns jobs from all queues (screen-deal, file-upload)
-   * Sorted by createdAt descending
-   */
   getAll: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.user.id as string;
-    const jobs = await getAllUserJobs(userId);
-    return jobs;
+    return getAllUserJobs(userId);
   }),
 
-  /**
-   * Get latest N jobs for the current user
-   * Optimized for sidebar display
-   */
   getLatest: protectedProcedure
     .input(
       z
@@ -37,14 +28,9 @@ export const jobsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const userId = ctx.user.id as string;
       const limit = input?.limit ?? 5;
-      const jobs = await getLatestUserJobs(userId, limit);
-      return jobs;
+      return getLatestUserJobs(userId, limit);
     }),
 
-  /**
-   * Get a single job by ID and queue name
-   * Verifies the job belongs to the current user
-   */
   getById: protectedProcedure
     .input(
       z.object({
@@ -54,6 +40,7 @@ export const jobsRouter = createTRPCRouter({
           QUEUE_NAMES.FILE_UPLOAD,
           QUEUE_NAMES.CIM_EXTRACTION,
           QUEUE_NAMES.RAG_INGESTION,
+          QUEUE_NAMES.SIM_SCREENING,
         ]),
       }),
     )
@@ -61,35 +48,24 @@ export const jobsRouter = createTRPCRouter({
       const userId = ctx.user.id as string;
       const { jobId, queueName } = input;
 
-      // Get job status
-      const [jobStatus, userJobs] = await Promise.all([
+      const [job, jobStatus] = await Promise.all([
+        getJobByIdForUser(userId, queueName, jobId),
         getJobStatus(queueName, jobId),
-        getAllUserJobs(userId),
       ]);
 
-      if (!jobStatus) {
+      if (!job || !jobStatus) {
         return null;
       }
-      const job = userJobs.find((j) => j.jobId === jobId);
 
-      if (!job) {
-        return null; // Job not found or doesn't belong to user
-      }
-
-      // Return job with current status
       return {
         ...job,
         state: jobStatus.state,
-        progress: jobStatus.progress,
+        progress: jobStatus.progress ?? null,
         returnvalue: jobStatus.returnvalue,
-        failedReason: jobStatus.failedReason,
+        failedReason: jobStatus.failedReason ?? null,
       };
     }),
 
-  /**
-   * Delete a job by ID and queue name
-   * Verifies the job belongs to the current user before deleting
-   */
   delete: protectedProcedure
     .input(
       z.object({
@@ -99,6 +75,7 @@ export const jobsRouter = createTRPCRouter({
           QUEUE_NAMES.FILE_UPLOAD,
           QUEUE_NAMES.CIM_EXTRACTION,
           QUEUE_NAMES.RAG_INGESTION,
+          QUEUE_NAMES.SIM_SCREENING,
         ]),
       }),
     )
@@ -114,10 +91,6 @@ export const jobsRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  /**
-   * Bulk delete multiple jobs
-   * Verifies all jobs belong to the current user before deleting
-   */
   bulkDelete: protectedProcedure
     .input(
       z.object({
@@ -129,6 +102,7 @@ export const jobsRouter = createTRPCRouter({
               QUEUE_NAMES.FILE_UPLOAD,
               QUEUE_NAMES.CIM_EXTRACTION,
               QUEUE_NAMES.RAG_INGESTION,
+              QUEUE_NAMES.SIM_SCREENING,
             ]),
           }),
         ),

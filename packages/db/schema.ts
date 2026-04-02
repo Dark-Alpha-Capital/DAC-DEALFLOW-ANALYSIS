@@ -67,6 +67,7 @@ export const documentCategoryEnum = pgEnum("DocumentCategory", [
   "VALUE_CREATION_PLAYBOOK",
   "PAST_DEAL_ANALYSIS",
   "DUE_DILIGENCE_CHECKLIST",
+  "SIM_SCREENING",
 ]);
 
 // Entity type enum for polymorphic association
@@ -111,6 +112,11 @@ export const dealSimStatusEnum = pgEnum("DealSimStatus", [
   "ACTIVE",
   "ARCHIVED",
 ]);
+
+export const simScreeningSessionStatusEnum = pgEnum(
+  "SimScreeningSessionStatus",
+  ["PENDING", "INGESTING", "SCREENING", "COMPLETED", "FAILED"],
+);
 
 export const cimExtractionSourceEnum = pgEnum("CIMExtractionSource", [
   "AI",
@@ -1162,6 +1168,125 @@ export const documentChunks = pgTable(
   }),
 );
 
+/** Tracks Cloudflare Workflow instances for job list / progress in the app UI */
+export const workflowJobs = pgTable(
+  "WorkflowJob",
+  {
+    instanceId: text("instanceId").primaryKey(),
+    workflowKind: text("workflowKind").notNull(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dealId: text("dealId"),
+    fileName: text("fileName"),
+    screenerId: text("screenerId"),
+    progressStep: text("progressStep"),
+    progressPercent: integer("progressPercent").default(0).notNull(),
+    /** UI state: waiting | active | completed | failed | delayed */
+    state: text("state").notNull().default("waiting"),
+    failedReason: text("failedReason"),
+    returnValue: jsonb("returnValue"),
+    attemptsMade: integer("attemptsMade").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    workflowJobUserCreatedIdx: index("workflow_job_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+  }),
+);
+
+/** SIM screening workspace: one uploaded document per session; runs hold per-template executions */
+export const simScreeningSessions = pgTable(
+  "SimScreeningSession",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    documentId: text("documentId")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    simScreeningSessionUserIdx: index("sim_screening_session_user_idx").on(
+      table.userId,
+    ),
+    simScreeningSessionDocumentIdx: index(
+      "sim_screening_session_document_idx",
+    ).on(table.documentId),
+  }),
+);
+
+/** One screening execution: screener template + workflow job + answers */
+export const simScreeningRuns = pgTable(
+  "SimScreeningRun",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    sessionId: text("sessionId")
+      .notNull()
+      .references(() => simScreeningSessions.id, { onDelete: "cascade" }),
+    screenerId: text("screenerId")
+      .notNull()
+      .references(() => screenerTemplates.id, { onDelete: "cascade" }),
+    workflowInstanceId: text("workflowInstanceId"),
+    status: simScreeningSessionStatusEnum("status").default("PENDING").notNull(),
+    errorMessage: text("errorMessage"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    simScreeningRunSessionIdx: index("sim_screening_run_session_idx").on(
+      table.sessionId,
+    ),
+  }),
+);
+
+export const simScreeningAnswers = pgTable(
+  "SimScreeningAnswer",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    runId: text("runId")
+      .notNull()
+      .references(() => simScreeningRuns.id, { onDelete: "cascade" }),
+    questionId: text("questionId")
+      .notNull()
+      .references(() => screenerQuestions.id, { onDelete: "cascade" }),
+    score: integer("score").notNull(),
+    rationale: text("rationale").notNull(),
+    evidenceChunkIds: jsonb("evidenceChunkIds").$type<string[]>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    simScreeningAnswerRunQuestionUnique: uniqueIndex(
+      "sim_screening_answer_run_question_unique",
+    ).on(table.runId, table.questionId),
+    simScreeningAnswerRunIdx: index("sim_screening_answer_run_idx").on(
+      table.runId,
+    ),
+  }),
+);
+
 /**
  * Deal SIMs (CIMs) - one active per deal opportunity.
  * Latest upload becomes active; previous is archived.
@@ -1441,6 +1566,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   outreach: many(outreach),
   chatSessions: many(chatSessions),
   investorLeads: many(investorLeads),
+  simScreeningSessions: many(simScreeningSessions),
 }));
 
 export const themesRelations = relations(themes, ({ one, many }) => ({
@@ -1640,6 +1766,7 @@ export const companyNotesRelations = relations(companyNotes, ({ one }) => ({
 export const screenersRelations = relations(screeners, ({ many }) => ({
   questions: many(screenerQuestions),
   aiScreenings: many(aiScreenings),
+  simScreeningRuns: many(simScreeningRuns),
 }));
 
 export const screenerQuestionsRelations = relations(
@@ -1650,6 +1777,51 @@ export const screenerQuestionsRelations = relations(
       references: [screeners.id],
     }),
     responses: many(screenerResponses),
+    simScreeningAnswers: many(simScreeningAnswers),
+  }),
+);
+
+export const simScreeningSessionsRelations = relations(
+  simScreeningSessions,
+  ({ one, many }) => ({
+    user: one(users, {
+      fields: [simScreeningSessions.userId],
+      references: [users.id],
+    }),
+    document: one(documents, {
+      fields: [simScreeningSessions.documentId],
+      references: [documents.id],
+    }),
+    runs: many(simScreeningRuns),
+  }),
+);
+
+export const simScreeningRunsRelations = relations(
+  simScreeningRuns,
+  ({ one, many }) => ({
+    session: one(simScreeningSessions, {
+      fields: [simScreeningRuns.sessionId],
+      references: [simScreeningSessions.id],
+    }),
+    screener: one(screeners, {
+      fields: [simScreeningRuns.screenerId],
+      references: [screeners.id],
+    }),
+    answers: many(simScreeningAnswers),
+  }),
+);
+
+export const simScreeningAnswersRelations = relations(
+  simScreeningAnswers,
+  ({ one }) => ({
+    run: one(simScreeningRuns, {
+      fields: [simScreeningAnswers.runId],
+      references: [simScreeningRuns.id],
+    }),
+    question: one(screenerQuestions, {
+      fields: [simScreeningAnswers.questionId],
+      references: [screenerQuestions.id],
+    }),
   }),
 );
 
@@ -1705,6 +1877,7 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
     references: [themes.id],
   }),
   chunks: many(documentChunks),
+  simScreeningSessions: many(simScreeningSessions),
 }));
 
 export const documentChunksRelations = relations(documentChunks, ({ one }) => ({
@@ -1838,205 +2011,9 @@ export const investorCompanyLinksRelations = relations(
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
-
-// Enum value exports
-export const UserRole = {
-  USER: "USER",
-  ADMIN: "ADMIN",
-} as const;
-export type UserRole = (typeof UserRole)[keyof typeof UserRole];
-
-export const DealStatus = {
-  AVAILABLE: "AVAILABLE",
-  SOLD: "SOLD",
-  UNDER_CONTRACT: "UNDER_CONTRACT",
-  NOT_SPECIFIED: "NOT_SPECIFIED",
-} as const;
-export type DealStatus = (typeof DealStatus)[keyof typeof DealStatus];
-
-export const DealStage = {
-  LISTED: "LISTED",
-  INITIAL_REVIEW: "INITIAL_REVIEW",
-  SCREENED: "SCREENED",
-  MEETING_HELD: "MEETING_HELD",
-  IOI_SUBMITTED: "IOI_SUBMITTED",
-  LOI_SUBMITTED: "LOI_SUBMITTED",
-  DILIGENCE: "DILIGENCE",
-  CLOSED: "CLOSED",
-  DEAD: "DEAD",
-} as const;
-export type DealStage = (typeof DealStage)[keyof typeof DealStage];
-
-export const DealDocumentCategory = {
-  LEGAL: "LEGAL",
-  DOCUMENTATION: "DOCUMENTATION",
-  MARKETING: "MARKETING",
-  INVESTOR_RELATIONSHIPS: "INVESTOR_RELATIONSHIPS",
-  TECHNICAL: "TECHNICAL",
-  TOOLS: "TOOLS",
-  LEGISLATION: "LEGISLATION",
-  RESEARCH: "RESEARCH",
-  PROSPECTUS: "PROSPECTUS",
-  FINANCIALS: "FINANCIALS",
-  OTHER: "OTHER",
-} as const;
-export type DealDocumentCategory =
-  (typeof DealDocumentCategory)[keyof typeof DealDocumentCategory];
-
-export const DealType = {
-  SCRAPED: "SCRAPED",
-  MANUAL: "MANUAL",
-  AI_INFERRED: "AI_INFERRED",
-} as const;
-export type DealType = (typeof DealType)[keyof typeof DealType];
-
-export const ReviewState = {
-  NOT_SEEN: "NOT_SEEN",
-  SEEN: "SEEN",
-  REVIEWED: "REVIEWED",
-  PUBLISHED: "PUBLISHED",
-} as const;
-export type ReviewState = (typeof ReviewState)[keyof typeof ReviewState];
-
-export const DealScreeningStatus = {
-  PASS: "PASS",
-  FAIL: "FAIL",
-  INCOMPLETE: "INCOMPLETE",
-} as const;
-export type DealScreeningStatus =
-  (typeof DealScreeningStatus)[keyof typeof DealScreeningStatus];
-
-export const Sentiment = {
-  POSITIVE: "POSITIVE",
-  NEUTRAL: "NEUTRAL",
-  NEGATIVE: "NEGATIVE",
-} as const;
-export type Sentiment = (typeof Sentiment)[keyof typeof Sentiment];
-
-export const ScreenerResponseType = {
-  SCORE: "SCORE",
-} as const;
-export type ScreenerResponseType =
-  (typeof ScreenerResponseType)[keyof typeof ScreenerResponseType];
-
-export const ScreenerResponseSource = {
-  AI: "AI",
-  HUMAN: "HUMAN",
-} as const;
-export type ScreenerResponseSource =
-  (typeof ScreenerResponseSource)[keyof typeof ScreenerResponseSource];
-
-export const OutreachType = {
-  EMAIL: "EMAIL",
-  CALL: "CALL",
-  LINKEDIN: "LINKEDIN",
-  MEETING: "MEETING",
-} as const;
-export type OutreachType = (typeof OutreachType)[keyof typeof OutreachType];
-
-export const DealFinancialSnapshotSource = {
-  LISTING: "LISTING",
-  BROKER_CALL: "BROKER_CALL",
-  CIM: "CIM",
-  MANAGEMENT_MEETING: "MANAGEMENT_MEETING",
-  DILIGENCE: "DILIGENCE",
-  MANUAL: "MANUAL",
-} as const;
-export type DealFinancialSnapshotSource =
-  (typeof DealFinancialSnapshotSource)[keyof typeof DealFinancialSnapshotSource];
-
-export const CompanyFinancialSnapshotSource = {
-  MANAGEMENT: "MANAGEMENT",
-  CIM: "CIM",
-  MANUAL: "MANUAL",
-} as const;
-export type CompanyFinancialSnapshotSource =
-  (typeof CompanyFinancialSnapshotSource)[keyof typeof CompanyFinancialSnapshotSource];
-
-export const DealRiskType = {
-  CUSTOMER_CONCENTRATION: "CUSTOMER_CONCENTRATION",
-  CAPEX: "CAPEX",
-  QUALITY_OF_EARNINGS: "QUALITY_OF_EARNINGS",
-  WORKING_CAPITAL: "WORKING_CAPITAL",
-  OTHER: "OTHER",
-} as const;
-export type DealRiskType = (typeof DealRiskType)[keyof typeof DealRiskType];
-
-export const DealRiskSeverity = {
-  LOW: "LOW",
-  MEDIUM: "MEDIUM",
-  HIGH: "HIGH",
-} as const;
-export type DealRiskSeverity =
-  (typeof DealRiskSeverity)[keyof typeof DealRiskSeverity];
-
-export const DealRiskSource = {
-  SYSTEM: "SYSTEM",
-  USER: "USER",
-} as const;
-export type DealRiskSource =
-  (typeof DealRiskSource)[keyof typeof DealRiskSource];
-
-export const DocumentCategory = {
-  FINANCIALS: "FINANCIALS",
-  LEGAL: "LEGAL",
-  TAX: "TAX",
-  TECHNICAL: "TECHNICAL",
-  COMMERCIAL: "COMMERCIAL",
-  ESG: "ESG",
-  MARKETING: "MARKETING",
-  OPERATIONS: "OPERATIONS",
-  DOCUMENTATION: "DOCUMENTATION",
-  INVESTOR_RELATIONSHIPS: "INVESTOR_RELATIONSHIPS",
-  TOOLS: "TOOLS",
-  LEGISLATION: "LEGISLATION",
-  RESEARCH: "RESEARCH",
-  PROSPECTUS: "PROSPECTUS",
-  OTHER: "OTHER",
-  // Firm-level global document categories
-  OPERATING_PLAYBOOK: "OPERATING_PLAYBOOK",
-  INVESTMENT_MEMO: "INVESTMENT_MEMO",
-  IC_TEMPLATE: "IC_TEMPLATE",
-  INDUSTRY_RESEARCH: "INDUSTRY_RESEARCH",
-  VALUE_CREATION_PLAYBOOK: "VALUE_CREATION_PLAYBOOK",
-  PAST_DEAL_ANALYSIS: "PAST_DEAL_ANALYSIS",
-  DUE_DILIGENCE_CHECKLIST: "DUE_DILIGENCE_CHECKLIST",
-} as const;
-export type DocumentCategory =
-  (typeof DocumentCategory)[keyof typeof DocumentCategory];
-
-export const EntityType = {
-  DEAL: "DEAL",
-  COMPANY: "COMPANY",
-} as const;
-export type EntityType = (typeof EntityType)[keyof typeof EntityType];
-
-export const DocumentIngestionStatus = {
-  PENDING: "PENDING",
-  PROCESSING: "PROCESSING",
-  PROCESSED: "PROCESSED",
-  FAILED: "FAILED",
-  SKIPPED: "SKIPPED",
-} as const;
-export type DocumentIngestionStatus =
-  (typeof DocumentIngestionStatus)[keyof typeof DocumentIngestionStatus];
-
-export const DocumentChunkModality = {
-  TEXT: "TEXT",
-  IMAGE: "IMAGE",
-  AUDIO: "AUDIO",
-  VIDEO: "VIDEO",
-  PDF: "PDF",
-} as const;
-export type DocumentChunkModality =
-  (typeof DocumentChunkModality)[keyof typeof DocumentChunkModality];
-
-export const InvestorCompanyLinkStatus = {
-  ACTIVE: "ACTIVE",
-  ARCHIVED: "ARCHIVED",
-} as const;
-export type InvestorCompanyLinkStatus =
-  (typeof InvestorCompanyLinkStatus)[keyof typeof InvestorCompanyLinkStatus];
+// Enum constants and types: import from `@repo/db/enums` (browser-safe) or
+// re-exported from `@repo/db` root. Not defined here so `schema.ts` stays
+// server-only when imported without the package entry.
 
 // Model type exports (inferred from tables)
 export type User = typeof users.$inferSelect;
@@ -2121,6 +2098,13 @@ export type NewDealSim = typeof dealSims.$inferInsert;
 export type CIMExtraction = typeof cimExtractions.$inferSelect;
 export type NewCIMExtraction = typeof cimExtractions.$inferInsert;
 
+export type SimScreeningSession = typeof simScreeningSessions.$inferSelect;
+export type NewSimScreeningSession = typeof simScreeningSessions.$inferInsert;
+export type SimScreeningRun = typeof simScreeningRuns.$inferSelect;
+export type NewSimScreeningRun = typeof simScreeningRuns.$inferInsert;
+export type SimScreeningAnswer = typeof simScreeningAnswers.$inferSelect;
+export type NewSimScreeningAnswer = typeof simScreeningAnswers.$inferInsert;
+
 export type Outreach = typeof outreach.$inferSelect;
 export type NewOutreach = typeof outreach.$inferInsert;
 
@@ -2138,3 +2122,6 @@ export type InvestorInteraction = typeof investorInteractions.$inferSelect;
 export type NewInvestorInteraction = typeof investorInteractions.$inferInsert;
 export type InvestorCompanyLink = typeof investorCompanyLinks.$inferSelect;
 export type NewInvestorCompanyLink = typeof investorCompanyLinks.$inferInsert;
+
+export type WorkflowJob = typeof workflowJobs.$inferSelect;
+export type NewWorkflowJob = typeof workflowJobs.$inferInsert;

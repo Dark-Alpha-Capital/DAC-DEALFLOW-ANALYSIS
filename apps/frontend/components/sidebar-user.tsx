@@ -1,8 +1,10 @@
-"use client";
-
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { User2 } from "lucide-react";
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
 import { UserDropdown } from "@/components/user-dropdown";
 
 interface SidebarUserProps {
@@ -25,7 +27,7 @@ export function SidebarUser({ session }: SidebarUserProps) {
           <UserDropdown session={session} userInitials={userInitials} />
         ) : (
           <SidebarMenuButton asChild size="lg">
-            <Link href="/auth/login">
+            <Link to="/auth/login">
               <User2 />
               <span>Sign In</span>
             </Link>

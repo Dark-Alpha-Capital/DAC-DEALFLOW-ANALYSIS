@@ -1,11 +1,10 @@
-"use client";
 
 import type { DealOpportunityScreening } from "@repo/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScreenDealButton } from "@/app/(protected)/deal-opportunities/screen-deal-button";
+import { ScreenDealButton } from "@/components/deal-opportunities/screen-deal-button";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation-shim";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";

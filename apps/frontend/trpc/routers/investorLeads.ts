@@ -7,8 +7,8 @@ import db, {
   desc,
   eq,
 } from "@repo/db";
-import { after } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "@/lib/after";
+import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { convertInvestorLeadToInvestorSchema } from "@/lib/schemas";
 
 const investorLeadStatusEnum = z.enum([
