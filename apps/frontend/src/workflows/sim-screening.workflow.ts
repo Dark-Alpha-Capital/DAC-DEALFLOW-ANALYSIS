@@ -42,6 +42,7 @@ import type { SimScreeningParams, WorkflowWorkerEnv } from "./workflow-env";
 const openai = getOpenAIProvider();
 
 const RETRIEVAL_TOP_K = 8;
+const RETRIEVAL_TOP_K_DEAL = 14;
 
 /** Structured logs for CIM / SIM screening workflow runs (Workers + dashboard). */
 const LOG = "[SimScreeningWorkflow]";
@@ -84,29 +85,76 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
     const instanceId = event.instanceId;
     const {
       userId,
-      documentId,
+      documentId: payloadDocumentId,
+      dealOpportunityId: payloadDealOppId,
       screenerId,
       sessionId,
       runId,
       skipIngest,
     } = event.payload;
 
+    const dealOppId = payloadDealOppId?.trim();
+    const simDocumentId = payloadDocumentId?.trim();
+    const isDealScope = Boolean(dealOppId);
+    if (isDealScope === Boolean(simDocumentId)) {
+      throw new Error(
+        "SimScreeningWorkflow: set exactly one of documentId or dealOpportunityId",
+      );
+    }
+
     logDetail("run.start", {
       instanceId,
       sessionId,
       runId,
       userId,
-      documentId,
+      documentId: simDocumentId ?? null,
+      dealOpportunityId: dealOppId ?? null,
       screenerId,
       skipIngest: skipIngest ?? false,
+      scope: isDealScope ? "deal_opportunity" : "sim_document",
     });
 
     try {
       await runDbWithWorkerNeonPool(async () => markWorkflowRunning(instanceId));
       logDetail("markWorkflowRunning.done", { instanceId });
 
-      await step.do("validate-and-ingest", { timeout: "30 minutes" }, async () =>
+      if (isDealScope) {
+        await step.do("validate-deal-rag", { timeout: "10 minutes" }, async () =>
+          runDbWithWorkerNeonPool(async () => {
+            if (!this.env.DOCUMENT_CHUNKS_INDEX) {
+              throw new Error(
+                "DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config",
+              );
+            }
+            await updateSimScreeningRun(runId, { status: "INGESTING" });
+            await updateWorkflowJobProgress(instanceId, {
+              step: "Validating deal documents",
+              percentage: 10,
+            });
+            const [chunkCountRow] = await db
+              .select({ n: count() })
+              .from(documentChunks)
+              .where(eq(documentChunks.dealOpportunityId, dealOppId!));
+            const chunkRowsInDb = Number(chunkCountRow?.n ?? 0);
+            if (chunkRowsInDb === 0) {
+              throw new Error(
+                "No ingested document chunks for this deal. Upload files and wait for processing, then try again.",
+              );
+            }
+            logDetail("step.validate-deal-rag.ok", {
+              dealOpportunityId: dealOppId,
+              chunkRowsInDb,
+            });
+            await updateWorkflowJobProgress(instanceId, {
+              step: "Ready to screen",
+              percentage: 40,
+            });
+          }),
+        );
+      } else {
+        await step.do("validate-and-ingest", { timeout: "30 minutes" }, async () =>
         runDbWithWorkerNeonPool(async () => {
+          const documentId = simDocumentId!;
           const ingestT0 = Date.now();
           let ingestStarted = false;
           try {
@@ -425,6 +473,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
           }
         }),
       );
+      }
 
       await step.do("screen-questions", { timeout: "60 minutes" }, async () =>
         runDbWithWorkerNeonPool(async () => {
@@ -433,7 +482,9 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             instanceId,
             runId,
             screenerId,
-            documentId,
+            documentId: simDocumentId ?? null,
+            dealOpportunityId: dealOppId ?? null,
+            scope: isDealScope ? "deal_opportunity" : "sim_document",
           });
           if (!this.env.DOCUMENT_CHUNKS_INDEX) {
             throw new Error(
@@ -442,44 +493,59 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
           }
           const vectorIndex = this.env.DOCUMENT_CHUNKS_INDEX;
 
-          const [chunkCountRow] = await db
-            .select({ n: count() })
-            .from(documentChunks)
-            .where(eq(documentChunks.documentId, documentId));
+          const [chunkCountRow] = isDealScope
+            ? await db
+                .select({ n: count() })
+                .from(documentChunks)
+                .where(eq(documentChunks.dealOpportunityId, dealOppId!))
+            : await db
+                .select({ n: count() })
+                .from(documentChunks)
+                .where(eq(documentChunks.documentId, simDocumentId!));
           const chunkRowsInDb = Number(chunkCountRow?.n ?? 0);
 
-          const [screeningDoc] = await db
-            .select({
-              entityType: documents.entityType,
-              entityId: documents.entityId,
-              dealOpportunityId: documents.dealOpportunityId,
-              companyId: documents.companyId,
-              themeId: documents.themeId,
-            })
-            .from(documents)
-            .where(eq(documents.id, documentId))
-            .limit(1);
+          const [screeningDoc] = isDealScope
+            ? [null]
+            : await db
+                .select({
+                  entityType: documents.entityType,
+                  entityId: documents.entityId,
+                  dealOpportunityId: documents.dealOpportunityId,
+                  companyId: documents.companyId,
+                  themeId: documents.themeId,
+                })
+                .from(documents)
+                .where(eq(documents.id, simDocumentId!))
+                .limit(1);
 
           logDetail("screen.rag.preflight", {
-            documentId,
+            documentId: simDocumentId ?? null,
+            dealOpportunityId: dealOppId ?? null,
             chunkRowsInDb,
-            vectorizeNamespace: documentId,
-            retrievalTopK: RETRIEVAL_TOP_K,
-            vectorMetadataScope: screeningDoc
+            vectorizeNamespace: isDealScope ? null : simDocumentId,
+            retrievalTopK: isDealScope ? RETRIEVAL_TOP_K_DEAL : RETRIEVAL_TOP_K,
+            vectorMetadataScope: isDealScope
               ? {
-                  entityType: screeningDoc.entityType,
-                  entityId: screeningDoc.entityId,
-                  dealOpportunityId: screeningDoc.dealOpportunityId,
-                  companyId: screeningDoc.companyId,
-                  themeId: screeningDoc.themeId,
+                  entityType: "DEAL_OPPORTUNITY" as const,
+                  dealOpportunityId: dealOppId,
                 }
-              : null,
+              : screeningDoc
+                ? {
+                    entityType: screeningDoc.entityType,
+                    entityId: screeningDoc.entityId,
+                    dealOpportunityId: screeningDoc.dealOpportunityId,
+                    companyId: screeningDoc.companyId,
+                    themeId: screeningDoc.themeId,
+                  }
+                : null,
           });
           if (chunkRowsInDb === 0) {
             logDetail("screen.rag.preflight.warn_no_chunks", {
-              documentId,
-              message:
-                "No DocumentChunk rows for this document; vector search will return nothing",
+              documentId: simDocumentId ?? null,
+              dealOpportunityId: dealOppId ?? null,
+              message: isDealScope
+                ? "No DocumentChunk rows for this deal; vector search will return nothing"
+                : "No DocumentChunk rows for this document; vector search will return nothing",
             });
           }
 
@@ -532,27 +598,35 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             });
 
             const ragT0 = Date.now();
-            const hits = await searchDocumentChunksVector(db, vectorIndex, {
-              queryEmbedding,
-              limit: RETRIEVAL_TOP_K,
-              documentId,
-              ...(screeningDoc
-                ? {
-                    entityType: screeningDoc.entityType,
-                    entityId: screeningDoc.entityId ?? null,
-                    dealOpportunityId: screeningDoc.dealOpportunityId ?? "",
-                    companyId: screeningDoc.companyId ?? "",
-                    themeId: screeningDoc.themeId ?? "",
-                  }
-                : {}),
-            });
+            const hits = isDealScope
+              ? await searchDocumentChunksVector(db, vectorIndex, {
+                  queryEmbedding,
+                  limit: RETRIEVAL_TOP_K_DEAL,
+                  entityType: "DEAL_OPPORTUNITY",
+                  dealOpportunityId: dealOppId!,
+                })
+              : await searchDocumentChunksVector(db, vectorIndex, {
+                  queryEmbedding,
+                  limit: RETRIEVAL_TOP_K,
+                  documentId: simDocumentId!,
+                  ...(screeningDoc
+                    ? {
+                        entityType: screeningDoc.entityType,
+                        entityId: screeningDoc.entityId ?? null,
+                        dealOpportunityId: screeningDoc.dealOpportunityId ?? "",
+                        companyId: screeningDoc.companyId ?? "",
+                        themeId: screeningDoc.themeId ?? "",
+                      }
+                    : {}),
+                });
             const textHits = hits.filter(
               (h) => h.chunkText && h.chunkText.trim().length > 0,
             );
             logDetail("screen.question.vector_search", {
               questionId: q.id,
-              documentId,
-              vectorizeNamespace: documentId,
+              documentId: simDocumentId ?? null,
+              dealOpportunityId: dealOppId ?? null,
+              vectorizeNamespace: isDealScope ? null : simDocumentId,
               hitCount: hits.length,
               textHitCount: textHits.length,
               topChunkIds: hits.slice(0, 5).map((h) => h.id),
@@ -633,7 +707,13 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
       );
       return out;
     } catch (err) {
-      logError("run.failed", err, { instanceId, sessionId, runId, documentId });
+      logError("run.failed", err, {
+        instanceId,
+        sessionId,
+        runId,
+        documentId: simDocumentId ?? null,
+        dealOpportunityId: dealOppId ?? null,
+      });
       const message = err instanceof Error ? err.message : String(err);
       try {
         await runDbWithWorkerNeonPool(async () =>

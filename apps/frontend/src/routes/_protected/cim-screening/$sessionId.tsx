@@ -4,6 +4,7 @@ import type { inferRouterOutputs } from "@trpc/server";
 import {
   Activity,
   ArrowLeft,
+  Briefcase,
   FileText,
   Layers,
   Loader2,
@@ -155,7 +156,11 @@ function CimScreeningSessionDetailPage() {
             detail: [
               {
                 jobId: res.jobId,
-                fileName: data?.document?.fileName ?? "SIM.pdf",
+                fileName:
+                  data?.document?.fileName ??
+                  (data?.dealOpportunity?.dealTeaser?.trim()
+                    ? data.dealOpportunity.dealTeaser.trim().slice(0, 120)
+                    : "Deal opportunity"),
                 userId: user?.id ?? "",
                 queueName: QUEUE_NAMES.SIM_SCREENING,
               },
@@ -182,7 +187,11 @@ function CimScreeningSessionDetailPage() {
             detail: [
               {
                 jobId: res.jobId,
-                fileName: data?.document?.fileName ?? "SIM.pdf",
+                fileName:
+                  data?.document?.fileName ??
+                  (data?.dealOpportunity?.dealTeaser?.trim()
+                    ? data.dealOpportunity.dealTeaser.trim().slice(0, 120)
+                    : "Deal opportunity"),
                 userId: user?.id ?? "",
                 queueName: QUEUE_NAMES.SIM_SCREENING,
               },
@@ -243,14 +252,24 @@ function CimScreeningSessionDetailPage() {
     );
   }
 
-  const { session, document: doc, screener, rows, job, runs, run } = data;
+  const {
+    session,
+    document: doc,
+    dealOpportunity: dealOpp,
+    screener,
+    rows,
+    job,
+    runs,
+    run,
+  } = data;
   const progressPct = job?.progress?.percentage ?? 0;
   const progressStep = job?.progress?.step ?? "";
   const runStatus = run?.status;
   const running =
     runStatus != null && runStatus !== "COMPLETED" && runStatus !== "FAILED";
 
-  const canAddRun = doc?.ingestionStatus === "PROCESSED";
+  const canAddRun =
+    doc?.ingestionStatus === "PROCESSED" || Boolean(dealOpp);
   const selectedRunId = data.selectedRunId;
   const statusBadge = runStatusBadgeProps(runStatus);
 
@@ -282,8 +301,8 @@ function CimScreeningSessionDetailPage() {
               Screening session
             </h1>
             <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-              Source document, run history, live progress, and per-question
-              scores for the run you select.
+              Source (SIM file or deal documents), run history, live progress,
+              and per-question scores for the run you select.
             </p>
           </div>
           <Badge
@@ -299,10 +318,20 @@ function CimScreeningSessionDetailPage() {
         <Card className="shadow-sm">
           <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
-              <FileText className="text-muted-foreground size-4" aria-hidden />
-              <CardTitle className="text-base">Source document</CardTitle>
+              {dealOpp ? (
+                <Briefcase className="text-muted-foreground size-4" aria-hidden />
+              ) : (
+                <FileText className="text-muted-foreground size-4" aria-hidden />
+              )}
+              <CardTitle className="text-base">
+                {dealOpp ? "Deal opportunity" : "Source document"}
+              </CardTitle>
             </div>
-            <CardDescription>File attached to this session.</CardDescription>
+            <CardDescription>
+              {dealOpp
+                ? "Template screening uses RAG across all ingested files for this deal."
+                : "File attached to this session."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {doc ? (
@@ -330,6 +359,27 @@ function CimScreeningSessionDetailPage() {
                   Uploaded {new Date(doc.createdAt).toLocaleString()}
                 </p>
               </div>
+            ) : dealOpp ? (
+              <div className="space-y-3">
+                <MetaRow label="Teaser">
+                  {dealOpp.dealTeaser?.trim() || "—"}
+                </MetaRow>
+                {dealOpp.description?.trim() ? (
+                  <MetaRow label="Description">
+                    <span className="line-clamp-4 whitespace-pre-wrap">
+                      {dealOpp.description}
+                    </span>
+                  </MetaRow>
+                ) : null}
+                <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+                  <Link
+                    to="/deal-opportunities/$uid"
+                    params={{ uid: dealOpp.id }}
+                  >
+                    Open deal opportunity
+                  </Link>
+                </Button>
+              </div>
             ) : (
               <p className="text-muted-foreground text-sm">
                 No document on this session.
@@ -345,8 +395,9 @@ function CimScreeningSessionDetailPage() {
               <CardTitle className="text-base">Runs & templates</CardTitle>
             </div>
             <CardDescription>
-              Switch runs to view scores. Start another template after ingestion
-              completes.
+              Switch runs to view scores. For SIM uploads, start another template
+              after ingestion completes. Deal sessions can add runs anytime if
+              chunks exist.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -448,8 +499,9 @@ function CimScreeningSessionDetailPage() {
               </div>
             ) : (
               <p className="text-muted-foreground text-xs leading-relaxed">
-                Ingestion must finish before you can start another screening
-                run.
+                {dealOpp
+                  ? "Add ingested documents to this deal before starting a screening run."
+                  : "Ingestion must finish before you can start another screening run."}
               </p>
             )}
 

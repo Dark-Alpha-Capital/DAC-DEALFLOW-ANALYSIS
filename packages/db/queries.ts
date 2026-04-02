@@ -31,6 +31,7 @@ import {
   simScreeningSessions,
   simScreeningRuns,
   simScreeningAnswers,
+  documentChunks,
   type Deal,
   type Lead,
   type Company,
@@ -2238,6 +2239,16 @@ export async function getSimScreeningRunByIdForUser(runId: string, userId: strin
 }
 
 /** True if this session has any run still in flight */
+export async function countDocumentChunksByDealOpportunityId(
+  dealOpportunityId: string,
+) {
+  const [row] = await db
+    .select({ n: count() })
+    .from(documentChunks)
+    .where(eq(documentChunks.dealOpportunityId, dealOpportunityId));
+  return Number(row?.n ?? 0);
+}
+
 export async function simScreeningSessionHasActiveRun(sessionId: string) {
   const row = await db
     .select({ id: simScreeningRuns.id })
@@ -2260,19 +2271,46 @@ export async function listSimScreeningSessionsForUserWithMeta(
   userId: string,
   limit = 50,
 ) {
-  const base = await db
+  const rows = await db
     .select({
       id: simScreeningSessions.id,
       createdAt: simScreeningSessions.createdAt,
       documentId: simScreeningSessions.documentId,
-      fileName: documents.fileName,
-      title: documents.title,
+      dealOpportunityId: simScreeningSessions.dealOpportunityId,
+      docFileName: documents.fileName,
+      docTitle: documents.title,
+      dealTeaser: dealOpportunities.dealTeaser,
+      dealDescription: dealOpportunities.description,
     })
     .from(simScreeningSessions)
-    .innerJoin(documents, eq(simScreeningSessions.documentId, documents.id))
+    .leftJoin(documents, eq(simScreeningSessions.documentId, documents.id))
+    .leftJoin(
+      dealOpportunities,
+      eq(simScreeningSessions.dealOpportunityId, dealOpportunities.id),
+    )
     .where(eq(simScreeningSessions.userId, userId))
     .orderBy(desc(simScreeningSessions.createdAt))
     .limit(limit);
+
+  const base = rows.map((s) => {
+    const teaser = s.dealTeaser?.trim();
+    const fileName =
+      s.docFileName ??
+      (teaser
+        ? teaser.length > 120
+          ? `${teaser.slice(0, 120)}…`
+          : teaser
+        : "Deal opportunity");
+    const title = s.docTitle ?? s.dealDescription ?? "";
+    return {
+      id: s.id,
+      createdAt: s.createdAt,
+      documentId: s.documentId,
+      dealOpportunityId: s.dealOpportunityId,
+      fileName,
+      title,
+    };
+  });
 
   if (base.length === 0) return [];
 

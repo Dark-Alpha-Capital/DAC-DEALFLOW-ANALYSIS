@@ -2,7 +2,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { documents, eq } from "@repo/db";
+import db, { documents, dealOpportunities, eq } from "@repo/db";
 import { uploadBuffer, sanitizeFilename } from "@repo/nextcloud";
 import {
   deleteSimScreeningAnswersForRun,
@@ -20,6 +20,7 @@ import {
   getSimScreeningRunsBySessionId,
   getSimScreeningRunByIdForUser,
   simScreeningSessionHasActiveRun,
+  countDocumentChunksByDealOpportunityId,
 } from "@repo/db/queries";
 import {
   insertWorkflowJob,
@@ -160,17 +161,37 @@ export const simScreeningRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
       }
 
-      const [docRow] = await db
-        .select()
-        .from(documents)
-        .where(eq(documents.id, session.documentId))
-        .limit(1);
+      const dealOppId = session.dealOpportunityId?.trim();
+      const simDocId = session.documentId?.trim();
 
-      if (!docRow || docRow.ingestionStatus !== "PROCESSED") {
+      if (dealOppId) {
+        const chunkCount =
+          await countDocumentChunksByDealOpportunityId(dealOppId);
+        if (chunkCount === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "No ingested document chunks for this deal. Upload files and wait for processing, then try again.",
+          });
+        }
+      } else if (simDocId) {
+        const [docRow] = await db
+          .select()
+          .from(documents)
+          .where(eq(documents.id, simDocId))
+          .limit(1);
+
+        if (!docRow || docRow.ingestionStatus !== "PROCESSED") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Document must be fully ingested before screening with another template. Wait for the first run to finish or retry a failed run.",
+          });
+        }
+      } else {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message:
-            "Document must be fully ingested before screening with another template. Wait for the first run to finish or retry a failed run.",
+          message: "Session has no document or deal opportunity",
         });
       }
 
@@ -185,7 +206,7 @@ export const simScreeningRouter = createTRPCRouter({
       if (await simScreeningSessionHasActiveRun(input.sessionId)) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "Another screening run is already in progress for this document.",
+          message: "Another screening run is already in progress for this session.",
         });
       }
 
@@ -203,7 +224,28 @@ export const simScreeningRouter = createTRPCRouter({
         });
       }
 
-      const fileLabel = docRow.fileName ?? docRow.title ?? "SIM.pdf";
+      let fileLabel = "SIM.pdf";
+      let workflowDealId: string | undefined;
+      if (dealOppId) {
+        const [oppRow] = await db
+          .select({
+            dealTeaser: dealOpportunities.dealTeaser,
+          })
+          .from(dealOpportunities)
+          .where(eq(dealOpportunities.id, dealOppId))
+          .limit(1);
+        const teaser = oppRow?.dealTeaser?.trim();
+        fileLabel =
+          teaser && teaser.length > 120 ? `${teaser.slice(0, 120)}…` : teaser ?? "Deal opportunity";
+        workflowDealId = dealOppId;
+      } else {
+        const [docRow] = await db
+          .select()
+          .from(documents)
+          .where(eq(documents.id, simDocId!))
+          .limit(1);
+        fileLabel = docRow?.fileName ?? docRow?.title ?? "SIM.pdf";
+      }
 
       await insertWorkflowJob({
         instanceId: jobId,
@@ -211,16 +253,18 @@ export const simScreeningRouter = createTRPCRouter({
         userId,
         fileName: fileLabel,
         screenerId: input.screenerId,
+        dealId: workflowDealId ?? null,
       });
 
       await startSimScreeningWorkflow(jobId, {
         jobId,
         userId,
-        documentId: session.documentId,
+        ...(dealOppId
+          ? { dealOpportunityId: dealOppId }
+          : { documentId: simDocId!, skipIngest: true }),
         screenerId: input.screenerId,
         sessionId: session.id,
         runId: run.id,
-        skipIngest: true,
       });
 
       return {
@@ -260,13 +304,27 @@ export const simScreeningRouter = createTRPCRouter({
           null;
       }
 
-      const [documentRow, questions, answers] = await Promise.all([
-        db
-          .select()
-          .from(documents)
-          .where(eq(documents.id, session.documentId))
-          .limit(1)
-          .then((r) => r[0] ?? null),
+      const [documentRow, dealRow, questions, answers] = await Promise.all([
+        session.documentId
+          ? db
+              .select()
+              .from(documents)
+              .where(eq(documents.id, session.documentId))
+              .limit(1)
+              .then((r) => r[0] ?? null)
+          : Promise.resolve(null),
+        session.dealOpportunityId
+          ? db
+              .select({
+                id: dealOpportunities.id,
+                dealTeaser: dealOpportunities.dealTeaser,
+                description: dealOpportunities.description,
+              })
+              .from(dealOpportunities)
+              .where(eq(dealOpportunities.id, session.dealOpportunityId))
+              .limit(1)
+              .then((r) => r[0] ?? null)
+          : Promise.resolve(null),
         selectedRun
           ? getScreenerQuestions(selectedRun.screenerId)
           : Promise.resolve([]),
@@ -316,6 +374,13 @@ export const simScreeningRouter = createTRPCRouter({
             ingestionError: documentRow.ingestionError,
             ingestionCompletedAt: documentRow.ingestionCompletedAt,
             createdAt: documentRow.createdAt,
+          }
+          : null,
+        dealOpportunity: dealRow
+          ? {
+            id: dealRow.id,
+            dealTeaser: dealRow.dealTeaser,
+            description: dealRow.description,
           }
           : null,
         runs: runs.map((r) => ({
@@ -385,13 +450,48 @@ export const simScreeningRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
       }
 
-      const [docRow] = await db
-        .select()
-        .from(documents)
-        .where(eq(documents.id, session.documentId))
-        .limit(1);
+      const dealOppId = session.dealOpportunityId?.trim();
+      const simDocId = session.documentId?.trim();
 
-      const skipIngest = docRow?.ingestionStatus === "PROCESSED";
+      let fileLabel = "SIM.pdf";
+      let workflowPayload:
+        | { dealOpportunityId: string }
+        | { documentId: string; skipIngest: boolean };
+
+      if (dealOppId) {
+        const chunkCount =
+          await countDocumentChunksByDealOpportunityId(dealOppId);
+        if (chunkCount === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "No ingested document chunks for this deal. Upload files and wait for processing, then try again.",
+          });
+        }
+        const [oppRow] = await db
+          .select({ dealTeaser: dealOpportunities.dealTeaser })
+          .from(dealOpportunities)
+          .where(eq(dealOpportunities.id, dealOppId))
+          .limit(1);
+        const teaser = oppRow?.dealTeaser?.trim();
+        fileLabel =
+          teaser && teaser.length > 120 ? `${teaser.slice(0, 120)}…` : teaser ?? "Deal opportunity";
+        workflowPayload = { dealOpportunityId: dealOppId };
+      } else if (simDocId) {
+        const [docRow] = await db
+          .select()
+          .from(documents)
+          .where(eq(documents.id, simDocId))
+          .limit(1);
+        const skipIngest = docRow?.ingestionStatus === "PROCESSED";
+        fileLabel = docRow?.fileName ?? docRow?.title ?? "SIM.pdf";
+        workflowPayload = { documentId: simDocId, skipIngest };
+      } else {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Session has no document or deal opportunity",
+        });
+      }
 
       const oldJobId = run.workflowInstanceId;
       if (oldJobId) {
@@ -413,24 +513,22 @@ export const simScreeningRouter = createTRPCRouter({
         workflowInstanceId: newJobId,
       });
 
-      const fileLabel = docRow?.fileName ?? docRow?.title ?? "SIM.pdf";
-
       await insertWorkflowJob({
         instanceId: newJobId,
         workflowKind: "sim-screening",
         userId,
         fileName: fileLabel,
         screenerId: run.screenerId,
+        dealId: dealOppId ?? null,
       });
 
       await startSimScreeningWorkflow(newJobId, {
         jobId: newJobId,
         userId,
-        documentId: session.documentId,
         screenerId: run.screenerId,
         sessionId: session.id,
         runId: run.id,
-        skipIngest,
+        ...workflowPayload,
       });
 
       return {

@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { notFound } from "@tanstack/react-router";
-import db, { documents, eq } from "@repo/db";
+import db, { documents, dealOpportunities, eq } from "@repo/db";
 import {
   getAllScreeners,
   getScreenerById,
@@ -49,14 +49,28 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
       throw notFound();
     }
 
-    const [runs, documentRow, screeners] = await Promise.all([
+    const [runs, documentRow, dealRow, screeners] = await Promise.all([
       getSimScreeningRunsBySessionId(session.id),
-      db
-        .select()
-        .from(documents)
-        .where(eq(documents.id, session.documentId))
-        .limit(1)
-        .then((r) => r[0] ?? null),
+      session.documentId
+        ? db
+            .select()
+            .from(documents)
+            .where(eq(documents.id, session.documentId))
+            .limit(1)
+            .then((r) => r[0] ?? null)
+        : Promise.resolve(null),
+      session.dealOpportunityId
+        ? db
+            .select({
+              id: dealOpportunities.id,
+              dealTeaser: dealOpportunities.dealTeaser,
+              description: dealOpportunities.description,
+            })
+            .from(dealOpportunities)
+            .where(eq(dealOpportunities.id, session.dealOpportunityId))
+            .limit(1)
+            .then((r) => r[0] ?? null)
+        : Promise.resolve(null),
       getAllScreeners(),
     ]);
 
@@ -115,6 +129,13 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
             ingestionError: documentRow.ingestionError,
             ingestionCompletedAt: documentRow.ingestionCompletedAt,
             createdAt: documentRow.createdAt,
+          }
+          : null,
+        dealOpportunity: dealRow
+          ? {
+            id: dealRow.id,
+            dealTeaser: dealRow.dealTeaser,
+            description: dealRow.description,
           }
           : null,
         runs: runs.map((r) => ({

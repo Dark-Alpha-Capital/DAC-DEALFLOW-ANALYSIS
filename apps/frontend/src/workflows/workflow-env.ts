@@ -50,14 +50,18 @@ export type ScreenDealParams =
       dealOpportunityId?: string;
     };
 
+/** SIM upload: set documentId. Deal opportunity (multi-doc RAG): set dealOpportunityId. */
 export type SimScreeningParams = {
   jobId: string;
   userId: string;
-  documentId: string;
   screenerId: string;
   sessionId: string;
   runId: string;
-  /** When false, skip RAG ingest if document is already PROCESSED */
+  /** SIM PDF path */
+  documentId?: string;
+  /** Template screening across all ingested chunks for this deal */
+  dealOpportunityId?: string;
+  /** When true, skip RAG ingest if document is already PROCESSED (SIM only) */
   skipIngest?: boolean;
 };
 

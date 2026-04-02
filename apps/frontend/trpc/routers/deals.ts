@@ -32,6 +32,7 @@ import {
   startCimExtractionWorkflow,
   startFileUploadWorkflow,
   startRagIngestionWorkflow,
+  startSimScreeningWorkflow,
 } from "@/src/lib/workflow-jobs-api";
 import { randomUUID } from "crypto";
 import { createId } from "@paralleldrive/cuid2";
@@ -44,6 +45,8 @@ import {
   GetLatestDealFinancialSnapshotByDealOpportunityId,
   GetDealFinancialSnapshotsByDealOpportunityId,
   GetDealRiskFlagsByDealOpportunityId,
+  countDocumentChunksByDealOpportunityId,
+  getScreenerById,
 } from "@repo/db/queries";
 import {
   replaceDealSim,
@@ -51,9 +54,12 @@ import {
   deleteFinancialsForSim,
   createDealFinancialSnapshot,
   createDealRiskFlag,
+  insertSimScreeningSession,
+  insertSimScreeningRun,
 } from "@repo/db/mutations";
 import { buildNextcloudFileUrl, uploadBuffer } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
+import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import {
   upsertDealOpportunityScreening,
   runAiQualitativeScreening,
@@ -961,6 +967,106 @@ export const dealsRouter = createTRPCRouter({
         revalidateTag(`deal-${opp.id}`, "max");
       });
       return { success: true };
+    }),
+
+  startTemplateScreening: protectedProcedure
+    .input(
+      z.object({
+        dealOpportunityId: z.string().min(1),
+        screenerId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      if (!userId?.trim()) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "User ID required",
+        });
+      }
+
+      let opp = await GetDealOpportunityById(input.dealOpportunityId);
+      if (!opp) {
+        opp = await GetDealOpportunityByLegacyDealId(input.dealOpportunityId);
+      }
+      if (!opp) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Deal opportunity not found",
+        });
+      }
+
+      const chunkCount = await countDocumentChunksByDealOpportunityId(opp.id);
+      if (chunkCount === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "No ingested document chunks for this deal. Upload files and wait for processing, then run template screening.",
+        });
+      }
+
+      const screener = await getScreenerById(input.screenerId);
+      if (!screener) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Screener template not found",
+        });
+      }
+
+      const session = await insertSimScreeningSession({
+        userId,
+        dealOpportunityId: opp.id,
+      });
+      if (!session) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create screening session",
+        });
+      }
+
+      const jobId = randomUUID();
+      const run = await insertSimScreeningRun({
+        sessionId: session.id,
+        screenerId: input.screenerId,
+        workflowInstanceId: jobId,
+      });
+      if (!run) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create screening run",
+        });
+      }
+
+      const teaser = opp.dealTeaser?.trim();
+      const fileLabel =
+        teaser && teaser.length > 120
+          ? `${teaser.slice(0, 120)}…`
+          : teaser ?? "Deal opportunity";
+
+      await insertWorkflowJob({
+        instanceId: jobId,
+        workflowKind: "sim-screening",
+        userId,
+        dealId: opp.id,
+        fileName: fileLabel,
+        screenerId: input.screenerId,
+      });
+
+      await startSimScreeningWorkflow(jobId, {
+        jobId,
+        userId,
+        dealOpportunityId: opp.id,
+        screenerId: input.screenerId,
+        sessionId: session.id,
+        runId: run.id,
+      });
+
+      return {
+        sessionId: session.id,
+        runId: run.id,
+        jobId,
+        queueName: QUEUE_NAMES.SIM_SCREENING,
+      };
     }),
 
   updateOpportunity: protectedProcedure

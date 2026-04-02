@@ -10,6 +10,7 @@ import {
   index,
   uniqueIndex,
   jsonb,
+  check,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
@@ -1196,7 +1197,7 @@ export const workflowJobs = pgTable(
   }),
 );
 
-/** SIM screening workspace: one uploaded document per session; runs hold per-template executions */
+/** SIM screening workspace: one uploaded SIM PDF per session, or a deal opportunity (multi-doc RAG); runs hold per-template executions */
 export const simScreeningSessions = pgTable(
   "SimScreeningSession",
   {
@@ -1206,9 +1207,13 @@ export const simScreeningSessions = pgTable(
     userId: text("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    documentId: text("documentId")
-      .notNull()
-      .references(() => documents.id, { onDelete: "cascade" }),
+    documentId: text("documentId").references(() => documents.id, {
+      onDelete: "cascade",
+    }),
+    dealOpportunityId: text("dealOpportunityId").references(
+      () => dealOpportunities.id,
+      { onDelete: "cascade" },
+    ),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()
@@ -1222,6 +1227,13 @@ export const simScreeningSessions = pgTable(
     simScreeningSessionDocumentIdx: index(
       "sim_screening_session_document_idx",
     ).on(table.documentId),
+    simScreeningSessionDealOppIdx: index(
+      "sim_screening_session_deal_opp_idx",
+    ).on(table.dealOpportunityId),
+    simScreeningSessionScopeCheck: check(
+      "sim_screening_session_scope_check",
+      sql`(${table.documentId} IS NOT NULL AND ${table.dealOpportunityId} IS NULL) OR (${table.documentId} IS NULL AND ${table.dealOpportunityId} IS NOT NULL)`,
+    ),
   }),
 );
 
@@ -1689,6 +1701,7 @@ export const dealOpportunitiesRelations = relations(
       references: [cimExtractions.dealOpportunityId],
     }),
     dealSims: many(dealSims),
+    simScreeningSessions: many(simScreeningSessions),
   }),
 );
 
@@ -1789,6 +1802,10 @@ export const simScreeningSessionsRelations = relations(
     document: one(documents, {
       fields: [simScreeningSessions.documentId],
       references: [documents.id],
+    }),
+    dealOpportunity: one(dealOpportunities, {
+      fields: [simScreeningSessions.dealOpportunityId],
+      references: [dealOpportunities.id],
     }),
     runs: many(simScreeningRuns),
   }),

@@ -555,13 +555,22 @@ export type SimScreeningSessionStatus =
 
 export async function insertSimScreeningSession(input: {
   userId: string;
-  documentId: string;
+  documentId?: string | null;
+  dealOpportunityId?: string | null;
 }) {
+  const docId = input.documentId?.trim() || null;
+  const dealId = input.dealOpportunityId?.trim() || null;
+  if ((docId ? 1 : 0) + (dealId ? 1 : 0) !== 1) {
+    throw new Error(
+      "insertSimScreeningSession: exactly one of documentId or dealOpportunityId is required",
+    );
+  }
   const [row] = await db
     .insert(simScreeningSessions)
     .values({
       userId: input.userId,
-      documentId: input.documentId,
+      documentId: docId,
+      dealOpportunityId: dealId,
     })
     .returning();
   return row ?? null;

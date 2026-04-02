@@ -40,9 +40,9 @@ const FetchDealAIScreenings = ({
               No AI screenings yet
             </h3>
             <p className="text-muted-foreground mt-2 text-sm">
-              Run AI screening to get qualitative analysis of revenue
-              predictability, market growth, competitive advantage, and key
-              risks.
+              Run AI screening to start a template run (RAG across ingested deal
+              documents). Results appear on the CIM screening session page;
+              legacy qualitative summaries still list here when present.
             </p>
           </div>
         )}
