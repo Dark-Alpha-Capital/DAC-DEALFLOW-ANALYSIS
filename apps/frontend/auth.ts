@@ -3,7 +3,6 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@repo/db";
-import { UserRole } from "@repo/db/enums";
 import { users, accounts, sessions, verifications } from "@repo/db/schema";
 import { eq } from "drizzle-orm";
 import { adminEmails } from "./lib/utils";
@@ -16,11 +15,11 @@ import {
 /**
  * Determine the role of the user based on their email
  */
-function determineRole(userEmail: string): UserRole {
+function determineRole(userEmail: string): string {
   if (adminEmails.includes(userEmail)) {
-    return UserRole.ADMIN;
+    return "ADMIN";
   }
-  return UserRole.USER;
+  return "USER";
 }
 
 const ALLOWED_EMAIL_DOMAIN = "darkalphacapital.com";

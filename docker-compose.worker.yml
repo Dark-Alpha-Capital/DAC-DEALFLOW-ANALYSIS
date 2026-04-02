@@ -1,4 +1,0 @@
-# Deprecated: BullMQ worker was removed. Background work runs as Cloudflare Workflows
-# in apps/frontend (see src/workflows/). Use `wrangler deploy` for production.
-
-services: {}
