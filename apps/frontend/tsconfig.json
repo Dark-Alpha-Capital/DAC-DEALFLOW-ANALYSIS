@@ -16,6 +16,8 @@
     "incremental": true,
     "paths": {
       "@/*": ["./*"],
+      "@repo/db": ["../../packages/db/index.ts"],
+      "@repo/db/*": ["../../packages/db/*"],
       "@repo/nextcloud": ["../../packages/nextcloud"],
       "@repo/ai-core": ["../../packages/ai-core/index.ts"],
       "@repo/schemas": ["../../packages/schemas/index.ts"],

@@ -307,16 +307,16 @@ export const simScreeningRouter = createTRPCRouter({
         session,
         document: documentRow
           ? {
-              id: documentRow.id,
-              title: documentRow.title,
-              fileName: documentRow.fileName,
-              fileSize: documentRow.fileSize,
-              mimeType: documentRow.mimeType,
-              ingestionStatus: documentRow.ingestionStatus,
-              ingestionError: documentRow.ingestionError,
-              ingestionCompletedAt: documentRow.ingestionCompletedAt,
-              createdAt: documentRow.createdAt,
-            }
+            id: documentRow.id,
+            title: documentRow.title,
+            fileName: documentRow.fileName,
+            fileSize: documentRow.fileSize,
+            mimeType: documentRow.mimeType,
+            ingestionStatus: documentRow.ingestionStatus,
+            ingestionError: documentRow.ingestionError,
+            ingestionCompletedAt: documentRow.ingestionCompletedAt,
+            createdAt: documentRow.createdAt,
+          }
           : null,
         runs: runs.map((r) => ({
           id: r.id,
@@ -332,11 +332,11 @@ export const simScreeningRouter = createTRPCRouter({
         selectedRunId: selectedRun?.id ?? null,
         run: selectedRun
           ? {
-              id: selectedRun.id,
-              status: selectedRun.status,
-              errorMessage: selectedRun.errorMessage,
-              workflowInstanceId: selectedRun.workflowInstanceId,
-            }
+            id: selectedRun.id,
+            status: selectedRun.status,
+            errorMessage: selectedRun.errorMessage,
+            workflowInstanceId: selectedRun.workflowInstanceId,
+          }
           : null,
         screener: screener
           ? { id: screener.id, name: screener.name, category: screener.category }

@@ -13,8 +13,10 @@ export { resolveMimeType, MIME, TEXT_LIKE, EXCEL, isMedia } from "./mime";
 export { splitContentIntoChunks } from "./chunking";
 export type {
   ChunkRow,
+  DocumentChunkInsert,
   DocumentContext,
   MetadataBase,
+  ProcessedChunk,
   ProcessResult,
   ProgressReporter,
 } from "./ingestion-types";

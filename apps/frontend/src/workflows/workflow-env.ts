@@ -63,6 +63,7 @@ export type SimScreeningParams = {
 
 /** Cloudflare Worker env with workflow bindings (see wrangler.jsonc) */
 export interface WorkflowWorkerEnv {
+  DOCUMENT_CHUNKS_INDEX: VectorizeIndex;
   SCREEN_DEAL_WORKFLOW: Workflow<ScreenDealParams>;
   FILE_UPLOAD_WORKFLOW: Workflow<FileUploadParams>;
   CIM_EXTRACTION_WORKFLOW: Workflow<CimExtractionParams>;

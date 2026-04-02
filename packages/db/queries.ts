@@ -9,7 +9,6 @@ import {
   aiScreenings,
   dealOpportunityScreenings,
   documents,
-  documentChunks,
   dealOpportunities,
   companies,
   companyNotes,
@@ -1661,64 +1660,6 @@ export const GetGlobalDocuments = async () => {
     return docs;
   } catch (error) {
     console.error("Failed query: select global documents", error);
-    throw error;
-  }
-};
-
-interface SearchDocumentChunksInput {
-  queryEmbedding: number[];
-  limit?: number;
-  entityType?: "LEAD" | "COMPANY" | "DEAL_OPPORTUNITY" | "THEME" | "GLOBAL";
-  entityId?: string | null;
-  documentId?: string;
-  dealOpportunityId?: string;
-  companyId?: string;
-  themeId?: string;
-}
-
-export const SearchDocumentChunks = async ({
-  queryEmbedding,
-  limit = 10,
-  entityType,
-  entityId,
-  documentId,
-  dealOpportunityId,
-  companyId,
-  themeId,
-}: SearchDocumentChunksInput) => {
-  try {
-    if (!queryEmbedding.length) {
-      return [];
-    }
-
-    const embeddingLiteral = `[${queryEmbedding.join(",")}]`;
-    const conditions = [sql`${documentChunks.embedding} IS NOT NULL`];
-
-    if (entityType) conditions.push(eq(documentChunks.entityType, entityType));
-    if (entityId !== undefined) {
-      if (entityId === null) {
-        conditions.push(isNull(documentChunks.entityId));
-      } else {
-        conditions.push(eq(documentChunks.entityId, entityId));
-      }
-    }
-    if (documentId) conditions.push(eq(documentChunks.documentId, documentId));
-    if (dealOpportunityId) {
-      conditions.push(eq(documentChunks.dealOpportunityId, dealOpportunityId));
-    }
-    if (companyId) conditions.push(eq(documentChunks.companyId, companyId));
-    if (themeId) conditions.push(eq(documentChunks.themeId, themeId));
-
-    const rows = await db
-      .select()
-      .from(documentChunks)
-      .where(and(...conditions))
-      .orderBy(sql`${documentChunks.embedding} <=> ${embeddingLiteral}::vector`)
-      .limit(limit);
-
-    return rows;
-  } catch (error) {
-    console.error("Failed query: search document chunks", error);
     throw error;
   }
 };

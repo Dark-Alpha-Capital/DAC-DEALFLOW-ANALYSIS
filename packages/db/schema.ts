@@ -10,7 +10,6 @@ import {
   index,
   uniqueIndex,
   jsonb,
-  vector,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
@@ -1145,7 +1144,6 @@ export const documentChunks = pgTable(
     }),
     chunkText: text("chunkText"),
     modality: documentChunkModalityEnum("modality").default("TEXT").notNull(),
-    embedding: vector("embedding", { dimensions: 768 }),
     metadata: jsonb("metadata"),
     pageNumber: integer("pageNumber"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),

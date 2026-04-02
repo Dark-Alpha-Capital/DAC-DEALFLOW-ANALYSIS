@@ -7,6 +7,15 @@
   "observability": {
     "enabled": true
   },
+  // wrangler vectorize create document-chunks --dimensions=768 --metric=cosine
+  // Index metadata for filters: documentId, dealOpportunityId, companyId, themeId, entityType, entityId
+  "vectorize": [
+    {
+      "binding": "DOCUMENT_CHUNKS_INDEX",
+      "index_name": "document-chunks",
+      "remote": true
+    }
+  ],
   "workflows": [
     {
       "name": "screen-deal",

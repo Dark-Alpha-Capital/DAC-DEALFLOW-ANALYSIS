@@ -1,13 +1,21 @@
+import { createId } from "@paralleldrive/cuid2";
 import { getEmbedding, isValidEmbeddingDimension } from "./embedding";
 import { extractPdfContent, extractTextFromDocx, extractTextFromExcel } from "@repo/cim-extraction";
 import { splitContentIntoChunks } from "./chunking";
-import type { ChunkRow, DocumentContext, MetadataBase, ProcessResult, ProgressReporter } from "./ingestion-types";
+import type {
+  DocumentChunkInsert,
+  DocumentContext,
+  MetadataBase,
+  ProcessedChunk,
+  ProcessResult,
+  ProgressReporter,
+} from "./ingestion-types";
 import { EXCEL, MIME, TEXT_LIKE, getMediaModality, isMedia } from "./mime";
 
 const CHUNK_SIZE = 1800;
 const CHUNK_OVERLAP = 200;
 
-function buildChunkRow(
+function buildProcessedChunk(
   doc: DocumentContext,
   metadata: MetadataBase,
   opts: {
@@ -16,9 +24,10 @@ function buildChunkRow(
     embedding: number[];
     chunkIndex?: number;
     totalChunks?: number;
-  }
-): ChunkRow {
-  return {
+  },
+): ProcessedChunk {
+  const row: DocumentChunkInsert = {
+    id: createId(),
     documentId: doc.id,
     entityType: doc.entityType,
     entityId: doc.entityId,
@@ -27,12 +36,12 @@ function buildChunkRow(
     themeId: doc.themeId,
     chunkText: opts.chunkText,
     modality: opts.modality,
-    embedding: opts.embedding,
     metadata:
       opts.chunkIndex !== undefined && opts.totalChunks !== undefined
         ? { ...metadata, chunkIndex: opts.chunkIndex, totalChunks: opts.totalChunks }
         : metadata,
   };
+  return { row, embedding: opts.embedding };
 }
 
 async function processTextChunks(
@@ -40,25 +49,25 @@ async function processTextChunks(
   doc: DocumentContext,
   metadata: MetadataBase,
   job: ProgressReporter,
-  stepLabel: string
-): Promise<ChunkRow[]> {
+  stepLabel: string,
+): Promise<ProcessedChunk[]> {
   await job.updateProgress({ step: stepLabel, percentage: 40 });
   const chunks = await splitContentIntoChunks(text, CHUNK_SIZE, CHUNK_OVERLAP);
   console.log("[rag-ingestion] Text chunking", { textLength: text.length, chunksCount: chunks.length });
 
-  const rows: ChunkRow[] = [];
+  const rows: ProcessedChunk[] = [];
   for (const [index, chunkText] of chunks.entries()) {
     if (!chunkText.trim()) continue;
     const embedding = await getEmbedding(chunkText);
     if (!isValidEmbeddingDimension(embedding)) continue;
     rows.push(
-      buildChunkRow(doc, metadata, {
+      buildProcessedChunk(doc, metadata, {
         chunkText,
         modality: "TEXT",
         embedding,
         chunkIndex: index,
         totalChunks: chunks.length,
-      })
+      }),
     );
   }
   return rows;
@@ -71,8 +80,8 @@ async function processInlineBinary(
   doc: DocumentContext,
   metadata: MetadataBase,
   job: ProgressReporter,
-  stepLabel: string
-): Promise<ChunkRow[]> {
+  stepLabel: string,
+): Promise<ProcessedChunk[]> {
   await job.updateProgress({ step: stepLabel, percentage: 40 });
   const embedding = await getEmbedding([
     { inlineData: { data: fileBuffer.toString("base64"), mimeType } },
@@ -83,7 +92,7 @@ async function processInlineBinary(
   }
   console.log(`[rag-ingestion] ${modality} embedding OK`);
   return [
-    buildChunkRow(doc, metadata, { chunkText: null, modality, embedding }),
+    buildProcessedChunk(doc, metadata, { chunkText: null, modality, embedding }),
   ];
 }
 
@@ -128,7 +137,7 @@ export async function processContent(
       doc,
       metadata,
       job,
-      "Embedding PDF"
+      "Embedding PDF",
     );
     return { chunks };
   }
@@ -163,7 +172,7 @@ export async function processContent(
       doc,
       metadata,
       job,
-      "Embedding media content"
+      "Embedding media content",
     );
     return { chunks };
   }

@@ -13,6 +13,10 @@ import {
   type ProcessResult,
 } from "@repo/rag-engine";
 import {
+  deleteChunkVectorsForDocument,
+  upsertDocumentChunkVectors,
+} from "@/lib/document-chunk-vectorize";
+import {
   markWorkflowCompleted,
   markWorkflowFailed,
   markWorkflowRunning,
@@ -50,6 +54,7 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
     event: WorkflowEvent<RagIngestionParams>,
     step: WorkflowStep,
   ): Promise<{ success: boolean; chunksInserted: number }> {
+    const vectorIndex = this.env.DOCUMENT_CHUNKS_INDEX;
     return runDbWithWorkerNeonPool(async () => {
       const instanceId = event.instanceId;
       const { documentId, forceReingest } = event.payload;
@@ -104,6 +109,7 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               document.mimeType,
             );
 
+            await deleteChunkVectorsForDocument(db, vectorIndex, documentId);
             await db.delete(documentChunks).where(eq(documentChunks.documentId, documentId));
 
             const metadataBase: MetadataBase = {
@@ -138,14 +144,16 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               return { success: true as const, chunksInserted: 0 };
             }
 
-            const chunkRows = processResult.chunks;
-            if (!chunkRows.length) {
+            const processed = processResult.chunks;
+            if (!processed.length) {
               await markDocumentSkipped(documentId, "No valid chunks produced during ingestion");
               return { success: true as const, chunksInserted: 0 };
             }
 
             await reporter.updateProgress({ step: "Persisting chunks", percentage: 90 });
+            const chunkRows = processed.map((c) => c.row);
             await db.insert(documentChunks).values(chunkRows);
+            await upsertDocumentChunkVectors(vectorIndex, processed);
 
             await db
               .update(documents)
@@ -157,7 +165,7 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               .where(eq(documents.id, documentId));
 
             await reporter.updateProgress({ step: "Completed", percentage: 100 });
-            return { success: true as const, chunksInserted: chunkRows.length };
+            return { success: true as const, chunksInserted: processed.length };
           },
         );
 

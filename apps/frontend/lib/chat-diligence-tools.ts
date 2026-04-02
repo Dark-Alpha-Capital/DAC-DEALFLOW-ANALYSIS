@@ -13,7 +13,10 @@ import db, {
   or,
 } from "@repo/db";
 import { getEmbedding } from "@repo/rag-engine";
-import { SearchDocumentChunks } from "@repo/db/queries";
+import {
+  getDocumentChunksVectorIndex,
+  searchDocumentChunksVector,
+} from "@/lib/document-chunk-vectorize";
 
 type ChatContext = {
   companyId?: string | null;
@@ -398,7 +401,7 @@ export async function retrieveDiligenceEvidence(
   const embedding = await getEmbedding(input.question);
   const vectorRows =
     embedding && embedding.length > 0
-      ? await SearchDocumentChunks({
+      ? await searchDocumentChunksVector(db, getDocumentChunksVectorIndex(), {
         queryEmbedding: embedding,
         limit: limit * 2,
         dealOpportunityId: scope.dealOpportunityId ?? undefined,
