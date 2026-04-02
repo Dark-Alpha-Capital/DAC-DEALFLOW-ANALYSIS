@@ -40,6 +40,105 @@ const startSchema = z.object({
 
 const SCREENING_LIBRARY_CATEGORIES = ["CIM", "SIM_SCREENING"] as const;
 
+const simSessionRouteInputSchema = z.object({
+  sessionId: z.string().min(1),
+  runId: z.string().min(1).optional(),
+});
+
+/** Shared session + runs + selected run + parallel promises for document/deal/job. */
+async function loadSimScreeningSessionBase(
+  input: z.infer<typeof simSessionRouteInputSchema>,
+  userId: string,
+) {
+  const session = await getSimScreeningSessionByIdForUser(
+    input.sessionId,
+    userId,
+  );
+  if (!session) return null;
+
+  const runs = await getSimScreeningRunsBySessionId(session.id);
+
+  let selectedRun = input.runId
+    ? runs.find((r) => r.id === input.runId) ?? null
+    : null;
+  if (!selectedRun && runs.length > 0) {
+    selectedRun =
+      runs.find((r) => r.status !== "COMPLETED" && r.status !== "FAILED") ??
+      runs[0] ??
+      null;
+  }
+
+  const documentPromise = session.documentId
+    ? db
+      .select()
+      .from(documents)
+      .where(eq(documents.id, session.documentId))
+      .limit(1)
+      .then((r) => r[0] ?? null)
+    : Promise.resolve(null);
+  const dealPromise = session.dealOpportunityId
+    ? db
+      .select({
+        id: dealOpportunities.id,
+        dealTeaser: dealOpportunities.dealTeaser,
+        description: dealOpportunities.description,
+      })
+      .from(dealOpportunities)
+      .where(eq(dealOpportunities.id, session.dealOpportunityId))
+      .limit(1)
+      .then((r) => r[0] ?? null)
+    : Promise.resolve(null);
+  const jobPromise =
+    selectedRun?.workflowInstanceId
+      ? getJobByIdForUser(
+        userId,
+        QUEUE_NAMES.SIM_SCREENING,
+        selectedRun.workflowInstanceId,
+      )
+      : Promise.resolve(null);
+
+  const mappedRuns = runs.map((r) => ({
+    id: r.id,
+    screenerId: r.screenerId,
+    screenerName: r.screenerName,
+    screenerCategory: r.screenerCategory,
+    status: r.status,
+    errorMessage: r.errorMessage,
+    workflowInstanceId: r.workflowInstanceId,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  }));
+
+  const run = selectedRun
+    ? {
+      id: selectedRun.id,
+      status: selectedRun.status,
+      errorMessage: selectedRun.errorMessage,
+      workflowInstanceId: selectedRun.workflowInstanceId,
+    }
+    : null;
+
+  const screener = selectedRun
+    ? {
+      id: selectedRun.screenerId,
+      name: selectedRun.screenerName,
+      category: selectedRun.screenerCategory,
+    }
+    : null;
+
+  return {
+    session,
+    selectedRun,
+    documentPromise,
+    dealPromise,
+    jobPromise,
+    mappedRuns,
+    selectedRunId: selectedRun?.id ?? null,
+    run,
+    screener,
+  };
+}
+
 export const simScreeningRouter = createTRPCRouter({
   listLibraryDocuments: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.user.id;
@@ -101,7 +200,7 @@ export const simScreeningRouter = createTRPCRouter({
     if (docRow.ingestionStatus !== "PROCESSED") {
       const hint =
         docRow.ingestionStatus === "PENDING" ||
-        docRow.ingestionStatus === "PROCESSING"
+          docRow.ingestionStatus === "PROCESSING"
           ? "Wait for ingestion to finish (Firm documents), then try again."
           : docRow.ingestionStatus === "FAILED"
             ? docRow.ingestionError
@@ -321,66 +420,75 @@ export const simScreeningRouter = createTRPCRouter({
       };
     }),
 
-  getSession: protectedProcedure
-    .input(
-      z.object({
-        sessionId: z.string().min(1),
-        runId: z.string().min(1).optional(),
-      }),
-    )
+  /** Cheap polling: session meta, runs, selected run, job — no questions/answers/chunks. */
+  getSessionStatus: protectedProcedure
+    .input(simSessionRouteInputSchema)
     .query(async ({ input, ctx }) => {
       const userId = ctx.user.id;
-      const session = await getSimScreeningSessionByIdForUser(
-        input.sessionId,
-        userId,
-      );
-      if (!session) {
+      const base = await loadSimScreeningSessionBase(input, userId);
+      if (!base) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
+      }
+      const [documentRow, dealRow, job] = await Promise.all([
+        base.documentPromise,
+        base.dealPromise,
+        base.jobPromise,
+      ]);
+
+      return {
+        session: base.session,
+        document: documentRow
+          ? {
+            id: documentRow.id,
+            title: documentRow.title,
+            fileName: documentRow.fileName,
+            fileSize: documentRow.fileSize,
+            mimeType: documentRow.mimeType,
+            ingestionStatus: documentRow.ingestionStatus,
+            ingestionError: documentRow.ingestionError,
+            ingestionCompletedAt: documentRow.ingestionCompletedAt,
+            createdAt: documentRow.createdAt,
+          }
+          : null,
+        dealOpportunity: dealRow
+          ? {
+            id: dealRow.id,
+            dealTeaser: dealRow.dealTeaser,
+            description: dealRow.description,
+          }
+          : null,
+        runs: base.mappedRuns,
+        selectedRunId: base.selectedRunId,
+        run: base.run,
+        screener: base.screener,
+        job,
+      };
+    }),
+
+  /** Full session including per-question scores and evidence citations. */
+  getSession: protectedProcedure
+    .input(simSessionRouteInputSchema)
+    .query(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      const base = await loadSimScreeningSessionBase(input, userId);
+      if (!base) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
       }
 
-      const runs = await getSimScreeningRunsBySessionId(session.id);
-
-      let selectedRun = input.runId
-        ? runs.find((r) => r.id === input.runId) ?? null
-        : null;
-      if (!selectedRun && runs.length > 0) {
-        selectedRun =
-          runs.find((r) => r.status !== "COMPLETED" && r.status !== "FAILED") ??
-          runs[0] ??
-          null;
-      }
-
-      const [documentRow, dealRow, questions, answers] = await Promise.all([
-        session.documentId
-          ? db
-            .select()
-            .from(documents)
-            .where(eq(documents.id, session.documentId))
-            .limit(1)
-            .then((r) => r[0] ?? null)
-          : Promise.resolve(null),
-        session.dealOpportunityId
-          ? db
-            .select({
-              id: dealOpportunities.id,
-              dealTeaser: dealOpportunities.dealTeaser,
-              description: dealOpportunities.description,
-            })
-            .from(dealOpportunities)
-            .where(eq(dealOpportunities.id, session.dealOpportunityId))
-            .limit(1)
-            .then((r) => r[0] ?? null)
-          : Promise.resolve(null),
-        selectedRun
-          ? getScreenerQuestions(selectedRun.screenerId)
+      const [documentRow, dealRow, questions, answers, job] = await Promise.all([
+        base.documentPromise,
+        base.dealPromise,
+        base.selectedRun
+          ? getScreenerQuestions(base.selectedRun.screenerId)
           : Promise.resolve([]),
-        selectedRun
-          ? getSimScreeningAnswersByRunId(selectedRun.id)
+        base.selectedRun
+          ? getSimScreeningAnswersByRunId(base.selectedRun.id)
           : Promise.resolve([]),
+        base.jobPromise,
       ]);
 
-      const screener = selectedRun
-        ? await getScreenerById(selectedRun.screenerId)
+      const screenerRow = base.selectedRun
+        ? await getScreenerById(base.selectedRun.screenerId)
         : null;
 
       const answerByQuestionId = new Map(answers.map((a) => [a.questionId, a]));
@@ -412,17 +520,8 @@ export const simScreeningRouter = createTRPCRouter({
         };
       });
 
-      let job: Awaited<ReturnType<typeof getJobByIdForUser>> = null;
-      if (selectedRun?.workflowInstanceId) {
-        job = await getJobByIdForUser(
-          userId,
-          QUEUE_NAMES.SIM_SCREENING,
-          selectedRun.workflowInstanceId,
-        );
-      }
-
       return {
-        session,
+        session: base.session,
         document: documentRow
           ? {
             id: documentRow.id,
@@ -443,28 +542,15 @@ export const simScreeningRouter = createTRPCRouter({
             description: dealRow.description,
           }
           : null,
-        runs: runs.map((r) => ({
-          id: r.id,
-          screenerId: r.screenerId,
-          screenerName: r.screenerName,
-          screenerCategory: r.screenerCategory,
-          status: r.status,
-          errorMessage: r.errorMessage,
-          workflowInstanceId: r.workflowInstanceId,
-          createdAt: r.createdAt,
-          updatedAt: r.updatedAt,
-        })),
-        selectedRunId: selectedRun?.id ?? null,
-        run: selectedRun
+        runs: base.mappedRuns,
+        selectedRunId: base.selectedRunId,
+        run: base.run,
+        screener: screenerRow
           ? {
-            id: selectedRun.id,
-            status: selectedRun.status,
-            errorMessage: selectedRun.errorMessage,
-            workflowInstanceId: selectedRun.workflowInstanceId,
+            id: screenerRow.id,
+            name: screenerRow.name,
+            category: screenerRow.category,
           }
-          : null,
-        screener: screener
-          ? { id: screener.id, name: screener.name, category: screener.category }
           : null,
         rows,
         job,

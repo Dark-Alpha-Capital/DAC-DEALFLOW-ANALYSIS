@@ -1,9 +1,11 @@
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function CimScreeningSessionPending() {
   return (
     <section className="block-space-mini container max-w-6xl space-y-4">
-      <div className="bg-muted/40 h-20 animate-pulse rounded-lg border" />
-      <div className="bg-muted/30 h-60 animate-pulse rounded-lg border" />
-      <div className="bg-muted/30 h-80 animate-pulse rounded-lg border" />
+      <Skeleton className="h-20 rounded-lg border" />
+      <Skeleton className="h-60 rounded-lg border" />
+      <Skeleton className="h-80 rounded-lg border" />
     </section>
   );
 }
