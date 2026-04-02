@@ -1,3 +1,5 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { defineConfig } from "vite";
@@ -5,6 +7,9 @@ import viteReact from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
+/** Always resolve Wrangler + Vite root to this app (works when Turbo cwd differs). */
+const appRoot = path.dirname(fileURLToPath(import.meta.url));
+const wranglerConfigPath = path.join(appRoot, "wrangler.jsonc");
 
 const repoPackages = [
   "@repo/db",
@@ -19,10 +24,21 @@ const repoPackages = [
 ];
 
 export default defineConfig({
+  root: appRoot,
   envPrefix: ["VITE_", "NEXT_PUBLIC_"],
   server: { port: 3000 },
-  plugins: [cloudflare({ viteEnvironment: { name: 'ssr' } }),
-  tanstackStart(), tailwindcss(), viteReact(), tsconfigPaths()],
+  plugins: [
+    cloudflare({
+      viteEnvironment: { name: "ssr" },
+      /** Proxies Vectorize (and other remote: true bindings) to your Cloudflare account — run `wrangler login`. */
+      remoteBindings: true,
+      configPath: wranglerConfigPath,
+    }),
+    tanstackStart(),
+    tailwindcss(),
+    viteReact(),
+    tsconfigPaths(),
+  ],
   ssr: {
     noExternal: repoPackages,
   },

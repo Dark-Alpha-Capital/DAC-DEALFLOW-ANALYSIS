@@ -24,6 +24,13 @@ import {
 } from "./progress";
 import type { RagIngestionParams, WorkflowWorkerEnv } from "./workflow-env";
 
+function ragDebug(phase: string, data: Record<string, unknown>) {
+  console.log(`[rag-ingestion] ${phase}`, {
+    ts: new Date().toISOString(),
+    ...data,
+  });
+}
+
 async function markDocumentIngestionFailed(documentId: string, message: string) {
   await db
     .update(documents)
@@ -55,18 +62,27 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
     step: WorkflowStep,
   ): Promise<{ success: boolean; chunksInserted: number }> {
     const vectorIndex = this.env.DOCUMENT_CHUNKS_INDEX;
+    if (!vectorIndex) {
+      throw new Error("DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config");
+    }
     return runDbWithWorkerNeonPool(async () => {
       const instanceId = event.instanceId;
       const { documentId, forceReingest } = event.payload;
 
       try {
+        ragDebug("workflow.run.start", { instanceId, documentId, forceReingest });
         await markWorkflowRunning(instanceId);
         const result = await step.do(
           "rag-ingest",
           { timeout: "30 minutes" },
           async () => {
+            const stepT0 = Date.now();
             const reporter = workflowProgressReporter(instanceId);
-            console.log("[rag-ingestion] Starting", { documentId, forceReingest });
+            ragDebug("step.rag-ingest.start", {
+              instanceId,
+              documentId,
+              forceReingest,
+            });
 
             await reporter.updateProgress({ step: "Loading document", percentage: 10 });
 
@@ -77,11 +93,31 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               .limit(1);
 
             if (!document) {
+              ragDebug("document.not_found", { documentId });
               throw new Error(`Document ${documentId} not found`);
             }
 
+            ragDebug("document.loaded", {
+              documentId,
+              fileName: document.fileName,
+              mimeType: document.mimeType,
+              ingestionStatus: document.ingestionStatus,
+              entityType: document.entityType,
+              entityId: document.entityId,
+              dealOpportunityId: document.dealOpportunityId,
+              companyId: document.companyId,
+              themeId: document.themeId,
+              fileUrlHost: (() => {
+                try {
+                  return new URL(document.fileUrl).hostname;
+                } catch {
+                  return "invalid-url";
+                }
+              })(),
+            });
+
             if (!forceReingest && document.ingestionStatus === "PROCESSED") {
-              console.log("[rag-ingestion] Skipping - already processed");
+              ragDebug("skip.already_processed", { documentId });
               return { success: true as const, chunksInserted: 0 };
             }
 
@@ -100,17 +136,42 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
 
             const filePath = extractFilePathFromUrl(document.fileUrl);
             if (!filePath) {
+              ragDebug("file.path_resolve.failed", { documentId, fileUrl: document.fileUrl });
               throw new Error("Could not resolve storage path from document.fileUrl");
             }
+            ragDebug("file.path_resolved", { documentId, filePath });
 
+            const fetchT0 = Date.now();
             const fileBuffer = await getFileContents(filePath);
+            ragDebug("file.fetched", {
+              documentId,
+              byteLength: fileBuffer.byteLength,
+              elapsedMs: Date.now() - fetchT0,
+            });
+
             const normalizedMime = resolveMimeType(
               document.fileName,
               document.mimeType,
             );
+            ragDebug("mime.normalized", {
+              documentId,
+              normalizedMime,
+              declaredMime: document.mimeType,
+            });
 
+            const vecDelT0 = Date.now();
             await deleteChunkVectorsForDocument(db, vectorIndex, documentId);
+            ragDebug("vectorize.deleted_old", {
+              documentId,
+              elapsedMs: Date.now() - vecDelT0,
+            });
+
+            const sqlDelT0 = Date.now();
             await db.delete(documentChunks).where(eq(documentChunks.documentId, documentId));
+            ragDebug("sql.chunks_deleted", {
+              documentId,
+              elapsedMs: Date.now() - sqlDelT0,
+            });
 
             const metadataBase: MetadataBase = {
               fileName: document.fileName,
@@ -128,32 +189,93 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
             };
 
             const buf = Buffer.from(fileBuffer);
+            const extractT0 = Date.now();
+            ragDebug("processContent.start", {
+              documentId,
+              bufferLength: buf.length,
+              forcePdfTextChunks: true,
+            });
             const processResult: ProcessResult = await processContent(
               buf,
               normalizedMime,
               docContext,
               metadataBase,
               reporter,
+              { forcePdfTextChunks: true },
             );
+            ragDebug("processContent.done", {
+              documentId,
+              elapsedMs: Date.now() - extractT0,
+              unsupported: "unsupported" in processResult,
+            });
 
             if ("unsupported" in processResult) {
-              await markDocumentSkipped(
-                documentId,
-                processResult.reason ?? `Unsupported mime type: ${normalizedMime}`,
-              );
+              const reason =
+                processResult.reason ?? `Unsupported mime type: ${normalizedMime}`;
+              ragDebug("ingest.skipped_unsupported", { documentId, reason, normalizedMime });
+              await markDocumentSkipped(documentId, reason);
               return { success: true as const, chunksInserted: 0 };
             }
 
             const processed = processResult.chunks;
             if (!processed.length) {
+              ragDebug("ingest.skipped_no_chunks", { documentId, normalizedMime });
               await markDocumentSkipped(documentId, "No valid chunks produced during ingestion");
               return { success: true as const, chunksInserted: 0 };
             }
 
+            const sampleEmb = processed[0]?.embedding;
+            ragDebug("ingest.chunks_ready", {
+              documentId,
+              chunkCount: processed.length,
+              sampleChunkIds: processed.slice(0, 3).map((c) => c.row.id),
+              sampleEmbeddingDim: sampleEmb?.length ?? 0,
+            });
+
             await reporter.updateProgress({ step: "Persisting chunks", percentage: 90 });
             const chunkRows = processed.map((c) => c.row);
-            await db.insert(documentChunks).values(chunkRows);
+            const sqlInsT0 = Date.now();
+            const inserted = await db
+              .insert(documentChunks)
+              .values(chunkRows)
+              .returning({ id: documentChunks.id });
+            if (inserted.length !== chunkRows.length) {
+              ragDebug("sql.insert.mismatch", {
+                documentId,
+                inserted: inserted.length,
+                expected: chunkRows.length,
+              });
+              throw new Error(
+                `Chunk insert count mismatch: inserted ${inserted.length}, expected ${chunkRows.length}`,
+              );
+            }
+            for (let i = 0; i < chunkRows.length; i++) {
+              if (inserted[i]!.id !== chunkRows[i]!.id) {
+                ragDebug("sql.insert.id_mismatch", {
+                  documentId,
+                  index: i,
+                  dbId: inserted[i]!.id,
+                  rowId: chunkRows[i]!.id,
+                });
+                throw new Error(
+                  `Chunk id mismatch after insert at ${i}: db=${inserted[i]!.id}, row=${chunkRows[i]!.id}`,
+                );
+              }
+            }
+            ragDebug("sql.chunks_inserted", {
+              documentId,
+              rowCount: inserted.length,
+              elapsedMs: Date.now() - sqlInsT0,
+            });
+
+            const vzT0 = Date.now();
             await upsertDocumentChunkVectors(vectorIndex, processed);
+            ragDebug("vectorize.upserted", {
+              documentId,
+              vectorCount: processed.length,
+              namespace: documentId,
+              elapsedMs: Date.now() - vzT0,
+            });
 
             await db
               .update(documents)
@@ -165,15 +287,28 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               .where(eq(documents.id, documentId));
 
             await reporter.updateProgress({ step: "Completed", percentage: 100 });
+            ragDebug("step.rag-ingest.ok", {
+              instanceId,
+              documentId,
+              chunksInserted: processed.length,
+              totalStepElapsedMs: Date.now() - stepT0,
+            });
             return { success: true as const, chunksInserted: processed.length };
           },
         );
 
+        ragDebug("workflow.run.completed", { instanceId, documentId, result });
         await markWorkflowCompleted(instanceId, result);
         return result;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.error("[rag-ingestion] Failed", { documentId, error: message });
+        console.error("[rag-ingestion] workflow.run.failed", {
+          ts: new Date().toISOString(),
+          instanceId,
+          documentId,
+          error: message,
+          stack: error instanceof Error ? error.stack : undefined,
+        });
         try {
           await markDocumentIngestionFailed(documentId, message);
         } catch {

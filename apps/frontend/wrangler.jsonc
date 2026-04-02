@@ -8,7 +8,18 @@
     "enabled": true
   },
   // wrangler vectorize create document-chunks --dimensions=768 --metric=cosine
-  // Index metadata for filters: documentId, dealOpportunityId, companyId, themeId, entityType, entityId
+  // "remote": true + @cloudflare/vite-plugin remoteBindings: Vectorize calls from `vite dev` hit this LIVE index
+  // on the account from `wrangler login` (same as production Worker). There is no local Vectorize emulator.
+  //
+  // Metadata filters (see lib/document-chunk-vectorize.ts): create indexes for each field you filter on (max 10):
+  //   wrangler vectorize create-metadata-index document-chunks --property-name=documentId --type=string
+  //   wrangler vectorize create-metadata-index document-chunks --property-name=entityType --type=string
+  //   wrangler vectorize create-metadata-index document-chunks --property-name=entityId --type=string
+  //   wrangler vectorize create-metadata-index document-chunks --property-name=dealOpportunityId --type=string
+  //   wrangler vectorize create-metadata-index document-chunks --property-name=companyId --type=string
+  //   wrangler vectorize create-metadata-index document-chunks --property-name=themeId --type=string
+  //
+  // One index `document-chunks`: namespaces = per-document isolation; metadata = entity scope (deal / lead / company / theme / global).
   "vectorize": [
     {
       "binding": "DOCUMENT_CHUNKS_INDEX",

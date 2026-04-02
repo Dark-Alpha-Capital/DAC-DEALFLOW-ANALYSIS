@@ -5,7 +5,7 @@ import {
 } from "cloudflare:workers";
 import { generateObject } from "ai";
 import { z } from "zod";
-import db, { eq, runDbWithWorkerNeonPool, sql } from "@repo/db";
+import db, { count, eq, runDbWithWorkerNeonPool, sql } from "@repo/db";
 import { documents, documentChunks } from "@repo/db/schema";
 import { getScreenerQuestions } from "@repo/db/queries";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@repo/db/mutations";
 import { extractFilePathFromUrl, getFileContents } from "@repo/nextcloud";
 import {
+  EMBEDDING_DIMENSION,
   getEmbedding,
   processContent,
   resolveMimeType,
@@ -110,6 +111,12 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
           let ingestStarted = false;
           try {
             logDetail("step.validate-and-ingest.enter", { instanceId, runId });
+            if (!this.env.DOCUMENT_CHUNKS_INDEX) {
+              throw new Error(
+                "DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config",
+              );
+            }
+            const vectorIndex = this.env.DOCUMENT_CHUNKS_INDEX;
             await updateSimScreeningRun(runId, { status: "INGESTING" });
             await updateWorkflowJobProgress(instanceId, {
               step: "Loading document",
@@ -135,6 +142,16 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
               fileSize: document.fileSize,
               uploadedById: document.uploadedById,
               entityType: document.entityType,
+              dealOpportunityId: document.dealOpportunityId,
+              companyId: document.companyId,
+              themeId: document.themeId,
+              fileUrlHost: (() => {
+                try {
+                  return new URL(document.fileUrl).hostname;
+                } catch {
+                  return "invalid_url";
+                }
+              })(),
             });
             if (document.uploadedById !== userId) {
               logDetail("validate.document.forbidden_user", {
@@ -176,6 +193,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             const filePath = extractFilePathFromUrl(document.fileUrl);
             if (!filePath) {
               logDetail("ingest.file_path.unresolved", {
+                documentId,
                 fileUrlHost: (() => {
                   try {
                     return new URL(document.fileUrl).hostname;
@@ -187,12 +205,14 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
               throw new Error("Could not resolve storage path from document.fileUrl");
             }
             logDetail("ingest.file_path.resolved", {
+              documentId,
               pathSuffix: filePath.slice(-96),
             });
 
             const fetchT0 = Date.now();
             const fileBuffer = await getFileContents(filePath);
             logDetail("ingest.file_fetched", {
+              documentId,
               byteLength: fileBuffer?.length ?? 0,
               elapsedMs: Date.now() - fetchT0,
             });
@@ -201,7 +221,11 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
               document.fileName,
               document.mimeType,
             );
-            logDetail("ingest.mime_resolved", { normalizedMime });
+            logDetail("ingest.mime_resolved", {
+              documentId,
+              normalizedMime,
+              declaredMime: document.mimeType,
+            });
 
             await db
               .update(documents)
@@ -217,11 +241,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             logDetail("ingest.document_status.processing", { documentId });
 
             const vecDelT0 = Date.now();
-            await deleteChunkVectorsForDocument(
-              db,
-              this.env.DOCUMENT_CHUNKS_INDEX,
-              documentId,
-            );
+            await deleteChunkVectorsForDocument(db, vectorIndex, documentId);
             logDetail("ingest.vectorize.deleted_old_vectors", {
               documentId,
               elapsedMs: Date.now() - vecDelT0,
@@ -254,6 +274,12 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
 
             const buf = Buffer.from(fileBuffer);
             const extractT0 = Date.now();
+            logDetail("ingest.processContent.start", {
+              documentId,
+              bufferLength: buf.length,
+              normalizedMime,
+              forcePdfTextChunks: true,
+            });
             const processResult: ProcessResult = await processContent(
               buf,
               normalizedMime,
@@ -263,6 +289,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
               { forcePdfTextChunks: true },
             );
             logDetail("ingest.processContent.done", {
+              documentId,
               elapsedMs: Date.now() - extractT0,
               unsupported: "unsupported" in processResult,
             });
@@ -296,10 +323,27 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
               throw new Error("No valid chunks produced during ingestion");
             }
 
+            const textChunkCount = processed.filter(
+              (c) => (c.row.chunkText?.trim().length ?? 0) > 0,
+            ).length;
+            const sampleDim = processed[0]?.embedding?.length ?? 0;
             logDetail("ingest.chunks_ready", {
+              documentId,
               chunkCount: processed.length,
+              textChunkCount,
+              expectedEmbeddingDim: EMBEDDING_DIMENSION,
+              sampleEmbeddingDim: sampleDim,
+              embeddingDimOk: sampleDim === EMBEDDING_DIMENSION,
+              modalities: [...new Set(processed.map((c) => c.row.modality))],
               sampleChunkIds: processed.slice(0, 3).map((c) => c.row.id),
             });
+            if (textChunkCount === 0) {
+              logDetail("ingest.chunks_ready.warn_no_text", {
+                documentId,
+                message:
+                  "No chunks with chunkText; SIM excerpts will be empty unless ingestion path changes",
+              });
+            }
 
             await updateWorkflowJobProgress(instanceId, {
               step: "Persisting embeddings",
@@ -307,19 +351,45 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             });
             const chunkRows = processed.map((c) => c.row);
             const sqlInsT0 = Date.now();
-            await db.insert(documentChunks).values(chunkRows);
+            const inserted = await db
+              .insert(documentChunks)
+              .values(chunkRows)
+              .returning({ id: documentChunks.id });
+            if (inserted.length !== chunkRows.length) {
+              logDetail("ingest.sql.insert.mismatch", {
+                documentId,
+                inserted: inserted.length,
+                expected: chunkRows.length,
+              });
+              throw new Error(
+                `Chunk insert count mismatch: inserted ${inserted.length}, expected ${chunkRows.length}`,
+              );
+            }
+            for (let i = 0; i < chunkRows.length; i++) {
+              if (inserted[i]!.id !== chunkRows[i]!.id) {
+                logDetail("ingest.sql.insert.id_mismatch", {
+                  documentId,
+                  index: i,
+                  dbId: inserted[i]!.id,
+                  rowId: chunkRows[i]!.id,
+                });
+                throw new Error(
+                  `Chunk id mismatch after insert at ${i}: db=${inserted[i]!.id}, row=${chunkRows[i]!.id}`,
+                );
+              }
+            }
             logDetail("ingest.sql.chunks_inserted", {
+              documentId,
               rowCount: chunkRows.length,
               elapsedMs: Date.now() - sqlInsT0,
             });
 
             const vzT0 = Date.now();
-            await upsertDocumentChunkVectors(
-              this.env.DOCUMENT_CHUNKS_INDEX,
-              processed,
-            );
+            await upsertDocumentChunkVectors(vectorIndex, processed);
             logDetail("ingest.vectorize.upserted", {
+              documentId,
               vectorCount: processed.length,
+              vectorizeNamespace: documentId,
               elapsedMs: Date.now() - vzT0,
             });
 
@@ -333,7 +403,9 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
               .where(eq(documents.id, documentId));
 
             logDetail("step.validate-and-ingest.ok", {
+              documentId,
               chunksInserted: processed.length,
+              textChunkCount,
               totalIngestElapsedMs: Date.now() - ingestT0,
             });
             return { chunksInserted: processed.length };
@@ -363,6 +435,53 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             screenerId,
             documentId,
           });
+          if (!this.env.DOCUMENT_CHUNKS_INDEX) {
+            throw new Error(
+              "DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config",
+            );
+          }
+          const vectorIndex = this.env.DOCUMENT_CHUNKS_INDEX;
+
+          const [chunkCountRow] = await db
+            .select({ n: count() })
+            .from(documentChunks)
+            .where(eq(documentChunks.documentId, documentId));
+          const chunkRowsInDb = Number(chunkCountRow?.n ?? 0);
+
+          const [screeningDoc] = await db
+            .select({
+              entityType: documents.entityType,
+              entityId: documents.entityId,
+              dealOpportunityId: documents.dealOpportunityId,
+              companyId: documents.companyId,
+              themeId: documents.themeId,
+            })
+            .from(documents)
+            .where(eq(documents.id, documentId))
+            .limit(1);
+
+          logDetail("screen.rag.preflight", {
+            documentId,
+            chunkRowsInDb,
+            vectorizeNamespace: documentId,
+            retrievalTopK: RETRIEVAL_TOP_K,
+            vectorMetadataScope: screeningDoc
+              ? {
+                  entityType: screeningDoc.entityType,
+                  entityId: screeningDoc.entityId,
+                  dealOpportunityId: screeningDoc.dealOpportunityId,
+                  companyId: screeningDoc.companyId,
+                  themeId: screeningDoc.themeId,
+                }
+              : null,
+          });
+          if (chunkRowsInDb === 0) {
+            logDetail("screen.rag.preflight.warn_no_chunks", {
+              documentId,
+              message:
+                "No DocumentChunk rows for this document; vector search will return nothing",
+            });
+          }
 
           await updateSimScreeningRun(runId, { status: "SCREENING" });
           await updateWorkflowJobProgress(instanceId, {
@@ -413,20 +532,27 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             });
 
             const ragT0 = Date.now();
-            const hits = await searchDocumentChunksVector(
-              db,
-              this.env.DOCUMENT_CHUNKS_INDEX,
-              {
-                queryEmbedding,
-                limit: RETRIEVAL_TOP_K,
-                documentId,
-              },
-            );
+            const hits = await searchDocumentChunksVector(db, vectorIndex, {
+              queryEmbedding,
+              limit: RETRIEVAL_TOP_K,
+              documentId,
+              ...(screeningDoc
+                ? {
+                    entityType: screeningDoc.entityType,
+                    entityId: screeningDoc.entityId ?? null,
+                    dealOpportunityId: screeningDoc.dealOpportunityId ?? "",
+                    companyId: screeningDoc.companyId ?? "",
+                    themeId: screeningDoc.themeId ?? "",
+                  }
+                : {}),
+            });
             const textHits = hits.filter(
               (h) => h.chunkText && h.chunkText.trim().length > 0,
             );
             logDetail("screen.question.vector_search", {
               questionId: q.id,
+              documentId,
+              vectorizeNamespace: documentId,
               hitCount: hits.length,
               textHitCount: textHits.length,
               topChunkIds: hits.slice(0, 5).map((h) => h.id),
