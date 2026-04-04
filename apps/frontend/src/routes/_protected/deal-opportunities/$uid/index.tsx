@@ -102,6 +102,7 @@ function DealOpportunityDetailView(props: {
         companyNotes={dealData.companyNotes ?? []}
         financialSnapshots={dealData.financialSnapshots ?? []}
         creatorName={dealData.creatorName ?? null}
+        simScreeningRunsForDeal={dealData.simScreeningRunsForDeal ?? []}
       />
     </section>
   );

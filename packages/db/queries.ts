@@ -386,6 +386,9 @@ export const GetDealWithAllRelations = async (uid: string) => {
         ReturnType<typeof getAllDealReasoningsWithScreenerName>
       >,
       cimExtraction: null,
+      simScreeningRunsForDeal: [] as Awaited<
+        ReturnType<typeof listSimScreeningRunsForDealOpportunity>
+      >,
     };
   }
 
@@ -416,6 +419,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
     latestSnapshot,
     financialSnapshots,
     riskFlags,
+    simScreeningRunsForDeal,
   ] = await Promise.all([
     getDealDocuments(opp.id),
     db
@@ -486,6 +490,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
     GetLatestDealFinancialSnapshotByDealOpportunityId(opp.id),
     GetDealFinancialSnapshotsByDealOpportunityId(opp.id),
     GetDealRiskFlagsByDealOpportunityId(opp.id),
+    listSimScreeningRunsForDealOpportunity(opp.id),
   ]);
 
   const resolvedRevenue =
@@ -551,6 +556,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
     latestFinancialSnapshot: latestSnapshot ?? null,
     financialSnapshots: financialSnapshots ?? [],
     riskFlags: riskFlags ?? [],
+    simScreeningRunsForDeal: simScreeningRunsForDeal ?? [],
   };
 };
 
@@ -2250,6 +2256,37 @@ export async function getSimScreeningRunsBySessionId(sessionId: string) {
     .where(eq(simScreeningRuns.sessionId, sessionId))
     .orderBy(desc(simScreeningRuns.createdAt));
 }
+
+/** All SIM / CIM template screening runs for sessions scoped to this deal opportunity. */
+export async function listSimScreeningRunsForDealOpportunity(
+  dealOpportunityId: string,
+) {
+  return db
+    .select({
+      runId: simScreeningRuns.id,
+      sessionId: simScreeningSessions.id,
+      status: simScreeningRuns.status,
+      errorMessage: simScreeningRuns.errorMessage,
+      workflowInstanceId: simScreeningRuns.workflowInstanceId,
+      screenerId: simScreeningRuns.screenerId,
+      screenerName: screeners.name,
+      screenerCategory: screeners.category,
+      runCreatedAt: simScreeningRuns.createdAt,
+      sessionCreatedAt: simScreeningSessions.createdAt,
+    })
+    .from(simScreeningRuns)
+    .innerJoin(
+      simScreeningSessions,
+      eq(simScreeningRuns.sessionId, simScreeningSessions.id),
+    )
+    .innerJoin(screeners, eq(simScreeningRuns.screenerId, screeners.id))
+    .where(eq(simScreeningSessions.dealOpportunityId, dealOpportunityId))
+    .orderBy(desc(simScreeningRuns.createdAt));
+}
+
+export type SimScreeningRunForDealRow = Awaited<
+  ReturnType<typeof listSimScreeningRunsForDealOpportunity>
+>[number];
 
 export async function getSimScreeningRunByIdForUser(runId: string, userId: string) {
   const [row] = await db

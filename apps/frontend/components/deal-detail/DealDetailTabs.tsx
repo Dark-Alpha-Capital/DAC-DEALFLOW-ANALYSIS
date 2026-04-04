@@ -8,6 +8,7 @@ import type {
   DealOpportunityScreening,
   DealFinancialSnapshot,
 } from "@repo/db/schema";
+import type { SimScreeningRunForDealRow } from "@repo/db/queries";
 import { ClientOnly } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealHeader } from "./deal-header";
@@ -53,6 +54,8 @@ interface DealDetailTabsProps {
   financialSnapshots?: DealFinancialSnapshot[];
   /** Resolved from opportunity creator (or legacy deal owner). */
   creatorName?: string | null;
+  /** SIM / CIM template runs for sessions scoped to this deal opportunity. */
+  simScreeningRunsForDeal?: SimScreeningRunForDealRow[];
 }
 
 export function DealDetailTabs({
@@ -72,6 +75,7 @@ export function DealDetailTabs({
   companyNotes,
   financialSnapshots = [],
   creatorName = null,
+  simScreeningRunsForDeal = [],
 }: DealDetailTabsProps) {
   if (!company) return null;
 
@@ -321,6 +325,7 @@ export function DealDetailTabs({
               dealId={uid}
               dealType={deal.dealType}
               aiScreenings={aiScreenings}
+              simScreeningRunsForDeal={simScreeningRunsForDeal}
             />
           </section>
         </TabsContent>
