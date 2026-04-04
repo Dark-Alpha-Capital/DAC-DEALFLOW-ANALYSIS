@@ -9,6 +9,40 @@ import mammoth from "mammoth";
 import { extractText } from "unpdf";
 import * as XLSX from "xlsx";
 
+const LOG = "[cim-extraction]";
+
+/** WebDAV / workers may return Buffer, Uint8Array, or ArrayBuffer — avoid `view.buffer` when input is raw ArrayBuffer. */
+function toUint8ArrayPdfBytes(
+  input: Buffer | Uint8Array | ArrayBuffer,
+): Uint8Array {
+  if (input instanceof ArrayBuffer) {
+    return new Uint8Array(input);
+  }
+  if (ArrayBuffer.isView(input)) {
+    return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+  }
+  throw new TypeError(
+    `${LOG} Expected ArrayBuffer or a typed array, got ${Object.prototype.toString.call(input)}`,
+  );
+}
+
+function assertNonEmptyPdf(bytes: Uint8Array): void {
+  if (bytes.length === 0) {
+    throw new Error(`${LOG} PDF input is empty (0 bytes)`);
+  }
+  const head = new TextDecoder("latin1").decode(
+    bytes.subarray(0, Math.min(2048, bytes.length)),
+  );
+  if (!head.includes("%PDF")) {
+    const hex = [...bytes.subarray(0, 32)]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join(" ");
+    throw new Error(
+      `${LOG} Response is not a PDF (no %PDF marker in first 2KB — may be HTML/XML/error body). First 32 bytes (hex)=${hex}`,
+    );
+  }
+}
+
 // ============================================================================
 // Schema (arrays instead of records - OpenAI rejects z.record / propertyNames)
 // ============================================================================
@@ -72,31 +106,41 @@ function toPayload(
 // PDF Text Extraction
 // ============================================================================
 
-export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
+export async function extractTextFromPdf(
+  buffer: Buffer | Uint8Array | ArrayBuffer,
+): Promise<string> {
   const { text } = await extractPdfContent(buffer);
   return text;
 }
 
 export async function extractPdfContent(
-  buffer: Buffer,
+  buffer: Buffer | Uint8Array | ArrayBuffer,
 ): Promise<{ text: string; numpages: number }> {
-  console.log(`[cim-extraction] extractPdfContent: input buffer size=${buffer.length}`);
+  const data = toUint8ArrayPdfBytes(buffer);
+  console.log(`${LOG} extractPdfContent: input size=${data.byteLength} bytes`);
+  assertNonEmptyPdf(data);
   try {
-    const data = new Uint8Array(
-      buffer.buffer,
-      buffer.byteOffset,
-      buffer.byteLength,
-    );
     const { totalPages, text: rawText } = await extractText(data, {
       mergePages: true,
     });
     const text = (typeof rawText === "string" ? rawText : "").trim();
     const numpages = totalPages ?? 0;
-    console.log(`[cim-extraction] extractPdfContent: extracted ${text.length} chars, ${numpages} pages`);
+    console.log(
+      `${LOG} extractPdfContent: ok pages=${numpages} textChars=${text.length}`,
+    );
+    if (numpages > 0 && text.length === 0) {
+      throw new Error(
+        `${LOG} PDF has ${numpages} page(s) but no extractable text (likely image-only / scanned). OCR is not enabled here.`,
+      );
+    }
     return { text, numpages };
   } catch (error) {
-    console.error("[cim-extraction] PDF parse error:", error);
-    throw new Error("Failed to extract text from PDF");
+    const msg = error instanceof Error ? error.message : String(error);
+    const name = error instanceof Error ? error.name : "Error";
+    console.error(`${LOG} extractPdfContent failed`, { name, msg, error });
+    throw new Error(`Failed to extract text from PDF: ${msg}`, {
+      cause: error,
+    });
   }
 }
 

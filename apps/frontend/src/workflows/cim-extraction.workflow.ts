@@ -17,6 +17,21 @@ import type { CimExtractionParams, WorkflowWorkerEnv } from "./workflow-env";
 
 const LOG = "[CimExtractionWorkflow]";
 
+function describeBinaryPayload(
+  data: Buffer | Uint8Array | ArrayBuffer,
+): { kind: string; byteLength: number } {
+  if (data instanceof ArrayBuffer) {
+    return { kind: "ArrayBuffer", byteLength: data.byteLength };
+  }
+  if (typeof Buffer !== "undefined" && Buffer.isBuffer?.(data)) {
+    return { kind: "Buffer", byteLength: data.length };
+  }
+  if (data instanceof Uint8Array) {
+    return { kind: "Uint8Array", byteLength: data.byteLength };
+  }
+  return { kind: "unknown", byteLength: 0 };
+}
+
 export class CimExtractionWorkflow extends WorkflowEntrypoint<
   WorkflowWorkerEnv,
   CimExtractionParams
@@ -57,10 +72,14 @@ export class CimExtractionWorkflow extends WorkflowEntrypoint<
               filePathSuffix: filePath?.slice(-80) ?? null,
             });
 
-            const fileBuffer = (await getFileContents(filePath)) as Buffer;
-            console.log(`${LOG} getFileContents done`, {
-              byteLength: fileBuffer?.length ?? 0,
-            });
+            const fileBuffer = await getFileContents(filePath);
+            const binInfo = describeBinaryPayload(fileBuffer);
+            console.log(`${LOG} getFileContents done`, binInfo);
+            if (binInfo.byteLength === 0) {
+              throw new Error(
+                `${LOG} Nextcloud returned empty body for path (check path and permissions)`,
+              );
+            }
 
             await updateWorkflowJobProgress(instanceId, {
               step: "Extracting PDF text",

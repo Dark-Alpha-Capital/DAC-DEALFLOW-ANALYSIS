@@ -17,6 +17,7 @@ export const Route = createFileRoute("/_protected/jobs")({
     meta: [{ title: "Jobs — Dark Alpha Capital" }],
   }),
   loader: async () => loadJobsPageData(),
+  pendingComponent: () => <JobsPageSkeleton />,
   component: JobsRoute,
 });
 

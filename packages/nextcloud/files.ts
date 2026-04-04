@@ -157,12 +157,12 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
  */
 export const getFileContents = async (
   filePath: string,
-): Promise<Buffer | Uint8Array> => {
+): Promise<Buffer | Uint8Array | ArrayBuffer> => {
   const client = getClient();
   const contents = await client.getFileContents(filePath, {
     format: "binary",
   });
-  return contents as Buffer | Uint8Array;
+  return contents as Buffer | Uint8Array | ArrayBuffer;
 };
 
 export const fileExists = async (filePath: string): Promise<boolean> => {
