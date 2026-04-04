@@ -228,7 +228,9 @@ const uploadDealDocumentSchema = z.object({
 
 const uploadCIMSchema = z.object({
   dealOpportunityId: z.string().min(1, "Deal opportunity ID is required"),
-  entityName: z.string().min(1, "Entity name is required"),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  category: z.nativeEnum(DocumentCategory),
   fileData: z.string(),
   fileName: z.string().min(1, "File name is required"),
 });
@@ -352,9 +354,11 @@ export const dealsRouter = createTRPCRouter({
           entityType: "DEAL_OPPORTUNITY",
           entityId: input.dealOpportunityId,
           dealOpportunityId: input.dealOpportunityId,
-          title: input.fileName,
-          description: `CIM for ${input.entityName}`,
-          category: "PROSPECTUS",
+          title: input.title,
+          description: input.description?.trim()
+            ? input.description.trim()
+            : null,
+          category: input.category,
           fileUrl: publicUrl,
           fileName: input.fileName,
           fileSize: buffer.length,

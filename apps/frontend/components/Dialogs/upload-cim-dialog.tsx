@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from "react";
 import {
   Dialog,
@@ -10,6 +9,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FileText, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
@@ -17,6 +25,8 @@ import { useTRPC } from "@/trpc/client";
 import { useRouter } from "@/lib/navigation-shim";
 import useCurrentUser from "@/hooks/use-current-user";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
+import { DOCUMENT_CATEGORY_OPTIONS } from "@/lib/document-category-options";
+import type { DocumentCategory } from "@repo/db/enums";
 
 interface UploadCIMDialogProps {
   dealOpportunityId: string;
@@ -24,11 +34,17 @@ interface UploadCIMDialogProps {
   trigger?: React.ReactNode;
 }
 
+function stripExtension(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i > 0 ? name.slice(0, i) : name;
+}
+
 const readFileAsDataURL = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+    reader.onerror = () =>
+      reject(new Error(`Failed to read file: ${file.name}`));
     reader.readAsDataURL(file);
   });
 
@@ -39,10 +55,25 @@ export function UploadCIMDialog({
 }: UploadCIMDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<DocumentCategory>("CIM");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const trpc = useTRPC();
   const router = useRouter();
   const user = useCurrentUser();
+
+  const resetForm = () => {
+    setFile(null);
+    setTitle("");
+    setDescription("");
+    setCategory("CIM");
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) resetForm();
+  };
 
   const { mutate: uploadCIM, isPending } = useMutation(
     trpc.dealOpportunities.uploadCIM.mutationOptions({
@@ -63,7 +94,7 @@ export function UploadCIMDialog({
           );
         }
         toast.success("CIM uploaded. Extraction running in background.");
-        setFile(null);
+        resetForm();
         setIsOpen(false);
         void router.invalidate();
       },
@@ -85,15 +116,22 @@ export function UploadCIMDialog({
       return;
     }
     setFile(selected);
+    setTitle(stripExtension(selected.name));
   };
 
   const handleUpload = async () => {
     if (!file) return;
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
     try {
       const fileData = await readFileAsDataURL(file);
       uploadCIM({
         dealOpportunityId,
-        entityName,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        category,
         fileData,
         fileName: file.name,
       });
@@ -103,7 +141,7 @@ export function UploadCIMDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger ?? (
           <Button variant="outline" size="sm">
@@ -112,7 +150,7 @@ export function UploadCIMDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="flex max-h-[85vh] max-w-[425px] flex-col overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Upload CIM</DialogTitle>
           <DialogDescription>
@@ -122,12 +160,15 @@ export function UploadCIMDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
+            <Label htmlFor="cim-file">PDF file</Label>
             <Input
+              id="cim-file"
               ref={fileInputRef}
               type="file"
               accept=".pdf,application/pdf"
               onChange={handleFileSelect}
               className="cursor-pointer"
+              disabled={isPending}
             />
             {file && (
               <p className="text-muted-foreground text-sm">
@@ -135,10 +176,50 @@ export function UploadCIMDialog({
               </p>
             )}
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="cim-title">Title</Label>
+            <Input
+              id="cim-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Document title"
+              disabled={isPending}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cim-description">Description (optional)</Label>
+            <Textarea
+              id="cim-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Notes about this CIM"
+              rows={3}
+              disabled={isPending}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select
+              value={category}
+              onValueChange={(v) => setCategory(v as DocumentCategory)}
+              disabled={isPending}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                {DOCUMENT_CATEGORY_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button
             className="w-full"
             onClick={handleUpload}
-            disabled={!file || isPending}
+            disabled={!file || !title.trim() || isPending}
           >
             {isPending ? (
               <>

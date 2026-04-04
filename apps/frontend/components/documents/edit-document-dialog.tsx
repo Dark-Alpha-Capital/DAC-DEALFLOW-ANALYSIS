@@ -22,32 +22,7 @@ import { useTRPC } from "@/trpc/client";
 import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
 import type { DocumentRow } from "./columns";
-
-const DOCUMENT_CATEGORIES = [
-  { value: "FINANCIALS", label: "Financials" },
-  { value: "LEGAL", label: "Legal" },
-  { value: "TAX", label: "Tax" },
-  { value: "TECHNICAL", label: "Technical" },
-  { value: "COMMERCIAL", label: "Commercial" },
-  { value: "ESG", label: "ESG" },
-  { value: "MARKETING", label: "Marketing" },
-  { value: "OPERATIONS", label: "Operations" },
-  { value: "DOCUMENTATION", label: "Documentation" },
-  { value: "INVESTOR_RELATIONSHIPS", label: "Investor relationships" },
-  { value: "TOOLS", label: "Tools" },
-  { value: "LEGISLATION", label: "Legislation" },
-  { value: "RESEARCH", label: "Research" },
-  { value: "PROSPECTUS", label: "Prospectus" },
-  { value: "OTHER", label: "Other" },
-  { value: "OPERATING_PLAYBOOK", label: "Operating playbook" },
-  { value: "INVESTMENT_MEMO", label: "Investment memo" },
-  { value: "IC_TEMPLATE", label: "IC template" },
-  { value: "INDUSTRY_RESEARCH", label: "Industry research" },
-  { value: "VALUE_CREATION_PLAYBOOK", label: "Value creation playbook" },
-  { value: "PAST_DEAL_ANALYSIS", label: "Past deal analysis" },
-  { value: "DUE_DILIGENCE_CHECKLIST", label: "Due diligence checklist" },
-  { value: "SIM_SCREENING", label: "SIM screening" },
-] as const;
+import { DOCUMENT_CATEGORY_OPTIONS } from "@/lib/document-category-options";
 
 interface EditDocumentDialogProps {
   doc: DocumentRow;
@@ -137,7 +112,7 @@ export function EditDocumentDialog({
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
-                {DOCUMENT_CATEGORIES.map(({ value, label }) => (
+                {DOCUMENT_CATEGORY_OPTIONS.map(({ value, label }) => (
                   <SelectItem key={value} value={value}>
                     {label}
                   </SelectItem>

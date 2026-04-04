@@ -1,4 +1,3 @@
-
 import type React from "react";
 
 import { useState, useRef } from "react";
@@ -10,12 +9,23 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FilesIcon, Loader2, Upload, X } from "lucide-react";
-import { cn, getFileIcon, formatFileSize } from "@/lib/utils";
+import { cn, formatFileSize } from "@/lib/utils";
+import { DOCUMENT_CATEGORY_OPTIONS } from "@/lib/document-category-options";
 import { toast } from "sonner";
-
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
+import type { DocumentCategory } from "@repo/db/enums";
 
 type EntityType = "LEAD" | "COMPANY" | "DEAL_OPPORTUNITY";
 
@@ -29,6 +39,11 @@ interface FileUploadDialogProps {
   entityId: string;
   acceptedTypes?: string[];
   maxFileSize?: number; // in MB
+}
+
+function stripExtension(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i > 0 ? name.slice(0, i) : name;
 }
 
 const createFilePreview = (file: File): Promise<string | undefined> => {
@@ -64,17 +79,20 @@ export function FileUploadDialog({
 }: FileUploadDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<UploadFile | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<DocumentCategory>("OTHER");
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const trpc = useTRPC();
 
-  const { mutate: uploadFile, isPending: isUploadingFile } = useMutation(
+  const { mutate: uploadFile, isPending } = useMutation(
     trpc.files.uploadFile.mutationOptions({
       onSuccess: () => {
         toast.success("File uploaded successfully", {
           description: "The file has been uploaded.",
         });
-        setFile(null);
+        resetForm();
         setIsOpen(false);
       },
       onError: (error) => {
@@ -88,42 +106,35 @@ export function FileUploadDialog({
     }),
   );
 
-  const { mutate: uploadZip, isPending: isUploadingZip } = useMutation(
-    trpc.files.uploadZip.mutationOptions({
-      onSuccess: (data) => {
-        toast.success("Zip uploaded successfully", {
-          description: `${data.count} files are being processed.`,
-        });
-        setFile(null);
-        setIsOpen(false);
-      },
-      onError: (error) => {
-        console.error("Zip upload failed:", error);
-        toast.error("Zip upload failed", {
-          description:
-            error.message ||
-            "The zip could not be uploaded. Please try again.",
-        });
-      },
-    }),
-  );
+  const resetForm = () => {
+    setFile(null);
+    setTitle("");
+    setDescription("");
+    setCategory("OTHER");
+  };
 
-  const isPending = isUploadingFile || isUploadingZip;
-  const isZipSupported =
-    entityType === "COMPANY" || entityType === "DEAL_OPPORTUNITY";
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) resetForm();
+  };
 
   const handleSelectedFile = async (selected: File) => {
-    const isZip = selected.name.toLowerCase().endsWith(".zip");
-    const limitMB = isZip && isZipSupported ? 100 : maxFileSize;
-    if (selected.size > limitMB * 1024 * 1024) {
+    if (selected.name.toLowerCase().endsWith(".zip")) {
+      toast.error("Zip uploads are not supported", {
+        description: "Please upload a single file.",
+      });
+      return;
+    }
+    if (selected.size > maxFileSize * 1024 * 1024) {
       toast.error("File too large", {
-        description: `File exceeds size limit of ${limitMB}MB.`,
+        description: `File exceeds size limit of ${maxFileSize}MB.`,
       });
       return;
     }
 
     const preview = await createFilePreview(selected);
     setFile({ file: selected, preview });
+    setTitle(stripExtension(selected.name));
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -155,6 +166,11 @@ export function FileUploadDialog({
   const handleUpload = async () => {
     if (!file) return;
 
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+
     if (!entityId || entityId.trim() === "") {
       toast.error("Upload failed", {
         description:
@@ -165,25 +181,16 @@ export function FileUploadDialog({
 
     try {
       const fileData = await readFileAsDataURL(file.file);
-      const isZip =
-        file.file.name.toLowerCase().endsWith(".zip") && isZipSupported;
-
-      if (isZip) {
-        uploadZip({
-          entityType: entityType as "COMPANY" | "DEAL_OPPORTUNITY",
-          entityId,
-          fileData,
-          fileName: file.file.name,
-        });
-      } else {
-        uploadFile({
-          entityType,
-          entityId,
-          fileData,
-          fileName: file.file.name,
-          fileType: file.file.type || "application/octet-stream",
-        });
-      }
+      uploadFile({
+        entityType,
+        entityId,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        category,
+        fileData,
+        fileName: file.file.name,
+        fileType: file.file.type || "application/octet-stream",
+      });
     } catch (error) {
       console.error("Upload failed:", error);
       toast.error("Upload failed", {
@@ -196,7 +203,7 @@ export function FileUploadDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Upload className="h-4 w-4" />
@@ -226,8 +233,7 @@ export function FileUploadDialog({
               Drop a file or click to browse
             </p>
             <p className="text-muted-foreground text-xs">
-              Max size {maxFileSize}MB
-              {isZipSupported && " (100MB for zip)"}
+              One file at a time, max {maxFileSize}MB
             </p>
             <input
               ref={fileInputRef}
@@ -236,6 +242,49 @@ export function FileUploadDialog({
               onChange={handleFileSelect}
               className="hidden"
             />
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="upload-title">Title</Label>
+              <Input
+                id="upload-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Document title"
+                disabled={isPending}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="upload-description">Description (optional)</Label>
+              <Textarea
+                id="upload-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Notes about this file"
+                rows={3}
+                disabled={isPending}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select
+                value={category}
+                onValueChange={(v) => setCategory(v as DocumentCategory)}
+                disabled={isPending}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOCUMENT_CATEGORY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {file && (
@@ -249,53 +298,48 @@ export function FileUploadDialog({
                     onClick={() => setFile(null)}
                     className="h-8 text-xs"
                   >
-                    Clear
+                    Clear file
                   </Button>
                 )}
               </div>
 
               <div className="space-y-2">
-                {(() => {
-                  const Icon = getFileIcon(file.file.type);
-                  return (
-                    <div className="border-border bg-card hover:bg-muted/50 flex items-center gap-3 rounded-lg border p-3 transition-colors">
-                      {file.preview ? (
-                        <img
-                          src={file.preview || "/placeholder.svg"}
-                          alt={file.file.name}
-                          className="h-10 w-10 rounded object-cover"
-                        />
-                      ) : (
-                        <div className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded">
-                          <FilesIcon className="text-muted-foreground h-5 w-5" />
-                        </div>
-                      )}
-
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm">{file.file.name}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {formatFileSize(file.file.size)}
-                        </p>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-2">
-                        {!isPending && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setFile(null)}
-                            className="hover:bg-destructive/10 h-7 w-7 p-0"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {isPending && (
-                          <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-                        )}
-                      </div>
+                <div className="border-border bg-card hover:bg-muted/50 flex items-center gap-3 rounded-lg border p-3 transition-colors">
+                  {file.preview ? (
+                    <img
+                      src={file.preview || "/placeholder.svg"}
+                      alt={file.file.name}
+                      className="h-10 w-10 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded">
+                      <FilesIcon className="text-muted-foreground h-5 w-5" />
                     </div>
-                  );
-                })()}
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm">{file.file.name}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {formatFileSize(file.file.size)}
+                    </p>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    {!isPending && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFile(null)}
+                        className="hover:bg-destructive/10 h-7 w-7 p-0"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {isPending && (
+                      <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -304,12 +348,15 @@ export function FileUploadDialog({
         <div className="border-border flex justify-end gap-2 border-t pt-4">
           <Button
             variant="outline"
-            onClick={() => setIsOpen(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={isPending}
           >
             Cancel
           </Button>
-          <Button onClick={handleUpload} disabled={!file || isPending}>
+          <Button
+            onClick={handleUpload}
+            disabled={!file || !title.trim() || isPending}
+          >
             {isPending ? (
               <>
                 <div className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
