@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { CloudUpload, Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,6 +62,16 @@ export function DealActionsCell({
             >
               <Pencil className="mr-2 h-4 w-4" />
               Edit
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link
+              to="/deal-opportunities/$uid/sync-bitrix-24"
+              params={{ uid: dealOpportunityId }}
+              className="flex items-center"
+            >
+              <CloudUpload className="mr-2 h-4 w-4" />
+              Sync to Bitrix24
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem

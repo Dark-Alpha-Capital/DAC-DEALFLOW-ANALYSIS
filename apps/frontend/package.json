@@ -58,6 +58,7 @@
     "@react-email/components": "^1.0.3",
     "@react-email/render": "^2.0.1",
     "@repo/ai-core": "workspace:*",
+    "@repo/bitrix-sync": "workspace:*",
     "@repo/db": "workspace:*",
     "@repo/deal-screening": "workspace:*",
     "@repo/nextcloud": "workspace:*",

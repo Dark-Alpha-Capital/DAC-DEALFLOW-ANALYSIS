@@ -25,7 +25,8 @@
       "@repo/ai-core": ["../../packages/ai-core/index.ts"],
       "@repo/schemas": ["../../packages/schemas/index.ts"],
       "@repo/redis-queue": ["../../packages/redis-queue/src/index.ts"],
-      "@repo/redis-queue/*": ["../../packages/redis-queue/src/*"]
+      "@repo/redis-queue/*": ["../../packages/redis-queue/src/*"],
+      "@repo/bitrix-sync": ["../../packages/bitrix-sync/src/index.ts"]
     },
     "types": ["vite/client"]
   },

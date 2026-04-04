@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Mail, Phone, MapPin, User, Pencil } from "lucide-react";
 import { loadInvestorDetailData } from "@/lib/server/investors-route-data";
-import { Skeleton } from "@/components/ui/skeleton";
+import InvestorDetailPageSkeleton from "@/components/skeletons/investor-detail-page-skeleton";
 import {
   investorTypeLabels,
   investorStatusLabels,
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_protected/investors/$uid/")({
   }),
   loader: async ({ params }) =>
     loadInvestorDetailData({ data: { uid: params.uid } }),
-  pendingComponent: InvestorPageSkeleton,
+  pendingComponent: InvestorDetailPageSkeleton,
   component: InvestorDetailRoute,
 });
 
@@ -52,29 +52,6 @@ function InfoRow({
         <p className="mt-0.5 truncate text-sm">{value}</p>
       </div>
     </div>
-  );
-}
-
-function InvestorPageSkeleton() {
-  return (
-    <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-      <Skeleton className="mb-8 h-5 w-28" />
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-3/4" />
-        <Skeleton className="h-5 w-20" />
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-24 rounded-md" />
-          <Skeleton className="h-9 w-20 rounded-md" />
-          <Skeleton className="h-9 w-28 rounded-md" />
-          <Skeleton className="h-9 w-20 rounded-md" />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      </div>
-    </section>
   );
 }
 

@@ -1,6 +1,15 @@
 import { Skeleton } from "../ui/skeleton";
 
-export default function ScreenerPageSkeleton() {
+/** Route-level pending shell for `/screeners/$uid` (matches loaded page layout). */
+export function ScreenerDetailRoutePending() {
+  return (
+    <section className="block-space big-container">
+      <ScreenerPageSkeleton />
+    </section>
+  );
+}
+
+function ScreenerPageSkeleton() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -23,3 +32,5 @@ export default function ScreenerPageSkeleton() {
     </div>
   );
 }
+
+export default ScreenerPageSkeleton;

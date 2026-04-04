@@ -17,6 +17,11 @@
         "NEXTCLOUD_USER",
         "NEXTCLOUD_PASSWORD",
         "BITRIX_SECRET_KEY",
+        "BITRIX24_WEBHOOK",
+        "BITRIX_DEAL_CATEGORY_ID",
+        "BITRIX24_PORTAL_BASE",
+        "BITRIX_DEFAULT_STAGE_ID",
+        "BITRIX_DEAL_STAGES_JSON",
         "GOOGLE_AI_API_KEY"
       ],
       "inputs": [

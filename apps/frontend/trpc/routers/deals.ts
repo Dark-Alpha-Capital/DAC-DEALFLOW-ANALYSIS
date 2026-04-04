@@ -64,6 +64,14 @@ import {
   upsertDealOpportunityScreening,
   runAiQualitativeScreening,
 } from "@repo/deal-screening";
+import {
+  buildBitrixDealDetailUrl,
+  buildCrmDealFieldsFromOpportunitySync,
+  callBitrix,
+  getBitrixSyncEnv,
+  inferPortalBaseFromWebhook,
+} from "@repo/bitrix-sync";
+import { getBitrixSyncPreviewData } from "@/lib/server/bitrix-sync-preview-data";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -237,6 +245,26 @@ const editFinancialsSchema = z.object({
   keyRisks: z.array(z.string()).optional().nullable(),
   industryOverview: z.string().optional().nullable(),
   transactionDetails: z.string().optional().nullable(),
+});
+
+const bitrixSyncDealOpportunitySchema = z.object({
+  dealOpportunityId: z.string().min(1),
+  title: z.string().min(1),
+  stageId: z.string().min(1),
+  opportunity: z.number(),
+  currencyId: z.string().min(1).default("USD"),
+  comments: z.string().optional(),
+  sourceWebsite: z.string().optional().nullable(),
+  companyLocation: z.string().optional().nullable(),
+  industry: z.string().optional().nullable(),
+  brokerFirstName: z.string().optional().nullable(),
+  brokerLastName: z.string().optional().nullable(),
+  brokerEmail: z.string().optional().nullable(),
+  brokerPhone: z.string().optional().nullable(),
+  brokerLinkedIn: z.string().optional().nullable(),
+  askingPrice: z.number().nullable().optional(),
+  ebitda: z.number().nullable().optional(),
+  ebitdaMargin: z.number().nullable().optional(),
 });
 
 export const dealsRouter = createTRPCRouter({
@@ -1394,5 +1422,111 @@ export const dealsRouter = createTRPCRouter({
         jobId,
         fileName: input.fileName,
       };
+    }),
+
+  getBitrixSyncPreview: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const result = await getBitrixSyncPreviewData(input.dealOpportunityId);
+      if (!result.success) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: result.message,
+        });
+      }
+      return result.data;
+    }),
+
+  syncDealOpportunityToBitrix: protectedProcedure
+    .input(bitrixSyncDealOpportunitySchema)
+    .mutation(async ({ input }) => {
+      const env = getBitrixSyncEnv();
+      if (!env?.webhookBaseUrl) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Bitrix is not configured (set BITRIX24_WEBHOOK on the server).",
+        });
+      }
+      if (!env.dealCategoryId?.trim()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "BITRIX_DEAL_CATEGORY_ID is not set — add your Bitrix deal pipeline id.",
+        });
+      }
+
+      let opp = await GetDealOpportunityById(input.dealOpportunityId);
+      if (!opp) {
+        opp = await GetDealOpportunityByLegacyDealId(input.dealOpportunityId);
+      }
+      if (!opp) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Deal opportunity not found",
+        });
+      }
+
+      const fields = buildCrmDealFieldsFromOpportunitySync({
+        dealOpportunityId: opp.id,
+        categoryId: env.dealCategoryId.trim(),
+        stageId: input.stageId,
+        title: input.title,
+        opportunity: input.opportunity,
+        currencyId: input.currencyId,
+        comments: input.comments ?? null,
+        sourceWebsite: input.sourceWebsite ?? null,
+        companyLocation: input.companyLocation ?? null,
+        industry: input.industry ?? null,
+        ebitda: input.ebitda ?? null,
+        ebitdaMargin: input.ebitdaMargin ?? null,
+        brokerFirstName: input.brokerFirstName ?? null,
+        brokerLastName: input.brokerLastName ?? null,
+        brokerEmail: input.brokerEmail ?? null,
+        brokerPhone: input.brokerPhone ?? null,
+        brokerLinkedIn: input.brokerLinkedIn ?? null,
+        askingPrice: input.askingPrice ?? null,
+      });
+
+      const portalBase =
+        env.portalBaseUrl?.trim() ||
+        inferPortalBaseFromWebhook(env.webhookBaseUrl);
+
+      let bitrixId: string;
+      if (opp.bitrixId?.trim()) {
+        await callBitrix("crm.deal.update", {
+          id: opp.bitrixId.trim(),
+          fields,
+        });
+        bitrixId = opp.bitrixId.trim();
+      } else {
+        const created = await callBitrix<number | string>("crm.deal.add", {
+          fields,
+        });
+        bitrixId = String(created);
+      }
+
+      const bitrixLink = portalBase
+        ? buildBitrixDealDetailUrl(portalBase, bitrixId)
+        : null;
+
+      await db
+        .update(dealOpportunities)
+        .set({
+          bitrixId,
+          bitrixLink: bitrixLink || null,
+          bitrixCreatedAt: opp.bitrixCreatedAt ?? new Date(),
+        })
+        .where(eq(dealOpportunities.id, opp.id));
+
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidatePath(`/deal-opportunities/${opp.id}`);
+        revalidatePath(`/deal-opportunities/${opp.id}/sync-bitrix-24`);
+        revalidateTag(`deal-${opp.id}`, "max");
+        revalidateTag("deals", "max");
+      });
+
+      return { bitrixId, bitrixLink };
     }),
 });

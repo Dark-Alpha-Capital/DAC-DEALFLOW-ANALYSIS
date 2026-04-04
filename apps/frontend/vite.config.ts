@@ -13,6 +13,7 @@ const wranglerConfigPath = path.join(appRoot, "wrangler.jsonc");
 
 const repoPackages = [
   "@repo/db",
+  "@repo/bitrix-sync",
   "@repo/deal-screening",
   "@repo/nextcloud",
   "@repo/rag-engine",

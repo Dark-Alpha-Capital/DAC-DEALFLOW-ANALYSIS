@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Palette, Pencil } from "lucide-react";
 import { loadInvestmentThemeDetailData } from "@/lib/server/investment-themes-route-data";
-import { Skeleton } from "@/components/ui/skeleton";
+import ThemeDetailPageSkeleton from "@/components/skeletons/theme-detail-page-skeleton";
 import ThemeDetailTabs from "@/components/theme-detail/ThemeDetailTabs";
 import {
   ROUTE_DATA_GC_TIME_MS,
@@ -31,31 +31,9 @@ export const Route = createFileRoute("/_protected/investment-themes/$uid/")({
   }),
   loader: async ({ params }) =>
     loadInvestmentThemeDetailData({ data: { uid: params.uid } }),
-  pendingComponent: ThemePageSkeleton,
+  pendingComponent: ThemeDetailPageSkeleton,
   component: ThemeDetailRoute,
 });
-
-function ThemePageSkeleton() {
-  return (
-    <section className="container mx-auto max-w-5xl px-4 py-8">
-      <Skeleton className="mb-6 h-9 w-32" />
-      <div className="space-y-6">
-        <div className="flex gap-2">
-          <Skeleton className="h-6 w-20" />
-        </div>
-        <Skeleton className="h-8 w-3/4" />
-        <Skeleton className="h-5 w-1/2" />
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-20 w-full" />
-        </div>
-        <div className="flex gap-3">
-          <Skeleton className="h-9 w-24" />
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function ThemeDetailRoute() {
   const { themeWorkspace, companiesResult, error } = Route.useLoaderData();

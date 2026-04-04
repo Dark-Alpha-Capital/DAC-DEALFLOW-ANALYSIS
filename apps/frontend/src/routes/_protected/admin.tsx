@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { fetchCurrentUserRole } from "@/lib/server/fetch-session-server-fn";
 import { DataTable } from "@/components/admin/data-table";
 import { columns } from "@/components/admin/columns";
-import AdminLoading from "@/components/admin/loading";
+import AdminPageSkeleton from "@/components/skeletons/admin-page-skeleton";
 import { loadAdminUsersData } from "@/lib/server/admin-route-data";
 
 export const Route = createFileRoute("/_protected/admin")({
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_protected/admin")({
     }
   },
   loader: async () => loadAdminUsersData(),
-  pendingComponent: AdminLoading,
+  pendingComponent: AdminPageSkeleton,
   component: AdminRoute,
 });
 

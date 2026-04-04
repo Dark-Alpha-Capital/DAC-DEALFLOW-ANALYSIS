@@ -1,20 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import ScreeningScoreCard from "@/components/ScreeningScoreCard";
+import ScreeningsPageSkeleton from "@/components/skeletons/screenings-page-skeleton";
 import { loadScreeningsPageData } from "@/lib/server/screenings-route-data";
 import ScreenerResultsList from "@/components/ScreenerResultsList";
-
-function ScreeningsPending() {
-  return (
-    <div className="text-muted-foreground text-sm">Loading screenings…</div>
-  );
-}
 
 export const Route = createFileRoute("/_protected/screenings")({
   head: () => ({
     meta: [{ title: "Screening Overview — Dark Alpha Capital" }],
   }),
   loader: async () => loadScreeningsPageData(),
-  pendingComponent: ScreeningsPending,
+  pendingComponent: ScreeningsPageSkeleton,
   component: ScreeningsRoute,
 });
 

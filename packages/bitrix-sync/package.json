@@ -1,0 +1,17 @@
+{
+  "name": "@repo/bitrix-sync",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "fetch-stages": "bun run ./scripts/fetch-bitrix-stages.ts"
+  },
+  "dependencies": {
+    "axios": "^1.8.4"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

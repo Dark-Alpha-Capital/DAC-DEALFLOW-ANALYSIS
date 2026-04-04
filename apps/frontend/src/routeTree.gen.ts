@@ -85,6 +85,7 @@ import { Route as ProtectedInvestorsUidEditRouteImport } from './routes/_protect
 import { Route as ProtectedInvestorLeadsUidEditRouteImport } from './routes/_protected/investor-leads/$uid/edit'
 import { Route as ProtectedInvestorLeadsUidConvertRouteImport } from './routes/_protected/investor-leads/$uid/convert'
 import { Route as ProtectedInvestmentThemesUidEditRouteImport } from './routes/_protected/investment-themes/$uid/edit'
+import { Route as ProtectedDealOpportunitiesUidSyncBitrix24RouteImport } from './routes/_protected/deal-opportunities/$uid/sync-bitrix-24'
 import { Route as ProtectedDealOpportunitiesUidEditRouteImport } from './routes/_protected/deal-opportunities/$uid/edit'
 import { Route as ProtectedCompaniesUidEditRouteImport } from './routes/_protected/companies/$uid/edit'
 
@@ -493,6 +494,12 @@ const ProtectedInvestmentThemesUidEditRoute =
     path: '/investment-themes/$uid/edit',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ProtectedDealOpportunitiesUidSyncBitrix24Route =
+  ProtectedDealOpportunitiesUidSyncBitrix24RouteImport.update({
+    id: '/deal-opportunities/$uid/sync-bitrix-24',
+    path: '/deal-opportunities/$uid/sync-bitrix-24',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedDealOpportunitiesUidEditRoute =
   ProtectedDealOpportunitiesUidEditRouteImport.update({
     id: '/deal-opportunities/$uid/edit',
@@ -570,6 +577,7 @@ export interface FileRoutesByFullPath {
   '/screeners/': typeof ProtectedScreenersIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
+  '/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
   '/investment-themes/$uid/edit': typeof ProtectedInvestmentThemesUidEditRoute
   '/investor-leads/$uid/convert': typeof ProtectedInvestorLeadsUidConvertRoute
   '/investor-leads/$uid/edit': typeof ProtectedInvestorLeadsUidEditRoute
@@ -645,6 +653,7 @@ export interface FileRoutesByTo {
   '/screeners': typeof ProtectedScreenersIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
+  '/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
   '/investment-themes/$uid/edit': typeof ProtectedInvestmentThemesUidEditRoute
   '/investor-leads/$uid/convert': typeof ProtectedInvestorLeadsUidConvertRoute
   '/investor-leads/$uid/edit': typeof ProtectedInvestorLeadsUidEditRoute
@@ -726,6 +735,7 @@ export interface FileRoutesById {
   '/_protected/screeners/': typeof ProtectedScreenersIndexRoute
   '/_protected/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/_protected/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
+  '/_protected/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
   '/_protected/investment-themes/$uid/edit': typeof ProtectedInvestmentThemesUidEditRoute
   '/_protected/investor-leads/$uid/convert': typeof ProtectedInvestorLeadsUidConvertRoute
   '/_protected/investor-leads/$uid/edit': typeof ProtectedInvestorLeadsUidEditRoute
@@ -804,6 +814,7 @@ export interface FileRouteTypes {
     | '/screeners/'
     | '/companies/$uid/edit'
     | '/deal-opportunities/$uid/edit'
+    | '/deal-opportunities/$uid/sync-bitrix-24'
     | '/investment-themes/$uid/edit'
     | '/investor-leads/$uid/convert'
     | '/investor-leads/$uid/edit'
@@ -879,6 +890,7 @@ export interface FileRouteTypes {
     | '/screeners'
     | '/companies/$uid/edit'
     | '/deal-opportunities/$uid/edit'
+    | '/deal-opportunities/$uid/sync-bitrix-24'
     | '/investment-themes/$uid/edit'
     | '/investor-leads/$uid/convert'
     | '/investor-leads/$uid/edit'
@@ -959,6 +971,7 @@ export interface FileRouteTypes {
     | '/_protected/screeners/'
     | '/_protected/companies/$uid/edit'
     | '/_protected/deal-opportunities/$uid/edit'
+    | '/_protected/deal-opportunities/$uid/sync-bitrix-24'
     | '/_protected/investment-themes/$uid/edit'
     | '/_protected/investor-leads/$uid/convert'
     | '/_protected/investor-leads/$uid/edit'
@@ -1521,6 +1534,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedInvestmentThemesUidEditRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/deal-opportunities/$uid/sync-bitrix-24': {
+      id: '/_protected/deal-opportunities/$uid/sync-bitrix-24'
+      path: '/deal-opportunities/$uid/sync-bitrix-24'
+      fullPath: '/deal-opportunities/$uid/sync-bitrix-24'
+      preLoaderRoute: typeof ProtectedDealOpportunitiesUidSyncBitrix24RouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/deal-opportunities/$uid/edit': {
       id: '/_protected/deal-opportunities/$uid/edit'
       path: '/deal-opportunities/$uid/edit'
@@ -1700,6 +1720,7 @@ interface ProtectedRouteRouteChildren {
   ProtectedLeadsIndexRoute: typeof ProtectedLeadsIndexRoute
   ProtectedScreenersIndexRoute: typeof ProtectedScreenersIndexRoute
   ProtectedDealOpportunitiesUidEditRoute: typeof ProtectedDealOpportunitiesUidEditRoute
+  ProtectedDealOpportunitiesUidSyncBitrix24Route: typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
   ProtectedInvestmentThemesUidEditRoute: typeof ProtectedInvestmentThemesUidEditRoute
   ProtectedInvestorLeadsUidConvertRoute: typeof ProtectedInvestorLeadsUidConvertRoute
   ProtectedInvestorLeadsUidEditRoute: typeof ProtectedInvestorLeadsUidEditRoute
@@ -1742,6 +1763,8 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedScreenersIndexRoute: ProtectedScreenersIndexRoute,
   ProtectedDealOpportunitiesUidEditRoute:
     ProtectedDealOpportunitiesUidEditRoute,
+  ProtectedDealOpportunitiesUidSyncBitrix24Route:
+    ProtectedDealOpportunitiesUidSyncBitrix24Route,
   ProtectedInvestmentThemesUidEditRoute: ProtectedInvestmentThemesUidEditRoute,
   ProtectedInvestorLeadsUidConvertRoute: ProtectedInvestorLeadsUidConvertRoute,
   ProtectedInvestorLeadsUidEditRoute: ProtectedInvestorLeadsUidEditRoute,

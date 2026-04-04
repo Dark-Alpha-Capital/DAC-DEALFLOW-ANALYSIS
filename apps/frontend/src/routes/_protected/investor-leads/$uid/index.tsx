@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Mail, Phone, Tag, FileText, Pencil } from "lucide-react";
 import type { InvestorInteraction } from "@repo/db";
 import { loadInvestorLeadDetailData } from "@/lib/server/investor-leads-route-data";
-import { Skeleton } from "@/components/ui/skeleton";
+import InvestorLeadDetailPageSkeleton from "@/components/skeletons/investor-lead-detail-page-skeleton";
 import { investorLeadStatusLabels } from "@/components/investor-leads/columns";
 import { InvestorLeadInteractions } from "@/components/investor-leads/InvestorLeadInteractions";
 import { DeleteInvestorLeadButton } from "@/components/investor-leads/DeleteInvestorLeadButton";
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_protected/investor-leads/$uid/")({
   }),
   loader: async ({ params }) =>
     loadInvestorLeadDetailData({ data: { uid: params.uid } }),
-  pendingComponent: InvestorLeadPageSkeleton,
+  pendingComponent: InvestorLeadDetailPageSkeleton,
   component: InvestorLeadDetailRoute,
 });
 
@@ -48,23 +48,6 @@ function InfoRow({
         <p className="mt-0.5 truncate text-sm">{value}</p>
       </div>
     </div>
-  );
-}
-
-function InvestorLeadPageSkeleton() {
-  return (
-    <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-      <Skeleton className="mb-8 h-5 w-28" />
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-3/4" />
-        <Skeleton className="h-5 w-20" />
-        <div className="space-y-2">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      </div>
-    </section>
   );
 }
 

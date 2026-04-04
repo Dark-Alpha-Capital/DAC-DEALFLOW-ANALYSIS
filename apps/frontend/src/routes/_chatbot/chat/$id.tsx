@@ -4,7 +4,7 @@ import {
   fetchChatRouteLoaderData,
   type ChatRouteLoaderData,
 } from "@/lib/fetch-chat-route-loader-data";
-import { Skeleton } from "@/components/ui/skeleton";
+import ChatSessionPageSkeleton from "@/components/skeletons/chat-session-page-skeleton";
 
 export const Route = createFileRoute("/_chatbot/chat/$id")({
   head: () => ({
@@ -20,23 +20,9 @@ export const Route = createFileRoute("/_chatbot/chat/$id")({
 
     return data as ChatRouteLoaderData;
   },
-  pendingComponent: ChatSessionSkeleton,
+  pendingComponent: ChatSessionPageSkeleton,
   component: ChatSessionRoute,
 });
-
-function ChatSessionSkeleton() {
-  return (
-    <div className="flex min-h-[60vh] flex-col gap-6">
-      <div className="space-y-4">
-        <Skeleton className="h-16 w-3/4" />
-        <Skeleton className="h-16 w-1/2" />
-      </div>
-      <div className="mt-auto">
-        <Skeleton className="h-24 w-full" />
-      </div>
-    </div>
-  );
-}
 
 function ChatSessionRoute() {
   const { chatId, initialContext, initialMessages, initialSelection } =

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { loadInvestmentThemeForEditData } from "@/lib/server/investment-themes-route-data";
 import EditThemeForm from "@/components/forms/edit-theme-form";
-import { Skeleton } from "@/components/ui/skeleton";
+import EditPageSkeleton from "@/components/skeletons/edit-page-skeleton";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
@@ -22,21 +22,6 @@ export const Route = createFileRoute(
   pendingComponent: EditPageSkeleton,
   component: EditThemeRoute,
 });
-
-function EditPageSkeleton() {
-  return (
-    <section className="big-container block-space min-h-screen">
-      <Skeleton className="mb-6 h-9 w-32" />
-      <Skeleton className="mb-4 h-8 w-48" />
-      <Skeleton className="h-4 w-64" />
-      <div className="mt-8 space-y-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-24 w-full" />
-      </div>
-    </section>
-  );
-}
 
 function EditThemeRoute() {
   const { uid } = Route.useParams();

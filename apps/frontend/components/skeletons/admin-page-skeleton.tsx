@@ -1,7 +1,6 @@
-import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function AdminLoading() {
+export default function AdminPageSkeleton() {
   return (
     <section className="block-space big-container">
       <div>

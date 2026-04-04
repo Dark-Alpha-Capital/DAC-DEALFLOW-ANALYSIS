@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import ScreenerEditor from "@/components/screeners/screener-editor";
 import { loadScreenerDetailData } from "@/lib/server/screeners-route-data";
-import ScreenerPageSkeleton from "@/components/skeletons/screener-page-skeleton";
+import ScreenerPageSkeleton, {
+  ScreenerDetailRoutePending,
+} from "@/components/skeletons/screener-page-skeleton";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
@@ -16,11 +18,7 @@ export const Route = createFileRoute("/_protected/screeners/$uid")({
   }),
   loader: async ({ params }) =>
     loadScreenerDetailData({ data: { uid: params.uid } }),
-  pendingComponent: () => (
-    <section className="block-space big-container">
-      <ScreenerPageSkeleton />
-    </section>
-  ),
+  pendingComponent: ScreenerDetailRoutePending,
   component: ScreenerDetailRoute,
 });
 

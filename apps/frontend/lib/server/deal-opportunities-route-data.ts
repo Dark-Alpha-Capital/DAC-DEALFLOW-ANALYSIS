@@ -4,6 +4,7 @@ import {
   GetDealWithAllRelations,
   GetRankedDealOpportunities,
 } from "@repo/db/queries";
+import { getBitrixSyncPreviewData } from "./bitrix-sync-preview-data";
 
 export const loadRankedDealOpportunitiesPageData = createServerFn({
   method: "GET",
@@ -43,6 +44,24 @@ export const loadDealOpportunityForEditData = createServerFn({ method: "GET" })
       console.error("Error fetching deal", err);
       return {
         opp: null,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  });
+
+export const loadBitrixSyncPreviewData = createServerFn({ method: "GET" })
+  .inputValidator((raw: unknown) => raw as { dealOpportunityId: string })
+  .handler(async ({ data }) => {
+    try {
+      const result = await getBitrixSyncPreviewData(data.dealOpportunityId);
+      if (!result.success) {
+        return { preview: null, error: result.message };
+      }
+      return { preview: result.data, error: null as string | null };
+    } catch (err) {
+      console.error("Error loading Bitrix sync preview", err);
+      return {
+        preview: null,
         error: err instanceof Error ? err.message : String(err),
       };
     }

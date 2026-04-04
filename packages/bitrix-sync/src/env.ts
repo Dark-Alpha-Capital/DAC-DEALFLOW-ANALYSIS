@@ -1,0 +1,52 @@
+
+export type BitrixSyncEnv = {
+  webhookBaseUrl: string;
+  dealCategoryId: string;
+  portalBaseUrl: string;
+  defaultStageId: string | undefined;
+};
+
+/** Normalize base URL: no trailing slash, no /.json suffix on method path (caller adds method). */
+export function getBitrixSyncEnv(): BitrixSyncEnv | null {
+  const raw = process.env.BITRIX24_WEBHOOK?.trim();
+  if (!raw) return null;
+  const webhookBaseUrl = raw.replace(/\/+$/, "");
+  const dealCategoryId = process.env.BITRIX_DEAL_CATEGORY_ID?.trim() ?? "";
+  const portalBaseUrl = (process.env.BITRIX24_PORTAL_BASE ?? "")
+    .trim()
+    .replace(/\/+$/, "");
+  const defaultStageId = process.env.BITRIX_DEFAULT_STAGE_ID?.trim() || undefined;
+  return {
+    webhookBaseUrl,
+    dealCategoryId,
+    portalBaseUrl,
+    defaultStageId,
+  };
+}
+
+export function requireBitrixWebhookBase(): string {
+  const env = getBitrixSyncEnv();
+  if (!env?.webhookBaseUrl) {
+    throw new Error("BITRIX24_WEBHOOK is not configured");
+  }
+  return env.webhookBaseUrl;
+}
+
+export function buildBitrixDealDetailUrl(
+  portalBaseUrl: string,
+  bitrixDealId: string,
+): string {
+  const base = portalBaseUrl.replace(/\/+$/, "");
+  if (!base) return "";
+  return `${base}/crm/deal/details/${bitrixDealId}/`;
+}
+
+/** Derive `https://tenant.bitrix24.com` from inbound webhook URL when `BITRIX24_PORTAL_BASE` is unset. */
+export function inferPortalBaseFromWebhook(webhookBaseUrl: string): string {
+  try {
+    const u = new URL(webhookBaseUrl);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return "";
+  }
+}

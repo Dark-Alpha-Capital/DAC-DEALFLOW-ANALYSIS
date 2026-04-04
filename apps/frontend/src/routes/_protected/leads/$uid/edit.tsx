@@ -2,7 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { loadLeadForEditData } from "@/lib/server/leads-route-data";
 import EditLeadForm from "@/components/forms/edit-lead-form";
-import { Skeleton } from "@/components/ui/skeleton";
+import EditPageSkeleton from "@/components/skeletons/edit-page-skeleton";
 import BackButton from "@/components/Buttons/back-button";
 import {
   ROUTE_DATA_GC_TIME_MS,
@@ -20,21 +20,6 @@ export const Route = createFileRoute("/_protected/leads/$uid/edit")({
   pendingComponent: EditPageSkeleton,
   component: EditLeadRoute,
 });
-
-function EditPageSkeleton() {
-  return (
-    <section className="big-container block-space min-h-screen">
-      <Skeleton className="mb-6 h-9 w-32" />
-      <Skeleton className="mb-4 h-8 w-48" />
-      <Skeleton className="h-4 w-64" />
-      <div className="mt-8 space-y-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-24 w-full" />
-      </div>
-    </section>
-  );
-}
 
 function EditLeadRoute() {
   const { lead, error } = Route.useLoaderData();

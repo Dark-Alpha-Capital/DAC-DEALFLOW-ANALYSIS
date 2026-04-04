@@ -62,6 +62,7 @@
         "@react-email/components": "^1.0.3",
         "@react-email/render": "^2.0.1",
         "@repo/ai-core": "workspace:*",
+        "@repo/bitrix-sync": "workspace:*",
         "@repo/db": "workspace:*",
         "@repo/deal-screening": "workspace:*",
         "@repo/nextcloud": "workspace:*",
@@ -176,6 +177,15 @@
       },
       "devDependencies": {
         "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/bitrix-sync": {
+      "name": "@repo/bitrix-sync",
+      "dependencies": {
+        "axios": "^1.8.4",
       },
       "peerDependencies": {
         "typescript": "^5",
@@ -1116,6 +1126,8 @@
     "@react-hook/passive-layout-effect": ["@react-hook/passive-layout-effect@1.2.1", "", { "peerDependencies": { "react": ">=16.8" } }, "sha512-IwEphTD75liO8g+6taS+4oqz+nnroocNfWVHWz7j+N+ZO2vYrc6PV1q7GQhuahL0IOR7JccFTsFKQ/mb6iZWAg=="],
 
     "@repo/ai-core": ["@repo/ai-core@workspace:packages/ai-core"],
+
+    "@repo/bitrix-sync": ["@repo/bitrix-sync@workspace:packages/bitrix-sync"],
 
     "@repo/cim-extraction": ["@repo/cim-extraction@workspace:packages/cim-extraction"],
 

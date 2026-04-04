@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, ArrowLeft, Link as LinkIcon } from "lucide-react";
+import { Edit, ArrowLeft, Link as LinkIcon, CloudUpload } from "lucide-react";
 import type { Deal, DealOpportunity } from "@repo/db/schema";
 import { DealStatus, DealType } from "@repo/db/enums";
 import { DealActionsDropdown } from "./deal-actions-dropdown";
@@ -200,7 +200,26 @@ export function DealHeader({
               Edit deal opportunity
             </Link>
           </Button>
-          <DealActionsDropdown deal={deal} uid={uid} />
+          {basePath === "deal-opportunities" && (
+            <Button variant="outline" asChild>
+              <Link
+                to="/deal-opportunities/$uid/sync-bitrix-24"
+                params={{ uid }}
+              >
+                <CloudUpload className="mr-2 h-4 w-4" />
+                Sync to Bitrix24
+              </Link>
+            </Button>
+          )}
+          <DealActionsDropdown
+            deal={deal}
+            uid={uid}
+            variant={
+              basePath === "deal-opportunities"
+                ? "deal-opportunity"
+                : "raw-deal"
+            }
+          />
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {currentOpportunity && (

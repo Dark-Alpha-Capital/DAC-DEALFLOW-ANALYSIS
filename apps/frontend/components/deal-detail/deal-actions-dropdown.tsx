@@ -1,4 +1,3 @@
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +12,7 @@ import {
   Upload,
   ExternalLink,
   Loader2,
+  CloudUpload,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import type { Deal } from "@repo/db/schema";
@@ -23,9 +23,15 @@ import { toast } from "sonner";
 interface DealActionsDropdownProps {
   deal: Deal;
   uid: string;
+  /** Raw legacy deals vs unified deal-opportunity detail. */
+  variant?: "raw-deal" | "deal-opportunity";
 }
 
-export function DealActionsDropdown({ deal, uid }: DealActionsDropdownProps) {
+export function DealActionsDropdown({
+  deal,
+  uid,
+  variant = "raw-deal",
+}: DealActionsDropdownProps) {
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
 
@@ -50,17 +56,35 @@ export function DealActionsDropdown({ deal, uid }: DealActionsDropdownProps) {
           <span className="sr-only">More actions</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem asChild>
-          <Link to={`/raw-deals/${uid}/tags`} className="flex items-center">
-            <Tag className="mr-2 h-4 w-4" />
-            Add Tags
-          </Link>
-        </DropdownMenuItem>
+      <DropdownMenuContent align="end" className="w-52">
+        {variant === "raw-deal" && (
+          <DropdownMenuItem asChild>
+            <Link to={`/raw-deals/${uid}/tags`} className="flex items-center">
+              <Tag className="mr-2 h-4 w-4" />
+              Add Tags
+            </Link>
+          </DropdownMenuItem>
+        )}
 
-        <DropdownMenuSeparator />
+        {variant === "raw-deal" && <DropdownMenuSeparator />}
 
-        {!deal.bitrixId && (
+        {variant === "deal-opportunity" && (
+          <>
+            <DropdownMenuItem asChild>
+              <Link
+                to="/deal-opportunities/$uid/sync-bitrix-24"
+                params={{ uid }}
+                className="flex items-center"
+              >
+                <CloudUpload className="mr-2 h-4 w-4" />
+                Sync to Bitrix24
+              </Link>
+            </DropdownMenuItem>
+            {deal.sourceWebsite ? <DropdownMenuSeparator /> : null}
+          </>
+        )}
+
+        {variant === "raw-deal" && !deal.bitrixId && (
           <DropdownMenuItem
             onClick={handleUploadToBitrix}
             disabled={isPending}
