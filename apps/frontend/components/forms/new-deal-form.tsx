@@ -1,7 +1,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,36 +19,13 @@ import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
+import {
+  NewDealFormSchema,
+  type NewDealFormSchemaType,
+} from "@/lib/zod-schemas/deal-opportunity-forms";
 
-export const NewDealFormSchema = z.object({
-  first_name: z.optional(z.string()),
-  last_name: z.optional(z.string()),
-  email: z.optional(z.string().email("Invalid email address")), // Added email validation
-  linkedinurl: z.optional(z.string().url("Invalid URL")), // Added URL validation
-  deal_caption: z
-    .string()
-    .min(5, { message: "Deal caption should be at least 5 characters long" }),
-  title: z
-    .string()
-    .min(5, { message: "Title should be at least 5 characters long" }),
-  work_phone: z.optional(z.string()), // Consider adding phone number validation if needed
-  revenue: z.coerce.number().positive("Revenue must be a positive number"), // Ensure positive number
-  ebitda: z.coerce.number(), // Consider if this should also be positive
-  ebitda_margin: z.coerce.number(), // Consider range validation (e.g., 0-100)
-  gross_revenue: z.coerce
-    .number()
-    .positive("Gross revenue must be a positive number"), // Ensure positive number
-  company_location: z.optional(z.string()),
-  brokerage: z.string().min(1, "Brokerage is required"), // Ensure brokerage is not empty
-  source_website: z.optional(z.string().url("Invalid URL")), // Added URL validation
-  industry: z.string().min(1, "Industry is required"), // Ensure industry is not empty
-  asking_price: z.optional(
-    z.coerce.number().positive("Asking price must be a positive number"),
-  ), // Ensure positive number
-});
-
-// infer type of formSchema
-export type NewDealFormSchemaType = z.infer<typeof NewDealFormSchema>;
+export { NewDealFormSchema };
+export type { NewDealFormSchemaType };
 
 export default function CreateNewDealForm() {
   const router = useRouter();

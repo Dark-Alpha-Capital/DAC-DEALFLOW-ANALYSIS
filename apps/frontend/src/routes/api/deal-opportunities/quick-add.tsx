@@ -3,24 +3,23 @@ import { createId } from "@paralleldrive/cuid2";
 import { timingSafeEqual } from "crypto";
 import db, { companies, dealOpportunities } from "@repo/db";
 import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
-import { z } from "zod";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
+import { dealQuickAddApiSchema } from "@/lib/zod-schemas/deal-quick-add-api";
 
-const quickAddSchema = z.object({
-  dealTeaser: z.string().min(1, "Deal title is required"),
-  sourceWebsite: z.string().optional(),
-  brokerage: z.string().optional(),
-  revenue: z.number().optional(),
-  ebitda: z.number().optional(),
-  ebitdaMargin: z.number().optional(),
-  askingPrice: z.number().optional(),
-  description: z.string().optional(),
-  brokerFirstName: z.string().optional(),
-  brokerLastName: z.string().optional(),
-  brokerEmail: z.string().email().optional(),
-  brokerPhone: z.string().optional(),
-  brokerLinkedIn: z.string().optional(),
-});
+function normalizeCompanyNameKey(value?: string | null): string {
+  return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function buildNormalizedNameForQuickAdd(
+  companyName: string,
+  location?: string | null,
+): string {
+  const base = normalizeCompanyNameKey(companyName);
+  const loc = normalizeCompanyNameKey(location ?? "");
+  const suffix = createId().replace(/-/g, "").slice(0, 12);
+  const parts = [base || "company", loc || null, suffix].filter(Boolean) as string[];
+  return parts.join("_").slice(0, 240);
+}
 
 function validateApiKey(provided: string): boolean {
   const expected = process.env.DEAL_QUICK_ADD_API_KEY;
@@ -61,7 +60,7 @@ async function postDealOpportunitiesQuickAdd(request: Request) {
     }
 
     const { apiKey: _discard, ...payload } = body as Record<string, unknown>;
-    const parsed = quickAddSchema.safeParse(payload);
+    const parsed = dealQuickAddApiSchema.safeParse(payload);
 
     if (!parsed.success) {
       return Response.json(
@@ -73,15 +72,21 @@ async function postDealOpportunitiesQuickAdd(request: Request) {
     const input = parsed.data;
 
     const result = await db.transaction(async (tx) => {
-      const normalizedName = `quickadd_${createId()}`;
-      const companyName = input.dealTeaser.slice(0, 255);
+      const name = (
+        input.companyName?.trim() || input.dealTeaser
+      ).trim().slice(0, 255);
+      const normalizedName = buildNormalizedNameForQuickAdd(
+        name,
+        input.location?.trim() || null,
+      );
 
       const [company] = await tx
         .insert(companies)
         .values({
-          name: companyName,
+          name,
           normalizedName,
-          location: null,
+          industry: input.industry?.trim() || null,
+          location: input.location?.trim() || null,
           coverageStatus: "UNCONTACTED",
         })
         .returning();

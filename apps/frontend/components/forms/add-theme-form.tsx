@@ -1,7 +1,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -29,19 +28,13 @@ import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
+import {
+  ThemeFormSchema,
+  type ThemeFormSchemaType,
+} from "@/lib/zod-schemas/theme-forms";
+import { THEME_STATUSES } from "@/lib/zod-schemas/shared-form-enums";
 
-const THEME_STATUSES = ["ACTIVE", "PAUSED", "RETIRED"] as const;
-
-const ThemeFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().min(1, "Description is required"),
-  sector: z.string().min(1, "Sector is required"),
-  status: z.enum(THEME_STATUSES).optional(),
-  capitalPriorityScore: z.coerce.number().min(0).max(100).optional(),
-  confidenceScore: z.coerce.number().optional(),
-});
-
-export type ThemeFormSchemaType = z.infer<typeof ThemeFormSchema>;
+export type { ThemeFormSchemaType };
 
 export default function AddThemeForm() {
   const router = useRouter();

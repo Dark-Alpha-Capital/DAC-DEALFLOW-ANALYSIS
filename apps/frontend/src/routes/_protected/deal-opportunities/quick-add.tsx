@@ -1,26 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { QuickAddDealForm } from "@/components/forms/quick-add-deal-form";
+import { loadThemesForSelectData } from "@/lib/server/deal-opportunities-route-data";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute(
   "/_protected/deal-opportunities/quick-add",
 )({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Quick add deal — Dark Alpha Capital" }],
   }),
+  loader: async () => loadThemesForSelectData(),
   component: QuickAddDealRoute,
 });
 
 function QuickAddDealRoute() {
+  const { themes } = Route.useLoaderData();
   return (
-    <section className="big-container block-space min-h-screen">
+    <section className="big-container">
       <div className="mb-6">
         <h1 className="text-3xl font-semibold md:text-4xl">Quick add deal</h1>
         <p className="text-muted-foreground">
-          Capture a deal with key details now. You can always enrich it later.
+          Create the company and deal listing together. Only company name and deal
+          title are required; everything else is optional.
         </p>
       </div>
-      <div className="max-w-md">
-        <QuickAddDealForm />
+      <div className="">
+        <QuickAddDealForm themes={themes} />
       </div>
     </section>
   );

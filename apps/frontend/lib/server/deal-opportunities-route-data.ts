@@ -4,7 +4,24 @@ import {
   GetDealWithAllRelations,
   GetRankedDealOpportunities,
 } from "@repo/db/queries";
+import db, { themes, asc, isNull } from "@repo/db";
 import { getBitrixSyncPreviewData } from "./bitrix-sync-preview-data";
+
+/** Same rows as `trpc.themes.listForSelect` — for quick-add theme picker + route loader. */
+export const loadThemesForSelectData = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const rows = await db
+      .select({
+        id: themes.id,
+        name: themes.name,
+        status: themes.status,
+      })
+      .from(themes)
+      .where(isNull(themes.deletedAt))
+      .orderBy(asc(themes.name));
+    return { themes: rows };
+  },
+);
 
 export const loadRankedDealOpportunitiesPageData = createServerFn({
   method: "GET",

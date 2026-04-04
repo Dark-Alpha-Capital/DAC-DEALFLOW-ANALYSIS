@@ -1,5 +1,28 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, adminProcedure } from "../init";
+import {
+  addFinancialSnapshotSchema,
+  addRiskFlagSchema,
+  adminDeleteDealInputSchema,
+  bitrixSyncDealOpportunitySchema,
+  bulkDeleteDealsInputSchema,
+  createDealOpportunitySchema,
+  createDealSchema,
+  createOpportunityQuickSchema,
+  dealOpportunityIdInputSchema,
+  dealOpportunityIdMinInputSchema,
+  deleteOpportunityInputSchema,
+  editFinancialsSchema,
+  screenOpportunitySchema,
+  searchForChatInputSchema,
+  startTemplateScreeningInputSchema,
+  updateDealSchema,
+  updateOpportunityStageSchema,
+  updateSpecificationsSchema,
+  updateTagsSchema,
+  uploadCIMSchema,
+  uploadDealDocumentSchema,
+} from "@/lib/zod-schemas/deals-router";
 import db, {
   deals,
   dealOpportunities,
@@ -14,14 +37,10 @@ import db, {
   ilike,
   desc,
   DealType,
-  DealStatus,
   documents,
   DealDocumentCategory,
   DocumentCategory,
   ReviewState,
-  DealFinancialSnapshotSource,
-  DealRiskSeverity,
-  DealRiskType,
 } from "@repo/db";
 import { DeleteDealById, BulkDeleteDeals } from "@repo/db/mutations";
 import { after } from "@/lib/after";
@@ -82,203 +101,24 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 
 const formatUsd = (value: number) => currencyFormatter.format(value);
 
-const createDealSchema = z.object({
-  first_name: z.string().optional(),
-  last_name: z.string().optional(),
-  email: z.string().email("Invalid email address").optional(),
-  linkedinurl: z.string().url("Invalid URL").optional(),
-  deal_caption: z
-    .string()
-    .min(5, { message: "Deal caption should be at least 5 characters long" }),
-  title: z
-    .string()
-    .min(5, { message: "Title should be at least 5 characters long" }),
-  work_phone: z.string().optional(),
-  revenue: z.number().positive("Revenue must be a positive number"),
-  ebitda: z.number(),
-  ebitda_margin: z.number(),
-  gross_revenue: z.number().positive("Gross revenue must be a positive number"),
-  company_location: z.string().optional(),
-  brokerage: z.string().min(1, "Brokerage is required"),
-  source_website: z.string().url("Invalid URL").optional(),
-  industry: z.string().min(1, "Industry is required"),
-  asking_price: z
-    .number()
-    .positive("Asking price must be a positive number")
-    .optional(),
-});
+function normalizeCompanyNameKey(value?: string | null): string {
+  return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
 
-const updateDealSchema = z.object({
-  id: z.string(),
-  first_name: z.string().optional(),
-  last_name: z.string().optional(),
-  email: z.string().optional(),
-  linkedinurl: z.string().optional(),
-  deal_caption: z
-    .string()
-    .min(5, { message: "Deal caption should be at least 5 characters long" }),
-  title: z
-    .string()
-    .min(5, { message: "Title should be at least 5 characters long" }),
-  work_phone: z.string().optional(),
-  revenue: z.number().optional(),
-  ebitda: z.number().optional(),
-  ebitda_margin: z.number().optional(),
-  gross_revenue: z.number().optional(),
-  company_location: z.string().optional(),
-  brokerage: z.string().optional(),
-  source_website: z.string().optional(),
-  inventory: z.number().optional(),
-  industry: z.string().optional(),
-  asking_price: z.number().optional(),
-});
-
-const updateTagsSchema = z.object({
-  dealId: z.string(),
-  tags: z.array(z.string()).min(1, "At least one tag is required"),
-});
-
-const updateSpecificationsSchema = z.object({
-  dealId: z.string(),
-  reviewState: z.enum(["NOT_SEEN", "SEEN", "REVIEWED", "PUBLISHED"] as const),
-  status: z.nativeEnum(DealStatus),
-});
-
-const createDealOpportunitySchema = z.object({
-  companyId: z.string().min(1, "Company is required"),
-  leadId: z.string().optional(),
-  sourceWebsite: z.string().optional(),
-  brokerage: z.string().optional(),
-  revenue: z.coerce.number().optional(),
-  ebitda: z.coerce.number().optional(),
-  ebitdaMargin: z.coerce.number().optional(),
-  askingPrice: z.coerce.number().optional(),
-  dealTeaser: z.string().optional(),
-  description: z.string().optional(),
-  brokerFirstName: z.string().optional(),
-  brokerLastName: z.string().optional(),
-  brokerEmail: z.union([z.string().email(), z.literal("")]).optional(),
-  brokerPhone: z.string().optional(),
-  brokerLinkedIn: z.string().optional(),
-});
-
-const createOpportunityQuickSchema = z.object({
-  dealTeaser: z.string().min(1, "Deal title is required"),
-  sourceWebsite: z.string().optional(),
-  brokerage: z.string().optional(),
-  revenue: z.coerce.number().optional(),
-  ebitda: z.coerce.number().optional(),
-  ebitdaMargin: z.coerce.number().optional(),
-  askingPrice: z.coerce.number().optional(),
-  description: z.string().optional(),
-  brokerFirstName: z.string().optional(),
-  brokerLastName: z.string().optional(),
-  brokerEmail: z.union([z.string().email(), z.literal("")]).optional(),
-  brokerPhone: z.string().optional(),
-  brokerLinkedIn: z.string().optional(),
-});
-
-const addFinancialSnapshotSchema = z.object({
-  dealOpportunityId: z.string().min(1),
-  revenue: z.number().nullable().optional(),
-  ebitda: z.number().nullable().optional(),
-  ebitdaMargin: z.number().nullable().optional(),
-  askingPrice: z.number().nullable().optional(),
-  impliedMultiple: z.number().nullable().optional(),
-  source: z.nativeEnum(DealFinancialSnapshotSource).default("MANUAL"),
-  notes: z.string().optional(),
-});
-
-const addRiskFlagSchema = z.object({
-  dealOpportunityId: z.string().min(1),
-  riskType: z.nativeEnum(DealRiskType),
-  severity: z.nativeEnum(DealRiskSeverity),
-  description: z.string().min(1),
-});
-
-const updateOpportunityStageSchema = z.object({
-  id: z.string(),
-  stage: z.enum([
-    "LISTED",
-    "INITIAL_REVIEW",
-    "SCREENED",
-    "MEETING_HELD",
-    "IOI_SUBMITTED",
-    "LOI_SUBMITTED",
-    "DILIGENCE",
-    "CLOSED",
-    "DEAD",
-  ]),
-});
-
-const screenOpportunitySchema = z.object({
-  id: z.string(),
-});
-
-const uploadDealDocumentSchema = z.object({
-  dealId: z.string(),
-  title: z.string().min(1, "Title is required"),
-  description: z.string().min(1, "Description is required"),
-  category: z.nativeEnum(DealDocumentCategory),
-  tags: z.array(z.string()).optional().default([]),
-  fileData: z.string(), // base64 encoded file
-  fileName: z.string(),
-  fileType: z.string(),
-});
-
-const uploadCIMSchema = z.object({
-  dealOpportunityId: z.string().min(1, "Deal opportunity ID is required"),
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  category: z.nativeEnum(DocumentCategory),
-  fileData: z.string(),
-  fileName: z.string().min(1, "File name is required"),
-});
-
-const editFinancialsSchema = z.object({
-  dealOpportunityId: z.string().min(1),
-  revenueHistory: z.record(z.string(), z.number()).optional().nullable(),
-  ebitdaHistory: z.record(z.string(), z.number()).optional().nullable(),
-  employeeCount: z.number().optional().nullable(),
-  customerConcentration: z.number().optional().nullable(),
-  capexIntensity: z.string().optional().nullable(),
-  revenueBreakdown: z.record(z.string(), z.number()).optional().nullable(),
-  growthDrivers: z.array(z.string()).optional().nullable(),
-  keyRisks: z.array(z.string()).optional().nullable(),
-  industryOverview: z.string().optional().nullable(),
-  transactionDetails: z.string().optional().nullable(),
-});
-
-const bitrixSyncDealOpportunitySchema = z.object({
-  dealOpportunityId: z.string().min(1),
-  title: z.string().min(1),
-  stageId: z.string().min(1),
-  opportunity: z.number(),
-  currencyId: z.string().min(1).default("USD"),
-  comments: z.string().optional(),
-  sourceWebsite: z.string().optional().nullable(),
-  companyLocation: z.string().optional().nullable(),
-  industry: z.string().optional().nullable(),
-  brokerFirstName: z.string().optional().nullable(),
-  brokerLastName: z.string().optional().nullable(),
-  brokerEmail: z.string().optional().nullable(),
-  brokerPhone: z.string().optional().nullable(),
-  brokerLinkedIn: z.string().optional().nullable(),
-  askingPrice: z.number().nullable().optional(),
-  ebitda: z.number().nullable().optional(),
-  ebitdaMargin: z.number().nullable().optional(),
-});
+function buildNormalizedNameForQuickAdd(
+  companyName: string,
+  location?: string | null,
+): string {
+  const base = normalizeCompanyNameKey(companyName);
+  const loc = normalizeCompanyNameKey(location ?? "");
+  const suffix = createId().replace(/-/g, "").slice(0, 12);
+  const parts = [base || "company", loc || null, suffix].filter(Boolean) as string[];
+  return parts.join("_").slice(0, 240);
+}
 
 export const dealsRouter = createTRPCRouter({
   searchForChat: protectedProcedure
-    .input(
-      z
-        .object({
-          query: z.string().trim().optional(),
-          limit: z.number().int().min(1).max(50).default(20),
-        })
-        .optional(),
-    )
+    .input(searchForChatInputSchema)
     .query(async ({ input }) => {
       const query = input?.query?.trim();
       const limit = input?.limit ?? 20;
@@ -424,7 +264,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   getActiveSimForOpportunity: protectedProcedure
-    .input(z.object({ dealOpportunityId: z.string() }))
+    .input(dealOpportunityIdInputSchema)
     .query(async ({ input }) => {
       const sim = await getActiveSimForDeal(input.dealOpportunityId);
       if (!sim) return null;
@@ -446,7 +286,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   getCIMAnalysisForOpportunity: protectedProcedure
-    .input(z.object({ dealOpportunityId: z.string() }))
+    .input(dealOpportunityIdInputSchema)
     .query(async ({ input }) => {
       const activeSim = await getActiveSimForDeal(input.dealOpportunityId);
       const extraction = await GetCIMExtractionByDealOpportunityId(
@@ -526,7 +366,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   deleteFinancials: protectedProcedure
-    .input(z.object({ dealOpportunityId: z.string() }))
+    .input(dealOpportunityIdInputSchema)
     .mutation(async ({ input }) => {
       const sim = await getActiveSimForDeal(input.dealOpportunityId);
       if (!sim) {
@@ -640,16 +480,44 @@ export const dealsRouter = createTRPCRouter({
         input.askingPrice != null;
 
       const result = await db.transaction(async (tx) => {
-        const normalizedName = `quickadd_${createId()}`;
-        const companyName = input.dealTeaser.slice(0, 255);
+        const name = input.companyName.trim().slice(0, 255);
+        const normalizedName = buildNormalizedNameForQuickAdd(
+          name,
+          input.location?.trim() || null,
+        );
 
         const [company] = await tx
           .insert(companies)
           .values({
-            name: companyName,
+            name,
             normalizedName,
-            location: null,
-            coverageStatus: "UNCONTACTED",
+            industry: input.industry?.trim() || null,
+            location: input.location?.trim() || null,
+            revenueEstimate: input.revenueEstimate ?? null,
+            ebitdaEstimate: input.ebitdaEstimate ?? null,
+            ebitdaMarginEstimate: input.ebitdaMarginEstimate ?? null,
+            recurringRevenuePct: input.recurringRevenuePct ?? null,
+            customerConcentrationPct: input.customerConcentrationPct ?? null,
+            founderAgeEstimate: input.founderAgeEstimate ?? null,
+            themeId: input.themeId?.trim() || null,
+            attractivenessScore: input.attractivenessScore ?? null,
+            coverageStatus: input.coverageStatus ?? "UNCONTACTED",
+            businessModel: input.businessModel?.trim() || null,
+            employees: input.employees ?? null,
+            revenueTtm: input.revenueTtm ?? null,
+            ebitdaTtm: input.ebitdaTtm ?? null,
+            grossMargin: input.grossMargin ?? null,
+            revenueCagr: input.revenueCagr ?? null,
+            totalClients: input.totalClients ?? null,
+            top10Concentration: input.top10Concentration ?? null,
+            customerIndustries:
+              input.customerIndustries?.length ? input.customerIndustries : null,
+            revenueModelType: input.revenueModelType?.trim() || null,
+            expansionModel: input.expansionModel?.trim() || null,
+            concentrationHigh: input.concentrationHigh ?? null,
+            marginLow: input.marginLow ?? null,
+            vendorDependency: input.vendorDependency ?? null,
+            growthLevers: input.growthLevers?.length ? input.growthLevers : null,
           })
           .returning();
 
@@ -751,7 +619,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   listFinancialSnapshots: protectedProcedure
-    .input(z.object({ dealOpportunityId: z.string().min(1) }))
+    .input(dealOpportunityIdMinInputSchema)
     .query(async ({ input }) =>
       GetDealFinancialSnapshotsByDealOpportunityId(input.dealOpportunityId),
     ),
@@ -776,7 +644,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   listRiskFlags: protectedProcedure
-    .input(z.object({ dealOpportunityId: z.string().min(1) }))
+    .input(dealOpportunityIdMinInputSchema)
     .query(async ({ input }) =>
       GetDealRiskFlagsByDealOpportunityId(input.dealOpportunityId),
     ),
@@ -797,7 +665,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   deleteDeterministicScreening: protectedProcedure
-    .input(z.object({ dealOpportunityId: z.string() }))
+    .input(dealOpportunityIdInputSchema)
     .mutation(async ({ input }) => {
       await db
         .delete(dealOpportunityScreenings)
@@ -818,7 +686,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   runAiScreening: protectedProcedure
-    .input(z.object({ dealOpportunityId: z.string() }))
+    .input(dealOpportunityIdInputSchema)
     .mutation(async ({ input }) => {
       let opp = await GetDealOpportunityById(input.dealOpportunityId);
       if (!opp) {
@@ -1002,12 +870,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   startTemplateScreening: protectedProcedure
-    .input(
-      z.object({
-        dealOpportunityId: z.string().min(1),
-        screenerId: z.string().min(1),
-      }),
-    )
+    .input(startTemplateScreeningInputSchema)
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.user.id;
       if (!userId?.trim()) {
@@ -1152,7 +1015,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   deleteOpportunity: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(deleteOpportunityInputSchema)
     .mutation(async ({ input }) => {
       await db
         .delete(dealOpportunities)
@@ -1199,7 +1062,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   delete: adminProcedure
-    .input(z.object({ id: z.string(), dealType: z.nativeEnum(DealType) }))
+    .input(adminDeleteDealInputSchema)
     .mutation(async ({ input }) => {
       await DeleteDealById(input.id);
 
@@ -1210,7 +1073,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   bulkDelete: protectedProcedure
-    .input(z.object({ dealIds: z.array(z.string()).min(1) }))
+    .input(bulkDeleteDealsInputSchema)
     .mutation(async ({ input }) => {
       await BulkDeleteDeals(input.dealIds);
 
@@ -1429,7 +1292,7 @@ export const dealsRouter = createTRPCRouter({
     }),
 
   getBitrixSyncPreview: protectedProcedure
-    .input(z.object({ dealOpportunityId: z.string().min(1) }))
+    .input(dealOpportunityIdMinInputSchema)
     .query(async ({ input }) => {
       const result = await getBitrixSyncPreviewData(input.dealOpportunityId);
       if (!result.success) {

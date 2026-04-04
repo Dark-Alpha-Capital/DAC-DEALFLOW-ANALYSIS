@@ -1,7 +1,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -29,33 +28,13 @@ import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
+import {
+  AddCompanyFormSchema,
+  type AddCompanyFormSchemaType,
+} from "@/lib/zod-schemas/company-forms";
+import { COVERAGE_STATUSES } from "@/lib/zod-schemas/shared-form-enums";
 
-const COVERAGE_STATUSES = [
-  "UNCONTACTED",
-  "CONTACTED",
-  "IN_DISCUSSION",
-  "UNDER_LOI",
-  "CLOSED",
-  "PASSED",
-] as const;
-
-const AddCompanyFormSchema = z.object({
-  name: z.string().min(1, "Company name is required"),
-  normalizedName: z.string().min(1, "Normalized name is required"),
-  industry: z.string().optional(),
-  location: z.string().optional(),
-  revenueEstimate: z.coerce.number().optional(),
-  ebitdaEstimate: z.coerce.number().optional(),
-  ebitdaMarginEstimate: z.coerce.number().optional(),
-  recurringRevenuePct: z.coerce.number().optional(),
-  customerConcentrationPct: z.coerce.number().optional(),
-  founderAgeEstimate: z.coerce.number().optional(),
-  themeId: z.string().optional(),
-  attractivenessScore: z.coerce.number().optional(),
-  coverageStatus: z.enum(COVERAGE_STATUSES).optional(),
-});
-
-export type AddCompanyFormSchemaType = z.infer<typeof AddCompanyFormSchema>;
+export type { AddCompanyFormSchemaType };
 
 export default function AddCompanyForm() {
   const router = useRouter();

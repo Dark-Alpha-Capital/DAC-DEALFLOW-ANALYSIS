@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useRouter } from "@/lib/navigation-shim";
@@ -28,27 +27,12 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ArrowLeft, ExternalLink } from "lucide-react";
+import {
+  bitrixSyncFormSchema,
+  type BitrixSyncFormValues,
+} from "@/lib/zod-schemas/bitrix-sync-form-schema";
 
-const formSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  stageId: z.string().min(1, "Stage is required"),
-  opportunity: z.coerce.number(),
-  currencyId: z.string().min(1).default("USD"),
-  comments: z.string().optional(),
-  sourceWebsite: z.string().optional(),
-  companyLocation: z.string().optional(),
-  industry: z.string().optional(),
-  brokerFirstName: z.string().optional(),
-  brokerLastName: z.string().optional(),
-  brokerEmail: z.string().optional(),
-  brokerPhone: z.string().optional(),
-  brokerLinkedIn: z.string().optional(),
-  askingPrice: z.coerce.number().optional().nullable(),
-  ebitda: z.coerce.number().optional().nullable(),
-  ebitdaMargin: z.coerce.number().optional().nullable(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = BitrixSyncFormValues;
 
 export function BitrixSyncForm({
   dealOpportunityId,
@@ -63,7 +47,7 @@ export function BitrixSyncForm({
   const router = useRouter();
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(bitrixSyncFormSchema),
     defaultValues: {
       title: "",
       stageId: "",

@@ -1,7 +1,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -29,26 +28,11 @@ import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-
-const INVESTOR_LEAD_STATUSES = [
-  "RAW",
-  "CONTACTED",
-  "ENGAGED",
-  "QUALIFIED",
-  "REJECTED",
-] as const;
-
-const AddInvestorLeadFormSchema = z.object({
-  name: z.string().optional(),
-  source: z.string().optional(),
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  inferredType: z.string().optional(),
-  notes: z.string().optional(),
-  status: z.enum(INVESTOR_LEAD_STATUSES).optional(),
-});
-
-type AddInvestorLeadFormSchemaType = z.infer<typeof AddInvestorLeadFormSchema>;
+import {
+  AddInvestorLeadFormSchema,
+  type AddInvestorLeadFormSchemaType,
+} from "@/lib/zod-schemas/investor-forms";
+import { INVESTOR_LEAD_STATUSES } from "@/lib/zod-schemas/shared-form-enums";
 
 export default function AddInvestorLeadForm() {
   const router = useRouter();

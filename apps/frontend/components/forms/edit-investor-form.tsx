@@ -1,7 +1,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -25,38 +24,15 @@ import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import type { Investor } from "@repo/db";
-
-const INVESTOR_TYPES = ["HNWI", "FAMILY_OFFICE", "INSTITUTION"] as const;
-const INVESTOR_STATUSES = [
-  "PROSPECT",
-  "QUALIFIED",
-  "ACTIVE",
-  "INACTIVE",
-] as const;
-const RISK_PROFILES = [
-  "CONSERVATIVE",
-  "MODERATE",
-  "BALANCED",
-  "GROWTH",
-  "AGGRESSIVE",
-] as const;
-
-const EditInvestorFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  type: z.enum(INVESTOR_TYPES),
-  primaryContactName: z.string().optional(),
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  geography: z.string().optional(),
-  minCheckSize: z.string().optional(),
-  maxCheckSize: z.string().optional(),
-  sectorFocus: z.string().optional(),
-  stagePreference: z.string().optional(),
-  riskProfile: z.enum(RISK_PROFILES).optional(),
-  status: z.enum(INVESTOR_STATUSES).optional(),
-});
-
-type EditInvestorFormSchemaType = z.infer<typeof EditInvestorFormSchema>;
+import {
+  EditInvestorFormSchema,
+  type EditInvestorFormSchemaType,
+} from "@/lib/zod-schemas/investor-forms";
+import {
+  INVESTOR_STATUSES,
+  INVESTOR_TYPES,
+  RISK_PROFILES,
+} from "@/lib/zod-schemas/shared-form-enums";
 
 export default function EditInvestorForm({ investor }: { investor: Investor }) {
   const router = useRouter();

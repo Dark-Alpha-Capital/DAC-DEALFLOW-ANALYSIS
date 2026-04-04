@@ -1,5 +1,15 @@
-import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
+import {
+  coverageUpsertSchema,
+  createThemeSchema,
+  industryIntelligenceSchema,
+  performanceSnapshotSchema,
+  thesisByIdAndThemeInputSchema,
+  thesisSchema,
+  themeByIdInputSchema,
+  themeIdMinInputSchema,
+  updateThemeSchema,
+} from "@/lib/zod-schemas/themes-router";
 import db, {
   themes,
   theses,
@@ -16,74 +26,6 @@ import db, {
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { TRPCError } from "@trpc/server";
-
-const themeStatuses = ["ACTIVE", "PAUSED", "RETIRED"] as const;
-const companyCoverageStatuses = [
-  "UNCONTACTED",
-  "CONTACTED",
-  "IN_DISCUSSION",
-  "UNDER_LOI",
-  "CLOSED",
-  "PASSED",
-] as const;
-
-const createThemeSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().min(1, "Description is required"),
-  sector: z.string().min(1, "Sector is required"),
-  status: z.enum(themeStatuses).optional(),
-  capitalPriorityScore: z.coerce.number().min(0).max(100).optional(),
-  confidenceScore: z.coerce.number().optional(),
-});
-
-const updateThemeSchema = createThemeSchema.extend({
-  id: z.string().min(1, "Theme ID is required"),
-});
-
-const thesisSchema = z.object({
-  themeId: z.string().min(1, "Theme ID is required"),
-  summary: z.string().min(1, "Summary is required"),
-  macroDrivers: z.array(z.string().min(1)).optional().default([]),
-  mispricingHypothesis: z.string().optional(),
-  valueCreationLevers: z.array(z.string().min(1)).optional().default([]),
-  exitLogic: z.string().optional(),
-  riskFactors: z.array(z.string().min(1)).optional().default([]),
-  version: z.string().min(1, "Version is required"),
-});
-
-const industryIntelligenceSchema = z.object({
-  themeId: z.string().min(1, "Theme ID is required"),
-  version: z.string().min(1, "Version is required"),
-  tam: z.coerce.number().optional(),
-  growthRate: z.coerce.number().optional(),
-  avgEbitdaMargin: z.coerce.number().optional(),
-  avgEntryMultiple: z.coerce.number().optional(),
-  avgExitMultiple: z.coerce.number().optional(),
-  fragmentationScore: z.coerce.number().int().optional(),
-  sponsorPenetration: z.coerce.number().optional(),
-  cyclicalityScore: z.coerce.number().int().optional(),
-  disruptionRiskScore: z.coerce.number().int().optional(),
-  notes: z.string().optional(),
-});
-
-const performanceSnapshotSchema = z.object({
-  themeId: z.string().min(1, "Theme ID is required"),
-  observedAt: z.string().optional(),
-  dealsSourced: z.coerce.number().int().optional(),
-  meetingsHeld: z.coerce.number().int().optional(),
-  loisIssued: z.coerce.number().int().optional(),
-  dealsClosed: z.coerce.number().int().optional(),
-  averageEntryMultiple: z.coerce.number().optional(),
-  averageIRR: z.coerce.number().optional(),
-});
-
-const coverageUpsertSchema = z.object({
-  themeId: z.string().min(1, "Theme ID is required"),
-  companyId: z.string().min(1, "Company ID is required"),
-  coverageStatus: z.enum(companyCoverageStatuses),
-  lastOutreachAt: z.string().optional(),
-  notes: z.string().optional(),
-});
 
 function scheduleRevalidateThemePaths(themeId: string) {
   after(async () => {
@@ -149,7 +91,7 @@ export const themesRouter = createTRPCRouter({
     }),
 
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(themeByIdInputSchema)
     .mutation(async ({ input }) => {
       await db
         .update(themes)
@@ -161,7 +103,7 @@ export const themesRouter = createTRPCRouter({
     }),
 
   thesisGetActive: protectedProcedure
-    .input(z.object({ themeId: z.string().min(1) }))
+    .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
       const [active] = await db
         .select()
@@ -175,7 +117,7 @@ export const themesRouter = createTRPCRouter({
     }),
 
   thesisListVersions: protectedProcedure
-    .input(z.object({ themeId: z.string().min(1) }))
+    .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
       return db
         .select()
@@ -215,7 +157,7 @@ export const themesRouter = createTRPCRouter({
     }),
 
   intelligenceGetActive: protectedProcedure
-    .input(z.object({ themeId: z.string().min(1) }))
+    .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
       const [active] = await db
         .select()
@@ -232,7 +174,7 @@ export const themesRouter = createTRPCRouter({
     }),
 
   intelligenceListVersions: protectedProcedure
-    .input(z.object({ themeId: z.string().min(1) }))
+    .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
       return db
         .select()
@@ -277,7 +219,7 @@ export const themesRouter = createTRPCRouter({
     }),
 
   performanceListSnapshots: protectedProcedure
-    .input(z.object({ themeId: z.string().min(1) }))
+    .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
       return db
         .select()
@@ -308,7 +250,7 @@ export const themesRouter = createTRPCRouter({
     }),
 
   performanceDeleteSnapshot: protectedProcedure
-    .input(z.object({ id: z.string().min(1), themeId: z.string().min(1) }))
+    .input(thesisByIdAndThemeInputSchema)
     .mutation(async ({ input }) => {
       await db
         .delete(themePerformance)
@@ -324,7 +266,7 @@ export const themesRouter = createTRPCRouter({
     }),
 
   coverageList: protectedProcedure
-    .input(z.object({ themeId: z.string().min(1) }))
+    .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
       return db
         .select({
@@ -415,7 +357,7 @@ export const themesRouter = createTRPCRouter({
     }),
 
   coverageRemove: protectedProcedure
-    .input(z.object({ id: z.string().min(1), themeId: z.string().min(1) }))
+    .input(thesisByIdAndThemeInputSchema)
     .mutation(async ({ input }) => {
       await db
         .delete(themeCompanyCoverage)

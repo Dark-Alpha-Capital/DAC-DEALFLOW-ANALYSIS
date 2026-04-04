@@ -1,7 +1,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -31,25 +30,12 @@ import { toast } from "sonner";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import type { DealOpportunity } from "@repo/db";
+import {
+  EditDealFormSchema,
+  type EditDealFormSchemaType,
+} from "@/lib/zod-schemas/deal-opportunity-forms";
 
-const EditDealFormSchema = z.object({
-  companyId: z.string().min(1, "Company is required"),
-  sourceWebsite: z.string().optional(),
-  brokerage: z.string().optional(),
-  revenue: z.coerce.number().optional(),
-  ebitda: z.coerce.number().optional(),
-  ebitdaMargin: z.coerce.number().optional(),
-  askingPrice: z.coerce.number().optional(),
-  dealTeaser: z.string().optional(),
-  description: z.string().optional(),
-  brokerFirstName: z.string().optional(),
-  brokerLastName: z.string().optional(),
-  brokerEmail: z.union([z.string().email(), z.literal("")]).optional(),
-  brokerPhone: z.string().optional(),
-  brokerLinkedIn: z.string().optional(),
-});
-
-export type EditDealFormSchemaType = z.infer<typeof EditDealFormSchema>;
+export type { EditDealFormSchemaType };
 
 export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
   const router = useRouter();

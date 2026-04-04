@@ -1,31 +1,17 @@
-import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { contacts, eq, and } from "@repo/db";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
-import { httpHttpsUrlSchema } from "@/lib/schemas";
-
-const entityTypeEnum = z.enum(["LEAD", "COMPANY", "DEAL_OPPORTUNITY"]);
-
-const baseContactSchema = z.object({
-  entityType: entityTypeEnum,
-  entityId: z.string(),
-  name: z.string().min(1, "Name is required"),
-  title: z.string().optional(),
-  email: z.string().email("Invalid email").optional(),
-  phone: z.string().optional(),
-  linkedinUrl: httpHttpsUrlSchema.optional(),
-  role: z.string().optional(),
-});
+import {
+  baseContactSchema,
+  contactByIdInputSchema,
+  listContactsByEntityInputSchema,
+  updateContactSchema,
+} from "@/lib/zod-schemas/contacts-router";
 
 export const contactsRouter = createTRPCRouter({
   listByEntity: protectedProcedure
-    .input(
-      z.object({
-        entityType: entityTypeEnum,
-        entityId: z.string(),
-      }),
-    )
+    .input(listContactsByEntityInputSchema)
     .query(async ({ input }) => {
       return db
         .select()
@@ -68,11 +54,7 @@ export const contactsRouter = createTRPCRouter({
     }),
 
   update: protectedProcedure
-    .input(
-      baseContactSchema.extend({
-        id: z.string(),
-      }),
-    )
+    .input(updateContactSchema)
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
 
@@ -101,7 +83,7 @@ export const contactsRouter = createTRPCRouter({
     }),
 
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(contactByIdInputSchema)
     .mutation(async ({ input }) => {
       const [existing] = await db
         .select()

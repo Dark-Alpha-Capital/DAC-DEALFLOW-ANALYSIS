@@ -1,9 +1,9 @@
-
 import { useState } from "react";
 import type { User } from "@repo/db";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { profileFormSchema } from "@/lib/zod-schemas/profile-form-schema";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -18,29 +18,17 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  image: z
-    .instanceof(FileList)
-    .refine((files) => files.length === 0 || files.length === 1, {
-      message: "Please upload a single file.",
-    })
-    .optional(),
-});
-
 export default function ProfileForm({ user }: { user: User }) {
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof profileFormSchema>>({
+    resolver: zodResolver(profileFormSchema),
     defaultValues: {
       name: user.name || "",
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof profileFormSchema>) {
     const formData = new FormData();
     formData.append("name", values.name);
     formData.append("currentImageUrl", user.image || "");
