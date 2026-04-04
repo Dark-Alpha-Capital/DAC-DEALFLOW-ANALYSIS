@@ -5,10 +5,16 @@ import {
   GetInvestorLeadById,
   GetInvestorLeadWithRelations,
 } from "@repo/db/queries";
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import {
+  offsetLimitSchema,
+  uidParamSchema,
+} from "@/lib/server/server-fn-input-schemas";
 
 export const loadInvestorLeadsPageData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { offset: number; limit: number })
+  .inputValidator((raw: unknown) => offsetLimitSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     const { data: rows, totalPages, totalCount } = await GetAllInvestorLeads({
       offset: data.offset,
       limit: data.limit,
@@ -17,8 +23,9 @@ export const loadInvestorLeadsPageData = createServerFn({ method: "GET" })
   });
 
 export const loadInvestorLeadDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const leadData = await GetInvestorLeadWithRelations(data.uid);
       if (!leadData?.lead) {
@@ -39,8 +46,9 @@ export const loadInvestorLeadDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadInvestorLeadForEditData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const lead = await GetInvestorLeadById(data.uid);
       return { lead, error: null as string | null };
@@ -56,8 +64,9 @@ export const loadInvestorLeadForEditData = createServerFn({ method: "GET" })
 export const loadConvertInvestorLeadPageData = createServerFn({
   method: "GET",
 })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const lead = await GetInvestorLeadById(data.uid);
       if (!lead) {

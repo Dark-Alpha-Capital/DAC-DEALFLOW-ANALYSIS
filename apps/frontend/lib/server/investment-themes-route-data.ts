@@ -5,23 +5,18 @@ import {
   GetThemeById,
   GetThemeWorkspaceById,
 } from "@repo/db/queries";
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import {
+  investmentThemesListFilterSchema,
+  uidParamSchema,
+} from "@/lib/server/server-fn-input-schemas";
 
 export const loadInvestmentThemesPageData = createServerFn({ method: "GET" })
-  .inputValidator(
-    (raw: unknown) =>
-      raw as {
-        offset: number;
-        limit: number;
-        search: string;
-        sector: string;
-        status: "ACTIVE" | "PAUSED" | "RETIRED" | undefined;
-        minCapitalPriorityScore: number | undefined;
-        maxCapitalPriorityScore: number | undefined;
-        minConfidenceScore: number | undefined;
-        maxConfidenceScore: number | undefined;
-      },
+  .inputValidator((raw: unknown) =>
+    investmentThemesListFilterSchema.parse(raw),
   )
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     const { data: rows, totalPages, totalCount } = await GetAllThemes({
       offset: data.offset,
       limit: data.limit,
@@ -37,8 +32,9 @@ export const loadInvestmentThemesPageData = createServerFn({ method: "GET" })
   });
 
 export const loadInvestmentThemeDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const themeWorkspace = await GetThemeWorkspaceById(data.uid);
       let companiesResult = null;
@@ -61,8 +57,9 @@ export const loadInvestmentThemeDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadInvestmentThemeForEditData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const theme = await GetThemeById(data.uid);
       return { theme, error: null as string | null };

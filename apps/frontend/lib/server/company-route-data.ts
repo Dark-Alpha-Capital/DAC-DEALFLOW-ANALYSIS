@@ -4,10 +4,16 @@ import {
   GetCompanyById,
   GetCompanyWithAllRelations,
 } from "@repo/db/queries";
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import {
+  offsetLimitSchema,
+  uidParamSchema,
+} from "@/lib/server/server-fn-input-schemas";
 
 export const loadCompaniesPageData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { offset: number; limit: number })
+  .inputValidator((raw: unknown) => offsetLimitSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     const { data: rows, totalPages, totalCount } = await GetAllCompanies({
       offset: data.offset,
       limit: data.limit,
@@ -16,8 +22,9 @@ export const loadCompaniesPageData = createServerFn({ method: "GET" })
   });
 
 export const loadCompanyDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const companyData = await GetCompanyWithAllRelations(data.uid);
       return { companyData, error: null as string | null };
@@ -31,8 +38,9 @@ export const loadCompanyDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadCompanyForEditData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const company = await GetCompanyById(data.uid);
       return { company, error: null as string | null };

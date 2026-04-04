@@ -11,6 +11,7 @@ import {
   getVerificationEmailHtml,
   getPasswordResetEmailHtml,
 } from "./lib/email";
+import { getServerEnv } from "./lib/env.server";
 
 /**
  * Determine the role of the user based on their email
@@ -45,7 +46,7 @@ function isAllowedEmail(email: string | null | undefined) {
 }
 
 function getAuthBaseUrl(): string {
-  const fromEnv = process.env.BETTER_AUTH_URL?.trim();
+  const fromEnv = getServerEnv().BETTER_AUTH_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/+$/, "");
   return "http://localhost:3000";
 }
@@ -97,8 +98,8 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
   },
   socialProviders: {
     google: {
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      clientId: getServerEnv().AUTH_GOOGLE_ID ?? "",
+      clientSecret: getServerEnv().AUTH_GOOGLE_SECRET ?? "",
     },
   },
   session: {

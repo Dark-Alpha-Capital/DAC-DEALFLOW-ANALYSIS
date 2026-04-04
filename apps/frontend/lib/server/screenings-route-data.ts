@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { GetDealOpportunitiesWithScreenings } from "@repo/db/queries";
+import { assertAuthenticated } from "@/lib/server/assert-session";
 
 export const loadScreeningsPageData = createServerFn({ method: "GET" }).handler(
   async () => {
+    await assertAuthenticated();
     const raw = await GetDealOpportunitiesWithScreenings();
     const items = raw.map((row) => ({
       id: row.opportunity.id,

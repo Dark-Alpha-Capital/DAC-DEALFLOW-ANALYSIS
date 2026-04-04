@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { ChatClient } from "@/components/chat/chat-client";
 import {
   fetchChatRouteLoaderData,
@@ -10,16 +10,10 @@ export const Route = createFileRoute("/_chatbot/chat/$id")({
   head: () => ({
     meta: [{ title: "Chat session — Dark Alpha Capital" }],
   }),
-  loader: async ({ context, params }): Promise<ChatRouteLoaderData> => {
-    const data = await fetchChatRouteLoaderData({
-      data: { userId: context.authUserId, chatId: params.id },
-    });
-    if (!data) {
-      throw redirect({ to: "/chat" });
-    }
-
-    return data as ChatRouteLoaderData;
-  },
+  loader: async ({ params }): Promise<ChatRouteLoaderData> =>
+    fetchChatRouteLoaderData({
+      data: { chatId: params.id },
+    }),
   pendingComponent: ChatSessionPageSkeleton,
   component: ChatSessionRoute,
 });

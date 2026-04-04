@@ -1,9 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { GetAllDocuments } from "@repo/db/queries";
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import { offsetLimitSchema } from "@/lib/server/server-fn-input-schemas";
 
 export const loadDocumentsPageData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { offset: number; limit: number })
+  .inputValidator((raw: unknown) => offsetLimitSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     const { data: rows, totalPages } = await GetAllDocuments({
       offset: data.offset,
       limit: data.limit,

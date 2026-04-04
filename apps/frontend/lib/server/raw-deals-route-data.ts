@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { DealStatus, DealType } from "@repo/db/enums";
 import {
   GetDealById,
   GetDealOpportunityById,
@@ -10,33 +9,17 @@ import {
   getAllScreeners,
   getCompleteAiReasoningById,
 } from "@repo/db/queries";
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import {
+  rawDealsListFilterSchema,
+  uidAndReasoningIdSchema,
+  uidParamSchema,
+} from "@/lib/server/server-fn-input-schemas";
 
 export const loadRawDealsPageData = createServerFn({ method: "GET" })
-  .inputValidator(
-    (raw: unknown) =>
-      raw as {
-        search: string;
-        offset: number;
-        limit: number;
-        dealTypes: DealType[];
-        ebitda: string;
-        userId: string;
-        revenue: string;
-        location: string;
-        maxRevenue: string;
-        maxEbitda: string;
-        brokerage: string;
-        industry: string;
-        ebitdaMargin: string;
-        showSeen: boolean;
-        showRecent: boolean;
-        showReviewed: boolean;
-        showPublished: boolean;
-        status: DealStatus;
-        tags: string[];
-      },
-  )
+  .inputValidator((raw: unknown) => rawDealsListFilterSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     const { data: rows, totalPages, totalCount } = await GetAllDeals({
       search: data.search,
       offset: data.offset,
@@ -62,8 +45,9 @@ export const loadRawDealsPageData = createServerFn({ method: "GET" })
   });
 
 export const loadRawDealDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const dealData = await GetDealWithAllRelations(data.uid);
       return { dealData, error: null as string | null };
@@ -77,8 +61,9 @@ export const loadRawDealDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadRawDealForEditData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const deal = await GetDealById(data.uid);
       return { deal };
@@ -89,22 +74,25 @@ export const loadRawDealForEditData = createServerFn({ method: "GET" })
   });
 
 export const loadRawDealReasoningsData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     const reasonings = await getAllDealReasoningsWithScreenerName(data.uid);
     return { dealId: data.uid, reasonings: reasonings ?? [] };
   });
 
 export const loadRawDealReasoningDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string; reasoningId: string })
+  .inputValidator((raw: unknown) => uidAndReasoningIdSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     const reasoning = await getCompleteAiReasoningById(data.reasoningId);
     return { dealId: data.uid, reasoning };
   });
 
 export const loadRawDealScreenData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     const dealId = data.uid;
     const [availableScreeners, byId, byLegacyDealId] = await Promise.all([
       getAllScreeners(),

@@ -14,20 +14,13 @@ import {
 import { mapEvidenceChunkIdsToCitations } from "@/lib/map-sim-screening-evidence";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import { getJobByIdForUser } from "@/src/lib/workflow-jobs-api";
-import { fetchSession } from "./fetch-session-server-fn";
-
-async function requireUserId() {
-  const session = await fetchSession();
-  const userId = session?.user?.id;
-  if (!userId) {
-    throw notFound();
-  }
-  return userId;
-}
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import { cimScreeningSessionInputSchema } from "@/lib/server/server-fn-input-schemas";
 
 export const loadCimScreeningIndexData = createServerFn({ method: "GET" }).handler(
   async () => {
-    const userId = await requireUserId();
+    const session = await assertAuthenticated();
+    const userId = session.user.id;
     const [screeners, recentSessions] = await Promise.all([
       getAllScreeners(),
       listSimScreeningSessionsForUserWithMeta(userId, 20),
@@ -41,27 +34,29 @@ export const loadCimScreeningIndexData = createServerFn({ method: "GET" }).handl
 );
 
 export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
-  .inputValidator(
-    (raw: unknown) => raw as { sessionId: string; runId?: string | undefined },
-  )
+  .inputValidator((raw: unknown) => cimScreeningSessionInputSchema.parse(raw))
   .handler(async ({ data }) => {
-    const userId = await requireUserId();
-    const session = await getSimScreeningSessionByIdForUser(data.sessionId, userId);
-    if (!session) {
+    const session = await assertAuthenticated();
+    const userId = session.user.id;
+    const screeningSession = await getSimScreeningSessionByIdForUser(
+      data.sessionId,
+      userId,
+    );
+    if (!screeningSession) {
       throw notFound();
     }
 
     const [runs, documentRow, dealRow, screeners] = await Promise.all([
-      getSimScreeningRunsBySessionId(session.id),
-      session.documentId
+      getSimScreeningRunsBySessionId(screeningSession.id),
+      screeningSession.documentId
         ? db
             .select()
             .from(documents)
-            .where(eq(documents.id, session.documentId))
+            .where(eq(documents.id, screeningSession.documentId))
             .limit(1)
             .then((r) => r[0] ?? null)
         : Promise.resolve(null),
-      session.dealOpportunityId
+      screeningSession.dealOpportunityId
         ? db
             .select({
               id: dealOpportunities.id,
@@ -69,14 +64,16 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
               description: dealOpportunities.description,
             })
             .from(dealOpportunities)
-            .where(eq(dealOpportunities.id, session.dealOpportunityId))
+            .where(eq(dealOpportunities.id, screeningSession.dealOpportunityId))
             .limit(1)
             .then((r) => r[0] ?? null)
         : Promise.resolve(null),
       getAllScreeners(),
     ]);
 
-    let selectedRun = data.runId ? runs.find((r) => r.id === data.runId) ?? null : null;
+    let selectedRun = data.runId
+      ? runs.find((r) => r.id === data.runId) ?? null
+      : null;
     if (!selectedRun && runs.length > 0) {
       selectedRun =
         runs.find((r) => r.status !== "COMPLETED" && r.status !== "FAILED") ??
@@ -94,10 +91,10 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
       selectedRun ? getScreenerById(selectedRun.screenerId) : Promise.resolve(null),
       selectedRun?.workflowInstanceId
         ? getJobByIdForUser(
-          userId,
-          QUEUE_NAMES.SIM_SCREENING,
-          selectedRun.workflowInstanceId,
-        )
+            userId,
+            QUEUE_NAMES.SIM_SCREENING,
+            selectedRun.workflowInstanceId,
+          )
         : Promise.resolve(null),
     ]);
 
@@ -133,26 +130,26 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
     return {
       screeners: screeners ?? [],
       sessionData: {
-        session,
+        session: screeningSession,
         document: documentRow
           ? {
-            id: documentRow.id,
-            title: documentRow.title,
-            fileName: documentRow.fileName,
-            fileSize: documentRow.fileSize,
-            mimeType: documentRow.mimeType,
-            ingestionStatus: documentRow.ingestionStatus,
-            ingestionError: documentRow.ingestionError,
-            ingestionCompletedAt: documentRow.ingestionCompletedAt,
-            createdAt: documentRow.createdAt,
-          }
+              id: documentRow.id,
+              title: documentRow.title,
+              fileName: documentRow.fileName,
+              fileSize: documentRow.fileSize,
+              mimeType: documentRow.mimeType,
+              ingestionStatus: documentRow.ingestionStatus,
+              ingestionError: documentRow.ingestionError,
+              ingestionCompletedAt: documentRow.ingestionCompletedAt,
+              createdAt: documentRow.createdAt,
+            }
           : null,
         dealOpportunity: dealRow
           ? {
-            id: dealRow.id,
-            dealTeaser: dealRow.dealTeaser,
-            description: dealRow.description,
-          }
+              id: dealRow.id,
+              dealTeaser: dealRow.dealTeaser,
+              description: dealRow.description,
+            }
           : null,
         runs: runs.map((r) => ({
           id: r.id,
@@ -168,26 +165,26 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
         selectedRunId: selectedRun?.id ?? null,
         run: selectedRun
           ? {
-            id: selectedRun.id,
-            status: selectedRun.status,
-            errorMessage: selectedRun.errorMessage,
-            workflowInstanceId: selectedRun.workflowInstanceId,
-          }
+              id: selectedRun.id,
+              status: selectedRun.status,
+              errorMessage: selectedRun.errorMessage,
+              workflowInstanceId: selectedRun.workflowInstanceId,
+            }
           : null,
         screener: screener
           ? {
-            id: screener.id,
-            name: screener.name,
-            category: screener.category,
-          }
+              id: screener.id,
+              name: screener.name,
+              category: screener.category,
+            }
           : null,
         job: job
           ? {
-            id: job.jobId,
-            state: job.state,
-            progress: job.progress ?? null,
-            failedReason: job.failedReason ?? null,
-          }
+              id: job.jobId,
+              state: job.state,
+              progress: job.progress ?? null,
+              failedReason: job.failedReason ?? null,
+            }
           : null,
         rows,
       },

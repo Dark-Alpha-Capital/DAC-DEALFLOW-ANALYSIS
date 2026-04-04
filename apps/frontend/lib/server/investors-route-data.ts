@@ -5,10 +5,16 @@ import {
   GetInvestorCompanyLinksByInvestorId,
   GetInvestorWithRelations,
 } from "@repo/db/queries";
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import {
+  offsetLimitSchema,
+  uidParamSchema,
+} from "@/lib/server/server-fn-input-schemas";
 
 export const loadInvestorsPageData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { offset: number; limit: number })
+  .inputValidator((raw: unknown) => offsetLimitSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     const { data: rows, totalPages, totalCount } = await GetAllInvestors({
       offset: data.offset,
       limit: data.limit,
@@ -17,8 +23,9 @@ export const loadInvestorsPageData = createServerFn({ method: "GET" })
   });
 
 export const loadInvestorDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const investorData = await GetInvestorWithRelations(data.uid);
       return { data: investorData, error: null as string | null };
@@ -32,8 +39,9 @@ export const loadInvestorDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadInvestorForEditData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const [investor, companyLinks] = await Promise.all([
         GetInvestorById(data.uid),

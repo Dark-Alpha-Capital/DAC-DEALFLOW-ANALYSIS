@@ -7,6 +7,11 @@ import {
 } from "@repo/db/queries";
 import { getDeterministicScreeningByLeadId } from "@repo/deal-screening";
 import type { Company, Lead, LeadScreening } from "@repo/db/schema";
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import {
+  offsetLimitSchema,
+  uidParamSchema,
+} from "@/lib/server/server-fn-input-schemas";
 
 /** Single shape so TS does not infer a union that narrows `lead`/`duplicateCompany` to `never`. */
 export type LeadDetailLoaderData = {
@@ -18,8 +23,9 @@ export type LeadDetailLoaderData = {
 };
 
 export const loadLeadsPageData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { offset: number; limit: number })
+  .inputValidator((raw: unknown) => offsetLimitSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     const { data: rows, totalPages, totalCount } = await GetAllLeads({
       offset: data.offset,
       limit: data.limit,
@@ -28,8 +34,9 @@ export const loadLeadsPageData = createServerFn({ method: "GET" })
   });
 
 export const loadLeadDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }): Promise<LeadDetailLoaderData> => {
+    await assertAuthenticated();
     try {
       const lead = await GetLeadById(data.uid);
       if (!lead) {
@@ -69,8 +76,9 @@ export const loadLeadDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadLeadForEditData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const lead = await GetLeadById(data.uid);
       return { lead, error: null as string | null };
@@ -84,8 +92,9 @@ export const loadLeadForEditData = createServerFn({ method: "GET" })
   });
 
 export const loadConvertLeadPageData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const lead = await GetLeadById(data.uid);
       if (!lead) {

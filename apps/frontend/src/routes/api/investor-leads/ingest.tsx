@@ -4,6 +4,7 @@ import db, { investorLeads } from "@repo/db";
 import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
 import { z } from "zod";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
+import { getServerEnv } from "@/lib/env.server";
 
 const investorLeadStatusEnum = z.enum([
   "RAW",
@@ -24,7 +25,7 @@ const investorLeadIngestSchema = z.object({
 });
 
 function validateApiKey(provided: string): boolean {
-  const expected = process.env.INVESTOR_LEADS_API_KEY;
+  const expected = getServerEnv().INVESTOR_LEADS_API_KEY;
   if (!expected || !provided) return false;
   if (provided.length !== expected.length) return false;
   try {

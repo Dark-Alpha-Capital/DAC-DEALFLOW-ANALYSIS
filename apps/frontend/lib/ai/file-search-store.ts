@@ -1,3 +1,4 @@
+import { getServerEnv } from "@/lib/env.server";
 import { COMPANY_DUE_DILIGENCE_DOCUMENTS_STORE_NAME } from "./available-models";
 
 /**
@@ -25,7 +26,7 @@ export async function deleteCompanyDueDiligenceDocument(
   const storeId = parts[1];
   const documentId = parts.slice(3).join("/"); // In case document ID contains slashes
 
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const GEMINI_API_KEY = getServerEnv().GEMINI_API_KEY;
 
   if (!GEMINI_API_KEY) {
     console.error("GEMINI_API_KEY is not set");

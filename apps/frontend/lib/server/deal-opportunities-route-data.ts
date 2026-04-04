@@ -5,11 +5,17 @@ import {
   GetRankedDealOpportunities,
 } from "@repo/db/queries";
 import db, { themes, asc, isNull } from "@repo/db";
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import {
+  dealOpportunityIdSchema,
+  uidParamSchema,
+} from "@/lib/server/server-fn-input-schemas";
 import { getBitrixSyncPreviewData } from "./bitrix-sync-preview-data";
 
 /** Same rows as `trpc.themes.listForSelect` — for quick-add theme picker + route loader. */
 export const loadThemesForSelectData = createServerFn({ method: "GET" }).handler(
   async () => {
+    await assertAuthenticated();
     const rows = await db
       .select({
         id: themes.id,
@@ -26,6 +32,7 @@ export const loadThemesForSelectData = createServerFn({ method: "GET" }).handler
 export const loadRankedDealOpportunitiesPageData = createServerFn({
   method: "GET",
 }).handler(async () => {
+  await assertAuthenticated();
   const rows = await GetRankedDealOpportunities();
   const seen = new Set<string>();
   const deals = rows.filter((r) => {
@@ -37,8 +44,9 @@ export const loadRankedDealOpportunitiesPageData = createServerFn({
 });
 
 export const loadDealOpportunityDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const dealData = await GetDealWithAllRelations(data.uid);
       return { dealData, error: null as string | null };
@@ -52,8 +60,9 @@ export const loadDealOpportunityDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadDealOpportunityForEditData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const opp = await GetDealOpportunityById(data.uid);
       return { opp, error: null as string | null };
@@ -67,8 +76,9 @@ export const loadDealOpportunityForEditData = createServerFn({ method: "GET" })
   });
 
 export const loadBitrixSyncPreviewData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { dealOpportunityId: string })
+  .inputValidator((raw: unknown) => dealOpportunityIdSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     try {
       const result = await getBitrixSyncPreviewData(data.dealOpportunityId);
       if (!result.success) {

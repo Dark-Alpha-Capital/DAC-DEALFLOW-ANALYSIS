@@ -1,8 +1,10 @@
-import type { TransformedDeal } from "@/lib/route-domain-types";
 import { DealType } from "@repo/db/enums";
 import { rateLimit } from "@/src/lib/rate-limit";
 import { createServerFn } from "@tanstack/react-start";
 import { updateTag } from "@/lib/cache-invalidation";
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import { bulkUploadDealsInputSchema } from "@/lib/server/server-fn-input-schemas";
+import type { TransformedDeal } from "@/lib/route-domain-types";
 
 type DealValidationError = {
   index: number;
@@ -59,22 +61,11 @@ const validateDeals = (deals: TransformedDeal[]): ValidationResult => {
 };
 
 export const bulkUploadDealsToDB = createServerFn({ method: "POST" })
-  .inputValidator((deals: unknown) => deals as TransformedDeal[])
+  .inputValidator((raw: unknown) => bulkUploadDealsInputSchema.parse(raw))
   .handler(async ({ data: deals }) => {
-    const { getRequest, getRequestHeader } = await import(
-      "@tanstack/react-start/server"
-    );
-    const { auth } = await import("@/auth");
-    const request = getRequest();
-    const userSession = await auth.api.getSession({
-      headers: request.headers,
-    });
+    const userSession = await assertAuthenticated();
 
-    if (!userSession) {
-      return {
-        error: "Unauthorized user",
-      };
-    }
+    const { getRequestHeader } = await import("@tanstack/react-start/server");
 
     const ip =
       getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
@@ -92,15 +83,9 @@ export const bulkUploadDealsToDB = createServerFn({ method: "POST" })
       };
     }
 
-    if (!Array.isArray(deals) || deals.length === 0) {
-      return {
-        error: "No deals provided for bulk upload.",
-      };
-    }
-
     console.log("deals received", deals.length);
 
-    const validation = validateDeals(deals);
+    const validation = validateDeals(deals as TransformedDeal[]);
     if (!validation.isValid) {
       const errorCount = validation.errors.length;
       console.log(`Server-side validation failed for ${errorCount} deal(s)`);
@@ -132,7 +117,7 @@ export const bulkUploadDealsToDB = createServerFn({ method: "POST" })
               : null,
             brokerage: deal.brokerage || "",
             dealType: DealType.MANUAL,
-            userId: userSession.user?.id,
+            userId: userSession.user.id,
           })),
         );
       });

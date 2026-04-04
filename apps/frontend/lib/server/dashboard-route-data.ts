@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { assertAuthenticated } from "@/lib/server/assert-session";
 import db, {
   companies,
   dealOpportunities,
@@ -196,6 +197,7 @@ async function getTopDealsData(limit = 10) {
 
 export const loadDashboardRouteData = createServerFn({ method: "GET" }).handler(
   async () => {
+    await assertAuthenticated();
     const [pipeline, themesData, topDeals] = await Promise.all([
       getPipelineData(),
       getThemesData(),

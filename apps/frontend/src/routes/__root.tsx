@@ -47,6 +47,7 @@ export const Route = createRootRoute({
 });
 
 function RootDocument() {
+  // suppressHydrationWarning: theme class on <html> can differ SSR vs client
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

@@ -5,6 +5,7 @@ import db, { companies, dealOpportunities } from "@repo/db";
 import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { dealQuickAddApiSchema } from "@/lib/zod-schemas/deal-quick-add-api";
+import { getServerEnv } from "@/lib/env.server";
 
 function normalizeCompanyNameKey(value?: string | null): string {
   return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -22,7 +23,7 @@ function buildNormalizedNameForQuickAdd(
 }
 
 function validateApiKey(provided: string): boolean {
-  const expected = process.env.DEAL_QUICK_ADD_API_KEY;
+  const expected = getServerEnv().DEAL_QUICK_ADD_API_KEY;
   if (!expected || !provided) return false;
   if (provided.length !== expected.length) return false;
   try {

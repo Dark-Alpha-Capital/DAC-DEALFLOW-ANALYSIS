@@ -17,9 +17,10 @@ import {
   markWorkflowRunning,
 } from "./progress";
 import type { FileUploadParams, WorkflowWorkerEnv } from "./workflow-env";
+import { getSsrAppBaseUrl } from "@/lib/env.server";
 
 async function revalidateCacheTags(tags: string[]): Promise<void> {
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = getSsrAppBaseUrl();
   const revalidateUrl = `${frontendUrl}/api/revalidate`;
   try {
     const response = await fetch(revalidateUrl, {

@@ -1,26 +1,22 @@
-import type { Deal } from "@repo/db/schema";
+import type { z } from "zod";
 import {
   buildCrmDealFieldsFromLegacyRawDeal,
   callBitrix,
 } from "@repo/bitrix-sync";
 import { createServerFn } from "@tanstack/react-start";
 import { revalidatePath } from "@/lib/cache-invalidation";
+import { getServerEnv } from "@/lib/env.server";
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import { exportDealToBitrixInputSchema } from "@/lib/server/server-fn-input-schemas";
 
-async function exportDealToBitrixImpl(deal: Deal) {
-  const { getRequest } = await import("@tanstack/react-start/server");
-  const { auth } = await import("@/auth");
-  const request = getRequest();
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  });
-  if (!session) {
-    return {
-      error: "Unauthorized",
-    };
-  }
+type ExportDealInput = z.infer<typeof exportDealToBitrixInputSchema>;
 
-  const categoryId = process.env.BITRIX_DEAL_CATEGORY_ID?.trim();
-  const stageId = process.env.BITRIX_DEFAULT_STAGE_ID?.trim();
+async function exportDealToBitrixImpl(deal: ExportDealInput) {
+  await assertAuthenticated();
+
+  const env = getServerEnv();
+  const categoryId = env.BITRIX_DEAL_CATEGORY_ID?.trim();
+  const stageId = env.BITRIX_DEFAULT_STAGE_ID?.trim();
 
   const fields = buildCrmDealFieldsFromLegacyRawDeal(
     {
@@ -28,16 +24,16 @@ async function exportDealToBitrixImpl(deal: Deal) {
       dealCaption: deal.dealCaption,
       revenue: Number(deal.revenue),
       sourceWebsite: deal.sourceWebsite,
-      companyLocation: deal.companyLocation,
-      firstName: deal.firstName,
-      lastName: deal.lastName,
-      email: deal.email,
-      linkedinUrl: deal.linkedinUrl,
-      workPhone: deal.workPhone,
+      companyLocation: deal.companyLocation ?? null,
+      firstName: deal.firstName ?? null,
+      lastName: deal.lastName ?? null,
+      email: deal.email ?? null,
+      linkedinUrl: deal.linkedinUrl ?? null,
+      workPhone: deal.workPhone ?? null,
       industry: deal.industry,
       ebitda: deal.ebitda,
       ebitdaMargin: deal.ebitdaMargin,
-      askingPrice: deal.askingPrice,
+      askingPrice: deal.askingPrice ?? null,
     },
     {
       categoryId: categoryId || undefined,
@@ -72,5 +68,5 @@ async function exportDealToBitrixImpl(deal: Deal) {
 }
 
 export const exportDealToBitrix = createServerFn({ method: "POST" })
-  .inputValidator((deal: unknown) => deal as Deal)
+  .inputValidator((raw: unknown) => exportDealToBitrixInputSchema.parse(raw))
   .handler(async ({ data: deal }) => exportDealToBitrixImpl(deal));

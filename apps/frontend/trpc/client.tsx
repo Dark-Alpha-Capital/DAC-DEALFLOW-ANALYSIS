@@ -27,7 +27,9 @@ function getQueryClient() {
 function getUrl() {
   const base = (() => {
     if (typeof window !== "undefined") return "";
-    if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+    const fromVite =
+      import.meta.env.VITE_PUBLIC_APP_URL ?? import.meta.env.VITE_SSR_APP_URL;
+    if (fromVite) return String(fromVite).replace(/\/$/, "");
     return "http://localhost:3000";
   })();
   return `${base}/api/trpc`;

@@ -1,10 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { notFound } from "@tanstack/react-router";
 import db, { users, accounts, eq } from "@repo/db";
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import { uidParamSchema } from "@/lib/server/server-fn-input-schemas";
 
 export const loadProfileRouteData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => raw as { uid: string })
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
+    await assertAuthenticated();
     const profileUid = data.uid;
     const [user] = await db
       .select()

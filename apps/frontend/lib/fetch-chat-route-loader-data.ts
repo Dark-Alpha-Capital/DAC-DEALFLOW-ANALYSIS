@@ -1,14 +1,11 @@
 import type { UIMessage } from "ai";
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
+import { redirect } from "@tanstack/react-router";
 import type { ChatContext } from "@/lib/chat-context";
 import { coerceStoredMessages } from "@/lib/chat-messages";
 import { getSelectionFromProviderAndModel } from "@/lib/chat-models";
-
-const inputSchema = z.object({
-  userId: z.string(),
-  chatId: z.string(),
-});
+import { assertAuthenticated } from "@/lib/server/assert-session";
+import { chatLoaderInputSchema } from "@/lib/server/server-fn-input-schemas";
 
 export type ChatRouteLoaderData = {
   chatId: string;
@@ -18,12 +15,15 @@ export type ChatRouteLoaderData = {
 };
 
 export const fetchChatRouteLoaderData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => inputSchema.parse(raw))
-  .handler(async ({ data }): Promise<ChatRouteLoaderData | null> => {
+  .inputValidator((raw: unknown) => chatLoaderInputSchema.parse(raw))
+  // @ts-expect-error Start ServerFn R is stricter than loader data (UIMessage, redirect throw)
+  .handler(async ({ data }) => {
+    const session = await assertAuthenticated();
+    const userId = session.user.id;
     const { getChatSessionForUser } = await import("@/lib/chat-store");
-    const chat = await getChatSessionForUser(data.userId, data.chatId);
+    const chat = await getChatSessionForUser(userId, data.chatId);
     if (!chat) {
-      return null;
+      throw redirect({ to: "/chat" });
     }
 
     const initialMessages = coerceStoredMessages(chat.messages);

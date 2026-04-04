@@ -5,9 +5,10 @@ import { upsertLeadScreening } from "@repo/deal-screening";
 import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { leadFormSchema } from "@/lib/schemas";
+import { getServerEnv } from "@/lib/env.server";
 
 function validateApiKey(provided: string): boolean {
-  const expected = process.env.GTM_LEADS_API_KEY;
+  const expected = getServerEnv().GTM_LEADS_API_KEY;
   if (!expected || !provided) return false;
   if (provided.length !== expected.length) return false;
   try {
