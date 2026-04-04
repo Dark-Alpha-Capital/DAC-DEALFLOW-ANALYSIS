@@ -1036,6 +1036,40 @@ export const dealOpportunityScreenings = pgTable(
   }),
 );
 
+export const leadScreenings = pgTable(
+  "LeadScreening",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    leadId: text("leadId")
+      .notNull()
+      .references(() => leads.id, { onDelete: "cascade" }),
+    status: dealScreeningStatusEnum("status").notNull(),
+    passed: boolean("passed").notNull().default(false),
+    reasons: text("reasons").array().notNull().default([]),
+    score: integer("score"),
+    ebitdaFitScore: integer("ebitdaFitScore"),
+    revenueScore: integer("revenueScore"),
+    industryScore: integer("industryScore"),
+    profileKey: text("profileKey").notNull(),
+    profileVersion: text("profileVersion").notNull(),
+    screenedAt: timestamp("screenedAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    leadScreeningLeadUniqueIdx: uniqueIndex("lead_screening_lead_unique_idx").on(
+      table.leadId,
+    ),
+    leadScreeningStatusIdx: index("lead_screening_status_idx").on(table.status),
+    leadScreeningScoreIdx: index("lead_screening_score_idx").on(table.score),
+  }),
+);
+
 // UserActionLog table
 export const userActionLogs = pgTable("UserActionLog", {
   id: text("id")
@@ -1642,6 +1676,17 @@ export const leadsRelations = relations(leads, ({ many, one }) => ({
     references: [companies.id],
     relationName: "duplicateCompany",
   }),
+  deterministicScreening: one(leadScreenings, {
+    fields: [leads.id],
+    references: [leadScreenings.leadId],
+  }),
+}));
+
+export const leadScreeningsRelations = relations(leadScreenings, ({ one }) => ({
+  lead: one(leads, {
+    fields: [leadScreenings.leadId],
+    references: [leads.id],
+  }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -2099,6 +2144,8 @@ export type DealOpportunityScreening =
   typeof dealOpportunityScreenings.$inferSelect;
 export type NewDealOpportunityScreening =
   typeof dealOpportunityScreenings.$inferInsert;
+export type LeadScreening = typeof leadScreenings.$inferSelect;
+export type NewLeadScreening = typeof leadScreenings.$inferInsert;
 
 export type UserActionLog = typeof userActionLogs.$inferSelect;
 export type NewUserActionLog = typeof userActionLogs.$inferInsert;

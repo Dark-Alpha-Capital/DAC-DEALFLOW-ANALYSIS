@@ -5,6 +5,7 @@ import { Building2, MapPin, ExternalLink } from "lucide-react";
 import LeadPageSkeleton from "@/components/skeletons/lead-page-skeleton";
 import { loadLeadDetailData } from "@/lib/server/leads-route-data";
 import { LeadDetailTabs } from "@/components/lead-detail/LeadDetailTabs";
+import { LeadDeterministicScreeningSummary } from "@/components/lead-detail/LeadDeterministicScreeningSummary";
 import { getLeadStatusClassName } from "@/lib/lead-status";
 import LeadStatusControl from "@/components/lead-detail/LeadStatusControl";
 import BackButton from "@/components/Buttons/back-button";
@@ -26,8 +27,13 @@ export const Route = createFileRoute("/_protected/leads/$uid/")({
 });
 
 function LeadDetailRoute() {
-  const { lead, convertedCompany, duplicateCompany, error } =
-    Route.useLoaderData();
+  const {
+    lead,
+    convertedCompany,
+    duplicateCompany,
+    deterministicScreening,
+    error,
+  } = Route.useLoaderData();
 
   if (error) {
     return (
@@ -160,6 +166,11 @@ function LeadDetailRoute() {
               ? { id: duplicateCompany.id, name: duplicateCompany.name }
               : null
           }
+        />
+
+        <LeadDeterministicScreeningSummary
+          screening={deterministicScreening}
+          leadId={lead.id}
         />
 
         <LeadDetailTabs lead={lead} />

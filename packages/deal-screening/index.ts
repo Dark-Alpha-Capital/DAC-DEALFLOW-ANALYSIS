@@ -2,9 +2,11 @@ export {
   DARK_ALPHA_CRITERIA_PROFILE,
   buildDealScreeningInput,
   getDeterministicScreeningByDealOpportunityId,
+  getDeterministicScreeningByLeadId,
   rescreenAllDealOpportunities,
   screenDeal,
   upsertDealOpportunityScreening,
+  upsertLeadScreening,
 } from "./screening";
 export type {
   DarkAlphaCriteriaProfile,

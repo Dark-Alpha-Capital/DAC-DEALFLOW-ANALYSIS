@@ -54,8 +54,9 @@ const FetchDealAIScreenings = ({
                 </h3>
                 <p className="text-muted-foreground mt-2 text-sm">
                   Run template screening from this deal (CIM screening) or use
-                  &quot;Run AI screening&quot; for RAG across ingested documents.
-                  SIM sessions linked to this opportunity appear here.
+                  &quot;Run AI screening&quot; for RAG across ingested
+                  documents. SIM sessions linked to this opportunity appear
+                  here.
                 </p>
               </div>
             ) : (

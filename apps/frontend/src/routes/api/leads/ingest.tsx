@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { timingSafeEqual } from "crypto";
 import db, { leads } from "@repo/db";
+import { upsertLeadScreening } from "@repo/deal-screening";
 import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { leadFormSchema } from "@/lib/schemas";
@@ -84,6 +85,8 @@ async function postLeadsIngest(request: Request) {
         { status: 500 },
       );
     }
+
+    await upsertLeadScreening(added.id);
 
     return Response.json({ leadId: added.id }, { status: 201 });
   } catch (error) {

@@ -35,6 +35,13 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import useCurrentUser from "@/hooks/use-current-user";
 import { useRouter } from "@/lib/navigation-shim";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
@@ -92,12 +99,78 @@ function runStatusBadgeProps(status: string | undefined) {
   };
 }
 
+type ScoreRow = SimScreeningGetSessionOutput["rows"][number];
+
 function MetaRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[minmax(5rem,7rem)_1fr] gap-x-3 gap-y-1 text-sm">
-      <span className="text-muted-foreground shrink-0">{label}</span>
-      <div className="min-w-0 leading-snug font-medium">{children}</div>
+    <div className="flex flex-col gap-0.5 border-b border-border/60 py-2.5 last:border-0 last:pb-0 sm:grid sm:grid-cols-[minmax(6.5rem,8rem)_1fr] sm:gap-x-4 sm:gap-y-1 sm:border-0 sm:py-0 sm:last:pb-0">
+      <span className="text-muted-foreground text-xs font-medium sm:text-sm sm:font-normal">
+        {label}
+      </span>
+      <div className="min-w-0 text-sm leading-relaxed font-medium sm:leading-snug">
+        {children}
+      </div>
     </div>
+  );
+}
+
+function SectionHeading({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-start gap-2.5">
+        <span className="bg-muted text-muted-foreground mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-border/80">
+          <Icon className="size-4" aria-hidden />
+        </span>
+        <div className="min-w-0 space-y-1">
+          <CardTitle className="text-base leading-tight">{title}</CardTitle>
+          <CardDescription className="text-pretty leading-relaxed">
+            {description}
+          </CardDescription>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EvidenceBlock({ row }: { row: ScoreRow }) {
+  if (!row.evidenceCitations?.length) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  return (
+    <ol className="max-h-64 list-decimal space-y-3 overflow-y-auto pl-4 wrap-anywhere">
+      {row.evidenceCitations.map((c, i) => (
+        <li
+          key={`${row.questionId}-${c.chunkId}-${i}`}
+          className="leading-relaxed"
+        >
+          <div className="text-muted-foreground mb-1 text-xs">
+            {c.pageNumber != null
+              ? `Page ${c.pageNumber}`
+              : "Retrieved excerpt"}
+          </div>
+          {c.excerpt ? (
+            <p className="text-foreground whitespace-pre-wrap">{c.excerpt}</p>
+          ) : (
+            <p className="text-muted-foreground text-xs italic">
+              No stored text for chunk{" "}
+              <code className="bg-muted rounded px-1 font-mono text-[0.65rem]">
+                {c.chunkId.length > 14
+                  ? `${c.chunkId.slice(0, 12)}…`
+                  : c.chunkId}
+              </code>
+            </p>
+          )}
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -291,7 +364,7 @@ function CimScreeningSessionDetailPage() {
 
   if (isLoading && !data) {
     return (
-      <section className="container flex max-w-5xl flex-col items-center justify-center gap-3 py-24">
+      <section className="container mx-auto flex max-w-5xl flex-col items-center justify-center gap-3 px-4 py-20 sm:py-24">
         <Loader2
           className="text-muted-foreground size-8 animate-spin"
           aria-hidden
@@ -303,15 +376,15 @@ function CimScreeningSessionDetailPage() {
 
   if (error || !data) {
     return (
-      <section className="container max-w-5xl space-y-6 py-8">
+      <section className="container mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
         <Button
           variant="ghost"
           size="sm"
-          className="-ml-2 w-fit gap-1.5"
+          className="-ml-2 w-fit min-h-10 cursor-pointer gap-1.5 sm:min-h-8"
           asChild
         >
           <Link to="/cim-screening">
-            <ArrowLeft className="size-4" aria-hidden />
+            <ArrowLeft className="size-4 shrink-0" aria-hidden />
             CIM screening
           </Link>
         </Button>
@@ -353,411 +426,437 @@ function CimScreeningSessionDetailPage() {
     });
   };
 
+  const SourceIcon = dealOpp ? Briefcase : FileText;
+
   return (
-    <section className="container max-w-5xl space-y-8 pt-6 pb-12">
-      <header className="space-y-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground -ml-2 h-8 gap-1.5 px-2"
-          asChild
-        >
-          <Link to="/cim-screening">
-            <ArrowLeft className="size-4" aria-hidden />
-            All sessions
-          </Link>
-        </Button>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              Screening session
-            </h1>
-            <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-              Source (SIM file or deal documents), run history, live progress,
-              and per-question scores for the run you select.
-            </p>
-          </div>
-          <Badge
-            variant={statusBadge.variant}
-            className={cn("shrink-0 self-start", statusBadge.className)}
+    <div className="min-w-0">
+      <section className="container mx-auto max-w-6xl space-y-6 px-4 pt-5 pb-12 sm:space-y-8 sm:px-6 sm:pt-7 sm:pb-16">
+        <header className="space-y-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground -ml-2 h-10 min-h-10 cursor-pointer gap-1.5 px-2 sm:h-8 sm:min-h-8"
+            asChild
           >
-            {statusBadge.label}
-          </Badge>
-        </div>
-      </header>
-
-      <div className="grid gap-10 lg:grid-cols-2 lg:gap-12">
-        <section className="space-y-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              {dealOpp ? (
-                <Briefcase
-                  className="text-muted-foreground size-4"
-                  aria-hidden
-                />
-              ) : (
-                <FileText
-                  className="text-muted-foreground size-4"
-                  aria-hidden
-                />
-              )}
-              <h2 className="text-base font-semibold tracking-tight">
-                {dealOpp ? "Deal opportunity" : "Source document"}
-              </h2>
-            </div>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              {dealOpp
-                ? "Template screening uses RAG across all ingested files for this deal."
-                : "File attached to this session."}
-            </p>
-          </div>
-          <div className="space-y-4">
-            {doc ? (
-              <div className="space-y-3">
-                <MetaRow label="File">{doc.fileName}</MetaRow>
-                <MetaRow label="Title">{doc.title}</MetaRow>
-                <MetaRow label="Size">{formatBytes(doc.fileSize)}</MetaRow>
-                <MetaRow label="Ingestion">
-                  <Badge variant="outline" className="font-normal">
-                    {doc.ingestionStatus}
-                  </Badge>
-                </MetaRow>
-                {doc.ingestionError ? (
-                  <p className="text-destructive text-xs leading-relaxed">
-                    {doc.ingestionError}
-                  </p>
-                ) : null}
-                {doc.ingestionCompletedAt ? (
-                  <p className="text-muted-foreground text-xs">
-                    Ingestion finished{" "}
-                    {new Date(doc.ingestionCompletedAt).toLocaleString()}
-                  </p>
-                ) : null}
-                <p className="text-muted-foreground text-xs">
-                  Uploaded {new Date(doc.createdAt).toLocaleString()}
-                </p>
-              </div>
-            ) : dealOpp ? (
-              <div className="space-y-3">
-                <MetaRow label="Teaser">
-                  {dealOpp.dealTeaser?.trim() || "—"}
-                </MetaRow>
-                {dealOpp.description?.trim() ? (
-                  <MetaRow label="Description">
-                    <span className="line-clamp-4 whitespace-pre-wrap">
-                      {dealOpp.description}
-                    </span>
-                  </MetaRow>
-                ) : null}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full sm:w-auto"
-                  asChild
-                >
-                  <Link
-                    to="/deal-opportunities/$uid"
-                    params={{ uid: dealOpp.id }}
-                  >
-                    Open deal opportunity
-                  </Link>
-                </Button>
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                No document on this session.
+            <Link to="/cim-screening">
+              <ArrowLeft className="size-4 shrink-0" aria-hidden />
+              All sessions
+            </Link>
+          </Button>
+          <div className="flex flex-col gap-4 border-b border-border/80 pb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+            <div className="min-w-0 space-y-2">
+              <h1 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
+                Screening session
+              </h1>
+              <p className="text-muted-foreground max-w-2xl text-pretty text-sm leading-relaxed sm:text-[0.9375rem]">
+                Source (SIM file or deal documents), run history, live
+                progress, and per-question scores for the run you select.
               </p>
-            )}
-          </div>
-        </section>
-
-        <section className="space-y-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Layers className="text-muted-foreground size-4" aria-hidden />
-              <h2 className="text-base font-semibold tracking-tight">
-                Runs & templates
-              </h2>
             </div>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Switch runs to view scores. For SIM uploads, start another
-              template after ingestion completes. Deal sessions can add runs
-              anytime if chunks exist.
-            </p>
+            <Badge
+              variant={statusBadge.variant}
+              className={cn(
+                "h-fit w-fit shrink-0 self-start px-2.5 py-1 text-xs font-medium sm:px-3",
+                statusBadge.className,
+              )}
+            >
+              {statusBadge.label}
+            </Badge>
           </div>
-          {runs.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No screening runs yet.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              <Label
-                htmlFor="run-select"
-                className="text-muted-foreground text-xs font-medium"
-              >
-                Active run
-              </Label>
-              <Select
-                value={selectedRunId ?? undefined}
-                onValueChange={(v) => setSelectedRun(v)}
-              >
-                <SelectTrigger id="run-select" className="w-full">
-                  <SelectValue placeholder="Select a run" />
-                </SelectTrigger>
-                <SelectContent>
-                  {runs.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.screenerName} ·{" "}
-                      {new Date(r.createdAt).toLocaleString()} · {r.status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {screener ? (
-                <p className="text-sm">
-                  <span className="font-medium">{screener.name}</span>
-                  <span className="text-muted-foreground">
-                    {" "}
-                    · {screener.category}
-                  </span>
-                </p>
-              ) : null}
-            </div>
-          )}
+        </header>
 
-          <Separator />
-
-          {canAddRun ? (
-            <div className="space-y-3">
-              <Label className="text-muted-foreground text-xs font-medium">
-                New run
-              </Label>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                <div className="min-w-0 flex-1 space-y-2">
-                  <Select
-                    value={newScreenerId}
-                    onValueChange={setNewScreenerId}
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
+          <Card className="shadow-sm">
+            <CardHeader className="space-y-4 pb-4">
+              <SectionHeading
+                icon={SourceIcon}
+                title={dealOpp ? "Deal opportunity" : "Source document"}
+                description={
+                  dealOpp
+                    ? "Template screening uses RAG across all ingested files for this deal."
+                    : "File attached to this session."
+                }
+              />
+            </CardHeader>
+            <CardContent className="space-y-1 pt-0">
+              {doc ? (
+                <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-1 sm:px-4">
+                  <MetaRow label="File">
+                    <span className="wrap-break-word">{doc.fileName}</span>
+                  </MetaRow>
+                  <MetaRow label="Title">{doc.title}</MetaRow>
+                  <MetaRow label="Size">{formatBytes(doc.fileSize)}</MetaRow>
+                  <MetaRow label="Ingestion">
+                    <Badge variant="outline" className="font-normal">
+                      {doc.ingestionStatus}
+                    </Badge>
+                  </MetaRow>
+                  {doc.ingestionError ? (
+                    <p className="text-destructive pt-2 text-xs leading-relaxed">
+                      {doc.ingestionError}
+                    </p>
+                  ) : null}
+                  {doc.ingestionCompletedAt ? (
+                    <p className="text-muted-foreground border-t border-border/60 pt-3 text-xs">
+                      Ingestion finished{" "}
+                      {new Date(doc.ingestionCompletedAt).toLocaleString()}
+                    </p>
+                  ) : null}
+                  <p className="text-muted-foreground border-t border-border/60 pt-3 text-xs">
+                    Uploaded {new Date(doc.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              ) : dealOpp ? (
+                <div className="space-y-4">
+                  <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-1 sm:px-4">
+                    <MetaRow label="Teaser">
+                      <span className="wrap-break-word">
+                        {dealOpp.dealTeaser?.trim() || "—"}
+                      </span>
+                    </MetaRow>
+                    {dealOpp.description?.trim() ? (
+                      <MetaRow label="Description">
+                        <span className="line-clamp-6 whitespace-pre-wrap sm:line-clamp-4">
+                          {dealOpp.description}
+                        </span>
+                      </MetaRow>
+                    ) : null}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-11 w-full min-h-11 cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto"
+                    asChild
                   >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Choose screener template" />
+                    <Link
+                      to="/deal-opportunities/$uid"
+                      params={{ uid: dealOpp.id }}
+                    >
+                      Open deal opportunity
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  No document on this session.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader className="space-y-4 pb-4">
+              <SectionHeading
+                icon={Layers}
+                title="Runs & templates"
+                description="Switch runs to view scores. For SIM uploads, start another template after ingestion completes. Deal sessions can add runs anytime if chunks exist."
+              />
+            </CardHeader>
+            <CardContent className="space-y-6 pt-0">
+              {runs.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  No screening runs yet.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="run-select"
+                    className="text-muted-foreground text-xs font-medium"
+                  >
+                    Active run
+                  </Label>
+                  <Select
+                    value={selectedRunId ?? undefined}
+                    onValueChange={(v) => setSelectedRun(v)}
+                  >
+                    <SelectTrigger
+                      id="run-select"
+                      className="h-11 min-h-11 w-full cursor-pointer sm:h-10 sm:min-h-10"
+                    >
+                      <SelectValue placeholder="Select a run" />
                     </SelectTrigger>
                     <SelectContent>
-                      {screeners.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name} ({s.category})
+                      {runs.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          <span className="line-clamp-2 text-left">
+                            {r.screenerName} ·{" "}
+                            {new Date(r.createdAt).toLocaleString()} ·{" "}
+                            {r.status}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {screener ? (
+                    <p className="text-sm leading-snug">
+                      <span className="font-medium">{screener.name}</span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {screener.category}
+                      </span>
+                    </p>
+                  ) : null}
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="shrink-0"
-                  disabled={
-                    !newScreenerId || startRunMutation.isPending || running
-                  }
-                  onClick={() =>
-                    newScreenerId &&
-                    startRunMutation.mutate({
-                      sessionId,
-                      screenerId: newScreenerId,
-                    })
-                  }
-                >
-                  {startRunMutation.isPending ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  ) : (
-                    <>
-                      <Plus className="mr-1.5 size-4" aria-hidden />
-                      Start run
-                    </>
-                  )}
-                </Button>
-              </div>
-              {running ? (
+              )}
+
+              <Separator />
+
+              {canAddRun ? (
+                <div className="space-y-3">
+                  <Label
+                    htmlFor="new-screener"
+                    className="text-muted-foreground text-xs font-medium"
+                  >
+                    New run
+                  </Label>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                    <div className="min-w-0 flex-1">
+                      <Select
+                        value={newScreenerId}
+                        onValueChange={setNewScreenerId}
+                      >
+                        <SelectTrigger
+                          id="new-screener"
+                          className="h-11 min-h-11 w-full cursor-pointer sm:h-10 sm:min-h-10"
+                        >
+                          <SelectValue placeholder="Choose screener template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {screeners.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name} ({s.category})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-11 min-h-11 w-full shrink-0 cursor-pointer sm:h-10 sm:min-h-10 sm:w-auto sm:self-end"
+                      disabled={
+                        !newScreenerId ||
+                        startRunMutation.isPending ||
+                        running
+                      }
+                      onClick={() =>
+                        newScreenerId &&
+                        startRunMutation.mutate({
+                          sessionId,
+                          screenerId: newScreenerId,
+                        })
+                      }
+                    >
+                      {startRunMutation.isPending ? (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      ) : (
+                        <>
+                          <Plus className="mr-1.5 size-4" aria-hidden />
+                          Start run
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  {running ? (
+                    <p className="text-muted-foreground text-xs leading-relaxed">
+                      Wait for the current run to finish before starting
+                      another.
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
                 <p className="text-muted-foreground text-xs leading-relaxed">
-                  Wait for the current run to finish before starting another.
+                  {dealOpp
+                    ? "Add ingested documents to this deal before starting a screening run."
+                    : "Ingestion must finish before you can start another screening run."}
+                </p>
+              )}
+
+              <div className="text-muted-foreground space-y-1.5 border-t border-border/80 pt-4 text-xs">
+                <p className="break-all">
+                  Session{" "}
+                  <code className="bg-muted text-foreground rounded px-1.5 py-0.5 font-mono text-[0.7rem]">
+                    {session.id}
+                  </code>
+                </p>
+                <p>Last updated {new Date(session.updatedAt).toLocaleString()}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {running ? (
+          <Card
+            className="border-primary/30 bg-muted/30 shadow-sm"
+            aria-live="polite"
+          >
+            <CardHeader className="pb-2">
+              <div className="flex items-start gap-2.5">
+                <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-md border border-primary/20">
+                  <Activity className="size-4" aria-hidden />
+                </span>
+                <div className="min-w-0 space-y-1">
+                  <CardTitle className="text-base">Run in progress</CardTitle>
+                  <CardDescription>
+                    Updates every few seconds while the job is active.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between gap-4 text-sm">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="font-semibold tabular-nums">
+                  {Math.round(progressPct)}%
+                </span>
+              </div>
+              <Progress value={progressPct} className="h-2.5" />
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {progressStep || "Queued…"}
+              </p>
+              {job?.failedReason ? (
+                <p className="text-destructive text-sm leading-relaxed">
+                  {job.failedReason}
                 </p>
               ) : null}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {runStatus === "FAILED" && run ? (
+          <Alert variant="destructive" className="border-destructive/40">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-2">
+                <AlertTitle>Screening failed</AlertTitle>
+                <AlertDescription className="text-pretty">
+                  {run.errorMessage ??
+                    "The run ended with an error. You can retry with the same inputs."}
+                </AlertDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-destructive/40 bg-background hover:bg-destructive/10 h-11 min-h-11 w-full shrink-0 cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto sm:self-center"
+                disabled={retryMutation.isPending}
+                onClick={() => retryMutation.mutate({ runId: run.id })}
+              >
+                {retryMutation.isPending ? (
+                  <>
+                    <Loader2
+                      className="mr-2 size-4 animate-spin"
+                      aria-hidden
+                    />
+                    Retrying…
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 size-4" aria-hidden />
+                    Retry
+                  </>
+                )}
+              </Button>
+            </div>
+          </Alert>
+        ) : null}
+
+        <section className="space-y-4">
+          <SectionHeading
+            icon={Table2}
+            title="Question scores"
+            description={
+              runs.length === 0 || !selectedRunId
+                ? "Start a run to see scores here."
+                : "Scores, rationale, and RAG citation excerpts for the selected run."
+            }
+          />
+          {rows.length === 0 ? (
+            <div className="bg-muted/25 text-muted-foreground rounded-xl border border-dashed px-5 py-10 text-center text-sm sm:px-8 sm:py-14">
+              {runs.length === 0
+                ? "No data yet. Upload and run a screener to populate this table."
+                : "No scored questions for this run yet. If the run is still processing, check back shortly."}
             </div>
           ) : (
-            <p className="text-muted-foreground text-xs leading-relaxed">
-              {dealOpp
-                ? "Add ingested documents to this deal before starting a screening run."
-                : "Ingestion must finish before you can start another screening run."}
-            </p>
-          )}
-
-          <div className="text-muted-foreground space-y-1 border-t pt-4 text-xs">
-            <p>
-              Session{" "}
-              <code className="bg-muted text-foreground rounded px-1.5 py-0.5 font-mono text-[0.7rem]">
-                {session.id}
-              </code>
-            </p>
-            <p>Last updated {new Date(session.updatedAt).toLocaleString()}</p>
-          </div>
-        </section>
-      </div>
-
-      {running ? (
-        <section
-          className="border-primary/25 bg-muted/40 space-y-3 rounded-md border px-5 py-4"
-          aria-live="polite"
-        >
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Activity className="text-primary size-4" aria-hidden />
-              <h2 className="text-base font-semibold tracking-tight">
-                Run in progress
-              </h2>
-            </div>
-            <p className="text-muted-foreground text-sm">
-              Updates every few seconds while the job is active.
-            </p>
-          </div>
-          <div className="flex items-center justify-between gap-4 text-sm">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-medium tabular-nums">
-              {Math.round(progressPct)}%
-            </span>
-          </div>
-          <Progress value={progressPct} className="h-2" />
-          <p className="text-muted-foreground text-sm">
-            {progressStep || "Queued…"}
-          </p>
-          {job?.failedReason ? (
-            <p className="text-destructive text-sm leading-relaxed">
-              {job.failedReason}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-
-      {runStatus === "FAILED" && run ? (
-        <Alert variant="destructive" className="border-destructive/40">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0 space-y-2">
-              <AlertTitle>Screening failed</AlertTitle>
-              <AlertDescription>
-                {run.errorMessage ??
-                  "The run ended with an error. You can retry with the same inputs."}
-              </AlertDescription>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="border-destructive/40 bg-background hover:bg-destructive/10 shrink-0 sm:self-center"
-              disabled={retryMutation.isPending}
-              onClick={() => retryMutation.mutate({ runId: run.id })}
-            >
-              {retryMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                  Retrying…
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 size-4" aria-hidden />
-                  Retry
-                </>
-              )}
-            </Button>
-          </div>
-        </Alert>
-      ) : null}
-
-      <section className="space-y-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Table2 className="text-muted-foreground size-4" aria-hidden />
-            <h2 className="text-base font-semibold tracking-tight">
-              Question scores
-            </h2>
-          </div>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            {runs.length === 0 || !selectedRunId
-              ? "Start a run to see scores here."
-              : "Scores, rationale, and RAG citation excerpts for the selected run."}
-          </p>
-        </div>
-        {rows.length === 0 ? (
-          <div className="bg-muted/30 text-muted-foreground rounded-lg border border-dashed px-6 py-12 text-center text-sm">
-            {runs.length === 0
-              ? "No data yet. Upload and run a screener to populate this table."
-              : "No scored questions for this run yet. If the run is still processing, check back shortly."}
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="min-w-[12rem] pl-4">Question</TableHead>
-                  <TableHead className="w-24">Score</TableHead>
-                  <TableHead className="max-w-xl min-w-[14rem]">
-                    Rationale
-                  </TableHead>
-                  <TableHead className="max-w-md min-w-[16rem] pr-4">
-                    References
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="space-y-4 md:hidden">
                 {rows.map((row) => (
-                  <TableRow key={row.questionId} className="align-top">
-                    <TableCell className="max-w-md pl-4 text-sm leading-relaxed">
-                      {row.question}
-                    </TableCell>
-                    <TableCell className="font-medium tabular-nums">
-                      {row.score ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-                      {row.rationale ?? "—"}
-                    </TableCell>
-                    <TableCell className="max-w-md pr-4 align-top text-sm">
-                      {row.evidenceCitations &&
-                      row.evidenceCitations.length > 0 ? (
-                        <ol className="max-h-64 list-decimal space-y-3 overflow-y-auto pl-4">
-                          {row.evidenceCitations.map((c, i) => (
-                            <li
-                              key={`${row.questionId}-${c.chunkId}-${i}`}
-                              className="leading-relaxed"
-                            >
-                              <div className="text-muted-foreground mb-1 text-xs">
-                                {c.pageNumber != null
-                                  ? `Page ${c.pageNumber}`
-                                  : "Retrieved excerpt"}
-                              </div>
-                              {c.excerpt ? (
-                                <p className="text-foreground whitespace-pre-wrap">
-                                  {c.excerpt}
-                                </p>
-                              ) : (
-                                <p className="text-muted-foreground text-xs italic">
-                                  No stored text for chunk{" "}
-                                  <code className="bg-muted rounded px-1 font-mono text-[0.65rem]">
-                                    {c.chunkId.length > 14
-                                      ? `${c.chunkId.slice(0, 12)}…`
-                                      : c.chunkId}
-                                  </code>
-                                </p>
-                              )}
-                            </li>
-                          ))}
-                        </ol>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                  <Card key={row.questionId} className="overflow-hidden shadow-sm">
+                    <CardHeader className="space-y-2 pb-3">
+                      <CardTitle className="text-sm font-semibold leading-snug text-pretty">
+                        {row.question}
+                      </CardTitle>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                          Score
+                        </span>
+                        <span className="bg-muted rounded-md px-2 py-0.5 font-mono text-sm font-semibold tabular-nums">
+                          {row.score ?? "—"}
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4 border-t border-border/60 pt-4">
+                      <div>
+                        <p className="text-muted-foreground mb-1.5 text-xs font-medium uppercase tracking-wide">
+                          Rationale
+                        </p>
+                        <p className="text-foreground text-sm leading-relaxed">
+                          {row.rationale ?? "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground mb-1.5 text-xs font-medium uppercase tracking-wide">
+                          References
+                        </p>
+                        <div className="text-sm">
+                          <EvidenceBlock row={row} />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+              </div>
+              <div className="-mx-4 hidden min-w-0 overflow-x-auto rounded-xl border border-border/80 shadow-sm sm:mx-0 md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="min-w-[11rem] pl-4">
+                        Question
+                      </TableHead>
+                      <TableHead className="w-20 whitespace-nowrap">
+                        Score
+                      </TableHead>
+                      <TableHead className="min-w-[12rem] max-w-md">
+                        Rationale
+                      </TableHead>
+                      <TableHead className="min-w-[14rem] max-w-lg pr-4">
+                        References
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((row) => (
+                      <TableRow key={row.questionId} className="align-top">
+                        <TableCell className="max-w-xs pl-4 text-sm leading-relaxed wrap-anywhere">
+                          {row.question}
+                        </TableCell>
+                        <TableCell className="font-semibold tabular-nums">
+                          {row.score ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground max-w-md text-sm leading-relaxed wrap-anywhere">
+                          {row.rationale ?? "—"}
+                        </TableCell>
+                        <TableCell className="max-w-md pr-4 align-top text-sm wrap-anywhere">
+                          <EvidenceBlock row={row} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </section>
       </section>
-    </section>
+    </div>
   );
 }

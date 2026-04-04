@@ -5,7 +5,10 @@ import {
   dealFinancialSnapshots,
   dealOpportunities,
   dealOpportunityScreenings,
+  leads,
+  leadScreenings,
   type DealOpportunityScreening,
+  type LeadScreening,
 } from "@repo/db/schema";
 
 type PreferredIndustry = {
@@ -330,6 +333,33 @@ export async function buildDealScreeningInput(
   };
 }
 
+export async function buildLeadScreeningInput(
+  leadId: string,
+): Promise<DealScreeningInput | null> {
+  const [lead] = await db
+    .select()
+    .from(leads)
+    .where(and(eq(leads.id, leadId), isNull(leads.deletedAt)))
+    .limit(1);
+
+  if (!lead) {
+    return null;
+  }
+
+  const name =
+    lead.normalizedCompanyName?.trim() || lead.rawTitle?.trim() || null;
+
+  return {
+    dealOpportunityId: leadId,
+    companyId: null,
+    companyName: name,
+    ebitda: lead.ebitda ?? null,
+    revenue: lead.revenue ?? null,
+    industry: lead.rawIndustry?.trim() || null,
+    location: lead.companyLocation?.trim() || null,
+  };
+}
+
 function toScreeningRecord(
   dealOpportunityId: string,
   result: DealScreeningResult,
@@ -376,6 +406,62 @@ export async function upsertDealOpportunityScreening(
     .returning();
 
   return saved;
+}
+
+function toLeadScreeningRecord(
+  leadId: string,
+  result: DealScreeningResult,
+): typeof leadScreenings.$inferInsert {
+  const now = new Date();
+
+  return {
+    leadId,
+    status: result.status,
+    passed: result.passed,
+    reasons: result.reasons,
+    score: result.score,
+    ebitdaFitScore: result.ebitdaFitScore,
+    revenueScore: result.revenueScore,
+    industryScore: result.industryScore,
+    profileKey: result.profileKey,
+    profileVersion: result.profileVersion,
+    screenedAt: now,
+    updatedAt: now,
+  };
+}
+
+export async function upsertLeadScreening(leadId: string) {
+  const input = await buildLeadScreeningInput(leadId);
+  if (!input) {
+    return null;
+  }
+
+  const result = screenDeal(input);
+  const values = toLeadScreeningRecord(leadId, result);
+
+  const [saved] = await db
+    .insert(leadScreenings)
+    .values(values)
+    .onConflictDoUpdate({
+      target: leadScreenings.leadId,
+      set: values,
+    })
+    .returning();
+
+  return saved;
+}
+
+export async function getDeterministicScreeningByLeadId(
+  leadId: string,
+): Promise<LeadScreening | null> {
+  const [screening] = await db
+    .select()
+    .from(leadScreenings)
+    .where(eq(leadScreenings.leadId, leadId))
+    .orderBy(desc(leadScreenings.screenedAt))
+    .limit(1);
+
+  return screening ?? null;
 }
 
 export async function getDeterministicScreeningByDealOpportunityId(

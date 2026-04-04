@@ -116,8 +116,7 @@ export function RunAiScreeningButton({
             <Button
               disabled={!screenerId || mutation.isPending}
               onClick={() =>
-                screenerId &&
-                mutation.mutate({ dealOpportunityId, screenerId })
+                screenerId && mutation.mutate({ dealOpportunityId, screenerId })
               }
             >
               {mutation.isPending ? (

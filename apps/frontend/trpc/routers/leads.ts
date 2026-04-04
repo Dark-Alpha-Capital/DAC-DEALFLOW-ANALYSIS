@@ -4,6 +4,7 @@ import db, {
   leads,
   companies,
   dealOpportunities,
+  leadScreenings,
   eq,
   and,
   or,
@@ -14,7 +15,10 @@ import db, {
 import { convertLeadToCompanySchema, leadFormSchema } from "@/lib/schemas";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
-import { upsertDealOpportunityScreening } from "@repo/deal-screening";
+import {
+  upsertDealOpportunityScreening,
+  upsertLeadScreening,
+} from "@repo/deal-screening";
 import { createDealFinancialSnapshot } from "@repo/db/mutations";
 
 const createLeadSchema = leadFormSchema;
@@ -161,11 +165,50 @@ export const leadsRouter = createTRPCRouter({
         })
         .returning();
 
+      if (added?.id) {
+        await upsertLeadScreening(added.id);
+      }
+
       after(async () => {
         revalidatePath("/leads");
+        if (added?.id) {
+          revalidatePath(`/leads/${added.id}`);
+        }
         revalidateTag("leads", "max");
+        if (added?.id) {
+          revalidateTag(`lead-${added.id}`, "max");
+        }
       });
       return { leadId: added?.id };
+    }),
+
+  screenLead: protectedProcedure
+    .input(z.object({ leadId: z.string() }))
+    .mutation(async ({ input }) => {
+      const screening = await upsertLeadScreening(input.leadId);
+      after(async () => {
+        revalidatePath("/leads");
+        revalidatePath(`/leads/${input.leadId}`);
+        revalidateTag("leads", "max");
+        revalidateTag(`lead-${input.leadId}`, "max");
+      });
+      return { screening };
+    }),
+
+  deleteLeadDeterministicScreening: protectedProcedure
+    .input(z.object({ leadId: z.string() }))
+    .mutation(async ({ input }) => {
+      await db
+        .delete(leadScreenings)
+        .where(eq(leadScreenings.leadId, input.leadId));
+
+      after(async () => {
+        revalidatePath("/leads");
+        revalidatePath(`/leads/${input.leadId}`);
+        revalidateTag("leads", "max");
+        revalidateTag(`lead-${input.leadId}`, "max");
+      });
+      return { success: true };
     }),
 
   /**
@@ -197,6 +240,8 @@ export const leadsRouter = createTRPCRouter({
           companyLocation: data.companyLocation || null,
         })
         .where(and(eq(leads.id, id), isNull(leads.deletedAt)));
+
+      await upsertLeadScreening(id);
 
       after(async () => {
         revalidatePath("/leads");
