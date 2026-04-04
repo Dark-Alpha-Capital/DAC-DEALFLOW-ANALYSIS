@@ -87,6 +87,16 @@ export async function terminateWorkflowInstance(
   await instance.terminate();
 }
 
+/** Re-run the workflow from the beginning with the same instance id and original event payload. */
+export async function restartWorkflowInstance(
+  kind: WorkflowKind,
+  instanceId: string,
+): Promise<void> {
+  const w = getWorkflowByKind(kind);
+  const instance = await w.get(instanceId);
+  await instance.restart();
+}
+
 function rowToMetadata(
   row: NonNullable<Awaited<ReturnType<typeof getWorkflowJobRow>>>,
   state: JobStatus,

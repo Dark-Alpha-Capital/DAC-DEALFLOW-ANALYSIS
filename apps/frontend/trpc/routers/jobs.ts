@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import {
@@ -7,9 +9,42 @@ import {
   getLatestUserJobs,
   deleteUserJob,
   getJobStatus,
+  restartWorkflowInstance,
 } from "@/src/lib/workflow-jobs-api";
+import { getWorkflowJobRow } from "@repo/db/workflow-jobs";
+import db from "@repo/db";
+import { workflowJobs } from "@repo/db/schema";
+import type { WorkflowKind } from "@repo/db/workflow-jobs";
 import { after } from "@/lib/after";
 import { revalidatePath } from "@/lib/cache-invalidation";
+
+const queueNameSchema = z.enum([
+  QUEUE_NAMES.SCREEN_DEAL,
+  QUEUE_NAMES.FILE_UPLOAD,
+  QUEUE_NAMES.CIM_EXTRACTION,
+  QUEUE_NAMES.RAG_INGESTION,
+  QUEUE_NAMES.SIM_SCREENING,
+]);
+
+async function assertJobOwnedAndFailed(
+  userId: string,
+  jobId: string,
+  queueName: string,
+) {
+  const row = await getWorkflowJobRow(jobId);
+  if (!row || row.userId !== userId || row.workflowKind !== queueName) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Job not found",
+    });
+  }
+  if (row.state !== "failed") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Only failed jobs can be restarted",
+    });
+  }
+}
 
 export const jobsRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -35,13 +70,7 @@ export const jobsRouter = createTRPCRouter({
     .input(
       z.object({
         jobId: z.string(),
-        queueName: z.enum([
-          QUEUE_NAMES.SCREEN_DEAL,
-          QUEUE_NAMES.FILE_UPLOAD,
-          QUEUE_NAMES.CIM_EXTRACTION,
-          QUEUE_NAMES.RAG_INGESTION,
-          QUEUE_NAMES.SIM_SCREENING,
-        ]),
+        queueName: queueNameSchema,
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -70,13 +99,7 @@ export const jobsRouter = createTRPCRouter({
     .input(
       z.object({
         jobId: z.string(),
-        queueName: z.enum([
-          QUEUE_NAMES.SCREEN_DEAL,
-          QUEUE_NAMES.FILE_UPLOAD,
-          QUEUE_NAMES.CIM_EXTRACTION,
-          QUEUE_NAMES.RAG_INGESTION,
-          QUEUE_NAMES.SIM_SCREENING,
-        ]),
+        queueName: queueNameSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -97,13 +120,7 @@ export const jobsRouter = createTRPCRouter({
         jobs: z.array(
           z.object({
             jobId: z.string(),
-            queueName: z.enum([
-              QUEUE_NAMES.SCREEN_DEAL,
-              QUEUE_NAMES.FILE_UPLOAD,
-              QUEUE_NAMES.CIM_EXTRACTION,
-              QUEUE_NAMES.RAG_INGESTION,
-              QUEUE_NAMES.SIM_SCREENING,
-            ]),
+            queueName: queueNameSchema,
           }),
         ),
       }),
@@ -120,5 +137,96 @@ export const jobsRouter = createTRPCRouter({
         revalidatePath("/jobs");
       });
       return { success: true, deletedCount: jobs.length };
+    }),
+
+  /**
+   * Cloudflare Workflows `restart()` re-runs the entire workflow from the beginning
+   * with the same instance id and original payload. Step-level “resume from failure”
+   * is not exposed on the Worker binding.
+   */
+  restart: protectedProcedure
+    .input(
+      z.object({
+        jobId: z.string().min(1),
+        queueName: queueNameSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id as string;
+      await assertJobOwnedAndFailed(userId, input.jobId, input.queueName);
+      try {
+        await restartWorkflowInstance(
+          input.queueName as WorkflowKind,
+          input.jobId,
+        );
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            e instanceof Error ? e.message : "Failed to restart workflow",
+        });
+      }
+      await db
+        .update(workflowJobs)
+        .set({
+          state: "waiting",
+          failedReason: null,
+          returnValue: null,
+          progressPercent: 0,
+          progressStep: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(workflowJobs.instanceId, input.jobId));
+      after(async () => {
+        revalidatePath("/jobs");
+      });
+      return { success: true };
+    }),
+
+  bulkRestart: protectedProcedure
+    .input(
+      z.object({
+        jobs: z.array(
+          z.object({
+            jobId: z.string().min(1),
+            queueName: queueNameSchema,
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id as string;
+      for (const job of input.jobs) {
+        await assertJobOwnedAndFailed(userId, job.jobId, job.queueName);
+        try {
+          await restartWorkflowInstance(
+            job.queueName as WorkflowKind,
+            job.jobId,
+          );
+        } catch (e) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              e instanceof Error
+                ? `${job.jobId}: ${e.message}`
+                : "Failed to restart workflow",
+          });
+        }
+        await db
+          .update(workflowJobs)
+          .set({
+            state: "waiting",
+            failedReason: null,
+            returnValue: null,
+            progressPercent: 0,
+            progressStep: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(workflowJobs.instanceId, job.jobId));
+      }
+      after(async () => {
+        revalidatePath("/jobs");
+      });
+      return { success: true, restartedCount: input.jobs.length };
     }),
 });

@@ -63,6 +63,16 @@ export const updateDocumentInputSchema = z.object({
     .optional(),
 });
 
-export const deleteDocumentInputSchema = z.object({
-  documentId: z.string().min(1),
-});
+export const deleteDocumentInputSchema = z
+  .object({
+    documentId: z.string().min(1),
+    /** When set, server verifies the document belongs to this entity (deal/company scope). */
+    entityType: z.enum(["COMPANY", "DEAL_OPPORTUNITY"]).optional(),
+    entityId: z.string().min(1).optional(),
+  })
+  .refine(
+    (d) =>
+      (d.entityType === undefined && d.entityId === undefined) ||
+      (d.entityType !== undefined && d.entityId !== undefined),
+    { message: "Provide both entityType and entityId, or neither" },
+  );

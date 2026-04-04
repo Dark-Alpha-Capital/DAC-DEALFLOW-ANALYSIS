@@ -72,7 +72,19 @@ export async function deleteChunkVectorsForDocument(
   for (let i = 0; i < ids.length; i += DELETE_ID_BATCH) {
     const slice = ids.slice(i, i + DELETE_ID_BATCH);
     if (slice.length > 0) {
-      await index.deleteByIds(slice);
+      try {
+        await index.deleteByIds(slice);
+      } catch (err) {
+        // Miniflare / local Vectorize often returns 400; production should rarely hit this.
+        console.warn(
+          "[deleteChunkVectorsForDocument] Vectorize deleteByIds failed; continuing ingestion",
+          {
+            documentId,
+            batchSize: slice.length,
+            message: err instanceof Error ? err.message : String(err),
+          },
+        );
+      }
     }
   }
 }

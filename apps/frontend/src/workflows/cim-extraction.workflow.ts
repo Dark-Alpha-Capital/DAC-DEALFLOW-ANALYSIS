@@ -25,25 +25,28 @@ export class CimExtractionWorkflow extends WorkflowEntrypoint<
     event: WorkflowEvent<CimExtractionParams>,
     step: WorkflowStep,
   ): Promise<{ success: boolean }> {
-    return runDbWithWorkerNeonPool(async () => {
-      const instanceId = event.instanceId;
-      const { simId, documentId, dealOpportunityId, filePath } = event.payload;
+    const instanceId = event.instanceId;
+    const { simId, documentId, dealOpportunityId, filePath } = event.payload;
 
-      console.log(`${LOG} run() start`, {
-        instanceId,
-        simId,
-        documentId: documentId ?? null,
-        dealOpportunityId: dealOpportunityId ?? null,
-        filePathSuffix: filePath?.slice(-80) ?? null,
-      });
+    console.log(`${LOG} run() start`, {
+      instanceId,
+      simId,
+      documentId: documentId ?? null,
+      dealOpportunityId: dealOpportunityId ?? null,
+      filePathSuffix: filePath?.slice(-80) ?? null,
+    });
 
-      try {
+    try {
+      await runDbWithWorkerNeonPool(async () => {
         console.log(`${LOG} markWorkflowRunning`, { instanceId });
         await markWorkflowRunning(instanceId);
-        await step.do(
-          "cim-extract",
-          { timeout: "30 minutes" },
-          async () => {
+      });
+
+      await step.do(
+        "cim-extract",
+        { timeout: "30 minutes" },
+        () =>
+          runDbWithWorkerNeonPool(async () => {
             console.log(`${LOG} step "cim-extract" entered`, { instanceId });
 
             await updateWorkflowJobProgress(instanceId, {
@@ -109,22 +112,29 @@ export class CimExtractionWorkflow extends WorkflowEntrypoint<
               instanceId,
             });
             return { success: true as const };
-          },
-        );
+          }),
+      );
 
-        console.log(`${LOG} markWorkflowCompleted`, { instanceId });
+      console.log(`${LOG} markWorkflowCompleted`, { instanceId });
+      await runDbWithWorkerNeonPool(async () => {
         await markWorkflowCompleted(instanceId, { success: true });
-        console.log(`${LOG} run() success`, { instanceId });
-        return { success: true };
-      } catch (err) {
-        console.error(`${LOG} run() error`, {
-          instanceId,
-          message: err instanceof Error ? err.message : String(err),
-          stack: err instanceof Error ? err.stack : undefined,
+      });
+      console.log(`${LOG} run() success`, { instanceId });
+      return { success: true };
+    } catch (err) {
+      console.error(`${LOG} run() error`, {
+        instanceId,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
+      try {
+        await runDbWithWorkerNeonPool(async () => {
+          await markWorkflowFailed(instanceId, err);
         });
-        await markWorkflowFailed(instanceId, err);
-        throw err;
+      } catch {
+        // ignore secondary failure
       }
-    });
+      throw err;
+    }
   }
 }

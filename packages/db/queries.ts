@@ -371,8 +371,16 @@ export const GetDealWithAllRelations = async (uid: string) => {
   if (!opp) {
     const deal = await GetDealById(uid);
     if (!deal) return null;
+    const [legacyCreator] = deal.userId
+      ? await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, deal.userId))
+          .limit(1)
+      : [];
     return {
       deal: deal as Deal & { id: string },
+      creatorName: legacyCreator?.name ?? null,
       documents: [] as Awaited<ReturnType<typeof getDealDocuments>>,
       aiScreenings: [] as Awaited<
         ReturnType<typeof getAllDealReasoningsWithScreenerName>
@@ -385,6 +393,14 @@ export const GetDealWithAllRelations = async (uid: string) => {
     .select()
     .from(companies)
     .where(and(eq(companies.id, opp.companyId), isNull(companies.deletedAt)));
+
+  const [creatorRow] = opp.userId
+    ? await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, opp.userId))
+        .limit(1)
+    : [];
 
   const [
     dealDocs,
@@ -518,6 +534,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
 
   return {
     deal: dealView,
+    creatorName: creatorRow?.name ?? null,
     currentOpportunity: opp,
     documents: dealDocs ?? [],
     aiScreenings: screenings ?? [],

@@ -21,7 +21,17 @@ import {
 } from "@/components/company-detail/CompanyOutreach";
 import { CompanyNotes } from "@/components/company-detail/CompanyNotes";
 import FetchDealAIScreenings from "@/components/FetchDealAIScreenings";
-import { FileText, User } from "lucide-react";
+import {
+  FileText,
+  User,
+  Info,
+  Globe,
+  Calendar,
+  MapPin,
+  Factory,
+  CircleUser,
+  DollarSign,
+} from "lucide-react";
 import { DeterministicScreeningSummary } from "./DeterministicScreeningSummary";
 import { CIMAnalysisSection } from "./CIMAnalysisSection";
 
@@ -41,6 +51,8 @@ interface DealDetailTabsProps {
   deterministicScreening: DealOpportunityScreening | null;
   companyNotes: CompanyNote[];
   financialSnapshots?: DealFinancialSnapshot[];
+  /** Resolved from opportunity creator (or legacy deal owner). */
+  creatorName?: string | null;
 }
 
 export function DealDetailTabs({
@@ -59,11 +71,24 @@ export function DealDetailTabs({
   deterministicScreening,
   companyNotes,
   financialSnapshots = [],
+  creatorName = null,
 }: DealDetailTabsProps) {
   if (!company) return null;
 
   const dealOutreach = outreach.filter((row) => row.dealOpportunityId === uid);
   const hasPipeline = !!currentOpportunity;
+
+  const brokerSummary =
+    deal.brokerage ||
+    [deal.firstName, deal.lastName].filter(Boolean).join(" ") ||
+    null;
+
+  const formatMoney = (n: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(n);
 
   const initialTab =
     defaultTab === "screenings" ||
@@ -85,7 +110,6 @@ export function DealDetailTabs({
         deal={deal}
         uid={uid}
         basePath="deal-opportunities"
-        stage={currentOpportunity?.stage}
         currentOpportunity={currentOpportunity}
       />
       <Tabs defaultValue={initialTab} className="w-full space-y-6">
@@ -101,6 +125,92 @@ export function DealDetailTabs({
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          <div className="space-y-3">
+            <h2 className="flex items-center gap-2 text-base font-semibold">
+              <Info className="text-muted-foreground h-4 w-4" />
+              Overview
+            </h2>
+            <dl className="grid gap-3 text-sm sm:grid-cols-2">
+              {deal.sourceWebsite ? (
+                <div>
+                  <dt className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                    <Globe className="h-3 w-3" />
+                    Source
+                  </dt>
+                  <dd>
+                    <a
+                      href={
+                        deal.sourceWebsite.startsWith("http")
+                          ? deal.sourceWebsite
+                          : `https://${deal.sourceWebsite}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {deal.sourceWebsite}
+                    </a>
+                  </dd>
+                </div>
+              ) : null}
+              {deal.createdAt && (
+                <div>
+                  <dt className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                    <Calendar className="h-3 w-3" />
+                    Created
+                  </dt>
+                  <dd>
+                    {new Date(deal.createdAt).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </dd>
+                </div>
+              )}
+              <div>
+                <dt className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  <CircleUser className="h-3 w-3" />
+                  Creator
+                </dt>
+                <dd>{creatorName ?? "—"}</dd>
+              </div>
+              {brokerSummary && (
+                <div>
+                  <dt className="text-muted-foreground text-xs">Broker</dt>
+                  <dd>{brokerSummary}</dd>
+                </div>
+              )}
+              {deal.companyLocation && (
+                <div>
+                  <dt className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                    <MapPin className="h-3 w-3" />
+                    Location
+                  </dt>
+                  <dd>{deal.companyLocation}</dd>
+                </div>
+              )}
+              {deal.industry ? (
+                <div>
+                  <dt className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                    <Factory className="h-3 w-3" />
+                    Industry
+                  </dt>
+                  <dd>{deal.industry}</dd>
+                </div>
+              ) : null}
+              {deal.askingPrice != null && (
+                <div>
+                  <dt className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                    <DollarSign className="h-3 w-3" />
+                    Asking price
+                  </dt>
+                  <dd>{formatMoney(deal.askingPrice)}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+
           {(deal.dealTeaser || deal.description) && (
             <div className="space-y-3">
               <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -239,7 +349,9 @@ export function DealDetailTabs({
         )}
 
         <TabsContent value="outreach">
-          <ClientOnly fallback={<div className="h-48 rounded-md border bg-muted/30" />}>
+          <ClientOnly
+            fallback={<div className="bg-muted/30 h-48 rounded-md border" />}
+          >
             <CompanyOutreach
               outreach={dealOutreach}
               companyId={company.id}
@@ -291,8 +403,16 @@ export function DealDetailTabs({
         </TabsContent>
 
         <TabsContent value="notes">
-          <ClientOnly fallback={<div className="min-h-[200px] rounded-md border bg-muted/30" />}>
-            <CompanyNotes company={company} notes={companyNotes} dealUid={uid} />
+          <ClientOnly
+            fallback={
+              <div className="bg-muted/30 min-h-[200px] rounded-md border" />
+            }
+          >
+            <CompanyNotes
+              company={company}
+              notes={companyNotes}
+              dealUid={uid}
+            />
           </ClientOnly>
         </TabsContent>
       </Tabs>

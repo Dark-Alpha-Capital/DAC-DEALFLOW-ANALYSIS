@@ -20,12 +20,17 @@ interface DeleteDocumentAlertDialogProps {
   doc: DocumentRow;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Restrict delete to a deal or company scope (server-enforced). */
+  scopeEntityType?: "COMPANY" | "DEAL_OPPORTUNITY";
+  scopeEntityId?: string;
 }
 
 export function DeleteDocumentAlertDialog({
   doc,
   open,
   onOpenChange,
+  scopeEntityType,
+  scopeEntityId,
 }: DeleteDocumentAlertDialogProps) {
   const trpc = useTRPC();
   const router = useRouter();
@@ -44,7 +49,12 @@ export function DeleteDocumentAlertDialog({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
-    mutate({ documentId: doc.id });
+    mutate({
+      documentId: doc.id,
+      ...(scopeEntityType && scopeEntityId
+        ? { entityType: scopeEntityType, entityId: scopeEntityId }
+        : {}),
+    });
   };
 
   return (
@@ -53,8 +63,9 @@ export function DeleteDocumentAlertDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete document?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete &quot;{doc.title ?? doc.fileName}&quot; from the
-            database and from storage. This action cannot be undone.
+            This will permanently remove &quot;{doc.title ?? doc.fileName}&quot; from the
+            database, Nextcloud storage, all ingested text chunks, and the vector
+            search index. This cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -65,17 +65,22 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
     if (!vectorIndex) {
       throw new Error("DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config");
     }
-    return runDbWithWorkerNeonPool(async () => {
-      const instanceId = event.instanceId;
-      const { documentId, forceReingest } = event.payload;
 
-      try {
-        ragDebug("workflow.run.start", { instanceId, documentId, forceReingest });
+    const instanceId = event.instanceId;
+    const { documentId, forceReingest } = event.payload;
+
+    try {
+      ragDebug("workflow.run.start", { instanceId, documentId, forceReingest });
+      await runDbWithWorkerNeonPool(async () => {
         await markWorkflowRunning(instanceId);
-        const result = await step.do(
-          "rag-ingest",
-          { timeout: "30 minutes" },
-          async () => {
+      });
+
+      // `step.do` runs/replays its callback outside normal async ALS scope; bind a fresh Neon pool here.
+      const result = await step.do(
+        "rag-ingest",
+        { timeout: "30 minutes" },
+        () =>
+          runDbWithWorkerNeonPool(async () => {
             const stepT0 = Date.now();
             const reporter = workflowProgressReporter(instanceId);
             ragDebug("step.rag-ingest.start", {
@@ -294,29 +299,34 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               totalStepElapsedMs: Date.now() - stepT0,
             });
             return { success: true as const, chunksInserted: processed.length };
-          },
-        );
+          }),
+      );
 
-        ragDebug("workflow.run.completed", { instanceId, documentId, result });
+      ragDebug("workflow.run.completed", { instanceId, documentId, result });
+      await runDbWithWorkerNeonPool(async () => {
         await markWorkflowCompleted(instanceId, result);
-        return result;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error("[rag-ingestion] workflow.run.failed", {
-          ts: new Date().toISOString(),
-          instanceId,
-          documentId,
-          error: message,
-          stack: error instanceof Error ? error.stack : undefined,
-        });
-        try {
+      });
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[rag-ingestion] workflow.run.failed", {
+        ts: new Date().toISOString(),
+        instanceId,
+        documentId,
+        error: message,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      try {
+        await runDbWithWorkerNeonPool(async () => {
           await markDocumentIngestionFailed(documentId, message);
-        } catch {
-          // ignore
-        }
-        await markWorkflowFailed(instanceId, error);
-        throw error;
+        });
+      } catch {
+        // ignore
       }
-    });
+      await runDbWithWorkerNeonPool(async () => {
+        await markWorkflowFailed(instanceId, error);
+      });
+      throw error;
+    }
   }
 }

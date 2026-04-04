@@ -1,182 +1,284 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, ArrowLeft, Link as LinkIcon, CloudUpload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  ArrowLeft,
+  Link as LinkIcon,
+  Pencil,
+  Trash2,
+  CloudUpload,
+  ExternalLink,
+  Tag,
+  Upload,
+  Loader2,
+} from "lucide-react";
 import type { Deal, DealOpportunity } from "@repo/db/schema";
-import { DealStatus, DealType } from "@repo/db/enums";
-import { DealActionsDropdown } from "./deal-actions-dropdown";
 import { DealStatusControls } from "./DealStatusControls";
 import { DealPipelineSection } from "./DealPipelineSection";
-import { cn } from "@/lib/utils";
-
-const stageLabels: Record<string, string> = {
-  LISTED: "Listed",
-  INITIAL_REVIEW: "Initial Review",
-  SCREENED: "Screened",
-  MEETING_HELD: "Meeting",
-  IOI_SUBMITTED: "IOI",
-  LOI_SUBMITTED: "LOI",
-  DILIGENCE: "Diligence",
-  CLOSED: "Closed",
-  DEAD: "Dead",
-};
+import { useTRPC } from "@/trpc/client";
+import { useRouter } from "@/lib/navigation-shim";
+import { toast } from "sonner";
+import { exportDealToBitrix } from "@/lib/actions/upload-bitrix";
+import DeleteEntityDialog from "@/components/DeleteEntityDialog";
 
 interface DealHeaderProps {
   deal: Deal;
   uid: string;
   basePath?: "deal-opportunities" | "raw-deals";
-  stage?: string | null;
   currentOpportunity?: DealOpportunity | null;
 }
 
-function getDealTypeLabel(dealType: DealType): string {
-  switch (dealType) {
-    case "MANUAL":
-      return "Manual Deal";
-    case "AI_INFERRED":
-      return "AI Inferred";
-    case "SCRAPED":
-      return "Scraped";
-    default:
-      return dealType;
-  }
-}
+function DealHeaderToolbar({
+  deal,
+  uid,
+  variant,
+}: {
+  deal: Deal;
+  uid: string;
+  variant: "deal-opportunity" | "raw-deal";
+}) {
+  const trpc = useTRPC();
+  const router = useRouter();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [bitrixPending, startBitrixTransition] = useTransition();
 
-function getStatusColor(status: DealStatus): string {
-  switch (status) {
-    case "AVAILABLE":
-      return "bg-primary/10 text-primary";
-    case "SOLD":
-      return "bg-destructive/10 text-destructive";
-    case "UNDER_CONTRACT":
-      return "bg-muted text-muted-foreground";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
+  const { mutate: deleteOpportunity, isPending: isDeleting } = useMutation(
+    trpc.dealOpportunities.deleteOpportunity.mutationOptions({
+      onSuccess: () => {
+        toast.success("Deal opportunity deleted");
+        router.push("/deal-opportunities");
+        void router.invalidate();
+        setDeleteDialogOpen(false);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to delete deal opportunity");
+      },
+    }),
+  );
+
+  const sourceHref =
+    deal.sourceWebsite &&
+    (deal.sourceWebsite.startsWith("http")
+      ? deal.sourceWebsite
+      : `https://${deal.sourceWebsite}`);
+
+  const handlePublishToBitrix = () => {
+    startBitrixTransition(async () => {
+      try {
+        await exportDealToBitrix({ data: deal });
+        toast.success("Successfully published deal to Bitrix");
+      } catch (error) {
+        console.error(error);
+        toast.error("Error publishing deal to Bitrix");
+      }
+    });
+  };
+
+  const tip = (label: string) => (
+    <TooltipContent side="bottom">{label}</TooltipContent>
+  );
+
+  return (
+    <>
+      <TooltipProvider delayDuration={300}>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+          {variant === "deal-opportunity" ? (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" asChild>
+                    <Link
+                      to="/deal-opportunities/$uid/edit"
+                      params={{ uid }}
+                      aria-label="Edit deal opportunity"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                {tip("Edit deal opportunity")}
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" asChild>
+                    <Link
+                      to="/deal-opportunities/$uid/sync-bitrix-24"
+                      params={{ uid }}
+                      aria-label="Sync to Bitrix24"
+                    >
+                      <CloudUpload className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                {tip("Sync to Bitrix24")}
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    disabled={isDeleting}
+                    onClick={() => setDeleteDialogOpen(true)}
+                    aria-label="Delete deal opportunity"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                {tip("Delete deal opportunity")}
+              </Tooltip>
+            </>
+          ) : (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" asChild>
+                    <a href={`/raw-deals/${uid}/edit`} aria-label="Edit deal">
+                      <Pencil className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                {tip("Edit deal")}
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" asChild>
+                    <a href={`/raw-deals/${uid}/tags`} aria-label="Add tags">
+                      <Tag className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                {tip("Add tags")}
+              </Tooltip>
+
+              {!deal.bitrixId && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={bitrixPending}
+                      onClick={handlePublishToBitrix}
+                      aria-label="Publish to Bitrix"
+                    >
+                      {bitrixPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  {tip(
+                    bitrixPending ? "Publishing…" : "Publish deal to Bitrix",
+                  )}
+                </Tooltip>
+              )}
+            </>
+          )}
+
+          {sourceHref && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" asChild>
+                  <a
+                    href={sourceHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Visit listing website"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              {tip("Visit listing website")}
+            </Tooltip>
+          )}
+        </div>
+      </TooltipProvider>
+
+      {variant === "deal-opportunity" && (
+        <DeleteEntityDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Delete deal opportunity?"
+          description="This will permanently delete this deal opportunity. This action cannot be undone."
+          onConfirm={() => deleteOpportunity({ id: uid })}
+          isPending={isDeleting}
+        />
+      )}
+    </>
+  );
 }
 
 export function DealHeader({
   deal,
   uid,
   basePath = "raw-deals" as const,
-  stage,
   currentOpportunity,
 }: DealHeaderProps) {
-  const backHref =
-    basePath === "deal-opportunities" ? "/deal-opportunities" : "/raw-deals";
   const backLabel =
     basePath === "deal-opportunities"
       ? "Back to Deal opportunities"
       : "Back to Raw Deals";
-  const editHref =
-    basePath === "deal-opportunities"
-      ? `/deal-opportunities/${uid}/edit`
-      : `/raw-deals/${uid}/edit`;
 
-  const {
-    dealCaption,
-    dealType,
-    status,
-    brokerage,
-    companyLocation,
-    industry,
-    sourceWebsite,
-    reviewState,
-    bitrixId,
-    tags,
-    firstName,
-    lastName,
-    createdAt,
-  } = deal;
+  const variant =
+    basePath === "deal-opportunities" ? "deal-opportunity" : "raw-deal";
 
-  const brokerDisplay =
-    brokerage || [firstName, lastName].filter(Boolean).join(" ") || null;
+  const { dealCaption, status, bitrixId, tags } = deal;
+
+  const back =
+    basePath === "deal-opportunities" ? (
+      <Link
+        to="/deal-opportunities"
+        className="text-foreground hover:bg-accent inline-flex items-center gap-2 rounded-md px-0 py-2 text-sm font-medium transition-all hover:pl-2"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        {backLabel}
+      </Link>
+    ) : (
+      <a
+        href="/raw-deals"
+        className="text-foreground hover:bg-accent inline-flex items-center gap-2 rounded-md px-0 py-2 text-sm font-medium transition-all hover:pl-2"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        {backLabel}
+      </a>
+    );
 
   return (
     <div className="space-y-6">
-      <Button
-        variant="ghost"
-        asChild
-        className="gap-2 pl-0 transition-all hover:pl-2"
-      >
-        <Link to={backHref}>
-          <ArrowLeft className="h-4 w-4" />
-          {backLabel}
-        </Link>
-      </Button>
+      <div>{back}</div>
 
-      <div className="space-y-3">
-        <h1 className="text-foreground text-2xl font-semibold tracking-tight">
-          {dealCaption || "Deal"}
-        </h1>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1 space-y-3">
+          <h1 className="text-foreground text-2xl font-semibold tracking-tight">
+            {dealCaption || "Deal"}
+          </h1>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="font-medium">
-            {getDealTypeLabel(dealType)}
-          </Badge>
-          {stage && (
-            <Badge variant="outline" className="font-medium">
-              {stageLabels[stage] ?? stage.replace(/_/g, " ")}
-            </Badge>
-          )}
-          <Badge className={cn("font-medium", getStatusColor(status))}>
-            {status.replace("_", " ")}
-          </Badge>
-          {bitrixId && (
-            <Badge variant="outline" className="gap-1">
-              <LinkIcon className="h-3 w-3" />
-              Bitrix #{bitrixId}
-            </Badge>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {bitrixId && (
+              <Badge variant="outline" className="gap-1">
+                <LinkIcon className="h-3 w-3" />
+                Bitrix #{bitrixId}
+              </Badge>
+            )}
+          </div>
         </div>
 
-        <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-          {sourceWebsite && (
-            <div key="source">
-              <dt className="text-muted-foreground inline">Source: </dt>
-              <dd className="inline">
-                <a
-                  href={
-                    sourceWebsite.startsWith("http")
-                      ? sourceWebsite
-                      : `https://${sourceWebsite}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  {sourceWebsite}
-                </a>
-              </dd>
-            </div>
-          )}
-          {brokerDisplay && (
-            <div key="broker">
-              <dt className="text-muted-foreground inline">Broker: </dt>
-              <dd className="inline">{brokerDisplay}</dd>
-            </div>
-          )}
-          {createdAt && (
-            <div key="created">
-              <dt className="text-muted-foreground inline">Created: </dt>
-              <dd className="inline">
-                {new Date(createdAt).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </dd>
-            </div>
-          )}
-          {(companyLocation || industry) && (
-            <div key="meta">
-              <dt className="text-muted-foreground inline"> </dt>
-              <dd className="text-muted-foreground inline">
-                {[companyLocation, industry].filter(Boolean).join(" • ")}
-              </dd>
-            </div>
-          )}
-        </dl>
+        <DealHeaderToolbar deal={deal} uid={uid} variant={variant} />
       </div>
 
       {tags && tags.length > 0 && (
@@ -193,34 +295,6 @@ export function DealHeader({
       )}
 
       <div className="space-y-4">
-        <div className="border-border flex flex-wrap items-center gap-3 border-b pb-4">
-          <Button asChild>
-            <Link to={editHref}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit deal opportunity
-            </Link>
-          </Button>
-          {basePath === "deal-opportunities" && (
-            <Button variant="outline" asChild>
-              <Link
-                to="/deal-opportunities/$uid/sync-bitrix-24"
-                params={{ uid }}
-              >
-                <CloudUpload className="mr-2 h-4 w-4" />
-                Sync to Bitrix24
-              </Link>
-            </Button>
-          )}
-          <DealActionsDropdown
-            deal={deal}
-            uid={uid}
-            variant={
-              basePath === "deal-opportunities"
-                ? "deal-opportunity"
-                : "raw-deal"
-            }
-          />
-        </div>
         <div className="flex flex-wrap items-center gap-3">
           {currentOpportunity && (
             <DealPipelineSection

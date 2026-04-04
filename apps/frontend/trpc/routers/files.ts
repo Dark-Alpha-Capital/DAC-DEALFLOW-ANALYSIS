@@ -1,5 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import {
+  deleteChunkVectorsForDocument,
+  getDocumentChunksVectorIndex,
+} from "@/lib/document-chunk-vectorize";
+import {
   deleteDocumentInputSchema,
   updateDocumentInputSchema,
   uploadFileSchema,
@@ -8,7 +12,7 @@ import {
 import { eq } from "drizzle-orm";
 import { after } from "@/lib/after";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { documents, DocumentCategory } from "@repo/db";
+import db, { documents } from "@repo/db";
 import { uploadBuffer, deleteFile } from "@repo/nextcloud";
 import { revalidateTag } from "@/lib/cache-invalidation";
 import {
@@ -220,13 +224,39 @@ export const filesRouter = createTRPCRouter({
         .limit(1);
 
       if (!doc) {
-        throw new Error("Document not found");
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Document not found",
+        });
       }
 
-      await Promise.all([
-        deleteFile(doc.fileUrl),
-        db.delete(documents).where(eq(documents.id, input.documentId)),
-      ]);
+      if (input.entityType && input.entityId) {
+        const matchesScope =
+          doc.entityType === input.entityType &&
+          (input.entityType === "COMPANY"
+            ? doc.entityId === input.entityId || doc.companyId === input.entityId
+            : doc.entityId === input.entityId ||
+              doc.dealOpportunityId === input.entityId);
+        if (!matchesScope) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Document does not belong to this context",
+          });
+        }
+      }
+
+      try {
+        const vectorIndex = getDocumentChunksVectorIndex();
+        if (vectorIndex) {
+          await deleteChunkVectorsForDocument(db, vectorIndex, input.documentId);
+        }
+      } catch (err) {
+        console.error("[deleteDocument] Vectorize chunk cleanup failed", err);
+      }
+
+      await deleteFile(doc.fileUrl);
+
+      await db.delete(documents).where(eq(documents.id, input.documentId));
 
       const tag = doc.entityId
         ? doc.entityType === "DEAL_OPPORTUNITY"

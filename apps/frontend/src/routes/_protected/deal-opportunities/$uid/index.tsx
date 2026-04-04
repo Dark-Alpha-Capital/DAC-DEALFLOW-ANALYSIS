@@ -101,6 +101,7 @@ function DealOpportunityDetailView(props: {
         deterministicScreening={dealData.deterministicScreening ?? null}
         companyNotes={dealData.companyNotes ?? []}
         financialSnapshots={dealData.financialSnapshots ?? []}
+        creatorName={dealData.creatorName ?? null}
       />
     </section>
   );
