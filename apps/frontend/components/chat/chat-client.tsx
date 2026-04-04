@@ -178,7 +178,7 @@ export function ChatClient({
       queryClient.invalidateQueries({
         queryKey: trpc.chats.listRecent.queryKey({ limit: 50 }),
       });
-      router.refresh();
+      void router.invalidate();
     },
     onError: (error) => {
       setAssertiveAnnouncement("Something went wrong. Retry the response.");
@@ -340,7 +340,7 @@ export function ChatClient({
                   key={`${message.id}-${messageIndex}`}
                 >
                   <MessageContent>
-                    {message.parts.map((part, index) => {
+                    {(message.parts ?? []).map((part, index) => {
                       const key = `${message.id}-${index}`;
                       const toolPart = part as ToolPartLike;
 

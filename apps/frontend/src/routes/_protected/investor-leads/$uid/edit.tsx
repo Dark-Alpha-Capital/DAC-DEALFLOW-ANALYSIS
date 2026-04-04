@@ -4,8 +4,14 @@ import { ArrowLeft } from "lucide-react";
 import { loadInvestorLeadForEditData } from "@/lib/server/investor-leads-route-data";
 import EditInvestorLeadForm from "@/components/forms/edit-investor-lead-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute("/_protected/investor-leads/$uid/edit")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Edit Investor Lead — Dark Alpha Capital" }],
   }),

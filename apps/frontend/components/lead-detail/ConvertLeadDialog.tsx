@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
@@ -37,6 +36,7 @@ export function ConvertLeadDialog({
       onOpenChange(false);
       onSuccess?.();
       if (data.companyId) {
+        void router.invalidate();
         router.push(`/companies/${data.companyId}`);
       }
     },
@@ -50,6 +50,7 @@ export function ConvertLeadDialog({
         onOpenChange(false);
         onSuccess?.();
         if (data.companyId) {
+          void router.invalidate();
           router.push(`/companies/${data.companyId}`);
         }
       },
@@ -62,7 +63,9 @@ export function ConvertLeadDialog({
   const handleQuickConvert = () => {
     const defaults = getDefaultValues(lead);
     if (!defaults.name) {
-      toast.error("Lead has no usable company name. Use the form to customize.");
+      toast.error(
+        "Lead has no usable company name. Use the form to customize.",
+      );
       return;
     }
     quickConvert({
@@ -78,7 +81,7 @@ export function ConvertLeadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Convert lead to company</DialogTitle>
         </DialogHeader>
@@ -92,7 +95,9 @@ export function ConvertLeadDialog({
               onClick={handleQuickConvert}
               disabled={isQuickPending}
             >
-              {isQuickPending ? "Converting..." : "Quick convert (use defaults)"}
+              {isQuickPending
+                ? "Converting..."
+                : "Quick convert (use defaults)"}
             </Button>
           </div>
           <div className="border-t pt-4">

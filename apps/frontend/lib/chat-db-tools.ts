@@ -380,10 +380,10 @@ export async function getEntityCounts(
   if (shouldCount("screeners")) {
     const screenerWhere = query
       ? or(
-          ilike(screeners.name, `%${query}%`),
-          ilike(screeners.category, `%${query}%`),
-          ilike(screeners.description, `%${query}%`),
-        )
+        ilike(screeners.name, `%${query}%`),
+        ilike(screeners.category, `%${query}%`),
+        ilike(screeners.description, `%${query}%`),
+      )
       : undefined;
 
     const [row] = await db
@@ -603,10 +603,10 @@ export async function listEntities(
     case "screeners": {
       const screenerWhere = query
         ? or(
-            ilike(screeners.name, `%${query}%`),
-            ilike(screeners.category, `%${query}%`),
-            ilike(screeners.description, `%${query}%`),
-          )
+          ilike(screeners.name, `%${query}%`),
+          ilike(screeners.category, `%${query}%`),
+          ilike(screeners.description, `%${query}%`),
+        )
         : undefined;
 
       const [rows, totalRows] = await Promise.all([
@@ -991,10 +991,10 @@ export async function getEntityById(
         data: input.includeRelated
           ? themeWorkspace
           : {
-              theme: themeWorkspace.theme,
-              companyCount: themeWorkspace.companyCount,
-              dealOpportunityCount: themeWorkspace.dealOpportunityCount,
-            },
+            theme: themeWorkspace.theme,
+            companyCount: themeWorkspace.companyCount,
+            dealOpportunityCount: themeWorkspace.dealOpportunityCount,
+          },
         meta: { entity: input.entity, id: input.id },
       };
     }
@@ -1107,10 +1107,10 @@ export async function getEntityById(
         summary: `Fetched investor ${data.investor.name}`,
         data: input.includeRelated
           ? {
-              investor: data.investor,
-              interactions: data.interactions,
-              linkedCompanies: data.linkedCompanies,
-            }
+            investor: data.investor,
+            interactions: data.interactions,
+            linkedCompanies: data.linkedCompanies,
+          }
           : { investor: data.investor },
         meta: { entity: input.entity, id: input.id },
       };
@@ -1128,10 +1128,10 @@ export async function getEntityById(
         summary: `Fetched investor lead ${data.lead.name ?? data.lead.email ?? "unknown"}`,
         data: input.includeRelated
           ? {
-              lead: data.lead,
-              interactions: data.interactions,
-              convertedInvestor: convertedInvestor ?? undefined,
-            }
+            lead: data.lead,
+            interactions: data.interactions,
+            convertedInvestor: convertedInvestor ?? undefined,
+          }
           : { lead: data.lead },
         meta: { entity: input.entity, id: input.id },
       };
@@ -1283,14 +1283,14 @@ async function resolveThemeId(
   if (input.themeId) {
     return {
       id: input.themeId,
-      candidates: [] as Array<{ id: string; name: string; sector: string }> ,
+      candidates: [] as Array<{ id: string; name: string; sector: string }>,
     };
   }
 
   if (!input.query) {
     return {
       id: null,
-      candidates: [] as Array<{ id: string; name: string; sector: string }> ,
+      candidates: [] as Array<{ id: string; name: string; sector: string }>,
     };
   }
 

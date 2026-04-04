@@ -80,7 +80,7 @@ export default function LeadStatusControl({
         toast.success("Status updated");
         setDuplicateDialogOpen(false);
         setSearchQuery("");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to update status");

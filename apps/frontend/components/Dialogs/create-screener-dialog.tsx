@@ -60,7 +60,7 @@ export default function AddScreenerDialog() {
         toast.success("Screener template created");
         form.reset();
         setOpen(false);
-        router.refresh();
+        void router.invalidate();
 
         if (result.screenerId) {
           router.push(`/screeners/${result.screenerId}`);

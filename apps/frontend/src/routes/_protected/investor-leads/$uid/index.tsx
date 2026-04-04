@@ -9,8 +9,14 @@ import { investorLeadStatusLabels } from "@/components/investor-leads/columns";
 import { InvestorLeadInteractions } from "@/components/investor-leads/InvestorLeadInteractions";
 import { DeleteInvestorLeadButton } from "@/components/investor-leads/DeleteInvestorLeadButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute("/_protected/investor-leads/$uid/")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Investor lead — Dark Alpha Capital" }],
   }),

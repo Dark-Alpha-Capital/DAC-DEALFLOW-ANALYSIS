@@ -43,7 +43,7 @@ export function DealsWorkspace({
             selectedIds={selectedIds}
             onSuccess={() => {
               setRowSelection({});
-              router.refresh();
+              void router.invalidate();
             }}
           />
         </div>

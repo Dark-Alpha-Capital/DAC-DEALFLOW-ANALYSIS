@@ -31,7 +31,7 @@ function DeleteScreeningButton({
     trpc.dealOpportunities.deleteDeterministicScreening.mutationOptions({
       onSuccess: () => {
         toast.success("Screening deleted");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to delete screening");

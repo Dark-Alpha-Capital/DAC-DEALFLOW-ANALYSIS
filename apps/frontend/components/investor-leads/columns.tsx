@@ -49,7 +49,7 @@ function ActionsCell({ row }: { row: Row<InvestorLead> }) {
       onSuccess: () => {
         toast.success("Investor lead deleted");
         setOpen(false);
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to delete investor lead");

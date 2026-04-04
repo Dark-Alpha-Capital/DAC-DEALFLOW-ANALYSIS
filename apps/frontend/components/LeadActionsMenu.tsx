@@ -34,7 +34,7 @@ export default function LeadActionsMenu({
       onSuccess: () => {
         toast.success("Lead deleted");
         setDeleteDialogOpen(false);
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to delete lead");

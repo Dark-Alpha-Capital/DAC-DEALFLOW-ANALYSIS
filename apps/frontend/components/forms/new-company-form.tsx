@@ -42,6 +42,7 @@ export default function CreateNewCompanyForm() {
       onSuccess: (data) => {
         toast.success("Company added successfully");
         form.reset();
+        void router.invalidate();
         router.push(`/companies/${data.company?.id}`);
       },
       onError: (error) => {

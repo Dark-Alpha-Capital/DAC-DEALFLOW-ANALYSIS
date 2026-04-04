@@ -63,7 +63,7 @@ export function ThemeThesisTab({
         onSuccess: () => {
           toast.success("Thesis version saved");
           setFormOpen(false);
-          router.refresh();
+          void router.invalidate();
         },
         onError: (error) =>
           toast.error(error.message || "Failed to save thesis"),

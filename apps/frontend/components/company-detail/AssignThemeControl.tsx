@@ -36,7 +36,7 @@ export function AssignThemeControl({
     trpc.companies.assignTheme.mutationOptions({
       onSuccess: () => {
         toast.success("Theme updated");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to update theme");

@@ -111,9 +111,10 @@ export default function ConvertInvestorLeadToInvestorForm({
         if (onSuccess) {
           onSuccess(data);
         } else if (data.investorId) {
+          void router.invalidate();
           router.push(`/investors/${data.investorId}`);
         } else {
-          router.refresh();
+          void router.invalidate();
         }
       },
       onError: (error) => {

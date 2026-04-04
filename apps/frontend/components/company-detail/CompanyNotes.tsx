@@ -26,7 +26,7 @@ export function CompanyNotes({ company, notes, dealUid }: CompanyNotesProps) {
     trpc.companyNotes.delete.mutationOptions({
       onSuccess: () => {
         toast.success("Note deleted");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to delete note");
@@ -39,7 +39,7 @@ export function CompanyNotes({ company, notes, dealUid }: CompanyNotesProps) {
   };
 
   const handleSaved = () => {
-    router.refresh();
+    void router.invalidate();
   };
 
   return (

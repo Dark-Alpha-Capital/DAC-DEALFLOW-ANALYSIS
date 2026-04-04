@@ -37,6 +37,7 @@ export default function EditLeadForm({ lead }: { lead: Lead }) {
     trpc.leads.update.mutationOptions({
       onSuccess: () => {
         toast.success("Lead updated successfully");
+        void router.invalidate();
         router.push(`/leads/${lead.id}`);
       },
       onError: (error) => {

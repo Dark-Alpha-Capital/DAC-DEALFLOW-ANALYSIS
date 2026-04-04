@@ -59,6 +59,7 @@ export default function EditInvestorLeadForm({
     trpc.investorLeads.update.mutationOptions({
       onSuccess: () => {
         toast.success("Investor lead updated successfully");
+        void router.invalidate();
         router.push(`/investor-leads/${lead.id}`);
       },
       onError: (error) => {

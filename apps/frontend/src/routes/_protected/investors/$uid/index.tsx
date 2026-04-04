@@ -13,8 +13,14 @@ import { formatCurrency } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvestorInteractions } from "@/components/investors/InvestorInteractions";
 import { InvestorCompanyLinkTab } from "@/components/investors/InvestorCompanyLinkTab";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute("/_protected/investors/$uid/")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Investor — Dark Alpha Capital" }],
   }),

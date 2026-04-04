@@ -35,8 +35,12 @@ function getUrl() {
 
 function TanStackAppDevtools() {
   if (!import.meta.env.DEV) return null;
-  // Set VITE_DISABLE_TANSTACK_DEVTOOLS=true if an invisible devtools layer blocks clicks (localStorage can also persist "open").
+  // TanStack Devtools renders fixed UI at z-index ~99999. If localStorage leaves the panel "open"
+  // in a bad state, it can block all pointer events app-wide (dropdowns, sidebar, tables).
+  // Opt-in only: add VITE_ENABLE_TANSTACK_DEVTOOLS=true to .env.local when you need it.
+  // Or set VITE_DISABLE_TANSTACK_DEVTOOLS=true to force off if you had devtools enabled before.
   if (import.meta.env.VITE_DISABLE_TANSTACK_DEVTOOLS === "true") return null;
+  if (import.meta.env.VITE_ENABLE_TANSTACK_DEVTOOLS !== "true") return null;
   return (
     <TanStackDevtools
       plugins={[

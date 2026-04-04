@@ -5,14 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import LeadsAuthedSkeleton from "@/components/skeletons/LeadsAuthedSkeleton";
 import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
+import {
   asNumber,
   looseValidateSearch,
+  paginatedListLoaderDeps,
   type LooseSearch,
 } from "@/lib/route-search";
 
 export const Route = createFileRoute("/_protected/investors")({
   validateSearch: (search: Record<string, unknown>): LooseSearch =>
     looseValidateSearch(search),
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
+  loaderDeps: ({ search }) => paginatedListLoaderDeps(search),
   head: () => ({
     meta: [{ title: "Investors — Dark Alpha Capital" }],
   }),

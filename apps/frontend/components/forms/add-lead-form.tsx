@@ -38,6 +38,7 @@ export default function AddLeadForm() {
       onSuccess: () => {
         toast.success("Lead saved successfully");
         form.reset();
+        void router.invalidate();
         router.push("/leads");
       },
       onError: (error) => {

@@ -53,7 +53,7 @@ export default function DealOppCard({ opp, deal, company }: DealOppCardProps) {
     trpc.dealOpportunities.deleteOpportunity.mutationOptions({
       onSuccess: () => {
         toast.success("Deal deleted");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to delete deal");

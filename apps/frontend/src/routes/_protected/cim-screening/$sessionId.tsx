@@ -36,8 +36,13 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import useCurrentUser from "@/hooks/use-current-user";
+import { useRouter } from "@/lib/navigation-shim";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 import { loadCimScreeningSessionData } from "@/lib/server/cim-screening-route-data";
 import CimScreeningSessionPending from "@/components/skeletons/cim-screening-ekeleton";
 import { cn, formatBytes } from "@/lib/utils";
@@ -106,6 +111,8 @@ export const Route = createFileRoute("/_protected/cim-screening/$sessionId")({
           : undefined,
   }),
   loaderDeps: ({ search }) => ({ runId: search.runId }),
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   loader: async ({ params, deps }) =>
     loadCimScreeningSessionData({
       data: {
@@ -125,6 +132,7 @@ function CimScreeningSessionDetailPage() {
   const { runId: runIdFromSearch } = Route.useSearch();
   const { sessionData: initialSessionData, screeners } = Route.useLoaderData();
   const navigate = Route.useNavigate();
+  const router = useRouter();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
@@ -234,6 +242,7 @@ function CimScreeningSessionDetailPage() {
         queryClient.invalidateQueries({
           queryKey: trpc.simScreening.listSessions.queryKey({ limit: 20 }),
         });
+        void router.invalidate();
         toast.success("Retry started");
       },
       onError: (e) => {
@@ -271,6 +280,7 @@ function CimScreeningSessionDetailPage() {
         queryClient.invalidateQueries({
           queryKey: trpc.simScreening.listSessions.queryKey({ limit: 20 }),
         });
+        void router.invalidate();
         toast.success("Screening run started");
       },
       onError: (e) => {

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import type { Lead } from "@repo/db";
 import { Link } from "@tanstack/react-router";
@@ -58,7 +57,7 @@ export default function LeadDetailsDrawer({
         toast.success("Lead deleted");
         setDeleteDialogOpen(false);
         onOpenChange(false);
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to delete lead");
@@ -67,21 +66,27 @@ export default function LeadDetailsDrawer({
   );
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 pb-6">
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      direction="right"
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="bg-background fixed inset-y-0 right-0 left-auto z-50 mt-0 flex h-full w-full max-w-lg flex-col rounded-none rounded-l-xl border-0 border-l p-0 sm:max-w-xl md:max-w-2xl lg:max-w-3xl [&>div:first-child]:hidden">
+        <div className="flex min-h-0 flex-1 flex-col">
           {lead ? (
             <>
-              <DrawerHeader className="space-y-2">
-                <DrawerTitle className="flex items-center justify-between gap-3">
-                  <span className="line-clamp-2 wrap-break-word text-left text-base font-semibold">
+              {/* Top: title + status + meta (pinned) */}
+              <DrawerHeader className="shrink-0 gap-3 border-b px-4 pt-6 pb-4 text-left sm:px-6">
+                <div className="flex flex-col gap-2">
+                  <DrawerTitle className="line-clamp-3 text-left text-lg leading-snug font-semibold">
                     {lead.rawTitle}
-                  </span>
-                  <Badge className={getStatusColor(lead.status)}>
+                  </DrawerTitle>
+                  <Badge className={`w-fit ${getStatusColor(lead.status)}`}>
                     {lead.status}
                   </Badge>
-                </DrawerTitle>
-                <DrawerDescription className="text-xs">
+                </div>
+                <DrawerDescription className="text-left text-xs">
                   {lead.brokerage}
                   {lead.companyLocation && lead.brokerage && " • "}
                   {lead.companyLocation}
@@ -94,17 +99,18 @@ export default function LeadDetailsDrawer({
                 </DrawerDescription>
               </DrawerHeader>
 
-              <div className="space-y-4 px-4 text-sm">
+              {/* Middle: scrolls; footer actions stay visible below (shadcn scrollable pattern) */}
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 text-sm sm:px-6">
                 {(lead.revenue != null ||
                   lead.ebitda != null ||
                   lead.askingPrice != null) && (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <p className="text-muted-foreground text-xs font-medium">
                       Financials
                     </p>
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-3">
                       {lead.revenue != null && (
-                        <div>
+                        <div className="space-y-1">
                           <p className="text-muted-foreground text-xs">
                             Revenue
                           </p>
@@ -114,7 +120,7 @@ export default function LeadDetailsDrawer({
                         </div>
                       )}
                       {lead.ebitda != null && (
-                        <div>
+                        <div className="space-y-1">
                           <p className="text-muted-foreground text-xs">
                             EBITDA
                           </p>
@@ -124,7 +130,7 @@ export default function LeadDetailsDrawer({
                         </div>
                       )}
                       {lead.askingPrice != null && (
-                        <div>
+                        <div className="space-y-1">
                           <p className="text-muted-foreground text-xs">
                             Asking price
                           </p>
@@ -138,25 +144,35 @@ export default function LeadDetailsDrawer({
                 )}
 
                 {lead.rawDescription && (
-                  <div className="space-y-2">
+                  <div
+                    className={
+                      lead.revenue != null ||
+                      lead.ebitda != null ||
+                      lead.askingPrice != null
+                        ? "mt-6 space-y-2"
+                        : "space-y-2"
+                    }
+                  >
                     <p className="text-muted-foreground text-xs font-medium">
                       Description
                     </p>
-                    <p className="whitespace-pre-wrap text-xs leading-relaxed">
+                    <p className="text-xs leading-relaxed whitespace-pre-wrap">
                       {lead.rawDescription}
                     </p>
                   </div>
                 )}
               </div>
 
-              <DrawerFooter className="flex flex-row items-center justify-between gap-3 border-t pt-4">
-                <div className="text-muted-foreground text-xs">
+              {/* Bottom: actions (pinned) */}
+              <DrawerFooter className="shrink-0 flex-col gap-4 border-t px-4 pt-4 pb-6 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div className="text-muted-foreground order-2 text-xs sm:order-1">
                   Added {new Date(lead.createdAt).toLocaleDateString()}
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex w-full flex-wrap gap-2 sm:order-2 sm:w-auto sm:justify-end">
                   <Button asChild size="sm" variant="outline">
                     <Link
-                      href={`/leads/${lead.id}`}
+                      to="/leads/$uid"
+                      params={{ uid: lead.id }}
                       className="inline-flex items-center gap-1.5"
                     >
                       <Eye className="h-4 w-4" />
@@ -176,7 +192,8 @@ export default function LeadDetailsDrawer({
                   )}
                   <Button asChild size="sm" variant="outline">
                     <Link
-                      href={`/leads/${lead.id}/edit`}
+                      to="/leads/$uid/edit"
+                      params={{ uid: lead.id }}
                       className="inline-flex items-center gap-1.5"
                     >
                       <Pencil className="h-4 w-4" />
@@ -213,7 +230,7 @@ export default function LeadDetailsDrawer({
               )}
             </>
           ) : (
-            <div className="space-y-2 px-4 py-6">
+            <div className="flex min-h-0 flex-1 flex-col justify-center gap-2 px-4 py-10 text-center sm:px-6">
               <p className="text-sm font-medium">No lead selected</p>
               <p className="text-muted-foreground text-xs">
                 Select a lead from the table to view its details.
@@ -225,4 +242,3 @@ export default function LeadDetailsDrawer({
     </Drawer>
   );
 }
-

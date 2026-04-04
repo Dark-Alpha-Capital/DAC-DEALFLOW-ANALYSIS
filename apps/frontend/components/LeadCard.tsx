@@ -27,7 +27,7 @@ export default function LeadCard({ lead }: { lead: Lead }) {
     trpc.leads.delete.mutationOptions({
       onSuccess: () => {
         toast.success("Lead deleted");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to delete lead");

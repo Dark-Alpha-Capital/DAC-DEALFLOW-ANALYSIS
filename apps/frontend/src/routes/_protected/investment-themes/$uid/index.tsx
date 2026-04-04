@@ -5,6 +5,10 @@ import { ArrowLeft, Palette, Pencil } from "lucide-react";
 import { loadInvestmentThemeDetailData } from "@/lib/server/investment-themes-route-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import ThemeDetailTabs from "@/components/theme-detail/ThemeDetailTabs";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 function getStatusColor(status: string): string {
   switch (status) {
@@ -20,6 +24,8 @@ function getStatusColor(status: string): string {
 }
 
 export const Route = createFileRoute("/_protected/investment-themes/$uid/")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Investment theme — Dark Alpha Capital" }],
   }),

@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
+import { useRouter } from "@/lib/navigation-shim";
 
 const GLOBAL_CATEGORIES = [
   {
@@ -80,6 +81,7 @@ export function GlobalDocumentUploadDialog({
   acceptedTypes = ["*/*"],
   maxFileSize = 50,
 }: GlobalDocumentUploadDialogProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<UploadFile | null>(null);
   const [category, setCategory] = useState<string>("");
@@ -118,6 +120,7 @@ export function GlobalDocumentUploadDialog({
         setTitle("");
         setDescription("");
         setIsOpen(false);
+        void router.invalidate();
       },
       onError: (error) => {
         console.error("Upload failed:", error);

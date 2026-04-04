@@ -327,7 +327,7 @@ export function InvestorInteractions(props: {
         setOpen(false);
         setEditing(null);
         form.reset({ type: form.getValues("type"), notes: "", outcome: "" });
-        router.refresh();
+        void router.invalidate();
       },
       onError: (err) => toast.error(err.message || "Failed to log interaction"),
     }),
@@ -339,7 +339,7 @@ export function InvestorInteractions(props: {
         toast.success("Interaction updated");
         setOpen(false);
         setEditing(null);
-        router.refresh();
+        void router.invalidate();
       },
       onError: (err) =>
         toast.error(err.message || "Failed to update interaction"),
@@ -350,7 +350,7 @@ export function InvestorInteractions(props: {
     trpc.investors.deleteInteraction.mutationOptions({
       onSuccess: async () => {
         toast.success("Interaction deleted");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (err) =>
         toast.error(err.message || "Failed to delete interaction"),

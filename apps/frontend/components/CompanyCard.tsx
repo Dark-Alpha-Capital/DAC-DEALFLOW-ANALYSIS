@@ -29,7 +29,7 @@ export default function CompanyCard({ company }: { company: CompanyWithTheme }) 
     trpc.companies.delete.mutationOptions({
       onSuccess: () => {
         toast.success("Company deleted");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to delete company");

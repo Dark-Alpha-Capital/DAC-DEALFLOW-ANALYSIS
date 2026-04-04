@@ -61,6 +61,7 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
     trpc.dealOpportunities.updateOpportunity.mutationOptions({
       onSuccess: () => {
         toast.success("Deal updated successfully");
+        void router.invalidate();
         router.push(`/deal-opportunities/${opp.id}`);
       },
       onError: (error) => {

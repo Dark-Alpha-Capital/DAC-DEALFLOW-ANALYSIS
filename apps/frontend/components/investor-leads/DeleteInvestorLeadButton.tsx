@@ -29,6 +29,7 @@ export function DeleteInvestorLeadButton({ lead }: { lead: InvestorLead }) {
       onSuccess: () => {
         toast.success("Investor lead deleted");
         setOpen(false);
+        void router.invalidate();
         router.push("/investor-leads");
       },
       onError: (error) => {

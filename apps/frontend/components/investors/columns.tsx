@@ -48,7 +48,7 @@ function InvestorActionsCell({ investor }: { investor: Investor }) {
     trpc.investors.delete.mutationOptions({
       onSuccess: () => {
         toast.success("Investor deleted");
-        router.refresh();
+        void router.invalidate();
         setDeleteDialogOpen(false);
       },
       onError: (error) => {

@@ -91,7 +91,7 @@ export function ThemeIndustryIntelligenceTab({
         onSuccess: () => {
           toast.success("Industry intelligence version saved");
           setFormOpen(false);
-          router.refresh();
+          void router.invalidate();
         },
         onError: (error) =>
           toast.error(error.message || "Failed to save industry intelligence"),

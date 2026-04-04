@@ -126,7 +126,7 @@ export function InvestorCompanyLinkTab({
       onSuccess: () => {
         toast.success("Link removed");
         setRemoveRow(null);
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to remove link");

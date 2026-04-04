@@ -4,8 +4,14 @@ import { loadDealOpportunityDetailData } from "@/lib/server/deal-opportunities-r
 import { Button } from "@/components/ui/button";
 import { DealDetailTabs } from "@/components/deal-detail/DealDetailTabs";
 import type { AiScreening } from "@repo/db/schema";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute("/_protected/deal-opportunities/$uid/")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Deal opportunity — Dark Alpha Capital" }],
   }),

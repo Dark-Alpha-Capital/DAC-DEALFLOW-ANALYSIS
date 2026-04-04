@@ -72,7 +72,7 @@ export function AddCompanyFinancialSnapshotDialog({
         toast.success("Financial snapshot added");
         setOpen(false);
         form.reset();
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to add snapshot");

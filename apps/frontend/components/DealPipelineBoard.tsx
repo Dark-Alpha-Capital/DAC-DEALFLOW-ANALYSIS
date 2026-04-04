@@ -57,7 +57,7 @@ export default function DealPipelineBoard({ data }: DealPipelineBoardProps) {
     trpc.dealOpportunities.updateOpportunityStage.mutationOptions({
       onSuccess: () => {
         toast.success("Deal stage updated");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to update stage");

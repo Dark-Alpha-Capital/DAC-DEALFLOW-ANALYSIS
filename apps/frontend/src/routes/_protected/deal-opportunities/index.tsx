@@ -4,8 +4,14 @@ import { loadRankedDealOpportunitiesPageData } from "@/lib/server/deal-opportuni
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { DealsWorkspace } from "@/components/deal-opportunities/deals-workspace";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute("/_protected/deal-opportunities/")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Deal opportunities — Dark Alpha Capital" }],
   }),

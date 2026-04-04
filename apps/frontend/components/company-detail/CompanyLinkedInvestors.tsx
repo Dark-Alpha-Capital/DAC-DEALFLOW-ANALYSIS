@@ -66,7 +66,7 @@ function AddInvestorLinkForm({
         setInvestorLabel("");
         setNotes("");
         setStatus("ACTIVE");
-        router.refresh();
+        void router.invalidate();
         onSaved?.();
       },
       onError: (error) => {
@@ -166,7 +166,7 @@ function EditInvestorLinkForm({
     trpc.investors.updateInvestorCompanyLink.mutationOptions({
       onSuccess: () => {
         toast.success("Link updated");
-        router.refresh();
+        void router.invalidate();
         onSaved?.();
       },
       onError: (error) => {
@@ -246,7 +246,7 @@ export function CompanyLinkedInvestors({
       onSuccess: () => {
         toast.success("Link removed");
         setRemoveRow(null);
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to remove link");

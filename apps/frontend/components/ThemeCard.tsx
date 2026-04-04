@@ -54,7 +54,7 @@ export default function ThemeCard({ theme }: { theme: Theme }) {
     trpc.themes.delete.mutationOptions({
       onSuccess: () => {
         toast.success("Theme deleted");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to delete theme");

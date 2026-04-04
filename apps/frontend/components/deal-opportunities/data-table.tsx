@@ -1,8 +1,8 @@
-
 import * as React from "react";
 import {
   type ColumnDef,
   type ColumnFiltersState,
+  type OnChangeFn,
   type RowSelectionState,
   type SortingState,
   flexRender,
@@ -30,11 +30,22 @@ import {
 } from "@/components/ui/select";
 import { useRouter } from "@/lib/navigation-shim";
 
+function isInteractiveRowClickTarget(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    Boolean(
+      target.closest(
+        "button, a, input, select, textarea, label, [role='checkbox'], [role='menuitem']",
+      ),
+    )
+  );
+}
+
 interface DealsDataTableProps {
   columns: ColumnDef<DealOppRow>[];
   data: DealOppRow[];
   rowSelection?: RowSelectionState;
-  onRowSelectionChange?: (updater: (prev: RowSelectionState) => RowSelectionState) => void;
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>;
 }
 
 export function DealsDataTable({
@@ -133,7 +144,10 @@ export function DealsDataTable({
                 <TableRow
                   key={row.id}
                   className="hover:bg-muted/60 cursor-pointer"
-                  onClick={() => router.push(`/deal-opportunities/${row.original.opp.id}`)}
+                  onClick={(e) => {
+                    if (isInteractiveRowClickTarget(e.target)) return;
+                    router.push(`/deal-opportunities/${row.original.opp.id}`);
+                  }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell

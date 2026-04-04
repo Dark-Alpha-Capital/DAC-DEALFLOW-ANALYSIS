@@ -82,6 +82,7 @@ export default function EditCompanyForm({ company }: { company: Company }) {
     trpc.companies.update.mutationOptions({
       onSuccess: () => {
         toast.success("Company updated successfully");
+        void router.invalidate();
         router.push(`/companies/${company.id}`);
       },
       onError: (error) => {

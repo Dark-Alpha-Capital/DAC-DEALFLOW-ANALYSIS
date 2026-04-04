@@ -8,8 +8,14 @@ import { LeadDetailTabs } from "@/components/lead-detail/LeadDetailTabs";
 import { getLeadStatusClassName } from "@/lib/lead-status";
 import LeadStatusControl from "@/components/lead-detail/LeadStatusControl";
 import BackButton from "@/components/Buttons/back-button";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute("/_protected/leads/$uid/")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Lead — Dark Alpha Capital" }],
   }),

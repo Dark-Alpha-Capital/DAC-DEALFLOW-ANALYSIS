@@ -32,10 +32,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import useCurrentUser from "@/hooks/use-current-user";
+import { useRouter } from "@/lib/navigation-shim";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 import { loadCimScreeningIndexData } from "@/lib/server/cim-screening-route-data";
 
 export const Route = createFileRoute("/_protected/cim-screening/")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "SIM screening — Dark Alpha Capital" }],
   }),
@@ -46,6 +53,7 @@ export const Route = createFileRoute("/_protected/cim-screening/")({
 
 function SimScreeningPage() {
   const navigate = Route.useNavigate();
+  const router = useRouter();
   const { screeners, recentSessions } = Route.useLoaderData();
   const queryClient = useQueryClient();
   const trpc = useTRPC();
@@ -79,6 +87,7 @@ function SimScreeningPage() {
         void queryClient.invalidateQueries({
           queryKey: trpc.simScreening.listLibraryDocuments.queryKey(),
         });
+        void router.invalidate();
         toast.success("CIM screening started");
         setDocumentId("");
         setScreenerId("");

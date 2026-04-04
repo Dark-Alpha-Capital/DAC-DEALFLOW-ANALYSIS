@@ -35,6 +35,7 @@ import { Route as ProtectedInvestmentThemesIndexRouteImport } from './routes/_pr
 import { Route as ProtectedDealOpportunitiesIndexRouteImport } from './routes/_protected/deal-opportunities/index'
 import { Route as ProtectedCompaniesIndexRouteImport } from './routes/_protected/companies/index'
 import { Route as ProtectedCimScreeningIndexRouteImport } from './routes/_protected/cim-screening/index'
+import { Route as ChatbotChatIndexRouteImport } from './routes/_chatbot/chat/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc.$'
 import { Route as ApiLeadsIngestRouteImport } from './routes/api/leads/ingest'
 import { Route as ApiInvestorLeadsIngestRouteImport } from './routes/api/investor-leads/ingest'
@@ -217,6 +218,11 @@ const ProtectedCimScreeningIndexRoute =
     path: '/cim-screening/',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ChatbotChatIndexRoute = ChatbotChatIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ChatbotChatRoute,
+} as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   id: '/$',
   path: '/$',
@@ -554,6 +560,7 @@ export interface FileRoutesByFullPath {
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/chat/': typeof ChatbotChatIndexRoute
   '/cim-screening/': typeof ProtectedCimScreeningIndexRoute
   '/companies/': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
@@ -577,7 +584,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof ProtectedIndexRoute
-  '/chat': typeof ChatbotChatRouteWithChildren
   '/docs': typeof DocumentationDocsRouteWithChildren
   '/admin': typeof ProtectedAdminRoute
   '/analytics': typeof ProtectedAnalyticsRoute
@@ -629,6 +635,7 @@ export interface FileRoutesByTo {
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/chat': typeof ChatbotChatIndexRoute
   '/cim-screening': typeof ProtectedCimScreeningIndexRoute
   '/companies': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities': typeof ProtectedDealOpportunitiesIndexRoute
@@ -709,6 +716,7 @@ export interface FileRoutesById {
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/_chatbot/chat/': typeof ChatbotChatIndexRoute
   '/_protected/cim-screening/': typeof ProtectedCimScreeningIndexRoute
   '/_protected/companies/': typeof ProtectedCompaniesIndexRoute
   '/_protected/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
@@ -786,6 +794,7 @@ export interface FileRouteTypes {
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/trpc/$'
+    | '/chat/'
     | '/cim-screening/'
     | '/companies/'
     | '/deal-opportunities/'
@@ -809,7 +818,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/chat'
     | '/docs'
     | '/admin'
     | '/analytics'
@@ -861,6 +869,7 @@ export interface FileRouteTypes {
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/trpc/$'
+    | '/chat'
     | '/cim-screening'
     | '/companies'
     | '/deal-opportunities'
@@ -940,6 +949,7 @@ export interface FileRouteTypes {
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/trpc/$'
+    | '/_chatbot/chat/'
     | '/_protected/cim-screening/'
     | '/_protected/companies/'
     | '/_protected/deal-opportunities/'
@@ -1160,6 +1170,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/cim-screening/'
       preLoaderRoute: typeof ProtectedCimScreeningIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_chatbot/chat/': {
+      id: '/_chatbot/chat/'
+      path: '/'
+      fullPath: '/chat/'
+      preLoaderRoute: typeof ChatbotChatIndexRouteImport
+      parentRoute: typeof ChatbotChatRoute
     }
     '/api/trpc/$': {
       id: '/api/trpc/$'
@@ -1544,10 +1561,12 @@ const AuthenticationRouteRouteWithChildren =
 
 interface ChatbotChatRouteChildren {
   ChatbotChatIdRoute: typeof ChatbotChatIdRoute
+  ChatbotChatIndexRoute: typeof ChatbotChatIndexRoute
 }
 
 const ChatbotChatRouteChildren: ChatbotChatRouteChildren = {
   ChatbotChatIdRoute: ChatbotChatIdRoute,
+  ChatbotChatIndexRoute: ChatbotChatIndexRoute,
 }
 
 const ChatbotChatRouteWithChildren = ChatbotChatRoute._addFileChildren(

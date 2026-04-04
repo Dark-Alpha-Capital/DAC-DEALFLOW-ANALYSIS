@@ -18,7 +18,7 @@ export function ScreenDealButton({
     trpc.dealOpportunities.screenOpportunity.mutationOptions({
       onSuccess: () => {
         toast.success("Deterministic screening completed");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to run screening");

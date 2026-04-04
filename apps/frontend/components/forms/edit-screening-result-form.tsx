@@ -25,6 +25,7 @@ import { DealType, Sentiment } from "@repo/db/enums";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
+import { useRouter } from "@/lib/navigation-shim";
 
 const EditScreeningResultForm = ({
   screeningId,
@@ -44,11 +45,13 @@ const EditScreeningResultForm = ({
   setDialogClose: () => void;
 }) => {
   const trpc = useTRPC();
+  const router = useRouter();
 
   const { mutate: updateScreening, isPending } = useMutation(
     trpc.screenings.update.mutationOptions({
       onSuccess: () => {
         toast.success("Screening result updated successfully");
+        void router.invalidate();
         setDialogClose();
       },
       onError: (error) => {

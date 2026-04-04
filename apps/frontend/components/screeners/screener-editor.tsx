@@ -133,7 +133,7 @@ export default function ScreenerEditor({
       onSuccess: async () => {
         await invalidateScreenerQueries();
         toast.success("Template updated");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to update template");

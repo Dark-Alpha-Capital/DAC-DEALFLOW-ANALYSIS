@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
+import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
 import type { DocumentRow } from "./columns";
 
@@ -74,10 +75,12 @@ export function EditDocumentDialog({
   }, [open, doc.title, doc.description, doc.category]);
 
   const trpc = useTRPC();
+  const router = useRouter();
   const { mutate, isPending } = useMutation(
     trpc.files.updateDocument.mutationOptions({
       onSuccess: () => {
         toast.success("Document updated");
+        void router.invalidate();
         onOpenChange(false);
       },
       onError: (err) => {

@@ -1,11 +1,10 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { ChatRedirectSkeleton } from "@/components/skeletons/chat-redirect-skeleton";
-import { ChatWelcome } from "@/components/chat/chat-welcome";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
+/** Layout: child routes (`/chat/`, `/chat/$id`) render in the outlet. */
 export const Route = createFileRoute("/_chatbot/chat")({
-  head: () => ({
-    meta: [{ title: "Chat — Dark Alpha Capital" }],
-  }),
-  pendingComponent: ChatRedirectSkeleton,
-  component: ChatWelcome,
+  component: ChatLayout,
 });
+
+function ChatLayout() {
+  return <Outlet />;
+}

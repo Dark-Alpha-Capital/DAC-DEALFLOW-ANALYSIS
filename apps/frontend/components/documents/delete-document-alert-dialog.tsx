@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
+import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
 import type { DocumentRow } from "./columns";
 
@@ -27,11 +28,13 @@ export function DeleteDocumentAlertDialog({
   onOpenChange,
 }: DeleteDocumentAlertDialogProps) {
   const trpc = useTRPC();
+  const router = useRouter();
   const { mutate, isPending } = useMutation(
     trpc.files.deleteDocument.mutationOptions({
       onSuccess: () => {
         toast.success("Document deleted");
         onOpenChange(false);
+        void router.invalidate();
       },
       onError: (err) => {
         toast.error(err.message ?? "Failed to delete document");

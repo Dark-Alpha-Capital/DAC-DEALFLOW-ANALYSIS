@@ -4,8 +4,14 @@ import { loadScreenersPageData } from "@/lib/server/screeners-route-data";
 import { Badge } from "@/components/ui/badge";
 import AddScreenerDialog from "@/components/Dialogs/create-screener-dialog";
 import DeleteScreenerButton from "@/components/screeners/delete-screener-button";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute("/_protected/screeners/")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Screeners — Dark Alpha Capital" }],
   }),

@@ -4,8 +4,14 @@ import { ArrowLeft } from "lucide-react";
 import ConvertLeadToCompanyForm from "@/components/lead-detail/ConvertLeadToCompanyForm";
 import { loadConvertLeadPageData } from "@/lib/server/leads-route-data";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute("/_protected/leads/$uid/convert")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Convert Lead — Dark Alpha Capital" }],
   }),

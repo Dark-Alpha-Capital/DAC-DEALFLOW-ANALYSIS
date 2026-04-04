@@ -4,8 +4,14 @@ import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CompanyTabs } from "@/components/company-detail/CompanyTabs";
 import { loadCompanyDetailData } from "@/lib/server/company-route-data";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute("/_protected/companies/$uid")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Company — Dark Alpha Capital" }],
   }),

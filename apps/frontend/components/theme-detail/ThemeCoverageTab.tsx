@@ -24,7 +24,7 @@ export function ThemeCoverageTab({
     trpc.themes.coverageUpsert.mutationOptions({
       onSuccess: () => {
         toast.success("Coverage updated");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) =>
         toast.error(error.message || "Failed to update coverage"),

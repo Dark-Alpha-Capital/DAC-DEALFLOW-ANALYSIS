@@ -17,6 +17,7 @@ export const Route = createFileRoute("/_chatbot/chat/$id")({
     if (!data) {
       throw redirect({ to: "/chat" });
     }
+
     return data as ChatRouteLoaderData;
   },
   pendingComponent: ChatSessionSkeleton,

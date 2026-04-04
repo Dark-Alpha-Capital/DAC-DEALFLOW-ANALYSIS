@@ -52,6 +52,7 @@ export default function EditThemeForm({ theme }: { theme: Theme }) {
     trpc.themes.update.mutationOptions({
       onSuccess: () => {
         toast.success("Theme updated successfully");
+        void router.invalidate();
         router.push(`/investment-themes/${theme.id}`);
       },
       onError: (error) => {

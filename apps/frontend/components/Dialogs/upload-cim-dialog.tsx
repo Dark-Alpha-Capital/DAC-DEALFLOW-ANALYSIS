@@ -65,7 +65,7 @@ export function UploadCIMDialog({
         toast.success("CIM uploaded. Extraction running in background.");
         setFile(null);
         setIsOpen(false);
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message ?? "Failed to upload CIM");

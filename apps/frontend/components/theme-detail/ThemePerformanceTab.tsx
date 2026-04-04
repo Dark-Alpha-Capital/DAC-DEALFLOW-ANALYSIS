@@ -40,7 +40,7 @@ export function ThemePerformanceTab({
           setPerfEntryMultiple("");
           setPerfIrr("");
           setFormOpen(false);
-          router.refresh();
+          void router.invalidate();
         },
         onError: (error) =>
           toast.error(error.message || "Failed to save performance snapshot"),
@@ -54,7 +54,7 @@ export function ThemePerformanceTab({
     trpc.themes.performanceDeleteSnapshot.mutationOptions({
       onSuccess: () => {
         toast.success("Snapshot deleted");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) =>
         toast.error(error.message || "Failed to delete snapshot"),

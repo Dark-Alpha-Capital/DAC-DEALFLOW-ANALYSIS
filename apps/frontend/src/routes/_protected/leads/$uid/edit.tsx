@@ -4,8 +4,14 @@ import { loadLeadForEditData } from "@/lib/server/leads-route-data";
 import EditLeadForm from "@/components/forms/edit-lead-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import BackButton from "@/components/Buttons/back-button";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute("/_protected/leads/$uid/edit")({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Edit Lead — Dark Alpha Capital" }],
   }),

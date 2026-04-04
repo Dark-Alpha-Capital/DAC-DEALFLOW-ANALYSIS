@@ -20,8 +20,13 @@ import {
 } from "@/components/theme-filters";
 import DeleteThemeFiltersButton from "@/components/Buttons/delete-theme-filters-button";
 import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
+import {
   asNumber,
   asString,
+  investmentThemesListLoaderDeps,
   looseValidateSearch,
   type LooseSearch,
 } from "@/lib/route-search";
@@ -31,6 +36,9 @@ const DEFAULT_OPEN_FILTER_SECTIONS = ["search", "scores"];
 export const Route = createFileRoute("/_protected/investment-themes/")({
   validateSearch: (search: Record<string, unknown>): LooseSearch =>
     looseValidateSearch(search),
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
+  loaderDeps: ({ search }) => investmentThemesListLoaderDeps(search),
   head: () => ({
     meta: [{ title: "Investment Themes — Dark Alpha Capital" }],
   }),

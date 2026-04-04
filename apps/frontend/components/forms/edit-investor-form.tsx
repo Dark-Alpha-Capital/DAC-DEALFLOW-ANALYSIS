@@ -66,6 +66,7 @@ export default function EditInvestorForm({ investor }: { investor: Investor }) {
     trpc.investors.update.mutationOptions({
       onSuccess: () => {
         toast.success("Investor updated successfully");
+        void router.invalidate();
         router.push(`/investors/${investor.id}`);
       },
       onError: (error) => {

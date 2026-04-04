@@ -70,6 +70,7 @@ export default function AddInvestorForm() {
       onSuccess: (data) => {
         toast.success("Investor saved successfully");
         form.reset();
+        void router.invalidate();
         router.push(
           data.investorId ? `/investors/${data.investorId}` : "/investors",
         );

@@ -52,6 +52,7 @@ export default function AddThemeForm() {
       onSuccess: () => {
         toast.success("Theme saved successfully");
         form.reset();
+        void router.invalidate();
         router.push("/investment-themes");
       },
       onError: (error) => {

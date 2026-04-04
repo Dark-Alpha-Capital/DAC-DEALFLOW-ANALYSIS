@@ -1,4 +1,3 @@
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link } from "@tanstack/react-router";
@@ -12,11 +11,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  FieldGroup,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field";
+import { FieldGroup, FieldLegend, FieldSet } from "@/components/ui/field";
 import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
@@ -31,7 +26,8 @@ import {
 import { formatNumberWithCommas } from "@/lib/utils";
 
 export function getDefaultValues(lead: Lead): ConvertLeadToCompanyFormValues {
-  const name = lead.normalizedCompanyName?.trim() || lead.rawTitle?.trim() || "";
+  const name =
+    lead.normalizedCompanyName?.trim() || lead.rawTitle?.trim() || "";
   return {
     name,
     normalizedName: name,
@@ -63,9 +59,10 @@ export default function ConvertLeadToCompanyForm({
         if (onSuccess) {
           onSuccess(data);
         } else if (data.companyId) {
+          void router.invalidate();
           router.push(`/companies/${data.companyId}`);
         } else {
-          router.refresh();
+          void router.invalidate();
         }
       },
       onError: (error) => {
@@ -171,7 +168,9 @@ export default function ConvertLeadToCompanyForm({
                           : ""
                       }
                       onChange={(e) => {
-                        const parsed = parseOptionalNumericInput(e.target.value);
+                        const parsed = parseOptionalNumericInput(
+                          e.target.value,
+                        );
                         if (parsed === null) return;
                         field.onChange(parsed);
                       }}
@@ -197,7 +196,9 @@ export default function ConvertLeadToCompanyForm({
                           : ""
                       }
                       onChange={(e) => {
-                        const parsed = parseOptionalNumericInput(e.target.value);
+                        const parsed = parseOptionalNumericInput(
+                          e.target.value,
+                        );
                         if (parsed === null) return;
                         field.onChange(parsed);
                       }}

@@ -1,4 +1,3 @@
-
 import { Link } from "@tanstack/react-router";
 import { usePathname } from "@/lib/navigation-shim";
 import { NewChatSidebarButton } from "./new-chat-sidebar-button";
@@ -41,7 +40,9 @@ export default function ChatSidebar() {
       <SidebarHeader className="border-b px-2 py-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <NewChatSidebarButton isActive={pathname === "/chat"} />
+            <NewChatSidebarButton
+              isActive={pathname === "/chat" || pathname === "/chat/"}
+            />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

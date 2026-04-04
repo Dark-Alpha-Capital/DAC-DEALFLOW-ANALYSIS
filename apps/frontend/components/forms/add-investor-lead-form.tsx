@@ -59,6 +59,7 @@ export default function AddInvestorLeadForm() {
       onSuccess: (data) => {
         toast.success("Investor lead saved successfully");
         form.reset();
+        void router.invalidate();
         router.push(
           data.investorLeadId
             ? `/investor-leads/${data.investorLeadId}`

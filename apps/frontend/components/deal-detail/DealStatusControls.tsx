@@ -47,7 +47,7 @@ export function DealStatusControls({
     trpc.dealOpportunities.updateSpecifications.mutationOptions({
       onSuccess: () => {
         toast.success("Deal updated");
-        router.refresh();
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to update");

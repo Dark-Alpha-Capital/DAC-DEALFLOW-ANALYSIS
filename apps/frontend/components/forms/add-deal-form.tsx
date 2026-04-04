@@ -63,6 +63,7 @@ export default function AddDealForm() {
       onSuccess: () => {
         toast.success("Deal saved successfully");
         form.reset();
+        void router.invalidate();
         router.push("/deal-opportunities");
       },
       onError: (error) => {

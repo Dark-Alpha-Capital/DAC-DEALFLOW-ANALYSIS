@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import type { Lead } from "@repo/db";
 import Pagination from "@/components/pagination";

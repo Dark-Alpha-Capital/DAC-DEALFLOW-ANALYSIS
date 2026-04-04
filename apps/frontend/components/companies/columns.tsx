@@ -30,7 +30,7 @@ function CompanyActionsCell({ company }: { company: CompanyWithTheme }) {
     trpc.companies.delete.mutationOptions({
       onSuccess: () => {
         toast.success("Company deleted");
-        router.refresh();
+        void router.invalidate();
         setDeleteDialogOpen(false);
       },
       onError: (error) => {

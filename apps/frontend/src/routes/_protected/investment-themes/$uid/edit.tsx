@@ -4,10 +4,16 @@ import { ArrowLeft } from "lucide-react";
 import { loadInvestmentThemeForEditData } from "@/lib/server/investment-themes-route-data";
 import EditThemeForm from "@/components/forms/edit-theme-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
 
 export const Route = createFileRoute(
   "/_protected/investment-themes/$uid/edit",
 )({
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
     meta: [{ title: "Edit Investment Theme — Dark Alpha Capital" }],
   }),

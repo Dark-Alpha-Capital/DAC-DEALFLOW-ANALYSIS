@@ -47,7 +47,7 @@ export function AddInvestorCompanyLinkForm({
         setCompanyLabel("");
         setNotes("");
         setStatus("ACTIVE");
-        router.refresh();
+        void router.invalidate();
         onSaved?.();
       },
       onError: (error) => {
@@ -147,7 +147,7 @@ export function EditInvestorCompanyLinkForm({
     trpc.investors.updateInvestorCompanyLink.mutationOptions({
       onSuccess: () => {
         toast.success("Link updated");
-        router.refresh();
+        void router.invalidate();
         onSaved?.();
       },
       onError: (error) => {
