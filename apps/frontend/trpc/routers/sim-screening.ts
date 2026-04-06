@@ -4,6 +4,13 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents, dealOpportunities, eq } from "@repo/db";
 import {
+  startSimScreeningInputSchema,
+  simSessionRouteInputSchema,
+  startSimScreeningRunInputSchema,
+  retrySimScreeningRunInputSchema,
+  listSimScreeningSessionsInputSchema,
+} from "@/lib/zod-schemas/sim-screening-router";
+import {
   deleteSimScreeningAnswersForRun,
   insertSimScreeningSession,
   insertSimScreeningRun,
@@ -33,17 +40,7 @@ import {
 } from "@/src/lib/workflow-jobs-api";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 
-const startSchema = z.object({
-  documentId: z.string().min(1),
-  screenerId: z.string().min(1),
-});
-
 const SCREENING_LIBRARY_CATEGORIES = ["CIM", "SIM_SCREENING"] as const;
-
-const simSessionRouteInputSchema = z.object({
-  sessionId: z.string().min(1),
-  runId: z.string().min(1).optional(),
-});
 
 /** Shared session + runs + selected run + parallel promises for document/deal/job. */
 async function loadSimScreeningSessionBase(
@@ -148,7 +145,9 @@ export const simScreeningRouter = createTRPCRouter({
     return listSimScreeningLibraryDocumentsForUser(userId);
   }),
 
-  start: protectedProcedure.input(startSchema).mutation(async ({ input, ctx }) => {
+  start: protectedProcedure
+    .input(startSimScreeningInputSchema)
+    .mutation(async ({ input, ctx }) => {
     const userId = ctx.user.id;
     if (!userId?.trim()) {
       throw new TRPCError({ code: "UNAUTHORIZED", message: "User ID required" });
@@ -278,12 +277,7 @@ export const simScreeningRouter = createTRPCRouter({
   }),
 
   startRun: protectedProcedure
-    .input(
-      z.object({
-        sessionId: z.string().min(1),
-        screenerId: z.string().min(1),
-      }),
-    )
+    .input(startSimScreeningRunInputSchema)
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.user.id;
       if (!userId?.trim()) {
@@ -558,7 +552,7 @@ export const simScreeningRouter = createTRPCRouter({
     }),
 
   retry: protectedProcedure
-    .input(z.object({ runId: z.string().min(1) }))
+    .input(retrySimScreeningRunInputSchema)
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.user.id;
       if (!userId?.trim()) {
@@ -700,7 +694,7 @@ export const simScreeningRouter = createTRPCRouter({
     }),
 
   listSessions: protectedProcedure
-    .input(z.object({ limit: z.number().min(1).max(100).optional() }).optional())
+    .input(listSimScreeningSessionsInputSchema)
     .query(async ({ ctx, input }) => {
       const userId = ctx.user.id;
       const limit = input?.limit ?? 50;
