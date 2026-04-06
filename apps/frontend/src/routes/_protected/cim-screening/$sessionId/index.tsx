@@ -174,7 +174,7 @@ function EvidenceBlock({ row }: { row: ScoreRow }) {
   );
 }
 
-export const Route = createFileRoute("/_protected/cim-screening/$sessionId")({
+export const Route = createFileRoute("/_protected/cim-screening/$sessionId/")({
   validateSearch: (search: Record<string, unknown>) => ({
     runId:
       typeof search.runId === "string"
@@ -522,19 +522,46 @@ function CimScreeningSessionDetailPage() {
                       </MetaRow>
                     ) : null}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-11 w-full min-h-11 cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto"
-                    asChild
-                  >
-                    <Link
-                      to="/deal-opportunities/$uid"
-                      params={{ uid: dealOpp.id }}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-11 w-full min-h-11 cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto"
+                      asChild
                     >
-                      Open deal opportunity
-                    </Link>
-                  </Button>
+                      <Link
+                        to="/deal-opportunities/$uid"
+                        params={{ uid: dealOpp.id }}
+                      >
+                        Open deal opportunity
+                      </Link>
+                    </Button>
+                    {selectedRunId ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-11 w-full min-h-11 cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto"
+                        asChild
+                      >
+                        <Link
+                          to="/cim-screening/$sessionId/sync-bitrix-24"
+                          params={{ sessionId }}
+                          search={{ runId: selectedRunId }}
+                        >
+                          Sync to Bitrix24
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-11 w-full min-h-11 sm:h-9 sm:min-h-9 sm:w-auto"
+                        disabled
+                      >
+                        Sync to Bitrix24
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm">

@@ -15,7 +15,37 @@ import { mapEvidenceChunkIdsToCitations } from "@/lib/map-sim-screening-evidence
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import { getJobByIdForUser } from "@/src/lib/workflow-jobs-api";
 import { assertAuthenticated } from "@/lib/server/assert-session";
-import { cimScreeningSessionInputSchema } from "@/lib/server/server-fn-input-schemas";
+import {
+  cimScreeningSessionInputSchema,
+  cimScreeningSessionSyncInputSchema,
+} from "@/lib/server/server-fn-input-schemas";
+import { getBitrixSyncPreviewData } from "@/lib/server/bitrix-sync-preview-data";
+
+function buildScreeningCommentForRun(input: {
+  runId: string;
+  sessionId: string;
+  screenerName: string;
+  runCreatedAt: Date;
+  rows: Array<{ question: string; score: number | null; rationale: string | null }>;
+}) {
+  const headerLines = [
+    "SIM Screening Sync",
+    `Session ID: ${input.sessionId}`,
+    `Run ID: ${input.runId}`,
+    `Template: ${input.screenerName}`,
+    `Run Created At: ${input.runCreatedAt.toISOString()}`,
+    "",
+  ];
+
+  const qaLines = input.rows.flatMap((row, idx) => [
+    `Q${idx + 1}: ${row.question}`,
+    `Score: ${row.score ?? "N/A"}`,
+    `Answer: ${row.rationale?.trim() || "N/A"}`,
+    "",
+  ]);
+
+  return [...headerLines, ...qaLines].join("\n").trim();
+}
 
 export const loadCimScreeningIndexData = createServerFn({ method: "GET" }).handler(
   async () => {
@@ -188,5 +218,105 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
           : null,
         rows,
       },
+    };
+  });
+
+export const loadCimScreeningBitrixSyncData = createServerFn({ method: "GET" })
+  .inputValidator((raw: unknown) => cimScreeningSessionSyncInputSchema.parse(raw))
+  .handler(async ({ data }) => {
+    if (!data.runId) {
+      return {
+        preview: null,
+        dealOpportunityId: null,
+        screeningComment: "",
+        runSummary: null,
+        error: "Select a run before syncing to Bitrix.",
+      };
+    }
+
+    const session = await assertAuthenticated();
+    const userId = session.user.id;
+
+    const screeningSession = await getSimScreeningSessionByIdForUser(
+      data.sessionId,
+      userId,
+    );
+    if (!screeningSession || !screeningSession.dealOpportunityId) {
+      return {
+        preview: null,
+        dealOpportunityId: null,
+        screeningComment: "",
+        runSummary: null,
+        error: "This screening session is not linked to a deal opportunity.",
+      };
+    }
+
+    const run = (
+      await getSimScreeningRunsBySessionId(screeningSession.id)
+    ).find((r) => r.id === data.runId);
+    if (!run) {
+      return {
+        preview: null,
+        dealOpportunityId: null,
+        screeningComment: "",
+        runSummary: null,
+        error: "Run not found for this session.",
+      };
+    }
+    if (run.status !== "COMPLETED") {
+      return {
+        preview: null,
+        dealOpportunityId: null,
+        screeningComment: "",
+        runSummary: null,
+        error: "Only completed runs can be synced to Bitrix.",
+      };
+    }
+
+    const [questions, answers, previewResult] = await Promise.all([
+      getScreenerQuestions(run.screenerId),
+      getSimScreeningAnswersByRunId(run.id),
+      getBitrixSyncPreviewData(screeningSession.dealOpportunityId),
+    ]);
+
+    if (!previewResult.success) {
+      return {
+        preview: null,
+        dealOpportunityId: null,
+        screeningComment: "",
+        runSummary: null,
+        error: previewResult.message,
+      };
+    }
+
+    const answerByQuestionId = new Map(answers.map((a) => [a.questionId, a]));
+    const orderedRows = questions.map((q) => {
+      const ans = answerByQuestionId.get(q.id);
+      return {
+        question: q.question,
+        score: ans?.score ?? null,
+        rationale: ans?.rationale ?? null,
+      };
+    });
+
+    const screeningComment = buildScreeningCommentForRun({
+      runId: run.id,
+      sessionId: screeningSession.id,
+      screenerName: run.screenerName,
+      runCreatedAt: run.createdAt,
+      rows: orderedRows,
+    });
+
+    return {
+      preview: previewResult.data,
+      dealOpportunityId: screeningSession.dealOpportunityId,
+      screeningComment,
+      runSummary: {
+        runId: run.id,
+        screenerName: run.screenerName,
+        runCreatedAt: run.createdAt,
+        questionCount: orderedRows.length,
+      },
+      error: null as string | null,
     };
   });

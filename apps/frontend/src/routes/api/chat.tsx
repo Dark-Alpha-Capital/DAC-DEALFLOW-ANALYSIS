@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
 
+// Client-side chat-list cache revalidation is triggered after stream completion in ChatClient.onFinish.
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {

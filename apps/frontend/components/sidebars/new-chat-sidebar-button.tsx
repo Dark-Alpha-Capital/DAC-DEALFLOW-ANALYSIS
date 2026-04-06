@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageSquarePlus } from "lucide-react";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 import { useTRPC } from "@/trpc/client";
+import { invalidateRecentChatsQuery } from "@/lib/chat-query-cache";
 
 export function NewChatSidebarButton({ isActive }: { isActive: boolean }) {
   const router = useRouter();
@@ -13,9 +14,7 @@ export function NewChatSidebarButton({ isActive }: { isActive: boolean }) {
   const createMutation = useMutation(
     trpc.chats.create.mutationOptions({
       onSuccess: (id) => {
-        queryClient.invalidateQueries({
-          queryKey: trpc.chats.listRecent.queryKey({ limit: 50 }),
-        });
+        void invalidateRecentChatsQuery(queryClient, trpc);
         router.push(`/chat/${id}`);
       },
     }),

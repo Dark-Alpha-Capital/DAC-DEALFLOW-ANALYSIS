@@ -228,6 +228,13 @@ export const bitrixSyncDealOpportunitySchema = z.object({
   ebitdaMargin: z.number().nullable().optional(),
 });
 
+export const bitrixSyncScreeningRunToDealSchema =
+  bitrixSyncDealOpportunitySchema.extend({
+    sessionId: z.string().min(1),
+    runId: z.string().min(1),
+    screeningComment: z.string().min(1),
+  });
+
 export const searchForChatInputSchema = z
   .object({
     query: z.string().trim().optional(),

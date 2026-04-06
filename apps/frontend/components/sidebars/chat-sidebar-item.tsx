@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
+import { invalidateRecentChatsQuery } from "@/lib/chat-query-cache";
 
 type Chat = { id: string; title: string };
 
@@ -50,9 +51,7 @@ export function ChatSidebarItem({ chat }: { chat: Chat }) {
   const updateMutation = useMutation(
     trpc.chats.updateTitle.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: trpc.chats.listRecent.queryKey({ limit: 50 }),
-        });
+        void invalidateRecentChatsQuery(queryClient, trpc);
         setEditOpen(false);
       },
     }),
@@ -61,9 +60,7 @@ export function ChatSidebarItem({ chat }: { chat: Chat }) {
   const deleteMutation = useMutation(
     trpc.chats.delete.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: trpc.chats.listRecent.queryKey({ limit: 50 }),
-        });
+        void invalidateRecentChatsQuery(queryClient, trpc);
         setDeleteOpen(false);
         toast.success("Chat deleted successfully");
         if (pathname === `/chat/${chat.id}`) {

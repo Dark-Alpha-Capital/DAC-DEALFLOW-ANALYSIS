@@ -5,6 +5,7 @@ import {
   addRiskFlagSchema,
   adminDeleteDealInputSchema,
   bitrixSyncDealOpportunitySchema,
+  bitrixSyncScreeningRunToDealSchema,
   bulkDeleteDealsInputSchema,
   createDealOpportunitySchema,
   createDealSchema,
@@ -66,6 +67,8 @@ import {
   GetDealRiskFlagsByDealOpportunityId,
   countDocumentChunksByDealOpportunityId,
   getScreenerById,
+  getSimScreeningRunByIdForUser,
+  getSimScreeningSessionByIdForUser,
 } from "@repo/db/queries";
 import {
   replaceDealSim,
@@ -1390,6 +1393,134 @@ export const dealsRouter = createTRPCRouter({
         revalidatePath("/deal-opportunities");
         revalidatePath(`/deal-opportunities/${opp.id}`);
         revalidatePath(`/deal-opportunities/${opp.id}/sync-bitrix-24`);
+        revalidateTag(`deal-${opp.id}`, "max");
+        revalidateTag("deals", "max");
+      });
+
+      return { bitrixId, bitrixLink };
+    }),
+
+  syncScreeningRunToBitrix: protectedProcedure
+    .input(bitrixSyncScreeningRunToDealSchema)
+    .mutation(async ({ input, ctx }) => {
+      const env = getBitrixSyncEnv();
+      if (!env?.webhookBaseUrl) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Bitrix is not configured (set BITRIX24_WEBHOOK on the server).",
+        });
+      }
+      if (!env.dealCategoryId?.trim()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "BITRIX_DEAL_CATEGORY_ID is not set — add your Bitrix deal pipeline id.",
+        });
+      }
+
+      const session = await getSimScreeningSessionByIdForUser(
+        input.sessionId,
+        ctx.user.id,
+      );
+      if (!session || !session.dealOpportunityId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Session is not linked to a deal opportunity.",
+        });
+      }
+
+      const run = await getSimScreeningRunByIdForUser(input.runId, ctx.user.id);
+      if (!run || run.sessionId !== session.id) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Run not found for this session.",
+        });
+      }
+
+      if (run.status !== "COMPLETED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only completed runs can be synced to Bitrix.",
+        });
+      }
+
+      let opp = await GetDealOpportunityById(input.dealOpportunityId);
+      if (!opp) {
+        opp = await GetDealOpportunityByLegacyDealId(input.dealOpportunityId);
+      }
+      if (!opp || opp.id !== session.dealOpportunityId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Deal opportunity not found for this screening session.",
+        });
+      }
+
+      const fields = buildCrmDealFieldsFromOpportunitySync({
+        dealOpportunityId: opp.id,
+        categoryId: env.dealCategoryId.trim(),
+        stageId: input.stageId,
+        title: input.title,
+        opportunity: input.opportunity,
+        currencyId: input.currencyId,
+        comments: input.comments ?? null,
+        sourceWebsite: input.sourceWebsite ?? null,
+        companyLocation: input.companyLocation ?? null,
+        industry: input.industry ?? null,
+        ebitda: input.ebitda ?? null,
+        ebitdaMargin: input.ebitdaMargin ?? null,
+        brokerFirstName: input.brokerFirstName ?? null,
+        brokerLastName: input.brokerLastName ?? null,
+        brokerEmail: input.brokerEmail ?? null,
+        brokerPhone: input.brokerPhone ?? null,
+        brokerLinkedIn: input.brokerLinkedIn ?? null,
+        askingPrice: input.askingPrice ?? null,
+      });
+
+      const portalBase =
+        env.portalBaseUrl?.trim() ||
+        inferPortalBaseFromWebhook(env.webhookBaseUrl);
+
+      let bitrixId: string;
+      if (opp.bitrixId?.trim()) {
+        await callBitrix("crm.deal.update", {
+          id: opp.bitrixId.trim(),
+          fields,
+        });
+        bitrixId = opp.bitrixId.trim();
+      } else {
+        const created = await callBitrix<number | string>("crm.deal.add", {
+          fields,
+        });
+        bitrixId = String(created);
+      }
+
+      await callBitrix("crm.timeline.comment.add", {
+        fields: {
+          ENTITY_ID: Number(bitrixId),
+          ENTITY_TYPE: "deal",
+          COMMENT: input.screeningComment,
+        },
+      });
+
+      const bitrixLink = portalBase
+        ? buildBitrixDealDetailUrl(portalBase, bitrixId)
+        : null;
+
+      await db
+        .update(dealOpportunities)
+        .set({
+          bitrixId,
+          bitrixLink: bitrixLink || null,
+          bitrixCreatedAt: opp.bitrixCreatedAt ?? new Date(),
+        })
+        .where(eq(dealOpportunities.id, opp.id));
+
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidatePath(`/deal-opportunities/${opp.id}`);
+        revalidatePath(`/deal-opportunities/${opp.id}/sync-bitrix-24`);
+        revalidatePath(`/cim-screening/${session.id}`);
         revalidateTag(`deal-${opp.id}`, "max");
         revalidateTag("deals", "max");
       });

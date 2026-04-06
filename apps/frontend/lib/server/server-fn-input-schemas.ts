@@ -32,6 +32,11 @@ export const cimScreeningSessionInputSchema = z.object({
   runId: uidSchema.optional(),
 });
 
+export const cimScreeningSessionSyncInputSchema = z.object({
+  sessionId: uidSchema,
+  runId: uidSchema.optional(),
+});
+
 export const rawDealsListFilterSchema = z.object({
   search: z.string(),
   offset: z.number().int().nonnegative(),

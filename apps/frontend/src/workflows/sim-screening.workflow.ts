@@ -27,6 +27,7 @@ import {
 import type { SimScreeningParams, WorkflowWorkerEnv } from "./workflow-env";
 
 const openai = getOpenAIProvider();
+const SIM_SCREENING_MODEL = process.env.SIM_SCREENING_MODEL?.trim() || "gpt-5.1";
 
 const RETRIEVAL_TOP_K = 8;
 const RETRIEVAL_TOP_K_DEAL = 14;
@@ -389,7 +390,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
 
             const llmT0 = Date.now();
             const { object } = await generateObject({
-              model: openai("gpt-4o-mini"),
+              model: openai(SIM_SCREENING_MODEL),
               schema: z.object({
                 score: z.number().min(0).max(10),
                 rationale: z.string(),
@@ -398,6 +399,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             });
             logDetail("screen.question.llm_done", {
               questionId: q.id,
+              model: SIM_SCREENING_MODEL,
               rawScore: object.score,
               rationaleLength: object.rationale?.length ?? 0,
               elapsedMs: Date.now() - llmT0,

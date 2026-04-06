@@ -56,6 +56,7 @@ import {
   type ChatSelection,
   type ChatProvider,
 } from "@/lib/chat-models";
+import { invalidateRecentChatsQuery } from "@/lib/chat-query-cache";
 import { useTRPC } from "@/trpc/client";
 
 const LOCATION_FIXTURES = [
@@ -175,9 +176,7 @@ export function ChatClient({
         setPoliteAnnouncement("Assistant response complete.");
       }
 
-      queryClient.invalidateQueries({
-        queryKey: trpc.chats.listRecent.queryKey({ limit: 50 }),
-      });
+      void invalidateRecentChatsQuery(queryClient, trpc);
       void router.invalidate();
     },
     onError: (error) => {

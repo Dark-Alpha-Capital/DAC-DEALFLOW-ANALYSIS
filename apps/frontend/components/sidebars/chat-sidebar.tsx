@@ -19,6 +19,10 @@ import { ChatSidebarItem } from "./chat-sidebar-item";
 import { SidebarUser } from "@/components/sidebar-user";
 import { useTRPC } from "@/trpc/client";
 import { useSession } from "@/lib/auth-client";
+import {
+  RECENT_CHATS_CACHE_OPTIONS,
+  RECENT_CHATS_INPUT,
+} from "@/lib/chat-query-cache";
 
 const layoutLinks = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -31,9 +35,10 @@ export default function ChatSidebar() {
   const trpc = useTRPC();
   const { data: session } = useSession();
 
-  const { data: chats = [], isLoading } = useQuery(
-    trpc.chats.listRecent.queryOptions({ limit: 50 }),
-  );
+  const { data: chats = [], isLoading } = useQuery({
+    ...trpc.chats.listRecent.queryOptions(RECENT_CHATS_INPUT),
+    ...RECENT_CHATS_CACHE_OPTIONS,
+  });
 
   return (
     <Sidebar collapsible="offcanvas" variant="inset">
