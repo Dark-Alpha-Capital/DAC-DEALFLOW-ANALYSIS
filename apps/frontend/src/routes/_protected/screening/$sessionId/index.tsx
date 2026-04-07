@@ -266,6 +266,17 @@ function CimScreeningSessionDetailPage() {
     return full;
   }, [fullSessionQuery.data, pollSessionQuery.data, pollSessionActive]);
 
+  useEffect(() => {
+    if (runIdFromSearch) return;
+    const resolvedRunId = data?.selectedRunId;
+    if (!resolvedRunId) return;
+    navigate({
+      to: ".",
+      search: { runId: resolvedRunId },
+      replace: true,
+    });
+  }, [data?.selectedRunId, navigate, runIdFromSearch]);
+
   const lastTerminalInvalidateKey = useRef<string | null>(null);
   useEffect(() => {
     lastTerminalInvalidateKey.current = null;
@@ -540,31 +551,6 @@ function CimScreeningSessionDetailPage() {
                         Open deal opportunity
                       </Link>
                     </Button>
-                    {selectedRunId ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-11 min-h-11 w-full cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto"
-                        asChild
-                      >
-                        <Link
-                          to="/screening/$sessionId/sync-bitrix-24"
-                          params={{ sessionId }}
-                          search={{ runId: selectedRunId }}
-                        >
-                          Sync to Bitrix24
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9 sm:w-auto"
-                        disabled
-                      >
-                        Sync to Bitrix24
-                      </Button>
-                    )}
                   </div>
                 </div>
               ) : (
@@ -627,6 +613,31 @@ function CimScreeningSessionDetailPage() {
                       </span>
                     </p>
                   ) : null}
+                  {selectedRunId ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-11 min-h-11 w-full cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto"
+                      asChild
+                    >
+                      <Link
+                        to="/screening/$sessionId/sync-bitrix-24"
+                        params={{ sessionId }}
+                        search={{ runId: selectedRunId }}
+                      >
+                        Sync to Bitrix24
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9 sm:w-auto"
+                      disabled
+                    >
+                      Sync to Bitrix24
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -682,7 +693,10 @@ function CimScreeningSessionDetailPage() {
                   >
                     {startRunMutation.isPending ? (
                       <>
-                        <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                        <Loader2
+                          className="mr-2 size-4 animate-spin"
+                          aria-hidden
+                        />
                         Starting...
                       </>
                     ) : (
