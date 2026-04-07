@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { usePathname } from "@/lib/navigation-shim";
-import { useEffect, useState } from "react";
 import {
   FiUserPlus,
   FiTrendingUp,
@@ -12,15 +11,10 @@ import {
   FiBookOpen,
   FiDollarSign,
   FiMessageSquare,
-  FiChevronRight,
   FiClipboard,
+  FiShield,
 } from "react-icons/fi";
 import { FaPalette, FaScrewdriver } from "react-icons/fa";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -28,11 +22,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import { cn } from "@/lib/utils";
 
 type NavItem = {
   title: string;
@@ -41,30 +31,30 @@ type NavItem = {
 };
 
 const dealFlowItems: NavItem[] = [
-  { title: "Companies", url: "/companies", icon: FiUsers },
+  { title: "Deal leads", url: "/leads", icon: FiUserPlus },
+  { title: "Investor leads", url: "/investor-leads", icon: FiUserPlus },
   {
     title: "Deal opportunities",
     url: "/deal-opportunities",
     icon: FiTrendingUp,
   },
-];
-
-const investorItems: NavItem[] = [
+  { title: "Companies", url: "/companies", icon: FiUsers },
   { title: "Investors", url: "/investors", icon: FiDollarSign },
   { title: "Investment Themes", url: "/investment-themes", icon: FaPalette },
 ];
 
 const workspaceItems: NavItem[] = [
   { title: "Docs", url: "/docs", icon: FiBookOpen },
+  { title: "Screeners", url: "/screeners", icon: FaScrewdriver },
+  { title: "Screening", url: "/screening/", icon: FiClipboard },
+  { title: "Documents", url: "/documents", icon: FiFileText },
   { title: "Chat", url: "/chat", icon: FiMessageSquare },
 ];
 
 const adminNavItems: NavItem[] = [
+  { title: "Admin", url: "/admin", icon: FiShield },
   { title: "Jobs", url: "/jobs", icon: FiBriefcase },
   { title: "Analytics", url: "/analytics", icon: FiBarChart2 },
-  { title: "Screeners", url: "/screeners", icon: FaScrewdriver },
-  { title: "CIM screening", url: "/cim-screening/", icon: FiClipboard },
-  { title: "Documents", url: "/documents", icon: FiFileText },
 ];
 
 const groupLabelClass =
@@ -89,64 +79,6 @@ function SimpleNavItems({ items }: { items: NavItem[] }) {
         );
       })}
     </>
-  );
-}
-
-function LeadsCollapsible() {
-  const pathname = usePathname();
-  const leadsActive =
-    pathname === "/leads" ||
-    pathname.startsWith("/leads/") ||
-    pathname === "/investor-leads" ||
-    pathname.startsWith("/investor-leads/");
-  const [open, setOpen] = useState(leadsActive);
-
-  useEffect(() => {
-    if (leadsActive) setOpen(true);
-  }, [leadsActive]);
-
-  return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <SidebarMenuItem>
-        <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip="Leads" isActive={leadsActive}>
-            <FiUserPlus className="size-4" />
-            <span>Leads</span>
-            <FiChevronRight
-              className={cn(
-                "ml-auto size-4 shrink-0 transition-transform",
-                open && "rotate-90",
-              )}
-            />
-          </SidebarMenuButton>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <SidebarMenuSub>
-            <SidebarMenuSubItem>
-              <SidebarMenuSubButton
-                asChild
-                isActive={
-                  pathname === "/leads" || pathname.startsWith("/leads/")
-                }
-              >
-                <Link to="/leads">Company leads</Link>
-              </SidebarMenuSubButton>
-            </SidebarMenuSubItem>
-            <SidebarMenuSubItem>
-              <SidebarMenuSubButton
-                asChild
-                isActive={
-                  pathname === "/investor-leads" ||
-                  pathname.startsWith("/investor-leads/")
-                }
-              >
-                <Link to="/investor-leads">Investor leads</Link>
-              </SidebarMenuSubButton>
-            </SidebarMenuSubItem>
-          </SidebarMenuSub>
-        </CollapsibleContent>
-      </SidebarMenuItem>
-    </Collapsible>
   );
 }
 
@@ -183,23 +115,11 @@ export function SidebarNav({ session }: SidebarNavProps) {
 
       <SidebarGroup>
         <SidebarGroupLabel className={groupLabelClass}>
-          Deal flow
+          Dealflow
         </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu className="gap-1">
-            <LeadsCollapsible />
             <SimpleNavItems items={dealFlowItems} />
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-
-      <SidebarGroup>
-        <SidebarGroupLabel className={groupLabelClass}>
-          Investors
-        </SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu className="gap-1">
-            <SimpleNavItems items={investorItems} />
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>

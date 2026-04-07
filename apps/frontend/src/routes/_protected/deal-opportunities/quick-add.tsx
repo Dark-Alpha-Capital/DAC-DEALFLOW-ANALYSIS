@@ -5,6 +5,7 @@ import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
 } from "@/lib/route-loader-cache";
+import BackButton from "@/components/Buttons/back-button";
 
 export const Route = createFileRoute(
   "/_protected/deal-opportunities/quick-add",
@@ -22,13 +23,17 @@ function QuickAddDealRoute() {
   const { themes } = Route.useLoaderData();
   return (
     <section className="big-container">
-      <div className="mb-6">
+      <div>
+        <BackButton label="Back" />
+      </div>
+      <div className="mt-4 mb-6 md:mt-6">
         <h1 className="text-3xl font-semibold md:text-4xl">Quick add deal</h1>
         <p className="text-muted-foreground">
-          Create the company and deal listing together. Only company name and deal
-          title are required; everything else is optional.
+          Create a deal opportunity only. Companies and investors can be linked
+          separately from the deal detail page.
         </p>
       </div>
+
       <div className="">
         <QuickAddDealForm themes={themes} />
       </div>

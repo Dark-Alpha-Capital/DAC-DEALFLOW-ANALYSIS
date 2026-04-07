@@ -67,7 +67,6 @@ export default function AddCompanyForm() {
       recurringRevenuePct: undefined,
       customerConcentrationPct: undefined,
       founderAgeEstimate: undefined,
-      themeId: "",
       attractivenessScore: undefined,
       coverageStatus: "UNCONTACTED",
     },
@@ -281,19 +280,6 @@ export default function AddCompanyForm() {
                   <FormLabel>Attractiveness Score</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="e.g., 75" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="themeId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Theme ID</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Optional theme reference" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

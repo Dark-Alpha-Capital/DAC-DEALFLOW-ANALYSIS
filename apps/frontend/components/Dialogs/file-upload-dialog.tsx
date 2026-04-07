@@ -25,6 +25,7 @@ import { DOCUMENT_CATEGORY_OPTIONS } from "@/lib/document-category-options";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
+import { useRouter } from "@/lib/navigation-shim";
 import type { DocumentCategory } from "@repo/db/enums";
 
 type EntityType = "LEAD" | "COMPANY" | "DEAL_OPPORTUNITY";
@@ -85,6 +86,7 @@ export function FileUploadDialog({
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const trpc = useTRPC();
+  const router = useRouter();
 
   const { mutate: uploadFile, isPending } = useMutation(
     trpc.files.uploadFile.mutationOptions({
@@ -94,6 +96,7 @@ export function FileUploadDialog({
         });
         resetForm();
         setIsOpen(false);
+        void router.invalidate();
       },
       onError: (error) => {
         console.error("Upload failed:", error);

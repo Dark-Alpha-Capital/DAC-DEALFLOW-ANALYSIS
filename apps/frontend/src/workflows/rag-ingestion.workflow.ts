@@ -78,8 +78,12 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
       // `step.do` runs/replays its callback outside normal async ALS scope; bind a fresh Neon pool here.
       const result = await step.do(
         "rag-ingest",
-        { timeout: "30 minutes" },
-        () =>
+        {
+          timeout: "30 minutes",
+          // Avoid repeated full replays of chunk ingestion on failure.
+          retries: { limit: 0, delay: "1 second" },
+        },
+        (stepCtx) =>
           runDbWithWorkerNeonPool(async () => {
             const stepT0 = Date.now();
             const reporter = workflowProgressReporter(instanceId);
@@ -87,6 +91,7 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               instanceId,
               documentId,
               forceReingest,
+              attempt: stepCtx.attempt,
             });
 
             await reporter.updateProgress({ step: "Loading document", percentage: 10 });
@@ -309,6 +314,9 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      const errorWithContext = new Error(
+        `[rag-ingestion] ${instanceId} for document ${documentId} failed: ${message}`,
+      );
       console.error("[rag-ingestion] workflow.run.failed", {
         ts: new Date().toISOString(),
         instanceId,
@@ -318,15 +326,15 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
       });
       try {
         await runDbWithWorkerNeonPool(async () => {
-          await markDocumentIngestionFailed(documentId, message);
+          await markDocumentIngestionFailed(documentId, errorWithContext.message);
         });
       } catch {
         // ignore
       }
       await runDbWithWorkerNeonPool(async () => {
-        await markWorkflowFailed(instanceId, error);
+        await markWorkflowFailed(instanceId, errorWithContext);
       });
-      throw error;
+      throw errorWithContext;
     }
   }
 }

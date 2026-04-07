@@ -61,7 +61,7 @@ export default function AddDealForm() {
   const form = useForm<AddDealFormSchemaType>({
     resolver: zodResolver(AddDealFormSchema),
     defaultValues: {
-      companyId: "",
+      companyId: "__none__",
       sourceWebsite: "",
       brokerage: "",
       revenue: undefined,
@@ -93,24 +93,18 @@ export default function AddDealForm() {
               name="companyId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Company *</FormLabel>
+                  <FormLabel>Company (optional)</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={companies.length === 0}
+                    value={field.value || "__none__"}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue
-                          placeholder={
-                            companies.length === 0
-                              ? "Add a company first"
-                              : "Select company"
-                          }
-                        />
+                        <SelectValue placeholder="No company" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="__none__">No company</SelectItem>
                       {companies.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}

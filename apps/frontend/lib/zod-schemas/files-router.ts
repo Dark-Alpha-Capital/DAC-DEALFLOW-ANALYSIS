@@ -30,6 +30,19 @@ export const uploadGlobalDocumentSchema = z.object({
   fileType: z.string().optional(),
 });
 
+export const checkDocumentDuplicateSchema = z.discriminatedUnion("scopeType", [
+  z.object({
+    scopeType: z.literal("GLOBAL"),
+    contentHash: z.string().min(1),
+  }),
+  z.object({
+    scopeType: z.literal("ENTITY"),
+    entityType: z.enum(["LEAD", "COMPANY", "DEAL_OPPORTUNITY", "THEME"]),
+    entityId: z.string().min(1, "entityId is required"),
+    contentHash: z.string().min(1),
+  }),
+]);
+
 export const updateDocumentInputSchema = z.object({
   documentId: z.string().min(1),
   title: z.string().min(1).optional(),

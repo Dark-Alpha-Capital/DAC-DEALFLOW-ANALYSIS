@@ -12,7 +12,6 @@ export const companySchema = z.object({
   recurringRevenuePct: z.coerce.number().optional(),
   customerConcentrationPct: z.coerce.number().optional(),
   founderAgeEstimate: z.coerce.number().optional(),
-  themeId: z.string().optional(),
   attractivenessScore: z.coerce.number().optional(),
   coverageStatus: z.enum(COVERAGE_STATUSES).optional(),
   businessModel: z.string().optional(),
@@ -36,11 +35,6 @@ export const createCompanySchema = companySchema;
 
 export const updateCompanySchema = companySchema.extend({
   id: z.string(),
-});
-
-export const assignThemeToCompanyInputSchema = z.object({
-  companyId: z.string().min(1, "Company ID is required"),
-  themeId: z.string().optional(),
 });
 
 export const deleteCompanyInputSchema = z.object({ id: z.string() });

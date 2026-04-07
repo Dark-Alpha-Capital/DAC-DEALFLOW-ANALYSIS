@@ -4,22 +4,31 @@ import {
   getDocumentChunksVectorIndex,
 } from "@/lib/document-chunk-vectorize";
 import {
+  checkDocumentDuplicateSchema,
   deleteDocumentInputSchema,
   updateDocumentInputSchema,
   uploadFileSchema,
   uploadGlobalDocumentSchema,
 } from "@/lib/zod-schemas/files-router";
-import { eq } from "drizzle-orm";
-import { after } from "@/lib/after";
+import { and, eq } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import db, { documents } from "@repo/db";
 import { uploadBuffer, deleteFile } from "@repo/nextcloud";
-import { revalidateTag } from "@/lib/cache-invalidation";
 import {
   insertWorkflowJob,
   startRagIngestionWorkflow,
 } from "@/src/lib/workflow-jobs-api";
-import { randomUUID } from "crypto";
+import { setWorkflowJobState } from "@repo/db/workflow-jobs";
+import { createHash, randomUUID } from "crypto";
+
+function isUniqueViolationError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
+}
 
 const getEntityPathSegment = (
   entityType: "LEAD" | "COMPANY" | "DEAL_OPPORTUNITY" | "THEME",
@@ -29,6 +38,43 @@ const getEntityPathSegment = (
 };
 
 export const filesRouter = createTRPCRouter({
+  checkDuplicate: protectedProcedure
+    .input(checkDocumentDuplicateSchema)
+    .query(async ({ input }) => {
+      const [existingDocument] = await db
+        .select({
+          id: documents.id,
+          title: documents.title,
+          fileName: documents.fileName,
+          entityType: documents.entityType,
+          entityId: documents.entityId,
+        })
+        .from(documents)
+        .where(
+          input.scopeType === "GLOBAL"
+            ? and(
+              eq(documents.entityType, "GLOBAL"),
+              eq(documents.contentHash, input.contentHash),
+            )
+            : and(
+              eq(documents.contentHash, input.contentHash),
+              input.entityType === "COMPANY"
+                ? eq(documents.companyId, input.entityId)
+                : input.entityType === "LEAD"
+                  ? eq(documents.leadId, input.entityId)
+                  : input.entityType === "DEAL_OPPORTUNITY"
+                    ? eq(documents.dealOpportunityId, input.entityId)
+                    : eq(documents.themeId, input.entityId),
+            ),
+        )
+        .limit(1);
+
+      return {
+        isDuplicate: Boolean(existingDocument),
+        existingDocument: existingDocument ?? null,
+      };
+    }),
+
   uploadFile: protectedProcedure
     .input(uploadFileSchema)
     .mutation(async ({ input, ctx }) => {
@@ -41,6 +87,31 @@ export const filesRouter = createTRPCRouter({
       // Decode base64 file data
       const base64Data = input.fileData.split(",")[1] || input.fileData;
       const buffer = Buffer.from(base64Data, "base64");
+      const contentHash = createHash("sha256").update(buffer).digest("hex");
+
+      const [existingDocument] = await db
+        .select({ id: documents.id })
+        .from(documents)
+        .where(
+          and(
+            eq(documents.contentHash, contentHash),
+            input.entityType === "COMPANY"
+              ? eq(documents.companyId, input.entityId)
+              : input.entityType === "LEAD"
+                ? eq(documents.leadId, input.entityId)
+                : input.entityType === "DEAL_OPPORTUNITY"
+                  ? eq(documents.dealOpportunityId, input.entityId)
+                  : eq(documents.themeId, input.entityId),
+          ),
+        )
+        .limit(1);
+
+      if (existingDocument) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This document was already uploaded for this entity",
+        });
+      }
 
       const entitySegment = getEntityPathSegment(input.entityType);
       const finalPath = `dealflow/${entitySegment}/${input.entityId}/${input.fileName}`;
@@ -49,31 +120,55 @@ export const filesRouter = createTRPCRouter({
       const fileUrl = await uploadBuffer(buffer, finalPath);
       const mimeType = input.fileType || "application/octet-stream";
 
-      const [documentRecord] = await db
-        .insert(documents)
-        .values({
-          entityType: input.entityType,
-          entityId: input.entityId,
-          companyId:
-            input.entityType === "COMPANY" ? input.entityId : undefined,
-          leadId:
-            input.entityType === "LEAD" ? input.entityId : undefined,
-          dealOpportunityId:
-            input.entityType === "DEAL_OPPORTUNITY"
-              ? input.entityId
-              : undefined,
-          themeId:
-            input.entityType === "THEME" ? input.entityId : undefined,
-          title: input.title,
-          description: input.description?.trim() ? input.description.trim() : null,
-          category: input.category,
-          fileUrl,
-          fileName: input.fileName,
-          fileSize: buffer.length,
-          mimeType,
-          uploadedById: userId,
-        })
-        .returning();
+      let documentRecord:
+        | {
+          id: string;
+        }
+        | undefined;
+      try {
+        [documentRecord] = await db
+          .insert(documents)
+          .values({
+            entityType: input.entityType,
+            entityId: input.entityId,
+            companyId:
+              input.entityType === "COMPANY" ? input.entityId : undefined,
+            leadId:
+              input.entityType === "LEAD" ? input.entityId : undefined,
+            dealOpportunityId:
+              input.entityType === "DEAL_OPPORTUNITY"
+                ? input.entityId
+                : undefined,
+            themeId:
+              input.entityType === "THEME" ? input.entityId : undefined,
+            title: input.title,
+            description: input.description?.trim()
+              ? input.description.trim()
+              : null,
+            category: input.category,
+            fileUrl,
+            fileName: input.fileName,
+            fileSize: buffer.length,
+            mimeType,
+            contentHash,
+            uploadedById: userId,
+          })
+          .returning({ id: documents.id });
+      } catch (error) {
+        if (isUniqueViolationError(error)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This document was already uploaded for this entity",
+          });
+        }
+        throw error;
+      }
+      if (!documentRecord) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to save document record",
+        });
+      }
 
       const ragJobId = randomUUID();
       await insertWorkflowJob({
@@ -83,32 +178,18 @@ export const filesRouter = createTRPCRouter({
         dealId: input.entityId,
         fileName: input.fileName,
       });
-      await startRagIngestionWorkflow(ragJobId, {
-        documentId: documentRecord.id,
-        userId,
-      });
-
-      const tags: string[] = [];
-      switch (input.entityType) {
-        case "COMPANY":
-          tags.push(`company-${input.entityId}`, "companies");
-          break;
-        case "DEAL_OPPORTUNITY":
-          tags.push(`deal-${input.entityId}`, "deals");
-          break;
-        case "LEAD":
-          tags.push(`lead-${input.entityId}`, "leads");
-          break;
-        case "THEME":
-          tags.push(`theme-${input.entityId}`, "themes");
-          break;
+      try {
+        await startRagIngestionWorkflow(ragJobId, {
+          documentId: documentRecord.id,
+          userId,
+        });
+      } catch (error) {
+        await setWorkflowJobState(ragJobId, "failed", {
+          failedReason:
+            error instanceof Error ? error.message : "Failed to start workflow",
+        });
+        throw error;
       }
-      tags.push("documents");
-      after(async () => {
-        for (const tag of tags) {
-          revalidateTag(tag, "max");
-        }
-      });
 
       return {
         success: true,
@@ -138,27 +219,68 @@ export const filesRouter = createTRPCRouter({
 
       const base64Data = input.fileData.split(",")[1] || input.fileData;
       const buffer = Buffer.from(base64Data, "base64");
+      const contentHash = createHash("sha256").update(buffer).digest("hex");
+
+      const [existingGlobalDocument] = await db
+        .select({ id: documents.id })
+        .from(documents)
+        .where(
+          and(
+            eq(documents.entityType, "GLOBAL"),
+            eq(documents.contentHash, contentHash),
+          ),
+        )
+        .limit(1);
+
+      if (existingGlobalDocument) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This global document was already uploaded",
+        });
+      }
 
       const finalPath = `dealflow/global/${input.category}/${input.fileName}`;
 
       const fileUrl = await uploadBuffer(buffer, finalPath);
       const mimeType = input.fileType || "application/octet-stream";
 
-      const [documentRecord] = await db
-        .insert(documents)
-        .values({
-          entityType: "GLOBAL",
-          entityId: null,
-          title: input.title,
-          description: input.description ?? null,
-          category: input.category,
-          fileUrl,
-          fileName: input.fileName,
-          fileSize: buffer.length,
-          mimeType,
-          uploadedById: userId,
-        })
-        .returning();
+      let documentRecord:
+        | {
+          id: string;
+        }
+        | undefined;
+      try {
+        [documentRecord] = await db
+          .insert(documents)
+          .values({
+            entityType: "GLOBAL",
+            entityId: null,
+            title: input.title,
+            description: input.description ?? null,
+            category: input.category,
+            fileUrl,
+            fileName: input.fileName,
+            fileSize: buffer.length,
+            mimeType,
+            contentHash,
+            uploadedById: userId,
+          })
+          .returning({ id: documents.id });
+      } catch (error) {
+        if (isUniqueViolationError(error)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This global document was already uploaded",
+          });
+        }
+        throw error;
+      }
+      if (!documentRecord) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to save document record",
+        });
+      }
 
       const ragJobId = randomUUID();
       await insertWorkflowJob({
@@ -167,14 +289,18 @@ export const filesRouter = createTRPCRouter({
         userId,
         fileName: input.fileName,
       });
-      await startRagIngestionWorkflow(ragJobId, {
-        documentId: documentRecord.id,
-        userId,
-      });
-
-      after(async () => {
-        revalidateTag("documents", "max");
-      });
+      try {
+        await startRagIngestionWorkflow(ragJobId, {
+          documentId: documentRecord.id,
+          userId,
+        });
+      } catch (error) {
+        await setWorkflowJobState(ragJobId, "failed", {
+          failedReason:
+            error instanceof Error ? error.message : "Failed to start workflow",
+        });
+        throw error;
+      }
 
       return {
         success: true,
@@ -202,9 +328,6 @@ export const filesRouter = createTRPCRouter({
         .set(updateData)
         .where(eq(documents.id, documentId));
 
-      after(async () => {
-        revalidateTag("documents", "max");
-      });
       return { success: true };
     }),
 
@@ -236,7 +359,7 @@ export const filesRouter = createTRPCRouter({
           (input.entityType === "COMPANY"
             ? doc.entityId === input.entityId || doc.companyId === input.entityId
             : doc.entityId === input.entityId ||
-              doc.dealOpportunityId === input.entityId);
+            doc.dealOpportunityId === input.entityId);
         if (!matchesScope) {
           throw new TRPCError({
             code: "FORBIDDEN",
@@ -258,21 +381,6 @@ export const filesRouter = createTRPCRouter({
 
       await db.delete(documents).where(eq(documents.id, input.documentId));
 
-      const tag = doc.entityId
-        ? doc.entityType === "DEAL_OPPORTUNITY"
-          ? `deal-${doc.dealOpportunityId ?? doc.entityId}`
-          : doc.entityType === "COMPANY"
-            ? `company-${doc.companyId ?? doc.entityId}`
-            : doc.entityType === "LEAD"
-              ? `lead-${doc.entityId}`
-              : doc.entityType === "THEME"
-                ? `theme-${doc.entityId}`
-                : null
-        : null;
-      after(async () => {
-        revalidateTag("documents", "max");
-        if (tag) revalidateTag(tag, "max");
-      });
       return { success: true };
     }),
 });

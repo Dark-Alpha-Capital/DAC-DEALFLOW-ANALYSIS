@@ -32,10 +32,13 @@ export function ConvertLeadDialog({
   const trpc = useTRPC();
 
   const handleFormSuccess = React.useCallback(
-    (data: { companyId: string }) => {
+    (data: { companyId: string | null; dealOpportunityId?: string | null }) => {
       onOpenChange(false);
       onSuccess?.();
-      if (data.companyId) {
+      if (data.dealOpportunityId) {
+        void router.invalidate();
+        router.push(`/deal-opportunities/${data.dealOpportunityId}`);
+      } else if (data.companyId) {
         void router.invalidate();
         router.push(`/companies/${data.companyId}`);
       }
@@ -46,10 +49,13 @@ export function ConvertLeadDialog({
   const { mutate: quickConvert, isPending: isQuickPending } = useMutation(
     trpc.leads.convertToCompany.mutationOptions({
       onSuccess: (data) => {
-        toast.success("Lead converted to company");
+        toast.success("Lead converted to deal opportunity");
         onOpenChange(false);
         onSuccess?.();
-        if (data.companyId) {
+        if (data.dealOpportunityId) {
+          void router.invalidate();
+          router.push(`/deal-opportunities/${data.dealOpportunityId}`);
+        } else if (data.companyId) {
           void router.invalidate();
           router.push(`/companies/${data.companyId}`);
         }
@@ -83,7 +89,7 @@ export function ConvertLeadDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Convert lead to company</DialogTitle>
+          <DialogTitle>Convert lead to deal opportunity</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-2">
@@ -95,14 +101,12 @@ export function ConvertLeadDialog({
               onClick={handleQuickConvert}
               disabled={isQuickPending}
             >
-              {isQuickPending
-                ? "Converting..."
-                : "Quick convert (use defaults)"}
+              {isQuickPending ? "Converting..." : "Quick convert"}
             </Button>
           </div>
           <div className="border-t pt-4">
             <p className="text-muted-foreground mb-3 text-xs">
-              Or customize company details:
+              Optional company details (can attach later):
             </p>
             <ConvertLeadToCompanyForm
               lead={lead}

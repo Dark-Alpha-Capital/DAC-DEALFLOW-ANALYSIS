@@ -9,10 +9,11 @@ import {
   investorStatusLabels,
   investorRiskProfileLabels,
 } from "@/components/investors/columns";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDateStable } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvestorInteractions } from "@/components/investors/InvestorInteractions";
 import { InvestorCompanyLinkTab } from "@/components/investors/InvestorCompanyLinkTab";
+import { InvestorLinkedDealOpportunities } from "@/components/investors/InvestorLinkedDealOpportunities";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
@@ -90,7 +91,7 @@ function InvestorDetailRoute() {
     );
   }
 
-  const { investor, interactions, linkedCompanies } = data;
+  const { investor, interactions, linkedCompanies, linkedDealOpportunities } = data;
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
@@ -117,7 +118,7 @@ function InvestorDetailRoute() {
             </h1>
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-muted-foreground text-xs">
-                Added {new Date(investor.createdAt).toLocaleDateString()}
+                Added {formatDateStable(investor.createdAt)}
               </span>
               <span className="text-muted-foreground">•</span>
               <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
@@ -154,6 +155,7 @@ function InvestorDetailRoute() {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="capital">Capital</TabsTrigger>
+            <TabsTrigger value="linked-entities">Linked entities</TabsTrigger>
             <TabsTrigger value="company">Companies</TabsTrigger>
             <TabsTrigger value="interactions">Interactions</TabsTrigger>
           </TabsList>
@@ -247,6 +249,13 @@ function InvestorDetailRoute() {
               ) : null}
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="linked-entities" className="mt-8">
+          <InvestorLinkedDealOpportunities
+            investorName={investor.name}
+            dealOpportunities={linkedDealOpportunities ?? []}
+          />
         </TabsContent>
 
         <TabsContent value="company" className="mt-8">

@@ -32,7 +32,24 @@ import { toast } from "sonner";
 interface CIMAnalysisSectionProps {
   dealOpportunityId: string;
   entityName?: string;
+  initialData?: CIMAnalysisData | null;
 }
+
+export type CIMAnalysisData = {
+  activeSim: { id: string; status: "ready" | "processing" } | null;
+  revenueHistory: Record<string, number>;
+  ebitdaHistory: Record<string, number>;
+  employeeCount?: number | null;
+  customerConcentration?: number | null;
+  capexIntensity?: string | null;
+  revenueBreakdown: Record<string, number>;
+  growthDrivers: string[];
+  keyRisks: string[];
+  industryOverview?: string | null;
+  transactionDetails?: string | null;
+  documentFileName?: string | null;
+  documentCreatedAt?: Date | string | null;
+};
 
 const hasAnyFinancials = (data: {
   revenueHistory?: Record<string, number>;
@@ -52,6 +69,7 @@ const hasAnyFinancials = (data: {
 export function CIMAnalysisSection({
   dealOpportunityId,
   entityName = "Deal",
+  initialData = null,
 }: CIMAnalysisSectionProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -60,7 +78,10 @@ export function CIMAnalysisSection({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { data, isLoading } = useQuery(
-    trpc.dealOpportunities.getCIMAnalysisForOpportunity.queryOptions({ dealOpportunityId }),
+    trpc.dealOpportunities.getCIMAnalysisForOpportunity.queryOptions(
+      { dealOpportunityId },
+      { initialData: initialData ?? undefined },
+    ),
   );
 
   const { mutate: editFinancials, isPending: isSaving } = useMutation(

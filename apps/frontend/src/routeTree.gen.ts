@@ -20,7 +20,6 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ProtectedScreeningsRouteImport } from './routes/_protected/screenings'
 import { Route as ProtectedNewRouteImport } from './routes/_protected/new'
 import { Route as ProtectedJobsRouteImport } from './routes/_protected/jobs'
-import { Route as ProtectedInvestorsRouteImport } from './routes/_protected/investors'
 import { Route as ProtectedHealthRouteImport } from './routes/_protected/health'
 import { Route as ProtectedDocumentsRouteImport } from './routes/_protected/documents'
 import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
@@ -28,13 +27,14 @@ import { Route as ProtectedAnalyticsRouteImport } from './routes/_protected/anal
 import { Route as ProtectedAdminRouteImport } from './routes/_protected/admin'
 import { Route as DocumentationDocsRouteImport } from './routes/_documentation/docs'
 import { Route as ChatbotChatRouteImport } from './routes/_chatbot/chat'
+import { Route as ProtectedScreeningIndexRouteImport } from './routes/_protected/screening/index'
 import { Route as ProtectedScreenersIndexRouteImport } from './routes/_protected/screeners/index'
 import { Route as ProtectedLeadsIndexRouteImport } from './routes/_protected/leads/index'
+import { Route as ProtectedInvestorsIndexRouteImport } from './routes/_protected/investors/index'
 import { Route as ProtectedInvestorLeadsIndexRouteImport } from './routes/_protected/investor-leads/index'
 import { Route as ProtectedInvestmentThemesIndexRouteImport } from './routes/_protected/investment-themes/index'
 import { Route as ProtectedDealOpportunitiesIndexRouteImport } from './routes/_protected/deal-opportunities/index'
 import { Route as ProtectedCompaniesIndexRouteImport } from './routes/_protected/companies/index'
-import { Route as ProtectedCimScreeningIndexRouteImport } from './routes/_protected/cim-screening/index'
 import { Route as ChatbotChatIndexRouteImport } from './routes/_chatbot/chat/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc.$'
 import { Route as ApiLeadsIngestRouteImport } from './routes/api/leads/ingest'
@@ -42,6 +42,7 @@ import { Route as ApiInvestorLeadsIngestRouteImport } from './routes/api/investo
 import { Route as ApiHealthRedisRouteImport } from './routes/api/health/redis'
 import { Route as ApiDealOpportunitiesQuickAddRouteImport } from './routes/api/deal-opportunities/quick-add'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ProtectedScreeningNewRunRouteImport } from './routes/_protected/screening/new-run'
 import { Route as ProtectedScreenersUidRouteImport } from './routes/_protected/screeners/$uid'
 import { Route as ProtectedProfileUidRouteImport } from './routes/_protected/profile/$uid'
 import { Route as ProtectedNewDocumentRouteImport } from './routes/_protected/new/document'
@@ -73,12 +74,12 @@ import { Route as AuthenticationAuthResetPasswordRouteImport } from './routes/_a
 import { Route as AuthenticationAuthLoginRouteImport } from './routes/_authentication/auth/login'
 import { Route as AuthenticationAuthForgotPasswordRouteImport } from './routes/_authentication/auth/forgot-password'
 import { Route as AuthenticationAuthErrorRouteImport } from './routes/_authentication/auth/error'
+import { Route as ProtectedScreeningSessionIdIndexRouteImport } from './routes/_protected/screening/$sessionId/index'
 import { Route as ProtectedLeadsUidIndexRouteImport } from './routes/_protected/leads/$uid/index'
 import { Route as ProtectedInvestorsUidIndexRouteImport } from './routes/_protected/investors/$uid/index'
 import { Route as ProtectedInvestorLeadsUidIndexRouteImport } from './routes/_protected/investor-leads/$uid/index'
 import { Route as ProtectedInvestmentThemesUidIndexRouteImport } from './routes/_protected/investment-themes/$uid/index'
 import { Route as ProtectedDealOpportunitiesUidIndexRouteImport } from './routes/_protected/deal-opportunities/$uid/index'
-import { Route as ProtectedCimScreeningSessionIdIndexRouteImport } from './routes/_protected/cim-screening/$sessionId/index'
 import { Route as ProtectedLeadsUidEditRouteImport } from './routes/_protected/leads/$uid/edit'
 import { Route as ProtectedLeadsUidConvertRouteImport } from './routes/_protected/leads/$uid/convert'
 import { Route as ProtectedInvestorsUidEditRouteImport } from './routes/_protected/investors/$uid/edit'
@@ -88,7 +89,7 @@ import { Route as ProtectedInvestmentThemesUidEditRouteImport } from './routes/_
 import { Route as ProtectedDealOpportunitiesUidSyncBitrix24RouteImport } from './routes/_protected/deal-opportunities/$uid/sync-bitrix-24'
 import { Route as ProtectedDealOpportunitiesUidEditRouteImport } from './routes/_protected/deal-opportunities/$uid/edit'
 import { Route as ProtectedCompaniesUidEditRouteImport } from './routes/_protected/companies/$uid/edit'
-import { Route as ProtectedCimScreeningSessionIdSyncBitrix24IndexRouteImport } from './routes/_protected/cim-screening/$sessionId/sync-bitrix-24/index'
+import { Route as ProtectedScreeningSessionIdSyncBitrix24IndexRouteImport } from './routes/_protected/screening/$sessionId/sync-bitrix-24/index'
 
 const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
   id: '/_protected',
@@ -141,11 +142,6 @@ const ProtectedJobsRoute = ProtectedJobsRouteImport.update({
   path: '/jobs',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedInvestorsRoute = ProtectedInvestorsRouteImport.update({
-  id: '/investors',
-  path: '/investors',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
 const ProtectedHealthRoute = ProtectedHealthRouteImport.update({
   id: '/health',
   path: '/health',
@@ -181,6 +177,11 @@ const ChatbotChatRoute = ChatbotChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => ChatbotRouteRoute,
 } as any)
+const ProtectedScreeningIndexRoute = ProtectedScreeningIndexRouteImport.update({
+  id: '/screening/',
+  path: '/screening/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ProtectedScreenersIndexRoute = ProtectedScreenersIndexRouteImport.update({
   id: '/screeners/',
   path: '/screeners/',
@@ -189,6 +190,11 @@ const ProtectedScreenersIndexRoute = ProtectedScreenersIndexRouteImport.update({
 const ProtectedLeadsIndexRoute = ProtectedLeadsIndexRouteImport.update({
   id: '/leads/',
   path: '/leads/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedInvestorsIndexRoute = ProtectedInvestorsIndexRouteImport.update({
+  id: '/investors/',
+  path: '/investors/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
 const ProtectedInvestorLeadsIndexRoute =
@@ -214,12 +220,6 @@ const ProtectedCompaniesIndexRoute = ProtectedCompaniesIndexRouteImport.update({
   path: '/companies/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedCimScreeningIndexRoute =
-  ProtectedCimScreeningIndexRouteImport.update({
-    id: '/cim-screening/',
-    path: '/cim-screening/',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ChatbotChatIndexRoute = ChatbotChatIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -256,6 +256,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtectedScreeningNewRunRoute =
+  ProtectedScreeningNewRunRouteImport.update({
+    id: '/screening/new-run',
+    path: '/screening/new-run',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedScreenersUidRoute = ProtectedScreenersUidRouteImport.update({
   id: '/screeners/$uid',
   path: '/screeners/$uid',
@@ -277,9 +283,9 @@ const ProtectedLeadsNewRoute = ProtectedLeadsNewRouteImport.update({
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
 const ProtectedInvestorsNewRoute = ProtectedInvestorsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => ProtectedInvestorsRoute,
+  id: '/investors/new',
+  path: '/investors/new',
+  getParentRoute: () => ProtectedRouteRoute,
 } as any)
 const ProtectedInvestorLeadsNewRoute =
   ProtectedInvestorLeadsNewRouteImport.update({
@@ -425,6 +431,12 @@ const AuthenticationAuthErrorRoute = AuthenticationAuthErrorRouteImport.update({
   path: '/auth/error',
   getParentRoute: () => AuthenticationRouteRoute,
 } as any)
+const ProtectedScreeningSessionIdIndexRoute =
+  ProtectedScreeningSessionIdIndexRouteImport.update({
+    id: '/screening/$sessionId/',
+    path: '/screening/$sessionId/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedLeadsUidIndexRoute = ProtectedLeadsUidIndexRouteImport.update({
   id: '/leads/$uid/',
   path: '/leads/$uid/',
@@ -432,9 +444,9 @@ const ProtectedLeadsUidIndexRoute = ProtectedLeadsUidIndexRouteImport.update({
 } as any)
 const ProtectedInvestorsUidIndexRoute =
   ProtectedInvestorsUidIndexRouteImport.update({
-    id: '/$uid/',
-    path: '/$uid/',
-    getParentRoute: () => ProtectedInvestorsRoute,
+    id: '/investors/$uid/',
+    path: '/investors/$uid/',
+    getParentRoute: () => ProtectedRouteRoute,
   } as any)
 const ProtectedInvestorLeadsUidIndexRoute =
   ProtectedInvestorLeadsUidIndexRouteImport.update({
@@ -454,12 +466,6 @@ const ProtectedDealOpportunitiesUidIndexRoute =
     path: '/deal-opportunities/$uid/',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
-const ProtectedCimScreeningSessionIdIndexRoute =
-  ProtectedCimScreeningSessionIdIndexRouteImport.update({
-    id: '/cim-screening/$sessionId/',
-    path: '/cim-screening/$sessionId/',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ProtectedLeadsUidEditRoute = ProtectedLeadsUidEditRouteImport.update({
   id: '/leads/$uid/edit',
   path: '/leads/$uid/edit',
@@ -473,9 +479,9 @@ const ProtectedLeadsUidConvertRoute =
   } as any)
 const ProtectedInvestorsUidEditRoute =
   ProtectedInvestorsUidEditRouteImport.update({
-    id: '/$uid/edit',
-    path: '/$uid/edit',
-    getParentRoute: () => ProtectedInvestorsRoute,
+    id: '/investors/$uid/edit',
+    path: '/investors/$uid/edit',
+    getParentRoute: () => ProtectedRouteRoute,
   } as any)
 const ProtectedInvestorLeadsUidEditRoute =
   ProtectedInvestorLeadsUidEditRouteImport.update({
@@ -513,10 +519,10 @@ const ProtectedCompaniesUidEditRoute =
     path: '/edit',
     getParentRoute: () => ProtectedCompaniesUidRoute,
   } as any)
-const ProtectedCimScreeningSessionIdSyncBitrix24IndexRoute =
-  ProtectedCimScreeningSessionIdSyncBitrix24IndexRouteImport.update({
-    id: '/cim-screening/$sessionId/sync-bitrix-24/',
-    path: '/cim-screening/$sessionId/sync-bitrix-24/',
+const ProtectedScreeningSessionIdSyncBitrix24IndexRoute =
+  ProtectedScreeningSessionIdSyncBitrix24IndexRouteImport.update({
+    id: '/screening/$sessionId/sync-bitrix-24/',
+    path: '/screening/$sessionId/sync-bitrix-24/',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
 
@@ -529,7 +535,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof ProtectedDashboardRoute
   '/documents': typeof ProtectedDocumentsRoute
   '/health': typeof ProtectedHealthRoute
-  '/investors': typeof ProtectedInvestorsRouteWithChildren
   '/jobs': typeof ProtectedJobsRoute
   '/new': typeof ProtectedNewRouteWithChildren
   '/screenings': typeof ProtectedScreeningsRoute
@@ -567,6 +572,7 @@ export interface FileRoutesByFullPath {
   '/new/document': typeof ProtectedNewDocumentRoute
   '/profile/$uid': typeof ProtectedProfileUidRoute
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
+  '/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
@@ -574,13 +580,14 @@ export interface FileRoutesByFullPath {
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat/': typeof ChatbotChatIndexRoute
-  '/cim-screening/': typeof ProtectedCimScreeningIndexRoute
   '/companies/': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
   '/investment-themes/': typeof ProtectedInvestmentThemesIndexRoute
   '/investor-leads/': typeof ProtectedInvestorLeadsIndexRoute
+  '/investors/': typeof ProtectedInvestorsIndexRoute
   '/leads/': typeof ProtectedLeadsIndexRoute
   '/screeners/': typeof ProtectedScreenersIndexRoute
+  '/screening/': typeof ProtectedScreeningIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
@@ -590,13 +597,13 @@ export interface FileRoutesByFullPath {
   '/investors/$uid/edit': typeof ProtectedInvestorsUidEditRoute
   '/leads/$uid/convert': typeof ProtectedLeadsUidConvertRoute
   '/leads/$uid/edit': typeof ProtectedLeadsUidEditRoute
-  '/cim-screening/$sessionId/': typeof ProtectedCimScreeningSessionIdIndexRoute
   '/deal-opportunities/$uid/': typeof ProtectedDealOpportunitiesUidIndexRoute
   '/investment-themes/$uid/': typeof ProtectedInvestmentThemesUidIndexRoute
   '/investor-leads/$uid/': typeof ProtectedInvestorLeadsUidIndexRoute
   '/investors/$uid/': typeof ProtectedInvestorsUidIndexRoute
   '/leads/$uid/': typeof ProtectedLeadsUidIndexRoute
-  '/cim-screening/$sessionId/sync-bitrix-24/': typeof ProtectedCimScreeningSessionIdSyncBitrix24IndexRoute
+  '/screening/$sessionId/': typeof ProtectedScreeningSessionIdIndexRoute
+  '/screening/$sessionId/sync-bitrix-24/': typeof ProtectedScreeningSessionIdSyncBitrix24IndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof ProtectedIndexRoute
@@ -606,7 +613,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof ProtectedDashboardRoute
   '/documents': typeof ProtectedDocumentsRoute
   '/health': typeof ProtectedHealthRoute
-  '/investors': typeof ProtectedInvestorsRouteWithChildren
   '/jobs': typeof ProtectedJobsRoute
   '/new': typeof ProtectedNewRouteWithChildren
   '/screenings': typeof ProtectedScreeningsRoute
@@ -644,6 +650,7 @@ export interface FileRoutesByTo {
   '/new/document': typeof ProtectedNewDocumentRoute
   '/profile/$uid': typeof ProtectedProfileUidRoute
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
+  '/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
@@ -651,13 +658,14 @@ export interface FileRoutesByTo {
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat': typeof ChatbotChatIndexRoute
-  '/cim-screening': typeof ProtectedCimScreeningIndexRoute
   '/companies': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities': typeof ProtectedDealOpportunitiesIndexRoute
   '/investment-themes': typeof ProtectedInvestmentThemesIndexRoute
   '/investor-leads': typeof ProtectedInvestorLeadsIndexRoute
+  '/investors': typeof ProtectedInvestorsIndexRoute
   '/leads': typeof ProtectedLeadsIndexRoute
   '/screeners': typeof ProtectedScreenersIndexRoute
+  '/screening': typeof ProtectedScreeningIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
@@ -667,13 +675,13 @@ export interface FileRoutesByTo {
   '/investors/$uid/edit': typeof ProtectedInvestorsUidEditRoute
   '/leads/$uid/convert': typeof ProtectedLeadsUidConvertRoute
   '/leads/$uid/edit': typeof ProtectedLeadsUidEditRoute
-  '/cim-screening/$sessionId': typeof ProtectedCimScreeningSessionIdIndexRoute
   '/deal-opportunities/$uid': typeof ProtectedDealOpportunitiesUidIndexRoute
   '/investment-themes/$uid': typeof ProtectedInvestmentThemesUidIndexRoute
   '/investor-leads/$uid': typeof ProtectedInvestorLeadsUidIndexRoute
   '/investors/$uid': typeof ProtectedInvestorsUidIndexRoute
   '/leads/$uid': typeof ProtectedLeadsUidIndexRoute
-  '/cim-screening/$sessionId/sync-bitrix-24': typeof ProtectedCimScreeningSessionIdSyncBitrix24IndexRoute
+  '/screening/$sessionId': typeof ProtectedScreeningSessionIdIndexRoute
+  '/screening/$sessionId/sync-bitrix-24': typeof ProtectedScreeningSessionIdSyncBitrix24IndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -688,7 +696,6 @@ export interface FileRoutesById {
   '/_protected/dashboard': typeof ProtectedDashboardRoute
   '/_protected/documents': typeof ProtectedDocumentsRoute
   '/_protected/health': typeof ProtectedHealthRoute
-  '/_protected/investors': typeof ProtectedInvestorsRouteWithChildren
   '/_protected/jobs': typeof ProtectedJobsRoute
   '/_protected/new': typeof ProtectedNewRouteWithChildren
   '/_protected/screenings': typeof ProtectedScreeningsRoute
@@ -727,6 +734,7 @@ export interface FileRoutesById {
   '/_protected/new/document': typeof ProtectedNewDocumentRoute
   '/_protected/profile/$uid': typeof ProtectedProfileUidRoute
   '/_protected/screeners/$uid': typeof ProtectedScreenersUidRoute
+  '/_protected/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
@@ -734,13 +742,14 @@ export interface FileRoutesById {
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/_chatbot/chat/': typeof ChatbotChatIndexRoute
-  '/_protected/cim-screening/': typeof ProtectedCimScreeningIndexRoute
   '/_protected/companies/': typeof ProtectedCompaniesIndexRoute
   '/_protected/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
   '/_protected/investment-themes/': typeof ProtectedInvestmentThemesIndexRoute
   '/_protected/investor-leads/': typeof ProtectedInvestorLeadsIndexRoute
+  '/_protected/investors/': typeof ProtectedInvestorsIndexRoute
   '/_protected/leads/': typeof ProtectedLeadsIndexRoute
   '/_protected/screeners/': typeof ProtectedScreenersIndexRoute
+  '/_protected/screening/': typeof ProtectedScreeningIndexRoute
   '/_protected/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/_protected/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/_protected/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
@@ -750,13 +759,13 @@ export interface FileRoutesById {
   '/_protected/investors/$uid/edit': typeof ProtectedInvestorsUidEditRoute
   '/_protected/leads/$uid/convert': typeof ProtectedLeadsUidConvertRoute
   '/_protected/leads/$uid/edit': typeof ProtectedLeadsUidEditRoute
-  '/_protected/cim-screening/$sessionId/': typeof ProtectedCimScreeningSessionIdIndexRoute
   '/_protected/deal-opportunities/$uid/': typeof ProtectedDealOpportunitiesUidIndexRoute
   '/_protected/investment-themes/$uid/': typeof ProtectedInvestmentThemesUidIndexRoute
   '/_protected/investor-leads/$uid/': typeof ProtectedInvestorLeadsUidIndexRoute
   '/_protected/investors/$uid/': typeof ProtectedInvestorsUidIndexRoute
   '/_protected/leads/$uid/': typeof ProtectedLeadsUidIndexRoute
-  '/_protected/cim-screening/$sessionId/sync-bitrix-24/': typeof ProtectedCimScreeningSessionIdSyncBitrix24IndexRoute
+  '/_protected/screening/$sessionId/': typeof ProtectedScreeningSessionIdIndexRoute
+  '/_protected/screening/$sessionId/sync-bitrix-24/': typeof ProtectedScreeningSessionIdSyncBitrix24IndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -769,7 +778,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/documents'
     | '/health'
-    | '/investors'
     | '/jobs'
     | '/new'
     | '/screenings'
@@ -807,6 +815,7 @@ export interface FileRouteTypes {
     | '/new/document'
     | '/profile/$uid'
     | '/screeners/$uid'
+    | '/screening/new-run'
     | '/api/auth/$'
     | '/api/deal-opportunities/quick-add'
     | '/api/health/redis'
@@ -814,13 +823,14 @@ export interface FileRouteTypes {
     | '/api/leads/ingest'
     | '/api/trpc/$'
     | '/chat/'
-    | '/cim-screening/'
     | '/companies/'
     | '/deal-opportunities/'
     | '/investment-themes/'
     | '/investor-leads/'
+    | '/investors/'
     | '/leads/'
     | '/screeners/'
+    | '/screening/'
     | '/companies/$uid/edit'
     | '/deal-opportunities/$uid/edit'
     | '/deal-opportunities/$uid/sync-bitrix-24'
@@ -830,13 +840,13 @@ export interface FileRouteTypes {
     | '/investors/$uid/edit'
     | '/leads/$uid/convert'
     | '/leads/$uid/edit'
-    | '/cim-screening/$sessionId/'
     | '/deal-opportunities/$uid/'
     | '/investment-themes/$uid/'
     | '/investor-leads/$uid/'
     | '/investors/$uid/'
     | '/leads/$uid/'
-    | '/cim-screening/$sessionId/sync-bitrix-24/'
+    | '/screening/$sessionId/'
+    | '/screening/$sessionId/sync-bitrix-24/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -846,7 +856,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/documents'
     | '/health'
-    | '/investors'
     | '/jobs'
     | '/new'
     | '/screenings'
@@ -884,6 +893,7 @@ export interface FileRouteTypes {
     | '/new/document'
     | '/profile/$uid'
     | '/screeners/$uid'
+    | '/screening/new-run'
     | '/api/auth/$'
     | '/api/deal-opportunities/quick-add'
     | '/api/health/redis'
@@ -891,13 +901,14 @@ export interface FileRouteTypes {
     | '/api/leads/ingest'
     | '/api/trpc/$'
     | '/chat'
-    | '/cim-screening'
     | '/companies'
     | '/deal-opportunities'
     | '/investment-themes'
     | '/investor-leads'
+    | '/investors'
     | '/leads'
     | '/screeners'
+    | '/screening'
     | '/companies/$uid/edit'
     | '/deal-opportunities/$uid/edit'
     | '/deal-opportunities/$uid/sync-bitrix-24'
@@ -907,13 +918,13 @@ export interface FileRouteTypes {
     | '/investors/$uid/edit'
     | '/leads/$uid/convert'
     | '/leads/$uid/edit'
-    | '/cim-screening/$sessionId'
     | '/deal-opportunities/$uid'
     | '/investment-themes/$uid'
     | '/investor-leads/$uid'
     | '/investors/$uid'
     | '/leads/$uid'
-    | '/cim-screening/$sessionId/sync-bitrix-24'
+    | '/screening/$sessionId'
+    | '/screening/$sessionId/sync-bitrix-24'
   id:
     | '__root__'
     | '/_authentication'
@@ -927,7 +938,6 @@ export interface FileRouteTypes {
     | '/_protected/dashboard'
     | '/_protected/documents'
     | '/_protected/health'
-    | '/_protected/investors'
     | '/_protected/jobs'
     | '/_protected/new'
     | '/_protected/screenings'
@@ -966,6 +976,7 @@ export interface FileRouteTypes {
     | '/_protected/new/document'
     | '/_protected/profile/$uid'
     | '/_protected/screeners/$uid'
+    | '/_protected/screening/new-run'
     | '/api/auth/$'
     | '/api/deal-opportunities/quick-add'
     | '/api/health/redis'
@@ -973,13 +984,14 @@ export interface FileRouteTypes {
     | '/api/leads/ingest'
     | '/api/trpc/$'
     | '/_chatbot/chat/'
-    | '/_protected/cim-screening/'
     | '/_protected/companies/'
     | '/_protected/deal-opportunities/'
     | '/_protected/investment-themes/'
     | '/_protected/investor-leads/'
+    | '/_protected/investors/'
     | '/_protected/leads/'
     | '/_protected/screeners/'
+    | '/_protected/screening/'
     | '/_protected/companies/$uid/edit'
     | '/_protected/deal-opportunities/$uid/edit'
     | '/_protected/deal-opportunities/$uid/sync-bitrix-24'
@@ -989,13 +1001,13 @@ export interface FileRouteTypes {
     | '/_protected/investors/$uid/edit'
     | '/_protected/leads/$uid/convert'
     | '/_protected/leads/$uid/edit'
-    | '/_protected/cim-screening/$sessionId/'
     | '/_protected/deal-opportunities/$uid/'
     | '/_protected/investment-themes/$uid/'
     | '/_protected/investor-leads/$uid/'
     | '/_protected/investors/$uid/'
     | '/_protected/leads/$uid/'
-    | '/_protected/cim-screening/$sessionId/sync-bitrix-24/'
+    | '/_protected/screening/$sessionId/'
+    | '/_protected/screening/$sessionId/sync-bitrix-24/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1092,13 +1104,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedJobsRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/investors': {
-      id: '/_protected/investors'
-      path: '/investors'
-      fullPath: '/investors'
-      preLoaderRoute: typeof ProtectedInvestorsRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
     '/_protected/health': {
       id: '/_protected/health'
       path: '/health'
@@ -1148,6 +1153,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatbotChatRouteImport
       parentRoute: typeof ChatbotRouteRoute
     }
+    '/_protected/screening/': {
+      id: '/_protected/screening/'
+      path: '/screening'
+      fullPath: '/screening/'
+      preLoaderRoute: typeof ProtectedScreeningIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/screeners/': {
       id: '/_protected/screeners/'
       path: '/screeners'
@@ -1160,6 +1172,13 @@ declare module '@tanstack/react-router' {
       path: '/leads'
       fullPath: '/leads/'
       preLoaderRoute: typeof ProtectedLeadsIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investors/': {
+      id: '/_protected/investors/'
+      path: '/investors'
+      fullPath: '/investors/'
+      preLoaderRoute: typeof ProtectedInvestorsIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/investor-leads/': {
@@ -1188,13 +1207,6 @@ declare module '@tanstack/react-router' {
       path: '/companies'
       fullPath: '/companies/'
       preLoaderRoute: typeof ProtectedCompaniesIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/cim-screening/': {
-      id: '/_protected/cim-screening/'
-      path: '/cim-screening'
-      fullPath: '/cim-screening/'
-      preLoaderRoute: typeof ProtectedCimScreeningIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_chatbot/chat/': {
@@ -1246,6 +1258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_protected/screening/new-run': {
+      id: '/_protected/screening/new-run'
+      path: '/screening/new-run'
+      fullPath: '/screening/new-run'
+      preLoaderRoute: typeof ProtectedScreeningNewRunRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/screeners/$uid': {
       id: '/_protected/screeners/$uid'
       path: '/screeners/$uid'
@@ -1276,10 +1295,10 @@ declare module '@tanstack/react-router' {
     }
     '/_protected/investors/new': {
       id: '/_protected/investors/new'
-      path: '/new'
+      path: '/investors/new'
       fullPath: '/investors/new'
       preLoaderRoute: typeof ProtectedInvestorsNewRouteImport
-      parentRoute: typeof ProtectedInvestorsRoute
+      parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/investor-leads/new': {
       id: '/_protected/investor-leads/new'
@@ -1463,6 +1482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticationAuthErrorRouteImport
       parentRoute: typeof AuthenticationRouteRoute
     }
+    '/_protected/screening/$sessionId/': {
+      id: '/_protected/screening/$sessionId/'
+      path: '/screening/$sessionId'
+      fullPath: '/screening/$sessionId/'
+      preLoaderRoute: typeof ProtectedScreeningSessionIdIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/leads/$uid/': {
       id: '/_protected/leads/$uid/'
       path: '/leads/$uid'
@@ -1472,10 +1498,10 @@ declare module '@tanstack/react-router' {
     }
     '/_protected/investors/$uid/': {
       id: '/_protected/investors/$uid/'
-      path: '/$uid'
+      path: '/investors/$uid'
       fullPath: '/investors/$uid/'
       preLoaderRoute: typeof ProtectedInvestorsUidIndexRouteImport
-      parentRoute: typeof ProtectedInvestorsRoute
+      parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/investor-leads/$uid/': {
       id: '/_protected/investor-leads/$uid/'
@@ -1498,13 +1524,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedDealOpportunitiesUidIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/cim-screening/$sessionId/': {
-      id: '/_protected/cim-screening/$sessionId/'
-      path: '/cim-screening/$sessionId'
-      fullPath: '/cim-screening/$sessionId/'
-      preLoaderRoute: typeof ProtectedCimScreeningSessionIdIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
     '/_protected/leads/$uid/edit': {
       id: '/_protected/leads/$uid/edit'
       path: '/leads/$uid/edit'
@@ -1521,10 +1540,10 @@ declare module '@tanstack/react-router' {
     }
     '/_protected/investors/$uid/edit': {
       id: '/_protected/investors/$uid/edit'
-      path: '/$uid/edit'
+      path: '/investors/$uid/edit'
       fullPath: '/investors/$uid/edit'
       preLoaderRoute: typeof ProtectedInvestorsUidEditRouteImport
-      parentRoute: typeof ProtectedInvestorsRoute
+      parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/investor-leads/$uid/edit': {
       id: '/_protected/investor-leads/$uid/edit'
@@ -1568,11 +1587,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedCompaniesUidEditRouteImport
       parentRoute: typeof ProtectedCompaniesUidRoute
     }
-    '/_protected/cim-screening/$sessionId/sync-bitrix-24/': {
-      id: '/_protected/cim-screening/$sessionId/sync-bitrix-24/'
-      path: '/cim-screening/$sessionId/sync-bitrix-24'
-      fullPath: '/cim-screening/$sessionId/sync-bitrix-24/'
-      preLoaderRoute: typeof ProtectedCimScreeningSessionIdSyncBitrix24IndexRouteImport
+    '/_protected/screening/$sessionId/sync-bitrix-24/': {
+      id: '/_protected/screening/$sessionId/sync-bitrix-24/'
+      path: '/screening/$sessionId/sync-bitrix-24'
+      fullPath: '/screening/$sessionId/sync-bitrix-24/'
+      preLoaderRoute: typeof ProtectedScreeningSessionIdSyncBitrix24IndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
   }
@@ -1671,21 +1690,6 @@ const DocumentationRouteRouteChildren: DocumentationRouteRouteChildren = {
 const DocumentationRouteRouteWithChildren =
   DocumentationRouteRoute._addFileChildren(DocumentationRouteRouteChildren)
 
-interface ProtectedInvestorsRouteChildren {
-  ProtectedInvestorsNewRoute: typeof ProtectedInvestorsNewRoute
-  ProtectedInvestorsUidEditRoute: typeof ProtectedInvestorsUidEditRoute
-  ProtectedInvestorsUidIndexRoute: typeof ProtectedInvestorsUidIndexRoute
-}
-
-const ProtectedInvestorsRouteChildren: ProtectedInvestorsRouteChildren = {
-  ProtectedInvestorsNewRoute: ProtectedInvestorsNewRoute,
-  ProtectedInvestorsUidEditRoute: ProtectedInvestorsUidEditRoute,
-  ProtectedInvestorsUidIndexRoute: ProtectedInvestorsUidIndexRoute,
-}
-
-const ProtectedInvestorsRouteWithChildren =
-  ProtectedInvestorsRoute._addFileChildren(ProtectedInvestorsRouteChildren)
-
 interface ProtectedNewRouteChildren {
   ProtectedNewDocumentRoute: typeof ProtectedNewDocumentRoute
 }
@@ -1717,7 +1721,6 @@ interface ProtectedRouteRouteChildren {
   ProtectedDashboardRoute: typeof ProtectedDashboardRoute
   ProtectedDocumentsRoute: typeof ProtectedDocumentsRoute
   ProtectedHealthRoute: typeof ProtectedHealthRoute
-  ProtectedInvestorsRoute: typeof ProtectedInvestorsRouteWithChildren
   ProtectedJobsRoute: typeof ProtectedJobsRoute
   ProtectedNewRoute: typeof ProtectedNewRouteWithChildren
   ProtectedScreeningsRoute: typeof ProtectedScreeningsRoute
@@ -1728,29 +1731,34 @@ interface ProtectedRouteRouteChildren {
   ProtectedDealOpportunitiesQuickAddRoute: typeof ProtectedDealOpportunitiesQuickAddRoute
   ProtectedInvestmentThemesNewRoute: typeof ProtectedInvestmentThemesNewRoute
   ProtectedInvestorLeadsNewRoute: typeof ProtectedInvestorLeadsNewRoute
+  ProtectedInvestorsNewRoute: typeof ProtectedInvestorsNewRoute
   ProtectedLeadsNewRoute: typeof ProtectedLeadsNewRoute
   ProtectedProfileUidRoute: typeof ProtectedProfileUidRoute
   ProtectedScreenersUidRoute: typeof ProtectedScreenersUidRoute
-  ProtectedCimScreeningIndexRoute: typeof ProtectedCimScreeningIndexRoute
+  ProtectedScreeningNewRunRoute: typeof ProtectedScreeningNewRunRoute
   ProtectedCompaniesIndexRoute: typeof ProtectedCompaniesIndexRoute
   ProtectedDealOpportunitiesIndexRoute: typeof ProtectedDealOpportunitiesIndexRoute
   ProtectedInvestmentThemesIndexRoute: typeof ProtectedInvestmentThemesIndexRoute
   ProtectedInvestorLeadsIndexRoute: typeof ProtectedInvestorLeadsIndexRoute
+  ProtectedInvestorsIndexRoute: typeof ProtectedInvestorsIndexRoute
   ProtectedLeadsIndexRoute: typeof ProtectedLeadsIndexRoute
   ProtectedScreenersIndexRoute: typeof ProtectedScreenersIndexRoute
+  ProtectedScreeningIndexRoute: typeof ProtectedScreeningIndexRoute
   ProtectedDealOpportunitiesUidEditRoute: typeof ProtectedDealOpportunitiesUidEditRoute
   ProtectedDealOpportunitiesUidSyncBitrix24Route: typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
   ProtectedInvestmentThemesUidEditRoute: typeof ProtectedInvestmentThemesUidEditRoute
   ProtectedInvestorLeadsUidConvertRoute: typeof ProtectedInvestorLeadsUidConvertRoute
   ProtectedInvestorLeadsUidEditRoute: typeof ProtectedInvestorLeadsUidEditRoute
+  ProtectedInvestorsUidEditRoute: typeof ProtectedInvestorsUidEditRoute
   ProtectedLeadsUidConvertRoute: typeof ProtectedLeadsUidConvertRoute
   ProtectedLeadsUidEditRoute: typeof ProtectedLeadsUidEditRoute
-  ProtectedCimScreeningSessionIdIndexRoute: typeof ProtectedCimScreeningSessionIdIndexRoute
   ProtectedDealOpportunitiesUidIndexRoute: typeof ProtectedDealOpportunitiesUidIndexRoute
   ProtectedInvestmentThemesUidIndexRoute: typeof ProtectedInvestmentThemesUidIndexRoute
   ProtectedInvestorLeadsUidIndexRoute: typeof ProtectedInvestorLeadsUidIndexRoute
+  ProtectedInvestorsUidIndexRoute: typeof ProtectedInvestorsUidIndexRoute
   ProtectedLeadsUidIndexRoute: typeof ProtectedLeadsUidIndexRoute
-  ProtectedCimScreeningSessionIdSyncBitrix24IndexRoute: typeof ProtectedCimScreeningSessionIdSyncBitrix24IndexRoute
+  ProtectedScreeningSessionIdIndexRoute: typeof ProtectedScreeningSessionIdIndexRoute
+  ProtectedScreeningSessionIdSyncBitrix24IndexRoute: typeof ProtectedScreeningSessionIdSyncBitrix24IndexRoute
 }
 
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
@@ -1759,7 +1767,6 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedDashboardRoute: ProtectedDashboardRoute,
   ProtectedDocumentsRoute: ProtectedDocumentsRoute,
   ProtectedHealthRoute: ProtectedHealthRoute,
-  ProtectedInvestorsRoute: ProtectedInvestorsRouteWithChildren,
   ProtectedJobsRoute: ProtectedJobsRoute,
   ProtectedNewRoute: ProtectedNewRouteWithChildren,
   ProtectedScreeningsRoute: ProtectedScreeningsRoute,
@@ -1771,16 +1778,19 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
     ProtectedDealOpportunitiesQuickAddRoute,
   ProtectedInvestmentThemesNewRoute: ProtectedInvestmentThemesNewRoute,
   ProtectedInvestorLeadsNewRoute: ProtectedInvestorLeadsNewRoute,
+  ProtectedInvestorsNewRoute: ProtectedInvestorsNewRoute,
   ProtectedLeadsNewRoute: ProtectedLeadsNewRoute,
   ProtectedProfileUidRoute: ProtectedProfileUidRoute,
   ProtectedScreenersUidRoute: ProtectedScreenersUidRoute,
-  ProtectedCimScreeningIndexRoute: ProtectedCimScreeningIndexRoute,
+  ProtectedScreeningNewRunRoute: ProtectedScreeningNewRunRoute,
   ProtectedCompaniesIndexRoute: ProtectedCompaniesIndexRoute,
   ProtectedDealOpportunitiesIndexRoute: ProtectedDealOpportunitiesIndexRoute,
   ProtectedInvestmentThemesIndexRoute: ProtectedInvestmentThemesIndexRoute,
   ProtectedInvestorLeadsIndexRoute: ProtectedInvestorLeadsIndexRoute,
+  ProtectedInvestorsIndexRoute: ProtectedInvestorsIndexRoute,
   ProtectedLeadsIndexRoute: ProtectedLeadsIndexRoute,
   ProtectedScreenersIndexRoute: ProtectedScreenersIndexRoute,
+  ProtectedScreeningIndexRoute: ProtectedScreeningIndexRoute,
   ProtectedDealOpportunitiesUidEditRoute:
     ProtectedDealOpportunitiesUidEditRoute,
   ProtectedDealOpportunitiesUidSyncBitrix24Route:
@@ -1788,18 +1798,19 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedInvestmentThemesUidEditRoute: ProtectedInvestmentThemesUidEditRoute,
   ProtectedInvestorLeadsUidConvertRoute: ProtectedInvestorLeadsUidConvertRoute,
   ProtectedInvestorLeadsUidEditRoute: ProtectedInvestorLeadsUidEditRoute,
+  ProtectedInvestorsUidEditRoute: ProtectedInvestorsUidEditRoute,
   ProtectedLeadsUidConvertRoute: ProtectedLeadsUidConvertRoute,
   ProtectedLeadsUidEditRoute: ProtectedLeadsUidEditRoute,
-  ProtectedCimScreeningSessionIdIndexRoute:
-    ProtectedCimScreeningSessionIdIndexRoute,
   ProtectedDealOpportunitiesUidIndexRoute:
     ProtectedDealOpportunitiesUidIndexRoute,
   ProtectedInvestmentThemesUidIndexRoute:
     ProtectedInvestmentThemesUidIndexRoute,
   ProtectedInvestorLeadsUidIndexRoute: ProtectedInvestorLeadsUidIndexRoute,
+  ProtectedInvestorsUidIndexRoute: ProtectedInvestorsUidIndexRoute,
   ProtectedLeadsUidIndexRoute: ProtectedLeadsUidIndexRoute,
-  ProtectedCimScreeningSessionIdSyncBitrix24IndexRoute:
-    ProtectedCimScreeningSessionIdSyncBitrix24IndexRoute,
+  ProtectedScreeningSessionIdIndexRoute: ProtectedScreeningSessionIdIndexRoute,
+  ProtectedScreeningSessionIdSyncBitrix24IndexRoute:
+    ProtectedScreeningSessionIdSyncBitrix24IndexRoute,
 }
 
 const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(

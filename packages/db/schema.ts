@@ -647,10 +647,10 @@ export const dealOpportunities = pgTable(
       .primaryKey()
       .$defaultFn(() => createId()),
 
-    // Relationships
-    companyId: text("companyId")
-      .notNull()
-      .references(() => companies.id, { onDelete: "cascade" }),
+    // Relationships (optional: attach company later or link multiple opps to one company)
+    companyId: text("companyId").references(() => companies.id, {
+      onDelete: "cascade",
+    }),
 
     leadId: text("leadId").references(() => leads.id, { onDelete: "set null" }),
 
@@ -702,6 +702,64 @@ export const dealOpportunities = pgTable(
     dealOppCompanyIdx: index("deal_opp_company_idx").on(table.companyId),
     dealOppStageIdx: index("deal_opp_stage_idx").on(table.stage),
     dealOppStatusIdx: index("deal_opp_status_idx").on(table.status),
+  }),
+);
+
+/** Many-to-many: deal opportunities linked to companies (primary/secondary targets). */
+export const dealOpportunityCompanyLinks = pgTable(
+  "DealOpportunityCompanyLink",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    dealOpportunityId: text("dealOpportunityId")
+      .notNull()
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }),
+    companyId: text("companyId")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    dealOppCompanyLinkUniqueIdx: uniqueIndex("deal_opp_company_link_unique_idx")
+      .on(table.dealOpportunityId, table.companyId),
+    dealOppCompanyLinkDealIdx: index("deal_opp_company_link_deal_idx").on(
+      table.dealOpportunityId,
+    ),
+    dealOppCompanyLinkCompanyIdx: index("deal_opp_company_link_company_idx").on(
+      table.companyId,
+    ),
+  }),
+);
+
+export const dealOpportunityThemes = pgTable(
+  "DealOpportunityTheme",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    dealOpportunityId: text("dealOpportunityId")
+      .notNull()
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }),
+    themeId: text("themeId")
+      .notNull()
+      .references(() => themes.id, { onDelete: "cascade" }),
+    isPrimary: boolean("isPrimary").default(true).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    dealOppThemeUniqueIdx: uniqueIndex("deal_opp_theme_unique_idx").on(
+      table.dealOpportunityId,
+      table.themeId,
+    ),
+    dealOppThemeDealIdx: index("deal_opp_theme_deal_idx").on(
+      table.dealOpportunityId,
+    ),
+    dealOppThemeThemeIdx: index("deal_opp_theme_theme_idx").on(table.themeId),
+    dealOppPrimaryThemeUniqueIdx: uniqueIndex("deal_opp_primary_theme_unique_idx")
+      .on(table.dealOpportunityId)
+      .where(sql`${table.isPrimary} = true`),
   }),
 );
 
@@ -1111,51 +1169,92 @@ export const documentChunkModalityEnum = pgEnum("DocumentChunkModality", [
   "PDF",
 ]);
 
-export const documents = pgTable("Document", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
+export const documents = pgTable(
+  "Document",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
 
-  entityType: documentEntityEnum("entityType").notNull(),
-  entityId: text("entityId"), // Nullable for GLOBAL documents
-  companyId: text("companyId").references(() => companies.id, {
-    onDelete: "cascade",
+    entityType: documentEntityEnum("entityType").notNull(),
+    entityId: text("entityId"), // Nullable for GLOBAL documents
+    companyId: text("companyId").references(() => companies.id, {
+      onDelete: "cascade",
+    }),
+    leadId: text("leadId").references(() => leads.id, { onDelete: "cascade" }),
+    dealOpportunityId: text("dealOpportunityId").references(
+      () => dealOpportunities.id,
+      { onDelete: "cascade" },
+    ),
+    themeId: text("themeId").references(() => themes.id, {
+      onDelete: "cascade",
+    }),
+
+    title: text("title").notNull(),
+    description: text("description"),
+    category: documentCategoryEnum("category").default("OTHER").notNull(),
+
+    fileUrl: text("fileUrl").notNull(),
+    fileName: text("fileName").notNull(),
+    fileSize: integer("fileSize"),
+    mimeType: text("mimeType"),
+    contentHash: text("contentHash"),
+    ingestionStatus: documentIngestionStatusEnum("ingestionStatus")
+      .default("PENDING")
+      .notNull(),
+    ingestionStartedAt: timestamp("ingestionStartedAt"),
+    ingestionCompletedAt: timestamp("ingestionCompletedAt"),
+    ingestionAttemptCount: integer("ingestionAttemptCount").default(0).notNull(),
+    ingestionError: text("ingestionError"),
+
+    uploadedById: text("uploadedById").references(() => users.id, {
+      onDelete: "set null",
+    }),
+
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    documentCompanyContentHashUniqueIdx: uniqueIndex(
+      "document_company_content_hash_unique_idx",
+    )
+      .on(table.companyId, table.contentHash)
+      .where(
+        sql`${table.companyId} IS NOT NULL AND ${table.contentHash} IS NOT NULL`,
+      ),
+    documentLeadContentHashUniqueIdx: uniqueIndex(
+      "document_lead_content_hash_unique_idx",
+    )
+      .on(table.leadId, table.contentHash)
+      .where(
+        sql`${table.leadId} IS NOT NULL AND ${table.contentHash} IS NOT NULL`,
+      ),
+    documentDealOppContentHashUniqueIdx: uniqueIndex(
+      "document_deal_opp_content_hash_unique_idx",
+    )
+      .on(table.dealOpportunityId, table.contentHash)
+      .where(
+        sql`${table.dealOpportunityId} IS NOT NULL AND ${table.contentHash} IS NOT NULL`,
+      ),
+    documentThemeContentHashUniqueIdx: uniqueIndex(
+      "document_theme_content_hash_unique_idx",
+    )
+      .on(table.themeId, table.contentHash)
+      .where(
+        sql`${table.themeId} IS NOT NULL AND ${table.contentHash} IS NOT NULL`,
+      ),
+    documentGlobalContentHashUniqueIdx: uniqueIndex(
+      "document_global_content_hash_unique_idx",
+    )
+      .on(table.contentHash)
+      .where(
+        sql`${table.entityType} = 'GLOBAL' AND ${table.contentHash} IS NOT NULL`,
+      ),
   }),
-  leadId: text("leadId").references(() => leads.id, { onDelete: "cascade" }),
-  dealOpportunityId: text("dealOpportunityId").references(
-    () => dealOpportunities.id,
-    { onDelete: "cascade" },
-  ),
-  themeId: text("themeId").references(() => themes.id, {
-    onDelete: "cascade",
-  }),
-
-  title: text("title").notNull(),
-  description: text("description"),
-  category: documentCategoryEnum("category").default("OTHER").notNull(),
-
-  fileUrl: text("fileUrl").notNull(),
-  fileName: text("fileName").notNull(),
-  fileSize: integer("fileSize"),
-  mimeType: text("mimeType"),
-  ingestionStatus: documentIngestionStatusEnum("ingestionStatus")
-    .default("PENDING")
-    .notNull(),
-  ingestionStartedAt: timestamp("ingestionStartedAt"),
-  ingestionCompletedAt: timestamp("ingestionCompletedAt"),
-  ingestionAttemptCount: integer("ingestionAttemptCount").default(0).notNull(),
-  ingestionError: text("ingestionError"),
-
-  uploadedById: text("uploadedById").references(() => users.id, {
-    onDelete: "set null",
-  }),
-
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-});
+);
 
 export const documentChunks = pgTable(
   "DocumentChunk",
@@ -1594,6 +1693,40 @@ export const investorCompanyLinks = pgTable(
   }),
 );
 
+/** Many-to-many: investors linked directly to deal opportunities. */
+export const investorDealOpportunityLinks = pgTable(
+  "InvestorDealOpportunityLink",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    investorId: text("investorId")
+      .notNull()
+      .references(() => investors.id, { onDelete: "cascade" }),
+    dealOpportunityId: text("dealOpportunityId")
+      .notNull()
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    investorDealLinkUniqueIdx: uniqueIndex("investor_deal_link_unique_idx").on(
+      table.investorId,
+      table.dealOpportunityId,
+    ),
+    investorDealLinkInvestorIdx: index("investor_deal_link_investor_idx").on(
+      table.investorId,
+    ),
+    investorDealLinkDealIdx: index("investor_deal_link_deal_idx").on(
+      table.dealOpportunityId,
+    ),
+  }),
+);
+
 // ============================================================================
 // RELATIONS
 // ============================================================================
@@ -1624,6 +1757,7 @@ export const themesRelations = relations(themes, ({ one, many }) => ({
   companies: many(companies),
   themePerformance: many(themePerformance),
   companyCoverage: many(themeCompanyCoverage),
+  dealOpportunities: many(dealOpportunityThemes),
   documents: many(documents),
 }));
 
@@ -1748,6 +1882,9 @@ export const dealOpportunitiesRelations = relations(
     }),
     dealSims: many(dealSims),
     simScreeningSessions: many(simScreeningSessions),
+    companyLinks: many(dealOpportunityCompanyLinks),
+    themes: many(dealOpportunityThemes),
+    investorLinks: many(investorDealOpportunityLinks),
   }),
 );
 
@@ -1768,7 +1905,36 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
   themeCoverage: many(themeCompanyCoverage),
   financialSnapshots: many(companyFinancialSnapshots),
   investorLinks: many(investorCompanyLinks),
+  dealOpportunityLinks: many(dealOpportunityCompanyLinks),
 }));
+
+export const dealOpportunityThemesRelations = relations(
+  dealOpportunityThemes,
+  ({ one }) => ({
+    dealOpportunity: one(dealOpportunities, {
+      fields: [dealOpportunityThemes.dealOpportunityId],
+      references: [dealOpportunities.id],
+    }),
+    theme: one(themes, {
+      fields: [dealOpportunityThemes.themeId],
+      references: [themes.id],
+    }),
+  }),
+);
+
+export const dealOpportunityCompanyLinksRelations = relations(
+  dealOpportunityCompanyLinks,
+  ({ one }) => ({
+    dealOpportunity: one(dealOpportunities, {
+      fields: [dealOpportunityCompanyLinks.dealOpportunityId],
+      references: [dealOpportunities.id],
+    }),
+    company: one(companies, {
+      fields: [dealOpportunityCompanyLinks.companyId],
+      references: [companies.id],
+    }),
+  }),
+);
 
 export const dealFinancialSnapshotsRelations = relations(
   dealFinancialSnapshots,
@@ -2020,6 +2186,7 @@ export const chatSessionsRelations = relations(chatSessions, ({ one }) => ({
 export const investorsRelations = relations(investors, ({ one, many }) => ({
   interactions: many(investorInteractions),
   companyLinks: many(investorCompanyLinks),
+  dealOpportunityLinks: many(investorDealOpportunityLinks),
   firstSeenFromInvestorLead: one(investorLeads, {
     fields: [investors.firstSeenFromInvestorLeadId],
     references: [investorLeads.id],
@@ -2069,6 +2236,20 @@ export const investorCompanyLinksRelations = relations(
   }),
 );
 
+export const investorDealOpportunityLinksRelations = relations(
+  investorDealOpportunityLinks,
+  ({ one }) => ({
+    investor: one(investors, {
+      fields: [investorDealOpportunityLinks.investorId],
+      references: [investors.id],
+    }),
+    dealOpportunity: one(dealOpportunities, {
+      fields: [investorDealOpportunityLinks.dealOpportunityId],
+      references: [dealOpportunities.id],
+    }),
+  }),
+);
+
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
@@ -2111,6 +2292,12 @@ export type NewScreenerResponse = typeof screenerResponses.$inferInsert;
 
 export type DealOpportunity = typeof dealOpportunities.$inferSelect;
 export type NewDealOpportunity = typeof dealOpportunities.$inferInsert;
+export type DealOpportunityCompanyLink =
+  typeof dealOpportunityCompanyLinks.$inferSelect;
+export type NewDealOpportunityCompanyLink =
+  typeof dealOpportunityCompanyLinks.$inferInsert;
+export type DealOpportunityTheme = typeof dealOpportunityThemes.$inferSelect;
+export type NewDealOpportunityTheme = typeof dealOpportunityThemes.$inferInsert;
 export type DealFinancialSnapshot = typeof dealFinancialSnapshots.$inferSelect;
 export type NewDealFinancialSnapshot =
   typeof dealFinancialSnapshots.$inferInsert;
@@ -2185,6 +2372,10 @@ export type InvestorInteraction = typeof investorInteractions.$inferSelect;
 export type NewInvestorInteraction = typeof investorInteractions.$inferInsert;
 export type InvestorCompanyLink = typeof investorCompanyLinks.$inferSelect;
 export type NewInvestorCompanyLink = typeof investorCompanyLinks.$inferInsert;
+export type InvestorDealOpportunityLink =
+  typeof investorDealOpportunityLinks.$inferSelect;
+export type NewInvestorDealOpportunityLink =
+  typeof investorDealOpportunityLinks.$inferInsert;
 
 export type WorkflowJob = typeof workflowJobs.$inferSelect;
 export type NewWorkflowJob = typeof workflowJobs.$inferInsert;

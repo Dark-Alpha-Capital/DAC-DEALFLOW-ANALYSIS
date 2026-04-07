@@ -27,9 +27,14 @@ import {
 import db, {
   deals,
   dealOpportunities,
+  dealOpportunityThemes,
+  dealOpportunityCompanyLinks,
   dealOpportunityScreenings,
   aiScreenings,
   companies,
+  themes,
+  investorDealOpportunityLinks,
+  investors,
   leads,
   eq,
   and,
@@ -54,8 +59,8 @@ import {
   startRagIngestionWorkflow,
   startSimScreeningWorkflow,
 } from "@/src/lib/workflow-jobs-api";
-import { randomUUID } from "crypto";
-import { createId } from "@paralleldrive/cuid2";
+import { setWorkflowJobState } from "@repo/db/workflow-jobs";
+import { createHash, randomUUID } from "crypto";
 import {
   GetDealById,
   GetDealOpportunityById,
@@ -104,19 +109,13 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 
 const formatUsd = (value: number) => currencyFormatter.format(value);
 
-function normalizeCompanyNameKey(value?: string | null): string {
-  return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function buildNormalizedNameForQuickAdd(
-  companyName: string,
-  location?: string | null,
-): string {
-  const base = normalizeCompanyNameKey(companyName);
-  const loc = normalizeCompanyNameKey(location ?? "");
-  const suffix = createId().replace(/-/g, "").slice(0, 12);
-  const parts = [base || "company", loc || null, suffix].filter(Boolean) as string[];
-  return parts.join("_").slice(0, 240);
+function isUniqueViolationError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
 }
 
 export const dealsRouter = createTRPCRouter({
@@ -185,30 +184,65 @@ export const dealsRouter = createTRPCRouter({
 
       const base64Data = input.fileData.split(",")[1] || input.fileData;
       const buffer = Buffer.from(base64Data, "base64");
+      const contentHash = createHash("sha256").update(buffer).digest("hex");
+
+      const [existingDealDocument] = await db
+        .select({ id: documents.id })
+        .from(documents)
+        .where(
+          and(
+            eq(documents.dealOpportunityId, input.dealOpportunityId),
+            eq(documents.contentHash, contentHash),
+          ),
+        )
+        .limit(1);
+
+      if (existingDealDocument) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This document was already uploaded for this deal",
+        });
+      }
       const finalPath = `dealflow/deal_opportunity/${input.dealOpportunityId}/cim/${input.fileName}`;
 
       await uploadBuffer(buffer, finalPath);
 
       const publicUrl = buildNextcloudFileUrl(finalPath);
 
-      const [documentRecord] = await db
-        .insert(documents)
-        .values({
-          entityType: "DEAL_OPPORTUNITY",
-          entityId: input.dealOpportunityId,
-          dealOpportunityId: input.dealOpportunityId,
-          title: input.title,
-          description: input.description?.trim()
-            ? input.description.trim()
-            : null,
-          category: input.category,
-          fileUrl: publicUrl,
-          fileName: input.fileName,
-          fileSize: buffer.length,
-          mimeType: "application/pdf",
-          uploadedById: userId,
-        })
-        .returning();
+      let documentRecord:
+        | {
+          id: string;
+        }
+        | undefined;
+      try {
+        [documentRecord] = await db
+          .insert(documents)
+          .values({
+            entityType: "DEAL_OPPORTUNITY",
+            entityId: input.dealOpportunityId,
+            dealOpportunityId: input.dealOpportunityId,
+            title: input.title,
+            description: input.description?.trim()
+              ? input.description.trim()
+              : null,
+            category: input.category,
+            fileUrl: publicUrl,
+            fileName: input.fileName,
+            fileSize: buffer.length,
+            mimeType: "application/pdf",
+            contentHash,
+            uploadedById: userId,
+          })
+          .returning({ id: documents.id });
+      } catch (error) {
+        if (isUniqueViolationError(error)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This document was already uploaded for this deal",
+          });
+        }
+        throw error;
+      }
 
       if (!documentRecord) {
         throw new TRPCError({
@@ -232,10 +266,18 @@ export const dealsRouter = createTRPCRouter({
         dealId: input.dealOpportunityId,
         fileName: input.fileName,
       });
-      await startRagIngestionWorkflow(ragJobId, {
-        documentId: documentRecord.id,
-        userId,
-      });
+      try {
+        await startRagIngestionWorkflow(ragJobId, {
+          documentId: documentRecord.id,
+          userId,
+        });
+      } catch (error) {
+        await setWorkflowJobState(ragJobId, "failed", {
+          failedReason:
+            error instanceof Error ? error.message : "Failed to start workflow",
+        });
+        throw error;
+      }
 
       const jobId = randomUUID();
       await insertWorkflowJob({
@@ -432,7 +474,7 @@ export const dealsRouter = createTRPCRouter({
       const [added] = await db
         .insert(dealOpportunities)
         .values({
-          companyId: input.companyId,
+          companyId: input.companyId ?? null,
           leadId: input.leadId || null,
           sourceWebsite: input.sourceWebsite || null,
           brokerage: input.brokerage || null,
@@ -473,6 +515,245 @@ export const dealsRouter = createTRPCRouter({
       return { dealOpportunityId: added?.id };
     }),
 
+  listCompanyLinks: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string() }))
+    .query(async ({ input }) => {
+      return db
+        .select({
+          link: dealOpportunityCompanyLinks,
+          company: {
+            id: companies.id,
+            name: companies.name,
+            industry: companies.industry,
+            location: companies.location,
+          },
+        })
+        .from(dealOpportunityCompanyLinks)
+        .innerJoin(
+          companies,
+          eq(dealOpportunityCompanyLinks.companyId, companies.id),
+        )
+        .where(
+          and(
+            eq(
+              dealOpportunityCompanyLinks.dealOpportunityId,
+              input.dealOpportunityId,
+            ),
+            isNull(companies.deletedAt),
+          ),
+        )
+        .orderBy(desc(dealOpportunityCompanyLinks.createdAt));
+    }),
+
+  addCompanyLink: protectedProcedure
+    .input(
+      z.object({
+        dealOpportunityId: z.string(),
+        companyId: z.string(),
+        notes: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const [opp] = await db
+        .select({ id: dealOpportunities.id, companyId: dealOpportunities.companyId })
+        .from(dealOpportunities)
+        .where(eq(dealOpportunities.id, input.dealOpportunityId))
+        .limit(1);
+      if (!opp) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Deal opportunity not found" });
+      }
+
+      const [company] = await db
+        .select({ id: companies.id })
+        .from(companies)
+        .where(and(eq(companies.id, input.companyId), isNull(companies.deletedAt)))
+        .limit(1);
+      if (!company) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Company not found" });
+      }
+
+      const [dup] = await db
+        .select({ id: dealOpportunityCompanyLinks.id })
+        .from(dealOpportunityCompanyLinks)
+        .where(
+          and(
+            eq(dealOpportunityCompanyLinks.dealOpportunityId, input.dealOpportunityId),
+            eq(dealOpportunityCompanyLinks.companyId, input.companyId),
+          ),
+        )
+        .limit(1);
+      if (dup) {
+        throw new TRPCError({ code: "CONFLICT", message: "Company already linked to this deal" });
+      }
+
+      await db.insert(dealOpportunityCompanyLinks).values({
+        dealOpportunityId: input.dealOpportunityId,
+        companyId: input.companyId,
+        notes: input.notes?.trim() || null,
+      });
+
+      // Keep legacy single-company field aligned for compatibility.
+      if (!opp.companyId) {
+        await db
+          .update(dealOpportunities)
+          .set({ companyId: input.companyId })
+          .where(eq(dealOpportunities.id, input.dealOpportunityId));
+      }
+
+      after(async () => {
+        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+        revalidatePath(`/companies/${input.companyId}`);
+        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+        revalidateTag(`company-${input.companyId}`, "max");
+        revalidateTag("deals", "max");
+        revalidateTag("companies", "max");
+      });
+      return { success: true };
+    }),
+
+  removeCompanyLink: protectedProcedure
+    .input(z.object({ linkId: z.string() }))
+    .mutation(async ({ input }) => {
+      const [removed] = await db
+        .delete(dealOpportunityCompanyLinks)
+        .where(eq(dealOpportunityCompanyLinks.id, input.linkId))
+        .returning();
+      if (!removed) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
+      }
+
+      const [opp] = await db
+        .select({ id: dealOpportunities.id, companyId: dealOpportunities.companyId })
+        .from(dealOpportunities)
+        .where(eq(dealOpportunities.id, removed.dealOpportunityId))
+        .limit(1);
+
+      if (opp && opp.companyId === removed.companyId) {
+        const [fallback] = await db
+          .select({ companyId: dealOpportunityCompanyLinks.companyId })
+          .from(dealOpportunityCompanyLinks)
+          .where(eq(dealOpportunityCompanyLinks.dealOpportunityId, removed.dealOpportunityId))
+          .orderBy(desc(dealOpportunityCompanyLinks.createdAt))
+          .limit(1);
+        await db
+          .update(dealOpportunities)
+          .set({ companyId: fallback?.companyId ?? null })
+          .where(eq(dealOpportunities.id, removed.dealOpportunityId));
+      }
+
+      after(async () => {
+        revalidatePath(`/deal-opportunities/${removed.dealOpportunityId}`);
+        revalidatePath(`/companies/${removed.companyId}`);
+        revalidateTag(`deal-${removed.dealOpportunityId}`, "max");
+        revalidateTag(`company-${removed.companyId}`, "max");
+        revalidateTag("deals", "max");
+        revalidateTag("companies", "max");
+      });
+      return { success: true };
+    }),
+
+  listInvestorLinks: protectedProcedure
+    .input(z.object({ dealOpportunityId: z.string() }))
+    .query(async ({ input }) => {
+      return db
+        .select({
+          link: investorDealOpportunityLinks,
+          investor: {
+            id: investors.id,
+            name: investors.name,
+            type: investors.type,
+            status: investors.status,
+          },
+        })
+        .from(investorDealOpportunityLinks)
+        .innerJoin(
+          investors,
+          eq(investorDealOpportunityLinks.investorId, investors.id),
+        )
+        .where(eq(investorDealOpportunityLinks.dealOpportunityId, input.dealOpportunityId))
+        .orderBy(desc(investorDealOpportunityLinks.createdAt));
+    }),
+
+  addInvestorLink: protectedProcedure
+    .input(
+      z.object({
+        dealOpportunityId: z.string(),
+        investorId: z.string(),
+        notes: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const [opp] = await db
+        .select({ id: dealOpportunities.id })
+        .from(dealOpportunities)
+        .where(eq(dealOpportunities.id, input.dealOpportunityId))
+        .limit(1);
+      if (!opp) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Deal opportunity not found" });
+      }
+
+      const [investor] = await db
+        .select({ id: investors.id })
+        .from(investors)
+        .where(eq(investors.id, input.investorId))
+        .limit(1);
+      if (!investor) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Investor not found" });
+      }
+
+      const [dup] = await db
+        .select({ id: investorDealOpportunityLinks.id })
+        .from(investorDealOpportunityLinks)
+        .where(
+          and(
+            eq(investorDealOpportunityLinks.dealOpportunityId, input.dealOpportunityId),
+            eq(investorDealOpportunityLinks.investorId, input.investorId),
+          ),
+        )
+        .limit(1);
+      if (dup) {
+        throw new TRPCError({ code: "CONFLICT", message: "Investor already linked to this deal" });
+      }
+
+      await db.insert(investorDealOpportunityLinks).values({
+        dealOpportunityId: input.dealOpportunityId,
+        investorId: input.investorId,
+        notes: input.notes?.trim() || null,
+      });
+
+      after(async () => {
+        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
+        revalidatePath(`/investors/${input.investorId}`);
+        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
+        revalidateTag(`investor-${input.investorId}`, "max");
+        revalidateTag("deals", "max");
+        revalidateTag("investors", "max");
+      });
+      return { success: true };
+    }),
+
+  removeInvestorLink: protectedProcedure
+    .input(z.object({ linkId: z.string() }))
+    .mutation(async ({ input }) => {
+      const [removed] = await db
+        .delete(investorDealOpportunityLinks)
+        .where(eq(investorDealOpportunityLinks.id, input.linkId))
+        .returning();
+      if (!removed) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
+      }
+
+      after(async () => {
+        revalidatePath(`/deal-opportunities/${removed.dealOpportunityId}`);
+        revalidatePath(`/investors/${removed.investorId}`);
+        revalidateTag(`deal-${removed.dealOpportunityId}`, "max");
+        revalidateTag(`investor-${removed.investorId}`, "max");
+        revalidateTag("deals", "max");
+        revalidateTag("investors", "max");
+      });
+      return { success: true };
+    }),
+
   createOpportunityQuick: protectedProcedure
     .input(createOpportunityQuickSchema)
     .mutation(async ({ input, ctx }) => {
@@ -483,53 +764,25 @@ export const dealsRouter = createTRPCRouter({
         input.askingPrice != null;
 
       const result = await db.transaction(async (tx) => {
-        const name = input.companyName.trim().slice(0, 255);
-        const normalizedName = buildNormalizedNameForQuickAdd(
-          name,
-          input.location?.trim() || null,
-        );
-
-        const [company] = await tx
-          .insert(companies)
-          .values({
-            name,
-            normalizedName,
-            industry: input.industry?.trim() || null,
-            location: input.location?.trim() || null,
-            revenueEstimate: input.revenueEstimate ?? null,
-            ebitdaEstimate: input.ebitdaEstimate ?? null,
-            ebitdaMarginEstimate: input.ebitdaMarginEstimate ?? null,
-            recurringRevenuePct: input.recurringRevenuePct ?? null,
-            customerConcentrationPct: input.customerConcentrationPct ?? null,
-            founderAgeEstimate: input.founderAgeEstimate ?? null,
-            themeId: input.themeId?.trim() || null,
-            attractivenessScore: input.attractivenessScore ?? null,
-            coverageStatus: input.coverageStatus ?? "UNCONTACTED",
-            businessModel: input.businessModel?.trim() || null,
-            employees: input.employees ?? null,
-            revenueTtm: input.revenueTtm ?? null,
-            ebitdaTtm: input.ebitdaTtm ?? null,
-            grossMargin: input.grossMargin ?? null,
-            revenueCagr: input.revenueCagr ?? null,
-            totalClients: input.totalClients ?? null,
-            top10Concentration: input.top10Concentration ?? null,
-            customerIndustries:
-              input.customerIndustries?.length ? input.customerIndustries : null,
-            revenueModelType: input.revenueModelType?.trim() || null,
-            expansionModel: input.expansionModel?.trim() || null,
-            concentrationHigh: input.concentrationHigh ?? null,
-            marginLow: input.marginLow ?? null,
-            vendorDependency: input.vendorDependency ?? null,
-            growthLevers: input.growthLevers?.length ? input.growthLevers : null,
-          })
-          .returning();
-
-        if (!company) throw new Error("Failed to create company");
+        const normalizedThemeId = input.themeId?.trim() || null;
+        if (normalizedThemeId) {
+          const [theme] = await tx
+            .select({ id: themes.id })
+            .from(themes)
+            .where(and(eq(themes.id, normalizedThemeId), isNull(themes.deletedAt)))
+            .limit(1);
+          if (!theme) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Selected theme does not exist",
+            });
+          }
+        }
 
         const [opp] = await tx
           .insert(dealOpportunities)
           .values({
-            companyId: company.id,
+            companyId: null,
             leadId: null,
             sourceWebsite: input.sourceWebsite || null,
             brokerage: input.brokerage || null,
@@ -550,7 +803,15 @@ export const dealsRouter = createTRPCRouter({
 
         if (!opp) throw new Error("Failed to create deal opportunity");
 
-        return { company, opp };
+        if (normalizedThemeId) {
+          await tx.insert(dealOpportunityThemes).values({
+            dealOpportunityId: opp.id,
+            themeId: normalizedThemeId,
+            isPrimary: true,
+          });
+        }
+
+        return { opp };
       });
 
       if (hasFinancials) {
@@ -569,13 +830,10 @@ export const dealsRouter = createTRPCRouter({
       after(async () => {
         revalidatePath("/deal-opportunities");
         revalidatePath(`/deal-opportunities/${result.opp.id}`);
-        revalidatePath(`/companies/${result.company.id}`);
         revalidateTag("deals", "max");
-        revalidateTag("companies", "max");
       });
       return {
         dealOpportunityId: result.opp.id,
-        companyId: result.company.id,
       };
     }),
 
@@ -702,15 +960,22 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      const [company, leadFromOpp, latestSnapshot] = await Promise.all([
-        db
+      const companyPromise = opp.companyId
+        ? db
           .select()
           .from(companies)
           .where(
-            and(eq(companies.id, opp.companyId), isNull(companies.deletedAt)),
+            and(
+              eq(companies.id, opp.companyId),
+              isNull(companies.deletedAt),
+            ),
           )
           .limit(1)
-          .then((r) => r[0] ?? null),
+          .then((r) => r[0] ?? null)
+        : Promise.resolve(null);
+
+      const [company, leadFromOpp, latestSnapshot] = await Promise.all([
+        companyPromise,
         opp.leadId
           ? db.select().from(leads).where(eq(leads.id, opp.leadId)).limit(1)
           : Promise.resolve([]),
@@ -979,7 +1244,7 @@ export const dealsRouter = createTRPCRouter({
       await db
         .update(dealOpportunities)
         .set({
-          companyId: data.companyId,
+          companyId: data.companyId ?? null,
           leadId: data.leadId || null,
           sourceWebsite: data.sourceWebsite || null,
           brokerage: data.brokerage || null,
@@ -1168,13 +1433,14 @@ export const dealsRouter = createTRPCRouter({
       const entityType = "DEAL_OPPORTUNITY" as const;
 
       let entityMetadata: EntityMetadata;
-      {
+      if (opp.companyId) {
+        const companyId = opp.companyId;
         const [company] = await db
           .select()
           .from(companies)
-          .where(eq(companies.id, opp.companyId));
+          .where(eq(companies.id, companyId));
         entityMetadata = {
-          name: company?.name ?? "Unknown Deal",
+          name: company?.name ?? opp.dealTeaser?.trim() ?? "Unknown Deal",
           sector: company?.industry ?? null,
           stage: null,
           headquarters: company?.location ?? null,
@@ -1184,6 +1450,15 @@ export const dealsRouter = createTRPCRouter({
           ebitda: company?.ebitdaEstimate
             ? parseFloat(String(company.ebitdaEstimate))
             : null,
+        };
+      } else {
+        entityMetadata = {
+          name: opp.dealTeaser?.trim() || "Unknown Deal",
+          sector: null,
+          stage: null,
+          headquarters: null,
+          revenue: opp.revenue != null ? Number(opp.revenue) : null,
+          ebitda: opp.ebitda != null ? Number(opp.ebitda) : null,
         };
       }
 
@@ -1195,6 +1470,25 @@ export const dealsRouter = createTRPCRouter({
       // Convert base64 to buffer
       const base64Data = input.fileData.split(",")[1] || input.fileData;
       const buffer = Buffer.from(base64Data, "base64");
+      const contentHash = createHash("sha256").update(buffer).digest("hex");
+
+      const [existingDealDocument] = await db
+        .select({ id: documents.id })
+        .from(documents)
+        .where(
+          and(
+            eq(documents.dealOpportunityId, entityId),
+            eq(documents.contentHash, contentHash),
+          ),
+        )
+        .limit(1);
+
+      if (existingDealDocument) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This document was already uploaded for this deal",
+        });
+      }
 
       // Upload file directly to final Nextcloud location
       const finalPath = `${finalDir}/${input.fileName}`;
@@ -1235,6 +1529,7 @@ export const dealsRouter = createTRPCRouter({
         entityMetadata,
         fileCategory: category,
         fileDescription: input.description,
+        contentHash,
       };
 
       // Validate required fields
@@ -1520,7 +1815,7 @@ export const dealsRouter = createTRPCRouter({
         revalidatePath("/deal-opportunities");
         revalidatePath(`/deal-opportunities/${opp.id}`);
         revalidatePath(`/deal-opportunities/${opp.id}/sync-bitrix-24`);
-        revalidatePath(`/cim-screening/${session.id}`);
+        revalidatePath(`/screening/${session.id}`);
         revalidateTag(`deal-${opp.id}`, "max");
         revalidateTag("deals", "max");
       });

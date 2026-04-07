@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+const optionalCompanyIdField = z
+  .string()
+  .optional()
+  .transform((s) => {
+    if (s === "__none__" || s === undefined) return undefined;
+    const t = s?.trim();
+    return t ? t : undefined;
+  });
+
 export const NewDealFormSchema = z.object({
   first_name: z.optional(z.string()),
   last_name: z.optional(z.string()),
@@ -28,7 +37,7 @@ export const NewDealFormSchema = z.object({
 });
 
 export const AddDealFormSchema = z.object({
-  companyId: z.string().min(1, "Company is required"),
+  companyId: optionalCompanyIdField,
   sourceWebsite: z.string().optional(),
   brokerage: z.string().optional(),
   revenue: z.coerce.number().optional(),
@@ -45,7 +54,7 @@ export const AddDealFormSchema = z.object({
 });
 
 export const EditDealFormSchema = z.object({
-  companyId: z.string().min(1, "Company is required"),
+  companyId: optionalCompanyIdField,
   sourceWebsite: z.string().optional(),
   brokerage: z.string().optional(),
   revenue: z.coerce.number().optional(),

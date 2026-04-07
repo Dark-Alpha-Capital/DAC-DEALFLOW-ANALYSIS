@@ -103,7 +103,7 @@ type ScoreRow = SimScreeningGetSessionOutput["rows"][number];
 
 function MetaRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5 border-b border-border/60 py-2.5 last:border-0 last:pb-0 sm:grid sm:grid-cols-[minmax(6.5rem,8rem)_1fr] sm:gap-x-4 sm:gap-y-1 sm:border-0 sm:py-0 sm:last:pb-0">
+    <div className="border-border/60 flex flex-col gap-0.5 border-b py-2.5 last:border-0 last:pb-0 sm:grid sm:grid-cols-[minmax(6.5rem,8rem)_1fr] sm:gap-x-4 sm:gap-y-1 sm:border-0 sm:py-0 sm:last:pb-0">
       <span className="text-muted-foreground text-xs font-medium sm:text-sm sm:font-normal">
         {label}
       </span>
@@ -126,12 +126,12 @@ function SectionHeading({
   return (
     <div className="space-y-1.5">
       <div className="flex items-start gap-2.5">
-        <span className="bg-muted text-muted-foreground mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-border/80">
+        <span className="bg-muted text-muted-foreground border-border/80 mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border">
           <Icon className="size-4" aria-hidden />
         </span>
         <div className="min-w-0 space-y-1">
           <CardTitle className="text-base leading-tight">{title}</CardTitle>
-          <CardDescription className="text-pretty leading-relaxed">
+          <CardDescription className="leading-relaxed text-pretty">
             {description}
           </CardDescription>
         </div>
@@ -174,7 +174,7 @@ function EvidenceBlock({ row }: { row: ScoreRow }) {
   );
 }
 
-export const Route = createFileRoute("/_protected/cim-screening/$sessionId/")({
+export const Route = createFileRoute("/_protected/screening/$sessionId/")({
   validateSearch: (search: Record<string, unknown>) => ({
     runId:
       typeof search.runId === "string"
@@ -380,12 +380,12 @@ function CimScreeningSessionDetailPage() {
         <Button
           variant="ghost"
           size="sm"
-          className="-ml-2 w-fit min-h-10 cursor-pointer gap-1.5 sm:min-h-8"
+          className="-ml-2 min-h-10 w-fit cursor-pointer gap-1.5 sm:min-h-8"
           asChild
         >
-          <Link to="/cim-screening">
+          <Link to="/screening">
             <ArrowLeft className="size-4 shrink-0" aria-hidden />
-            CIM screening
+            Screening
           </Link>
         </Button>
         <Alert variant="destructive">
@@ -438,19 +438,19 @@ function CimScreeningSessionDetailPage() {
             className="text-muted-foreground -ml-2 h-10 min-h-10 cursor-pointer gap-1.5 px-2 sm:h-8 sm:min-h-8"
             asChild
           >
-            <Link to="/cim-screening">
+            <Link to="/screening">
               <ArrowLeft className="size-4 shrink-0" aria-hidden />
               All sessions
             </Link>
           </Button>
-          <div className="flex flex-col gap-4 border-b border-border/80 pb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="border-border/80 flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
             <div className="min-w-0 space-y-2">
-              <h1 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
+              <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
                 Screening session
               </h1>
-              <p className="text-muted-foreground max-w-2xl text-pretty text-sm leading-relaxed sm:text-[0.9375rem]">
-                Source (SIM file or deal documents), run history, live
-                progress, and per-question scores for the run you select.
+              <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed text-pretty sm:text-[0.9375rem]">
+                Source (SIM file or deal documents), run history, live progress,
+                and per-question scores for the run you select.
               </p>
             </div>
             <Badge
@@ -480,7 +480,7 @@ function CimScreeningSessionDetailPage() {
             </CardHeader>
             <CardContent className="space-y-1 pt-0">
               {doc ? (
-                <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-1 sm:px-4">
+                <div className="border-border/60 bg-muted/20 rounded-md border px-3 py-1 sm:px-4">
                   <MetaRow label="File">
                     <span className="wrap-break-word">{doc.fileName}</span>
                   </MetaRow>
@@ -497,18 +497,18 @@ function CimScreeningSessionDetailPage() {
                     </p>
                   ) : null}
                   {doc.ingestionCompletedAt ? (
-                    <p className="text-muted-foreground border-t border-border/60 pt-3 text-xs">
+                    <p className="text-muted-foreground border-border/60 border-t pt-3 text-xs">
                       Ingestion finished{" "}
                       {new Date(doc.ingestionCompletedAt).toLocaleString()}
                     </p>
                   ) : null}
-                  <p className="text-muted-foreground border-t border-border/60 pt-3 text-xs">
+                  <p className="text-muted-foreground border-border/60 border-t pt-3 text-xs">
                     Uploaded {new Date(doc.createdAt).toLocaleString()}
                   </p>
                 </div>
               ) : dealOpp ? (
                 <div className="space-y-4">
-                  <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-1 sm:px-4">
+                  <div className="border-border/60 bg-muted/20 rounded-md border px-3 py-1 sm:px-4">
                     <MetaRow label="Teaser">
                       <span className="wrap-break-word">
                         {dealOpp.dealTeaser?.trim() || "—"}
@@ -526,7 +526,7 @@ function CimScreeningSessionDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-11 w-full min-h-11 cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto"
+                      className="h-11 min-h-11 w-full cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto"
                       asChild
                     >
                       <Link
@@ -540,11 +540,11 @@ function CimScreeningSessionDetailPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-11 w-full min-h-11 cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto"
+                        className="h-11 min-h-11 w-full cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto"
                         asChild
                       >
                         <Link
-                          to="/cim-screening/$sessionId/sync-bitrix-24"
+                          to="/screening/$sessionId/sync-bitrix-24"
                           params={{ sessionId }}
                           search={{ runId: selectedRunId }}
                         >
@@ -555,7 +555,7 @@ function CimScreeningSessionDetailPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-11 w-full min-h-11 sm:h-9 sm:min-h-9 sm:w-auto"
+                        className="h-11 min-h-11 w-full sm:h-9 sm:min-h-9 sm:w-auto"
                         disabled
                       >
                         Sync to Bitrix24
@@ -629,67 +629,13 @@ function CimScreeningSessionDetailPage() {
               <Separator />
 
               {canAddRun ? (
-                <div className="space-y-3">
-                  <Label
-                    htmlFor="new-screener"
-                    className="text-muted-foreground text-xs font-medium"
-                  >
-                    New run
-                  </Label>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
-                    <div className="min-w-0 flex-1">
-                      <Select
-                        value={newScreenerId}
-                        onValueChange={setNewScreenerId}
-                      >
-                        <SelectTrigger
-                          id="new-screener"
-                          className="h-11 min-h-11 w-full cursor-pointer sm:h-10 sm:min-h-10"
-                        >
-                          <SelectValue placeholder="Choose screener template" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {screeners.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.name} ({s.category})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-11 min-h-11 w-full shrink-0 cursor-pointer sm:h-10 sm:min-h-10 sm:w-auto sm:self-end"
-                      disabled={
-                        !newScreenerId ||
-                        startRunMutation.isPending ||
-                        running
-                      }
-                      onClick={() =>
-                        newScreenerId &&
-                        startRunMutation.mutate({
-                          sessionId,
-                          screenerId: newScreenerId,
-                        })
-                      }
-                    >
-                      {startRunMutation.isPending ? (
-                        <Loader2 className="size-4 animate-spin" aria-hidden />
-                      ) : (
-                        <>
-                          <Plus className="mr-1.5 size-4" aria-hidden />
-                          Start run
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  {running ? (
-                    <p className="text-muted-foreground text-xs leading-relaxed">
-                      Wait for the current run to finish before starting
-                      another.
-                    </p>
-                  ) : null}
+                <div className="space-y-3 space-x-2">
+                  <Button type="button" size="sm" asChild>
+                    <Link to="/screening/new-run">
+                      <Plus className="mr-1.5 size-4" aria-hidden />
+                      New run
+                    </Link>
+                  </Button>
                 </div>
               ) : (
                 <p className="text-muted-foreground text-xs leading-relaxed">
@@ -699,14 +645,16 @@ function CimScreeningSessionDetailPage() {
                 </p>
               )}
 
-              <div className="text-muted-foreground space-y-1.5 border-t border-border/80 pt-4 text-xs">
+              <div className="text-muted-foreground border-border/80 space-y-1.5 border-t pt-4 text-xs">
                 <p className="break-all">
                   Session{" "}
                   <code className="bg-muted text-foreground rounded px-1.5 py-0.5 font-mono text-[0.7rem]">
                     {session.id}
                   </code>
                 </p>
-                <p>Last updated {new Date(session.updatedAt).toLocaleString()}</p>
+                <p>
+                  Last updated {new Date(session.updatedAt).toLocaleString()}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -719,7 +667,7 @@ function CimScreeningSessionDetailPage() {
           >
             <CardHeader className="pb-2">
               <div className="flex items-start gap-2.5">
-                <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-md border border-primary/20">
+                <span className="bg-primary/10 text-primary border-primary/20 flex size-9 shrink-0 items-center justify-center rounded-md border">
                   <Activity className="size-4" aria-hidden />
                 </span>
                 <div className="min-w-0 space-y-1">
@@ -770,10 +718,7 @@ function CimScreeningSessionDetailPage() {
               >
                 {retryMutation.isPending ? (
                   <>
-                    <Loader2
-                      className="mr-2 size-4 animate-spin"
-                      aria-hidden
-                    />
+                    <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
                     Retrying…
                   </>
                 ) : (
@@ -807,13 +752,16 @@ function CimScreeningSessionDetailPage() {
             <>
               <div className="space-y-4 md:hidden">
                 {rows.map((row) => (
-                  <Card key={row.questionId} className="overflow-hidden shadow-sm">
+                  <Card
+                    key={row.questionId}
+                    className="overflow-hidden shadow-sm"
+                  >
                     <CardHeader className="space-y-2 pb-3">
-                      <CardTitle className="text-sm font-semibold leading-snug text-pretty">
+                      <CardTitle className="text-sm leading-snug font-semibold text-pretty">
                         {row.question}
                       </CardTitle>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                        <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                           Score
                         </span>
                         <span className="bg-muted rounded-md px-2 py-0.5 font-mono text-sm font-semibold tabular-nums">
@@ -821,9 +769,9 @@ function CimScreeningSessionDetailPage() {
                         </span>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4 border-t border-border/60 pt-4">
+                    <CardContent className="border-border/60 space-y-4 border-t pt-4">
                       <div>
-                        <p className="text-muted-foreground mb-1.5 text-xs font-medium uppercase tracking-wide">
+                        <p className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">
                           Rationale
                         </p>
                         <p className="text-foreground text-sm leading-relaxed">
@@ -831,7 +779,7 @@ function CimScreeningSessionDetailPage() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground mb-1.5 text-xs font-medium uppercase tracking-wide">
+                        <p className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">
                           References
                         </p>
                         <div className="text-sm">
@@ -842,7 +790,7 @@ function CimScreeningSessionDetailPage() {
                   </Card>
                 ))}
               </div>
-              <div className="-mx-4 hidden min-w-0 overflow-x-auto rounded-xl border border-border/80 shadow-sm sm:mx-0 md:block">
+              <div className="border-border/80 -mx-4 hidden min-w-0 overflow-x-auto rounded-xl border shadow-sm sm:mx-0 md:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
@@ -852,10 +800,10 @@ function CimScreeningSessionDetailPage() {
                       <TableHead className="w-20 whitespace-nowrap">
                         Score
                       </TableHead>
-                      <TableHead className="min-w-[12rem] max-w-md">
+                      <TableHead className="max-w-md min-w-[12rem]">
                         Rationale
                       </TableHead>
-                      <TableHead className="min-w-[14rem] max-w-lg pr-4">
+                      <TableHead className="max-w-lg min-w-[14rem] pr-4">
                         References
                       </TableHead>
                     </TableRow>

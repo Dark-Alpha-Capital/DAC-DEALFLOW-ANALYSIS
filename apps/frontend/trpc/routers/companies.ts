@@ -1,7 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import {
-  assignThemeToCompanyInputSchema,
   companyByIdInputSchema,
   companyFinancialSnapshotsListInputSchema,
   createCompanyFinancialSnapshotSchema,
@@ -13,7 +12,6 @@ import {
 import db, {
   companies,
   dealOpportunities,
-  themes,
   eq,
   and,
   isNull,
@@ -88,7 +86,6 @@ export const companiesRouter = createTRPCRouter({
           recurringRevenuePct: input.recurringRevenuePct ?? null,
           customerConcentrationPct: input.customerConcentrationPct ?? null,
           founderAgeEstimate: input.founderAgeEstimate ?? null,
-          themeId: input.themeId || null,
           attractivenessScore: input.attractivenessScore ?? null,
           coverageStatus: input.coverageStatus ?? "UNCONTACTED",
           businessModel: input.businessModel || null,
@@ -133,7 +130,6 @@ export const companiesRouter = createTRPCRouter({
           recurringRevenuePct: data.recurringRevenuePct ?? null,
           customerConcentrationPct: data.customerConcentrationPct ?? null,
           founderAgeEstimate: data.founderAgeEstimate ?? null,
-          themeId: data.themeId || null,
           attractivenessScore: data.attractivenessScore ?? null,
           coverageStatus: data.coverageStatus ?? "UNCONTACTED",
           businessModel: data.businessModel || null,
@@ -171,46 +167,6 @@ export const companiesRouter = createTRPCRouter({
         revalidateTag(`company-${id}`, "max");
       });
       return { companyId: id };
-    }),
-
-  assignTheme: protectedProcedure
-    .input(assignThemeToCompanyInputSchema)
-    .mutation(async ({ input }) => {
-      const normalizedThemeId = input.themeId?.trim() || null;
-
-      if (normalizedThemeId) {
-        const [theme] = await db
-          .select({ id: themes.id })
-          .from(themes)
-          .where(
-            and(eq(themes.id, normalizedThemeId), isNull(themes.deletedAt)),
-          )
-          .limit(1);
-
-        if (!theme) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Selected theme does not exist",
-          });
-        }
-      }
-
-      await db
-        .update(companies)
-        .set({
-          themeId: normalizedThemeId,
-        })
-        .where(
-          and(eq(companies.id, input.companyId), isNull(companies.deletedAt)),
-        );
-
-      after(async () => {
-        revalidatePath("/companies");
-        revalidatePath(`/companies/${input.companyId}`);
-        revalidateTag("companies", "max");
-        revalidateTag(`company-${input.companyId}`, "max");
-      });
-      return { companyId: input.companyId, themeId: normalizedThemeId };
     }),
 
   delete: protectedProcedure

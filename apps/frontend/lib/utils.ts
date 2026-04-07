@@ -83,8 +83,21 @@ export function formatCurrency(value: number): string {
 }
 
 const ALLOWED_HTTP_PROTOCOLS = new Set(["http:", "https:"]);
-const STABLE_DATE_LOCALE = "en-US";
 const STABLE_DATE_TIME_ZONE = "UTC";
+const MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
 
 type DateInput = Date | string | number;
 
@@ -117,12 +130,11 @@ export function formatDateStable(
   const date = toValidDate(value);
   if (!date) return fallback;
 
-  return new Intl.DateTimeFormat(STABLE_DATE_LOCALE, {
-    timeZone: STABLE_DATE_TIME_ZONE,
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  }).format(date);
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = MONTHS_SHORT[date.getUTCMonth()];
+  const year = date.getUTCFullYear();
+
+  return `${month} ${day}, ${year}`;
 }
 
 export function formatDateTimeStable(
@@ -132,16 +144,14 @@ export function formatDateTimeStable(
   const date = toValidDate(value);
   if (!date) return fallback;
 
-  return new Intl.DateTimeFormat(STABLE_DATE_LOCALE, {
-    timeZone: STABLE_DATE_TIME_ZONE,
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).format(date);
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = MONTHS_SHORT[date.getUTCMonth()];
+  const year = date.getUTCFullYear();
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(date.getUTCSeconds()).padStart(2, "0");
+
+  return `${month} ${day}, ${year} ${hours}:${minutes}:${seconds} ${STABLE_DATE_TIME_ZONE}`;
 }
 
 export function calculateEbitdaMargin(ebitda: number, revenue: number) {

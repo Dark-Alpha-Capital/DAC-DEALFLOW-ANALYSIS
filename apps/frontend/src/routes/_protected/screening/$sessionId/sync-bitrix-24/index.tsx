@@ -33,7 +33,7 @@ function CimScreeningBitrixSyncRoute() {
 }
 
 export const Route = createFileRoute(
-  "/_protected/cim-screening/$sessionId/sync-bitrix-24/",
+  "/_protected/screening/$sessionId/sync-bitrix-24/",
 )({
   validateSearch: (search: Record<string, unknown>) => ({
     runId:

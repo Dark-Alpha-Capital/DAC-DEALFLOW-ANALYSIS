@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "@/lib/navigation-shim";
 import { toast } from "sonner";
@@ -39,6 +38,8 @@ export type OutreachRow = {
 interface CompanyOutreachProps {
   outreach: OutreachRow[];
   companyId?: string;
+  /** When set (e.g. deal detail without a company), outreach can be logged for this deal only. */
+  defaultDealOpportunityId?: string;
   dealOpportunities?: Array<{
     id: string;
     stage: string;
@@ -51,6 +52,7 @@ const outreachTypes = ["EMAIL", "CALL", "LINKEDIN", "MEETING"] as const;
 export function CompanyOutreach({
   outreach,
   companyId,
+  defaultDealOpportunityId,
   dealOpportunities = [],
 }: CompanyOutreachProps) {
   const trpc = useTRPC();
@@ -60,6 +62,12 @@ export function CompanyOutreach({
   const [dealOpportunityId, setDealOpportunityId] = useState("none");
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (defaultDealOpportunityId && !companyId) {
+      setDealOpportunityId(defaultDealOpportunityId);
+    }
+  }, [defaultDealOpportunityId, companyId]);
 
   const { mutate: createOutreach, isPending } = useMutation(
     trpc.outreach.create.mutationOptions({
@@ -78,14 +86,22 @@ export function CompanyOutreach({
     }),
   );
 
+  const canAddOutreach = Boolean(companyId) || Boolean(defaultDealOpportunityId);
+
   const handleSave = () => {
-    if (!companyId) return;
+    const selectedDeal =
+      dealOpportunityId !== "none"
+        ? dealOpportunityId
+        : defaultDealOpportunityId;
+    if (!companyId && !selectedDeal) {
+      toast.error("Select a deal opportunity or add outreach from a company.");
+      return;
+    }
 
     createOutreach({
-      companyId,
+      ...(companyId ? { companyId } : {}),
+      ...(selectedDeal ? { dealOpportunityId: selectedDeal } : {}),
       type,
-      dealOpportunityId:
-        dealOpportunityId === "none" ? undefined : dealOpportunityId,
       outcome: outcome.trim() || undefined,
       notes: notes.trim() || undefined,
     });
@@ -124,7 +140,7 @@ export function CompanyOutreach({
           <h2 className="text-muted-foreground text-sm font-medium">
             Outreach history
           </h2>
-          {companyId && (
+          {canAddOutreach && (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline">
@@ -158,7 +174,11 @@ export function CompanyOutreach({
                   </div>
 
                   <div className="space-y-1">
-                    <p className="text-xs font-medium">Deal opportunity (optional)</p>
+                    <p className="text-xs font-medium">
+                      {companyId
+                        ? "Deal opportunity (optional)"
+                        : "Deal opportunity"}
+                    </p>
                     <Select
                       value={dealOpportunityId}
                       onValueChange={setDealOpportunityId}
@@ -167,7 +187,9 @@ export function CompanyOutreach({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
+                        {companyId ? (
+                          <SelectItem value="none">None</SelectItem>
+                        ) : null}
                         {dealOpportunities.map((deal) => (
                           <SelectItem key={deal.id} value={deal.id}>
                             {deal.stage} - {formatDateStable(deal.createdAt)}
@@ -215,7 +237,7 @@ export function CompanyOutreach({
           )}
         </div>
         <p className="text-muted-foreground text-xs">
-          No outreach has been recorded for this company yet.
+          No outreach recorded yet.
         </p>
       </div>
     );
@@ -227,7 +249,7 @@ export function CompanyOutreach({
         <h2 className="text-muted-foreground text-sm font-medium">
           Outreach history
         </h2>
-        {companyId && (
+        {canAddOutreach && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="sm" variant="outline">
@@ -261,7 +283,11 @@ export function CompanyOutreach({
                 </div>
 
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">Deal opportunity (optional)</p>
+                  <p className="text-xs font-medium">
+                    {companyId
+                      ? "Deal opportunity (optional)"
+                      : "Deal opportunity"}
+                  </p>
                   <Select
                     value={dealOpportunityId}
                     onValueChange={setDealOpportunityId}
@@ -270,7 +296,9 @@ export function CompanyOutreach({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
+                      {companyId ? (
+                        <SelectItem value="none">None</SelectItem>
+                      ) : null}
                       {dealOpportunities.map((deal) => (
                         <SelectItem key={deal.id} value={deal.id}>
                           {deal.stage} - {formatDateStable(deal.createdAt)}

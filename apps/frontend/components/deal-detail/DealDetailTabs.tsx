@@ -9,11 +9,11 @@ import type {
   DealFinancialSnapshot,
 } from "@repo/db/schema";
 import type { SimScreeningRunForDealRow } from "@repo/db/queries";
+import type { CIMAnalysisData } from "./CIMAnalysisSection";
 import { ClientOnly } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealHeader } from "./deal-header";
 import { DealFinancialsSection } from "./DealFinancialsSection";
-import { DealPipelineSection } from "./DealPipelineSection";
 import { EntityContactsSection } from "./EntityContactsSection";
 import { EntityDocumentsSection } from "./EntityDocumentsSection";
 import {
@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { DeterministicScreeningSummary } from "./DeterministicScreeningSummary";
 import { CIMAnalysisSection } from "./CIMAnalysisSection";
+import { DealRelationshipLinksSection } from "./DealRelationshipLinksSection";
 
 interface DealDetailTabsProps {
   deal: Deal & { id: string };
@@ -56,6 +57,7 @@ interface DealDetailTabsProps {
   creatorName?: string | null;
   /** SIM / CIM template runs for sessions scoped to this deal opportunity. */
   simScreeningRunsForDeal?: SimScreeningRunForDealRow[];
+  cimAnalysis?: CIMAnalysisData | null;
 }
 
 export function DealDetailTabs({
@@ -76,11 +78,32 @@ export function DealDetailTabs({
   financialSnapshots = [],
   creatorName = null,
   simScreeningRunsForDeal = [],
+  cimAnalysis = null,
 }: DealDetailTabsProps) {
-  if (!company) return null;
-
   const dealOutreach = outreach.filter((row) => row.dealOpportunityId === uid);
   const hasPipeline = !!currentOpportunity;
+
+  const outreachDealPickerRows = (() => {
+    const mapped = dealOpportunities.map((o) => ({
+      id: o.id,
+      stage: o.stage ?? "LISTED",
+      createdAt: o.createdAt ?? new Date(),
+    }));
+    if (
+      currentOpportunity &&
+      !mapped.some((r) => r.id === currentOpportunity.id)
+    ) {
+      return [
+        {
+          id: currentOpportunity.id,
+          stage: currentOpportunity.stage ?? "LISTED",
+          createdAt: currentOpportunity.createdAt ?? new Date(),
+        },
+        ...mapped,
+      ];
+    }
+    return mapped;
+  })();
 
   const brokerSummary =
     deal.brokerage ||
@@ -98,13 +121,17 @@ export function DealDetailTabs({
     defaultTab === "screenings" ||
     defaultTab === "ai-screening" ||
     defaultTab === "financials" ||
-    defaultTab === "pipeline" ||
+    defaultTab === "sim-analysis" ||
+    defaultTab === "linked-entities" ||
+    defaultTab === "relationships" ||
     defaultTab === "outreach" ||
     defaultTab === "documents" ||
     defaultTab === "contacts" ||
     defaultTab === "notes"
       ? defaultTab === "ai-screening"
         ? "screenings"
+        : defaultTab === "relationships"
+          ? "linked-entities"
         : defaultTab
       : "overview";
 
@@ -121,7 +148,10 @@ export function DealDetailTabs({
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="screenings">Screenings</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
-          {hasPipeline && <TabsTrigger value="pipeline">Pipeline</TabsTrigger>}
+          {hasPipeline && (
+            <TabsTrigger value="sim-analysis">SIM Analysis</TabsTrigger>
+          )}
+          <TabsTrigger value="linked-entities">Linked entities</TabsTrigger>
           <TabsTrigger value="outreach">Outreach</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="contacts">Contacts</TabsTrigger>
@@ -310,6 +340,11 @@ export function DealDetailTabs({
               </dl>
             </div>
           )}
+
+        </TabsContent>
+
+        <TabsContent value="linked-entities">
+          <DealRelationshipLinksSection dealOpportunityId={uid} />
         </TabsContent>
 
         <TabsContent value="screenings" className="flex flex-col gap-8">
@@ -336,19 +371,20 @@ export function DealDetailTabs({
             currentOpportunity={currentOpportunity ?? undefined}
             financialSnapshots={financialSnapshots}
           />
-          {hasPipeline && (
-            <CIMAnalysisSection
-              dealOpportunityId={uid}
-              entityName={company?.name ?? "Deal"}
-            />
-          )}
         </TabsContent>
 
         {hasPipeline && (
-          <TabsContent value="pipeline">
-            <DealPipelineSection
-              dealId={uid}
-              currentOpportunity={currentOpportunity}
+          <TabsContent value="sim-analysis" className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold">SIM Analysis</h2>
+              <p className="text-muted-foreground text-sm">
+                Review extracted CIM/SIM insights in a dedicated workspace.
+              </p>
+            </div>
+            <CIMAnalysisSection
+              dealOpportunityId={uid}
+              entityName={company?.name ?? deal.dealTeaser ?? "Deal"}
+              initialData={cimAnalysis}
             />
           </TabsContent>
         )}
@@ -359,12 +395,9 @@ export function DealDetailTabs({
           >
             <CompanyOutreach
               outreach={dealOutreach}
-              companyId={company.id}
-              dealOpportunities={dealOpportunities.map((o) => ({
-                id: o.id,
-                stage: o.stage ?? "LISTED",
-                createdAt: o.createdAt ?? new Date(),
-              }))}
+              companyId={company?.id}
+              defaultDealOpportunityId={uid}
+              dealOpportunities={outreachDealPickerRows}
             />
           </ClientOnly>
         </TabsContent>
@@ -378,26 +411,38 @@ export function DealDetailTabs({
             emptyMessage="No deal documents. Upload CIM, Teaser, or Financials."
             cimUploadProps={{
               dealOpportunityId: uid,
-              entityName: company?.name ?? "Deal",
+              entityName: company?.name ?? deal.dealTeaser ?? "Deal",
             }}
           />
-          <EntityDocumentsSection
-            title="Company documents"
-            entityType="COMPANY"
-            entityId={company.id}
-            documents={companyDocuments}
-            emptyMessage="No company documents. Upload to attach to this company."
-          />
+          {company ? (
+            <EntityDocumentsSection
+              title="Company documents"
+              entityType="COMPANY"
+              entityId={company.id}
+              documents={companyDocuments}
+              emptyMessage="No company documents. Upload to attach to this company."
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Link a company to this deal to manage company-level documents.
+            </p>
+          )}
         </TabsContent>
 
         <TabsContent value="contacts" className="space-y-8">
-          <EntityContactsSection
-            title="Company contacts"
-            entityType="COMPANY"
-            entityId={company.id}
-            contacts={companyContacts}
-            emptyLabel="No company contacts added yet."
-          />
+          {company ? (
+            <EntityContactsSection
+              title="Company contacts"
+              entityType="COMPANY"
+              entityId={company.id}
+              contacts={companyContacts}
+              emptyLabel="No company contacts added yet."
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Link a company to this deal to manage company contacts.
+            </p>
+          )}
           <EntityContactsSection
             title="Deal contacts"
             entityType="DEAL_OPPORTUNITY"
@@ -413,11 +458,17 @@ export function DealDetailTabs({
               <div className="bg-muted/30 min-h-[200px] rounded-md border" />
             }
           >
-            <CompanyNotes
-              company={company}
-              notes={companyNotes}
-              dealUid={uid}
-            />
+            {company ? (
+              <CompanyNotes
+                company={company}
+                notes={companyNotes}
+                dealUid={uid}
+              />
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                Link a company to this deal to add company notes.
+              </p>
+            )}
           </ClientOnly>
         </TabsContent>
       </Tabs>
