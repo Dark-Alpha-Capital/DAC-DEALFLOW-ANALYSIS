@@ -34,6 +34,8 @@ export function buildChatToolRoutingPrompt(): string {
     "Investors/leads: listEntities (entity: investors | investorLeads), getEntityById, getEntityCounts.",
     "Deals: getDealOpportunityDossier, listEntities (entity: dealOpportunities), getEntityCounts.",
     "Diligence: resolveDiligenceScope, retrieveDiligenceEvidence, compareDiligenceEvidence, runDiligenceChecks, summarizeDiligenceFindings.",
+    "Screening templates: listDealScreeningTemplates to list all templates, getDealScreeningTemplateQuestions for template questions (supports templateId or templateName).",
+    "Screening activity: listSimScreeningSessions for sessions, listScreenedDealOpportunities for which deals were screened, listSimScreeningRuns for runs (session/deal/all-user), getSimScreeningSessionDetail for per-session run history, getSimScreeningRunAnswers for full question-answer semantics of a specific run.",
     "Documents: getEntityDocuments, queryBusinessData.",
     "Use evidence-first responses and cite documentId/chunkId for diligence outputs.",
   ].join(" ");

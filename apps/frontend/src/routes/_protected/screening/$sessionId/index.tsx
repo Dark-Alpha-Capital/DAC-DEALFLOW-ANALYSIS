@@ -8,7 +8,6 @@ import {
   FileText,
   Layers,
   Loader2,
-  Plus,
   RefreshCw,
   Table2,
 } from "lucide-react";
@@ -210,6 +209,11 @@ function CimScreeningSessionDetailPage() {
   const queryClient = useQueryClient();
   const user = useCurrentUser();
   const [newScreenerId, setNewScreenerId] = useState("");
+
+  useEffect(() => {
+    if (newScreenerId || screeners.length === 0) return;
+    setNewScreenerId(screeners[0]?.id ?? "");
+  }, [newScreenerId, screeners]);
 
   const fullSessionQuery = useQuery({
     ...trpc.simScreening.getSession.queryOptions({
@@ -629,12 +633,61 @@ function CimScreeningSessionDetailPage() {
               <Separator />
 
               {canAddRun ? (
-                <div className="space-y-3 space-x-2">
-                  <Button type="button" size="sm" asChild>
-                    <Link to="/screening/new-run">
-                      <Plus className="mr-1.5 size-4" aria-hidden />
-                      New run
-                    </Link>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="new-run-template-select"
+                      className="text-muted-foreground text-xs font-medium"
+                    >
+                      Template for new run
+                    </Label>
+                    <Select
+                      value={newScreenerId || undefined}
+                      onValueChange={setNewScreenerId}
+                    >
+                      <SelectTrigger
+                        id="new-run-template-select"
+                        className="h-11 min-h-11 w-full cursor-pointer sm:h-10 sm:min-h-10"
+                      >
+                        <SelectValue placeholder="Select a template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {screeners.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            <span className="line-clamp-2 text-left">
+                              {template.name} · {template.category}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-11 min-h-11 w-full cursor-pointer sm:h-9 sm:min-h-9 sm:w-auto"
+                    disabled={
+                      running ||
+                      !newScreenerId ||
+                      startRunMutation.isPending ||
+                      screeners.length === 0
+                    }
+                    onClick={() => {
+                      if (!newScreenerId) return;
+                      startRunMutation.mutate({
+                        sessionId,
+                        screenerId: newScreenerId,
+                      });
+                    }}
+                  >
+                    {startRunMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                        Starting...
+                      </>
+                    ) : (
+                      "Start new run"
+                    )}
                   </Button>
                 </div>
               ) : (

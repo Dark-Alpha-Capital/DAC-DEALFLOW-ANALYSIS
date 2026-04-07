@@ -3,13 +3,15 @@ import {
   consumeStream,
   convertToModelMessages,
   createIdGenerator,
+  InvalidToolInputError,
+  NoSuchToolError,
   stepCountIs,
   streamText,
   tool,
   type UIMessage,
   validateUIMessages,
 } from "ai";
-import type { ChatSession } from "@repo/db";
+import { runDbWithWorkerNeonPool, type ChatSession } from "@repo/db";
 import {
   buildFullChatSystemPrompt,
   getChatLanguageModel,
@@ -36,13 +38,39 @@ import {
   entityCountsInputSchema,
   entityDocumentsInputSchema,
   getDealOpportunityDossier,
+  getDealLinkedCompanies,
+  getDealLinkedCompaniesInputSchema,
+  getDealLinkedInvestors,
+  getDealLinkedInvestorsInputSchema,
+  getDealRelationshipCounts,
+  getDealRelationshipCountsInputSchema,
+  getDealSimAnalysis,
+  getDealSimAnalysisInputSchema,
+  getDealScreeningTemplateQuestions,
+  getDealScreeningTemplateQuestionsInputSchema,
   getEntityById,
   getEntityCounts,
   getEntityDocuments,
   getInvestmentThemeDossier,
+  getScreenerQuestionsForChat,
+  getScreenerQuestionsInputSchema,
   getEntityByIdInputSchema,
+  getSimScreeningRunAnswers,
+  getSimScreeningRunAnswersInputSchema,
+  getSimScreeningSessionDetail,
+  getSimScreeningSessionDetailInputSchema,
+  listScreenedDealOpportunities,
+  listScreenedDealOpportunitiesInputSchema,
+  listScreeners,
+  listDealScreeningTemplates,
+  listDealScreeningTemplatesInputSchema,
+  listScreenersInputSchema,
   listEntities,
   listEntitiesInputSchema,
+  listSimScreeningRuns,
+  listSimScreeningRunsInputSchema,
+  listSimScreeningSessions,
+  listSimScreeningSessionsInputSchema,
   queryBusinessData,
   queryBusinessDataInputSchema,
   themeDossierInputSchema,
@@ -59,9 +87,156 @@ import {
   summarizeDiligenceFindings,
   summarizeDiligenceFindingsInputSchema,
 } from "@/lib/chat-diligence-tools";
+import { getServerEnv } from "@/lib/env.server";
+import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
 
 const badRequest = (message: string) =>
   Response.json({ error: message }, { status: 400 });
+
+type ChatToolName =
+  | "resolveDiligenceScope"
+  | "retrieveDiligenceEvidence"
+  | "compareDiligenceEvidence"
+  | "runDiligenceChecks"
+  | "summarizeDiligenceFindings"
+  | "getEntityCounts"
+  | "listEntities"
+  | "getEntityById"
+  | "getDealOpportunityDossier"
+  | "getInvestmentThemeDossier"
+  | "getEntityDocuments"
+  | "queryBusinessData"
+  | "listSimScreeningSessions"
+  | "listScreenedDealOpportunities"
+  | "listSimScreeningRuns"
+  | "getSimScreeningRunAnswers"
+  | "getSimScreeningSessionDetail"
+  | "listScreeners"
+  | "getScreenerQuestions"
+  | "listDealScreeningTemplates"
+  | "getDealScreeningTemplateQuestions"
+  | "getDealSimAnalysis"
+  | "getDealLinkedCompanies"
+  | "getDealLinkedInvestors"
+  | "getDealRelationshipCounts";
+
+type ChatToolFlags = {
+  strictMode: boolean;
+  activeToolGating: boolean;
+  debugLogs: boolean;
+};
+
+function isFlagEnabled(value: string | undefined, defaultValue = false): boolean {
+  if (!value) return defaultValue;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+function getChatToolFlags(): ChatToolFlags {
+  const env = getServerEnv();
+  return {
+    strictMode: isFlagEnabled(env.CHAT_TOOL_STRICT_MODE, false),
+    activeToolGating: isFlagEnabled(env.CHAT_TOOL_ACTIVE_GATING, true),
+    debugLogs: isFlagEnabled(env.CHAT_TOOL_DEBUG_LOGS),
+  };
+}
+
+function sanitizeForLog(value: unknown): unknown {
+  if (value == null) return value;
+  if (typeof value === "string") {
+    return value.length > 300 ? `${value.slice(0, 300)}...` : value;
+  }
+  if (Array.isArray(value)) {
+    return value.slice(0, 20).map((item) => sanitizeForLog(item));
+  }
+  if (typeof value === "object") {
+    const redactedKeys = new Set([
+      "content",
+      "snippet",
+      "text",
+      "fileName",
+      "title",
+      "raw",
+      "prompt",
+      "query",
+      "messages",
+    ]);
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [
+        key,
+        redactedKeys.has(key)
+          ? "[redacted]"
+          : sanitizeForLog(entryValue),
+      ]),
+    );
+  }
+  return value;
+}
+
+function getActiveToolsForStep(stepNumber: number): ChatToolName[] {
+  if (stepNumber === 0) {
+    return [
+      "resolveDiligenceScope",
+      "retrieveDiligenceEvidence",
+      "getEntityCounts",
+      "listEntities",
+      "getEntityById",
+      "getDealOpportunityDossier",
+      "getInvestmentThemeDossier",
+      "getEntityDocuments",
+      "queryBusinessData",
+      "listSimScreeningSessions",
+      "listScreenedDealOpportunities",
+      "listSimScreeningRuns",
+      "listScreeners",
+      "getScreenerQuestions",
+      "listDealScreeningTemplates",
+      "getDealScreeningTemplateQuestions",
+      "getDealSimAnalysis",
+      "getDealLinkedCompanies",
+      "getDealLinkedInvestors",
+      "getDealRelationshipCounts",
+    ];
+  }
+
+  if (stepNumber === 1) {
+    return [
+      "retrieveDiligenceEvidence",
+      "compareDiligenceEvidence",
+      "runDiligenceChecks",
+      "getEntityById",
+      "getDealOpportunityDossier",
+      "getInvestmentThemeDossier",
+      "getEntityDocuments",
+      "queryBusinessData",
+      "listScreenedDealOpportunities",
+      "listSimScreeningRuns",
+      "getSimScreeningRunAnswers",
+      "getSimScreeningSessionDetail",
+      "getDealScreeningTemplateQuestions",
+      "getDealSimAnalysis",
+      "getDealLinkedCompanies",
+      "getDealLinkedInvestors",
+      "getDealRelationshipCounts",
+    ];
+  }
+
+  return [
+    "compareDiligenceEvidence",
+    "runDiligenceChecks",
+    "summarizeDiligenceFindings",
+    "getEntityById",
+    "getDealOpportunityDossier",
+    "getInvestmentThemeDossier",
+    "queryBusinessData",
+    "getSimScreeningRunAnswers",
+    "getSimScreeningSessionDetail",
+    "getDealSimAnalysis",
+    "getDealLinkedCompanies",
+    "getDealLinkedInvestors",
+    "getDealRelationshipCounts",
+  ];
+}
 
 function dedupeMessagesById(messages: UIMessage[]): UIMessage[] {
   const deduped = new Map<string, UIMessage>();
@@ -74,86 +249,196 @@ function dedupeMessagesById(messages: UIMessage[]): UIMessage[] {
 
 function toolScope(chat: ChatSession) {
   return {
+    userId: chat.userId,
     companyId: chat.companyId,
     leadId: chat.leadId,
     dealOpportunityId: chat.dealOpportunityId,
   };
 }
 
-function createChatTools(chat: ChatSession) {
+function createChatTools(chat: ChatSession, strict: boolean) {
   const scope = toolScope(chat);
+  const executeWithWorkerDb = <TInput, TOutput>(
+    runner: (input: TInput) => Promise<TOutput>,
+  ) => {
+    return async (input: TInput) => withWorkerDbIfNeeded(() => runner(input));
+  };
+
   return {
     resolveDiligenceScope: tool({
       description:
         "Resolve the due-diligence scope from chat context and optional deal/company hints.",
       inputSchema: diligenceScopeInputSchema,
-      execute: async (input) => resolveDiligenceScope(input, scope),
+      strict,
+      execute: executeWithWorkerDb((input) => resolveDiligenceScope(input, scope)),
     }),
     retrieveDiligenceEvidence: tool({
       description:
         "Retrieve due-diligence evidence from document chunks using hybrid retrieval (vector + keyword fallback).",
       inputSchema: retrieveDiligenceEvidenceInputSchema,
-      execute: async (input) => retrieveDiligenceEvidence(input, scope),
+      strict,
+      execute: executeWithWorkerDb((input) => retrieveDiligenceEvidence(input, scope)),
     }),
     compareDiligenceEvidence: tool({
       description:
         "Compare retrieved evidence and detect cross-document discrepancies.",
       inputSchema: compareDiligenceEvidenceInputSchema,
-      execute: async (input) => compareDiligenceEvidence(input, scope),
+      strict,
+      execute: executeWithWorkerDb((input) => compareDiligenceEvidence(input, scope)),
     }),
     runDiligenceChecks: tool({
       description:
         "Run deterministic diligence checks for discrepancy detection and document coverage gaps.",
       inputSchema: runDiligenceChecksInputSchema,
-      execute: async (input) => runDiligenceChecks(input, scope),
+      strict,
+      execute: executeWithWorkerDb((input) => runDiligenceChecks(input, scope)),
     }),
     summarizeDiligenceFindings: tool({
       description:
         "Produce a structured due-diligence report summary from findings/discrepancies.",
       inputSchema: summarizeDiligenceFindingsInputSchema,
-      execute: async (input) => summarizeDiligenceFindings(input),
+      strict,
+      execute: executeWithWorkerDb((input) => summarizeDiligenceFindings(input)),
     }),
     getEntityCounts: tool({
       description:
         "Get counts of business entities such as leads, companies, themes, screeners, deal opportunities, and documents.",
       inputSchema: entityCountsInputSchema,
-      execute: async (input) => getEntityCounts(input, scope),
+      strict,
+      execute: executeWithWorkerDb((input) => getEntityCounts(input, scope)),
     }),
     listEntities: tool({
       description:
         "List business entities with optional search, filters, and pagination.",
       inputSchema: listEntitiesInputSchema,
-      execute: async (input) => listEntities(input, scope),
+      strict,
+      execute: executeWithWorkerDb((input) => listEntities(input, scope)),
     }),
     getEntityById: tool({
       description:
         "Fetch one entity by id with optional related information.",
       inputSchema: getEntityByIdInputSchema,
-      execute: async (input) => getEntityById(input, scope),
+      strict,
+      execute: executeWithWorkerDb((input) => getEntityById(input, scope)),
     }),
     getDealOpportunityDossier: tool({
       description:
         "Fetch a complete deal opportunity dossier including financials, risk flags, screenings, and document metadata.",
       inputSchema: dealOpportunityDossierInputSchema,
-      execute: async (input) => getDealOpportunityDossier(input, scope),
+      strict,
+      execute: executeWithWorkerDb((input) => getDealOpportunityDossier(input, scope)),
     }),
     getInvestmentThemeDossier: tool({
       description:
         "Fetch complete investment theme data, including active thesis, industry intelligence, coverage, and related document metadata.",
       inputSchema: themeDossierInputSchema,
-      execute: async (input) => getInvestmentThemeDossier(input),
+      strict,
+      execute: executeWithWorkerDb((input) => getInvestmentThemeDossier(input)),
     }),
     getEntityDocuments: tool({
       description:
         "Fetch document metadata for an entity. Extracted text is optional and off by default.",
       inputSchema: entityDocumentsInputSchema,
-      execute: async (input) => getEntityDocuments(input, scope),
+      strict,
+      execute: executeWithWorkerDb((input) => getEntityDocuments(input, scope)),
     }),
     queryBusinessData: tool({
       description:
         "Guarded generic business data reader. Supports count/list/getById/aggregate for business entities.",
       inputSchema: queryBusinessDataInputSchema,
-      execute: async (input) => queryBusinessData(input, scope),
+      strict,
+      execute: executeWithWorkerDb((input) => queryBusinessData(input, scope)),
+    }),
+    listSimScreeningSessions: tool({
+      description:
+        "List SIM screening sessions for the current user, optionally filtered to a deal opportunity.",
+      inputSchema: listSimScreeningSessionsInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => listSimScreeningSessions(input, scope)),
+    }),
+    listScreenedDealOpportunities: tool({
+      description:
+        "List deal opportunities that have at least one screening session, including run/session counts.",
+      inputSchema: listScreenedDealOpportunitiesInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => listScreenedDealOpportunities(input, scope)),
+    }),
+    listSimScreeningRuns: tool({
+      description:
+        "List screening runs for a session, a deal opportunity, or all sessions for the current user.",
+      inputSchema: listSimScreeningRunsInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => listSimScreeningRuns(input, scope)),
+    }),
+    getSimScreeningRunAnswers: tool({
+      description:
+        "Fetch question-by-question answers for a screening run, with optional evidence excerpts.",
+      inputSchema: getSimScreeningRunAnswersInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => getSimScreeningRunAnswers(input)),
+    }),
+    getSimScreeningSessionDetail: tool({
+      description:
+        "Fetch one screening session with its runs and optional latest-run Q&A.",
+      inputSchema: getSimScreeningSessionDetailInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => getSimScreeningSessionDetail(input, scope)),
+    }),
+    listScreeners: tool({
+      description:
+        "List screener templates available in the system, with category and question count metadata.",
+      inputSchema: listScreenersInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => listScreeners(input)),
+    }),
+    listDealScreeningTemplates: tool({
+      description:
+        "List all deal screening templates in the system, with category and question count metadata.",
+      inputSchema: listDealScreeningTemplatesInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => listDealScreeningTemplates(input)),
+    }),
+    getScreenerQuestions: tool({
+      description:
+        "Fetch all ordered questions for a screener template by screener id.",
+      inputSchema: getScreenerQuestionsInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => getScreenerQuestionsForChat(input)),
+    }),
+    getDealScreeningTemplateQuestions: tool({
+      description:
+        "Fetch all ordered questions for a deal screening template by templateId or templateName.",
+      inputSchema: getDealScreeningTemplateQuestionsInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => getDealScreeningTemplateQuestions(input)),
+    }),
+    getDealSimAnalysis: tool({
+      description:
+        "Fetch SIM analysis sections for a deal opportunity: growth narrative, financial metrics, risks, and extraction metadata.",
+      inputSchema: getDealSimAnalysisInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => getDealSimAnalysis(input, scope)),
+    }),
+    getDealLinkedCompanies: tool({
+      description:
+        "List companies linked to a deal opportunity via many-to-many relationship mapping.",
+      inputSchema: getDealLinkedCompaniesInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => getDealLinkedCompanies(input, scope)),
+    }),
+    getDealLinkedInvestors: tool({
+      description:
+        "List investors linked to a deal opportunity via many-to-many relationship mapping.",
+      inputSchema: getDealLinkedInvestorsInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => getDealLinkedInvestors(input, scope)),
+    }),
+    getDealRelationshipCounts: tool({
+      description:
+        "Get counts of linked companies, linked investors, and screening runs for a deal opportunity.",
+      inputSchema: getDealRelationshipCountsInputSchema,
+      strict,
+      execute: executeWithWorkerDb((input) => getDealRelationshipCounts(input, scope)),
     }),
   };
 }
@@ -248,6 +533,7 @@ export async function postChat(req: Request): Promise<Response> {
       messages: mergedMessages,
     });
     log("messages validated");
+    const flags = getChatToolFlags();
 
     const openaiKey = resolveOpenAIApiKey();
     const googleKey = resolveGoogleGeminiApiKey();
@@ -267,15 +553,53 @@ export async function postChat(req: Request): Promise<Response> {
     }
 
     const languageModel = getChatLanguageModel(provider, model);
-    log("calling streamText", { provider, model });
+    log("calling streamText", { provider, model, flags });
 
     const stream = streamText({
       model: languageModel,
+      temperature: 0,
       abortSignal: req.signal,
       system: buildFullChatSystemPrompt(),
       messages: await convertToModelMessages(validatedMessages),
-      tools: createChatTools(chat),
+      tools: createChatTools(chat, flags.strictMode),
       stopWhen: stepCountIs(8),
+      prepareStep: ({ stepNumber }) => {
+        if (!flags.activeToolGating) {
+          return {};
+        }
+        const activeTools = getActiveToolsForStep(stepNumber);
+        if (flags.debugLogs) {
+          log("tool-gating", { stepNumber, activeTools });
+        }
+        return { activeTools };
+      },
+      onStepFinish: ({
+        stepNumber,
+        finishReason,
+        toolCalls,
+        toolResults,
+        usage,
+      }) => {
+        log("step-finish", {
+          stepNumber,
+          finishReason,
+          toolCalls: toolCalls.length,
+          toolResults: toolResults.length,
+          usage,
+        });
+      },
+      experimental_onToolCallStart: (event) => {
+        log("tool-call-start", {
+          at: Date.now(),
+          event: sanitizeForLog(event),
+        });
+      },
+      experimental_onToolCallFinish: (event) => {
+        log("tool-call-finish", {
+          at: Date.now(),
+          event: sanitizeForLog(event),
+        });
+      },
     });
 
     stream.consumeStream();
@@ -296,13 +620,15 @@ export async function postChat(req: Request): Promise<Response> {
         messages: UIMessage[];
       }) => {
         try {
-          await saveChatSessionMessages({
-            userId: session.user.id,
-            chatId: id,
-            messages,
-            provider,
-            model,
-          });
+          await runDbWithWorkerNeonPool(async () =>
+            saveChatSessionMessages({
+              userId: session.user.id,
+              chatId: id,
+              messages,
+              provider,
+              model,
+            }),
+          );
           log("messages saved on finish", { isAborted });
         } catch (err) {
           console.error("[chat] onFinish saveChatSessionMessages failed:", err);
@@ -310,6 +636,15 @@ export async function postChat(req: Request): Promise<Response> {
         if (isAborted) {
           return;
         }
+      },
+      onError: (error) => {
+        if (NoSuchToolError.isInstance(error)) {
+          return "The assistant requested an unavailable tool. Please retry.";
+        }
+        if (InvalidToolInputError.isInstance(error)) {
+          return "The assistant produced invalid tool input. Please retry.";
+        }
+        return "Something went wrong while processing your request.";
       },
     });
   } catch (err) {

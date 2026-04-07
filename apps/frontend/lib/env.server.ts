@@ -19,6 +19,9 @@ const serverEnvSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
+  CHAT_TOOL_STRICT_MODE: z.string().optional(),
+  CHAT_TOOL_ACTIVE_GATING: z.string().optional(),
+  CHAT_TOOL_DEBUG_LOGS: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -41,6 +44,9 @@ export function getServerEnv(): ServerEnv {
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+    CHAT_TOOL_STRICT_MODE: process.env.CHAT_TOOL_STRICT_MODE,
+    CHAT_TOOL_ACTIVE_GATING: process.env.CHAT_TOOL_ACTIVE_GATING,
+    CHAT_TOOL_DEBUG_LOGS: process.env.CHAT_TOOL_DEBUG_LOGS,
   });
   return cached;
 }

@@ -10,10 +10,12 @@ export const Route = createFileRoute("/_chatbot/chat/$id")({
   head: () => ({
     meta: [{ title: "Chat session — Dark Alpha Capital" }],
   }),
-  loader: async ({ params }): Promise<ChatRouteLoaderData> =>
-    fetchChatRouteLoaderData({
+  loader: async ({ params }): Promise<ChatRouteLoaderData> => {
+    const data = await fetchChatRouteLoaderData({
       data: { chatId: params.id },
-    }),
+    });
+    return data as ChatRouteLoaderData;
+  },
   pendingComponent: ChatSessionPageSkeleton,
   component: ChatSessionRoute,
 });

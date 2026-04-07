@@ -1,4 +1,3 @@
-
 import { useRouter } from "@/lib/navigation-shim";
 import { useEffect, useId, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -59,25 +58,6 @@ import {
 import { invalidateRecentChatsQuery } from "@/lib/chat-query-cache";
 import { useTRPC } from "@/trpc/client";
 
-const LOCATION_FIXTURES = [
-  { city: "New York", country: "US", timezone: "America/New_York" },
-  { city: "San Francisco", country: "US", timezone: "America/Los_Angeles" },
-  { city: "Chicago", country: "US", timezone: "America/Chicago" },
-  { city: "Austin", country: "US", timezone: "America/Chicago" },
-] as const;
-
-function hashString(value: string): number {
-  let hash = 0;
-  for (const char of value) {
-    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  }
-  return hash;
-}
-
-function getDeterministicLocation(toolCallId: string) {
-  return LOCATION_FIXTURES[hashString(toolCallId) % LOCATION_FIXTURES.length];
-}
-
 type ToolPartLike = {
   type: string;
   state?: string;
@@ -130,7 +110,6 @@ export function ChatClient({
     regenerate,
     error,
     clearError,
-    addToolOutput,
     addToolApprovalResponse,
   } = useChat({
     id: chatId,
@@ -151,20 +130,6 @@ export function ChatClient({
         };
       },
     }),
-    async onToolCall({ toolCall }) {
-      if (toolCall.dynamic) {
-        return;
-      }
-
-      if (toolCall.toolName === "getLocation") {
-        const output = getDeterministicLocation(toolCall.toolCallId);
-        addToolOutput({
-          tool: "getLocation",
-          toolCallId: toolCall.toolCallId,
-          output,
-        });
-      }
-    },
     onFinish: ({ isAbort, isDisconnect, isError }) => {
       if (isAbort) {
         setAssertiveAnnouncement("Response stopped. Partial response kept.");

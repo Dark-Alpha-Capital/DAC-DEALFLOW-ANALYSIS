@@ -7,28 +7,47 @@ import db, {
   companyNotes,
   contacts,
   count,
+  dealOpportunityCompanyLinks,
   dealOpportunities,
   desc,
   documentChunks,
   documents,
   eq,
+  inArray,
   ilike,
+  investorDealOpportunityLinks,
   isNull,
   investorLeads,
   investors,
   leads,
   or,
+  simScreeningRuns,
+  simScreeningSessions,
   screenerQuestions,
   screeners,
   themes,
 } from "@repo/db";
 import {
+  GetCIMExtractionByDealOpportunityId,
+  GetDealFinancialSnapshotsByDealOpportunityId,
+  GetDealRiskFlagsByDealOpportunityId,
   GetDealWithAllRelations,
+  GetLatestDealFinancialSnapshotByDealOpportunityId,
   GetInvestorByFirstSeenFromInvestorLeadId,
   GetInvestorLeadWithRelations,
   GetInvestorWithRelations,
   GetThemeDocuments,
   GetThemeWorkspaceById,
+  getActiveSimForDeal,
+  getAllScreeners,
+  getDocumentChunksByIds,
+  getScreenerById,
+  getScreenerQuestions,
+  getSimScreeningAnswersByRunId,
+  getSimScreeningRunsBySessionId,
+  getSimScreeningSessionByIdForUser,
+  listSimScreeningRunsForDealOpportunity,
+  listSimScreeningSessionsForUserWithMeta,
 } from "@repo/db/queries";
 
 const DEFAULT_LIMIT = 20;
@@ -57,31 +76,31 @@ export const documentEntityTypeSchema = z.enum([
 
 const listFiltersSchema = z
   .object({
-    status: z.string().trim().optional(),
-    stage: z.string().trim().optional(),
-    type: z.string().trim().optional(),
-    category: z.string().trim().optional(),
-    industry: z.string().trim().optional(),
-    sourceWebsite: z.string().trim().optional(),
-    companyId: z.string().trim().optional(),
-    leadId: z.string().trim().optional(),
-    dealOpportunityId: z.string().trim().optional(),
-    themeId: z.string().trim().optional(),
-    entityType: documentEntityTypeSchema.optional(),
-    entityId: z.string().trim().optional(),
+    status: z.string().trim().nullable().optional(),
+    stage: z.string().trim().nullable().optional(),
+    type: z.string().trim().nullable().optional(),
+    category: z.string().trim().nullable().optional(),
+    industry: z.string().trim().nullable().optional(),
+    sourceWebsite: z.string().trim().nullable().optional(),
+    companyId: z.string().trim().nullable().optional(),
+    leadId: z.string().trim().nullable().optional(),
+    dealOpportunityId: z.string().trim().nullable().optional(),
+    themeId: z.string().trim().nullable().optional(),
+    entityType: documentEntityTypeSchema.nullable().optional(),
+    entityId: z.string().trim().nullable().optional(),
   })
   .partial();
 
 export const entityCountsInputSchema = z.object({
-  entity: businessEntitySchema.or(z.literal("all")).optional(),
-  query: z.string().trim().optional(),
-  filters: listFiltersSchema.optional(),
+  entity: businessEntitySchema.or(z.literal("all")).nullable().optional(),
+  query: z.string().trim().nullable().optional(),
+  filters: listFiltersSchema.nullable().optional(),
 });
 
 export const listEntitiesInputSchema = z.object({
   entity: businessEntitySchema,
-  query: z.string().trim().optional(),
-  filters: listFiltersSchema.optional(),
+  query: z.string().trim().nullable().optional(),
+  filters: listFiltersSchema.nullable().optional(),
   limit: z.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
   offset: z.number().int().min(0).default(0),
   sort: z.enum(["newest", "oldest", "alphabetical"]).default("newest"),
@@ -95,8 +114,8 @@ export const getEntityByIdInputSchema = z.object({
 
 export const dealOpportunityDossierInputSchema = z
   .object({
-    dealOpportunityId: z.string().trim().optional(),
-    query: z.string().trim().optional(),
+    dealOpportunityId: z.string().trim().nullable().optional(),
+    query: z.string().trim().nullable().optional(),
     includeCompanyDocuments: z.boolean().default(true),
   })
   .refine((value) => Boolean(value.dealOpportunityId || value.query), {
@@ -106,8 +125,8 @@ export const dealOpportunityDossierInputSchema = z
 
 export const themeDossierInputSchema = z
   .object({
-    themeId: z.string().trim().optional(),
-    query: z.string().trim().optional(),
+    themeId: z.string().trim().nullable().optional(),
+    query: z.string().trim().nullable().optional(),
   })
   .refine((value) => Boolean(value.themeId || value.query), {
     message: "Either themeId or query is required",
@@ -116,7 +135,7 @@ export const themeDossierInputSchema = z
 
 export const entityDocumentsInputSchema = z.object({
   entityType: documentEntityTypeSchema,
-  entityId: z.string().trim().optional(),
+  entityId: z.string().trim().nullable().optional(),
   limit: z.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
   offset: z.number().int().min(0).default(0),
   includeExtractedText: z.boolean().default(false),
@@ -135,16 +154,17 @@ const aggregateGroupBySchema = z.enum([
 export const queryBusinessDataInputSchema = z.object({
   operation: z.enum(["count", "list", "getById", "aggregate"]),
   entity: businessEntitySchema,
-  id: z.string().trim().optional(),
-  query: z.string().trim().optional(),
-  filters: listFiltersSchema.optional(),
+  id: z.string().trim().nullable().optional(),
+  query: z.string().trim().nullable().optional(),
+  filters: listFiltersSchema.nullable().optional(),
   limit: z.number().int().min(1).max(50).default(DEFAULT_LIMIT),
   offset: z.number().int().min(0).default(0),
   aggregate: z
     .object({
       metric: z.enum(["count", "sumRevenue", "sumEbitda"]).default("count"),
-      groupBy: aggregateGroupBySchema.optional(),
+      groupBy: aggregateGroupBySchema.nullable().optional(),
     })
+    .nullable()
     .optional(),
 });
 
@@ -152,7 +172,748 @@ export type ChatDbToolContext = {
   companyId?: string | null;
   leadId?: string | null;
   dealOpportunityId?: string | null;
+  userId?: string | null;
 };
+
+export const listSimScreeningSessionsInputSchema = z.object({
+  dealOpportunityId: z.string().trim().nullable().optional(),
+  limit: z.number().int().min(1).max(100).default(20),
+});
+
+export const listSimScreeningRunsInputSchema = z
+  .object({
+    sessionId: z.string().trim().nullable().optional(),
+    dealOpportunityId: z.string().trim().nullable().optional(),
+  });
+
+export const listScreenedDealOpportunitiesInputSchema = z.object({
+  limit: z.number().int().min(1).max(100).default(50),
+});
+
+export const getSimScreeningRunAnswersInputSchema = z.object({
+  runId: z.string().trim().min(1),
+  includeEvidence: z.boolean().default(false),
+});
+
+export const getSimScreeningSessionDetailInputSchema = z.object({
+  sessionId: z.string().trim().min(1),
+  includeLatestRunAnswers: z.boolean().default(true),
+  includeEvidence: z.boolean().default(false),
+});
+
+export const listScreenersInputSchema = z.object({
+  category: z.string().trim().nullable().optional(),
+  limit: z.number().int().min(1).max(100).default(50),
+});
+
+export const getScreenerQuestionsInputSchema = z.object({
+  screenerId: z.string().trim().min(1),
+});
+
+export const listDealScreeningTemplatesInputSchema = z.object({
+  category: z.string().trim().nullable().optional(),
+  limit: z.number().int().min(1).max(100).default(50),
+});
+
+export const getDealScreeningTemplateQuestionsInputSchema = z
+  .object({
+    templateId: z.string().trim().nullable().optional(),
+    templateName: z.string().trim().nullable().optional(),
+  })
+  .refine((value) => Boolean(value.templateId || value.templateName), {
+    message: "Either templateId or templateName is required",
+    path: ["templateId"],
+  });
+
+export const getDealSimAnalysisInputSchema = z.object({
+  dealOpportunityId: z.string().trim().nullable().optional(),
+  includeHistory: z.boolean().default(false),
+  includeRiskFlags: z.boolean().default(true),
+});
+
+export const getDealLinkedCompaniesInputSchema = z.object({
+  dealOpportunityId: z.string().trim().nullable().optional(),
+  limit: z.number().int().min(1).max(100).default(50),
+});
+
+export const getDealLinkedInvestorsInputSchema = z.object({
+  dealOpportunityId: z.string().trim().nullable().optional(),
+  limit: z.number().int().min(1).max(100).default(50),
+});
+
+export const getDealRelationshipCountsInputSchema = z.object({
+  dealOpportunityId: z.string().trim().nullable().optional(),
+});
+
+function resolveDealOpportunityIdFromContext(
+  inputDealOpportunityId: string | null | undefined,
+  context: ChatDbToolContext,
+) {
+  return inputDealOpportunityId ?? context.dealOpportunityId ?? null;
+}
+
+export async function listSimScreeningSessions(
+  input: z.infer<typeof listSimScreeningSessionsInputSchema>,
+  context: ChatDbToolContext,
+) {
+  if (!context.userId) {
+    return {
+      summary: "User context is required to list screening sessions.",
+      data: [],
+      meta: { unauthorized: true },
+    };
+  }
+
+  const allSessions = await listSimScreeningSessionsForUserWithMeta(
+    context.userId,
+    input.limit,
+  );
+  const dealOpportunityId = resolveDealOpportunityIdFromContext(
+    input.dealOpportunityId,
+    context,
+  );
+  const sessions = dealOpportunityId
+    ? allSessions.filter((session) => session.dealOpportunityId === dealOpportunityId)
+    : allSessions;
+
+  return {
+    summary: `Found ${sessions.length} SIM screening session${sessions.length === 1 ? "" : "s"}.`,
+    data: sessions,
+    meta: {
+      totalCount: sessions.length,
+      dealOpportunityId,
+      limit: input.limit,
+    },
+  };
+}
+
+export async function listSimScreeningRuns(
+  input: z.infer<typeof listSimScreeningRunsInputSchema>,
+  context: ChatDbToolContext,
+) {
+  const dealOpportunityId = resolveDealOpportunityIdFromContext(
+    input.dealOpportunityId,
+    context,
+  );
+  const sessionId = input.sessionId ?? null;
+
+  if (sessionId) {
+    const runs = await getSimScreeningRunsBySessionId(sessionId);
+    return {
+      summary: `Found ${runs.length} screening run${runs.length === 1 ? "" : "s"} for session.`,
+      data: runs,
+      meta: { sessionId, totalCount: runs.length },
+    };
+  }
+
+  if (!dealOpportunityId) {
+    if (!context.userId) {
+      return {
+        summary: "A dealOpportunityId or sessionId is required to list screening runs.",
+        data: [],
+        meta: { invalidRequest: true },
+      };
+    }
+
+    const sessions = await listSimScreeningSessionsForUserWithMeta(
+      context.userId,
+      500,
+    );
+    const sessionIds = sessions.map((session) => session.id);
+
+    if (sessionIds.length === 0) {
+      return {
+        summary: "No screening runs found.",
+        data: [],
+        meta: { totalCount: 0, scope: "all-user-runs" as const },
+      };
+    }
+
+    const runs = await db
+      .select({
+        runId: simScreeningRuns.id,
+        sessionId: simScreeningRuns.sessionId,
+        status: simScreeningRuns.status,
+        errorMessage: simScreeningRuns.errorMessage,
+        workflowInstanceId: simScreeningRuns.workflowInstanceId,
+        screenerId: simScreeningRuns.screenerId,
+        screenerName: screeners.name,
+        runCreatedAt: simScreeningRuns.createdAt,
+      })
+      .from(simScreeningRuns)
+      .innerJoin(screeners, eq(simScreeningRuns.screenerId, screeners.id))
+      .where(inArray(simScreeningRuns.sessionId, sessionIds))
+      .orderBy(desc(simScreeningRuns.createdAt));
+
+    const sessionById = new Map(sessions.map((session) => [session.id, session]));
+    const enrichedRuns = runs.map((run) => ({
+      ...run,
+      dealOpportunityId: sessionById.get(run.sessionId)?.dealOpportunityId ?? null,
+      sessionCreatedAt: sessionById.get(run.sessionId)?.createdAt ?? null,
+    }));
+
+    return {
+      summary: `Found ${enrichedRuns.length} screening run${enrichedRuns.length === 1 ? "" : "s"} across all sessions.`,
+      data: enrichedRuns,
+      meta: {
+        totalCount: enrichedRuns.length,
+        sessionCount: sessions.length,
+        scope: "all-user-runs" as const,
+      },
+    };
+  }
+
+  const runs = await listSimScreeningRunsForDealOpportunity(dealOpportunityId);
+  return {
+    summary: `Found ${runs.length} screening run${runs.length === 1 ? "" : "s"} for deal opportunity.`,
+    data: runs,
+    meta: { dealOpportunityId, totalCount: runs.length },
+  };
+}
+
+export async function listScreenedDealOpportunities(
+  input: z.infer<typeof listScreenedDealOpportunitiesInputSchema>,
+  context: ChatDbToolContext,
+) {
+  if (!context.userId) {
+    return {
+      summary: "User context is required to list screened deal opportunities.",
+      data: [],
+      meta: { unauthorized: true },
+    };
+  }
+
+  const sessions = await listSimScreeningSessionsForUserWithMeta(
+    context.userId,
+    500,
+  );
+  const sessionsWithDeal = sessions.filter((session) => Boolean(session.dealOpportunityId));
+  if (sessionsWithDeal.length === 0) {
+    return {
+      summary: "No screened deal opportunities found.",
+      data: [],
+      meta: { totalCount: 0, limit: input.limit },
+    };
+  }
+
+  const sessionIds = sessionsWithDeal.map((session) => session.id);
+  const allRuns = await db
+    .select({
+      sessionId: simScreeningRuns.sessionId,
+    })
+    .from(simScreeningRuns)
+    .where(inArray(simScreeningRuns.sessionId, sessionIds));
+  const runCountBySession = new Map<string, number>();
+  for (const run of allRuns) {
+    runCountBySession.set(run.sessionId, (runCountBySession.get(run.sessionId) ?? 0) + 1);
+  }
+
+  const byDeal = new Map<
+    string,
+    {
+      dealOpportunityId: string;
+      latestSessionId: string;
+      latestSessionCreatedAt: Date;
+      sessionCount: number;
+      runCount: number;
+      title: string;
+      fileName: string;
+    }
+  >();
+
+  for (const session of sessionsWithDeal) {
+    const dealOpportunityIdForSession = session.dealOpportunityId;
+    if (!dealOpportunityIdForSession) continue;
+    const runsForSession = runCountBySession.get(session.id) ?? 0;
+    const existing = byDeal.get(dealOpportunityIdForSession);
+    if (!existing) {
+      byDeal.set(dealOpportunityIdForSession, {
+        dealOpportunityId: dealOpportunityIdForSession,
+        latestSessionId: session.id,
+        latestSessionCreatedAt: session.createdAt,
+        sessionCount: 1,
+        runCount: runsForSession,
+        title: session.title,
+        fileName: session.fileName,
+      });
+      continue;
+    }
+
+    existing.sessionCount += 1;
+    existing.runCount += runsForSession;
+    if (session.createdAt > existing.latestSessionCreatedAt) {
+      existing.latestSessionCreatedAt = session.createdAt;
+      existing.latestSessionId = session.id;
+      existing.title = session.title;
+      existing.fileName = session.fileName;
+    }
+  }
+
+  const data = [...byDeal.values()]
+    .sort((a, b) => b.latestSessionCreatedAt.getTime() - a.latestSessionCreatedAt.getTime())
+    .slice(0, input.limit);
+
+  return {
+    summary: `Found ${data.length} screened deal opportunit${data.length === 1 ? "y" : "ies"}.`,
+    data,
+    meta: {
+      totalCount: byDeal.size,
+      limit: input.limit,
+    },
+  };
+}
+
+export async function getSimScreeningRunAnswers(
+  input: z.infer<typeof getSimScreeningRunAnswersInputSchema>,
+) {
+  const [answers, run] = await Promise.all([
+    getSimScreeningAnswersByRunId(input.runId),
+    db
+      .select({
+        id: simScreeningRuns.id,
+        sessionId: simScreeningRuns.sessionId,
+        screenerId: simScreeningRuns.screenerId,
+        status: simScreeningRuns.status,
+      })
+      .from(simScreeningRuns)
+      .where(eq(simScreeningRuns.id, input.runId))
+      .limit(1),
+  ]);
+
+  const runRow = run[0] ?? null;
+  if (!runRow) {
+    return {
+      summary: "Screening run not found.",
+      data: null,
+      meta: { notFound: true },
+    };
+  }
+
+  const questions = await getScreenerQuestions(runRow.screenerId);
+  const answerByQuestionId = new Map(answers.map((answer) => [answer.questionId, answer]));
+  const evidenceChunkIds = input.includeEvidence
+    ? [...new Set(answers.flatMap((answer) => answer.evidenceChunkIds ?? []))]
+    : [];
+  const evidenceChunks = input.includeEvidence
+    ? await getDocumentChunksByIds(evidenceChunkIds)
+    : [];
+  const evidenceById = new Map(evidenceChunks.map((chunk) => [chunk.id, chunk]));
+
+  const questionAnswers = questions.map((question) => {
+    const answer = answerByQuestionId.get(question.id) ?? null;
+    return {
+      questionId: question.id,
+      question: question.question,
+      weight: question.weight,
+      responseType: question.responseType,
+      position: question.position,
+      answer: answer
+        ? {
+          id: answer.id,
+          score: answer.score,
+          rationale: answer.rationale,
+          evidenceChunkIds: answer.evidenceChunkIds ?? [],
+          evidence:
+            input.includeEvidence && answer.evidenceChunkIds
+              ? answer.evidenceChunkIds
+                .map((chunkId) => evidenceById.get(chunkId))
+                .filter(Boolean)
+              : undefined,
+        }
+        : null,
+    };
+  });
+
+  return {
+    summary: `Loaded ${answers.length} answers for run ${input.runId}.`,
+    data: {
+      run: runRow,
+      questionAnswers,
+    },
+    meta: {
+      runId: input.runId,
+      questionCount: questions.length,
+      answerCount: answers.length,
+      includeEvidence: input.includeEvidence,
+    },
+  };
+}
+
+export async function getSimScreeningSessionDetail(
+  input: z.infer<typeof getSimScreeningSessionDetailInputSchema>,
+  context: ChatDbToolContext,
+) {
+  if (!context.userId) {
+    return {
+      summary: "User context is required to fetch screening session details.",
+      data: null,
+      meta: { unauthorized: true },
+    };
+  }
+
+  const session = await getSimScreeningSessionByIdForUser(input.sessionId, context.userId);
+  if (!session) {
+    return {
+      summary: "SIM screening session not found.",
+      data: null,
+      meta: { notFound: true },
+    };
+  }
+
+  const runs = await getSimScreeningRunsBySessionId(input.sessionId);
+  const latestRun = runs[0] ?? null;
+  const latestRunAnswers =
+    input.includeLatestRunAnswers && latestRun
+      ? await getSimScreeningRunAnswers({
+        runId: latestRun.id,
+        includeEvidence: input.includeEvidence,
+      })
+      : null;
+
+  return {
+    summary: `Session has ${runs.length} run${runs.length === 1 ? "" : "s"}.`,
+    data: {
+      session,
+      runs,
+      latestRunAnswers:
+        latestRunAnswers && latestRunAnswers.data
+          ? latestRunAnswers.data
+          : null,
+    },
+    meta: {
+      sessionId: input.sessionId,
+      runCount: runs.length,
+      includeLatestRunAnswers: input.includeLatestRunAnswers,
+      includeEvidence: input.includeEvidence,
+    },
+  };
+}
+
+export async function listScreeners(
+  input: z.infer<typeof listScreenersInputSchema>,
+) {
+  const rows = (await getAllScreeners()) ?? [];
+  const filtered = input.category
+    ? rows.filter((row) => row.category === input.category)
+    : rows;
+  const limited = filtered.slice(0, input.limit);
+  return {
+    summary: `Found ${limited.length} screener${limited.length === 1 ? "" : "s"}.`,
+    data: limited,
+    meta: {
+      totalCount: filtered.length,
+      category: input.category ?? null,
+      limit: input.limit,
+    },
+  };
+}
+
+export async function getScreenerQuestionsForChat(
+  input: z.infer<typeof getScreenerQuestionsInputSchema>,
+) {
+  const [screener, questions] = await Promise.all([
+    getScreenerById(input.screenerId),
+    getScreenerQuestions(input.screenerId),
+  ]);
+  if (!screener) {
+    return {
+      summary: "Screener not found.",
+      data: null,
+      meta: { notFound: true },
+    };
+  }
+  return {
+    summary: `Loaded ${questions.length} question${questions.length === 1 ? "" : "s"} for screener.`,
+    data: { screener, questions },
+    meta: { screenerId: input.screenerId, questionCount: questions.length },
+  };
+}
+
+export async function listDealScreeningTemplates(
+  input: z.infer<typeof listDealScreeningTemplatesInputSchema>,
+) {
+  const rows = (await getAllScreeners()) ?? [];
+  const filtered = input.category
+    ? rows.filter((row) => row.category === input.category)
+    : rows;
+  const limited = filtered.slice(0, input.limit);
+
+  return {
+    summary: `Found ${limited.length} deal screening template${limited.length === 1 ? "" : "s"}.`,
+    data: limited,
+    meta: {
+      totalCount: filtered.length,
+      category: input.category ?? null,
+      limit: input.limit,
+    },
+  };
+}
+
+export async function getDealScreeningTemplateQuestions(
+  input: z.infer<typeof getDealScreeningTemplateQuestionsInputSchema>,
+) {
+  const allTemplates = (await getAllScreeners()) ?? [];
+  const normalizedTemplateName = input.templateName?.trim().toLowerCase() ?? null;
+
+  const matchedByName = normalizedTemplateName
+    ? allTemplates.filter((template) =>
+      template.name?.trim().toLowerCase().includes(normalizedTemplateName),
+    )
+    : [];
+
+  const resolvedTemplateId =
+    input.templateId ??
+    (matchedByName.length === 1 ? matchedByName[0]?.id ?? null : null);
+
+  if (!resolvedTemplateId) {
+    if (normalizedTemplateName && matchedByName.length > 1) {
+      return {
+        summary:
+          "Multiple deal screening templates matched. Please provide the exact template name or templateId.",
+        data: null,
+        meta: {
+          requiresDisambiguation: true,
+          candidates: matchedByName.map((template) => ({
+            id: template.id,
+            name: template.name,
+            category: template.category ?? null,
+          })),
+        },
+      };
+    }
+
+    return {
+      summary: "Deal screening template not found.",
+      data: null,
+      meta: {
+        notFound: true,
+      },
+    };
+  }
+
+  const [template, questions] = await Promise.all([
+    getScreenerById(resolvedTemplateId),
+    getScreenerQuestions(resolvedTemplateId),
+  ]);
+
+  if (!template) {
+    return {
+      summary: "Deal screening template not found.",
+      data: null,
+      meta: { notFound: true },
+    };
+  }
+
+  return {
+    summary: `Loaded ${questions.length} question${questions.length === 1 ? "" : "s"} for deal screening template.`,
+    data: { template, questions },
+    meta: {
+      templateId: template.id,
+      questionCount: questions.length,
+    },
+  };
+}
+
+export async function getDealSimAnalysis(
+  input: z.infer<typeof getDealSimAnalysisInputSchema>,
+  context: ChatDbToolContext,
+) {
+  const dealOpportunityId = resolveDealOpportunityIdFromContext(
+    input.dealOpportunityId,
+    context,
+  );
+  if (!dealOpportunityId) {
+    return {
+      summary: "dealOpportunityId is required for SIM analysis.",
+      data: null,
+      meta: { invalidRequest: true },
+    };
+  }
+
+  const [activeSim, extraction, latestSnapshot, allSnapshots, riskFlags] = await Promise.all([
+    getActiveSimForDeal(dealOpportunityId),
+    GetCIMExtractionByDealOpportunityId(dealOpportunityId),
+    GetLatestDealFinancialSnapshotByDealOpportunityId(dealOpportunityId),
+    input.includeHistory
+      ? GetDealFinancialSnapshotsByDealOpportunityId(dealOpportunityId)
+      : Promise.resolve([]),
+    input.includeRiskFlags
+      ? GetDealRiskFlagsByDealOpportunityId(dealOpportunityId)
+      : Promise.resolve([]),
+  ]);
+
+  return {
+    summary: "Loaded SIM analysis package for deal opportunity.",
+    data: {
+      dealOpportunityId,
+      activeSim,
+      growthNarrative: {
+        growthDrivers: extraction?.growthDrivers ?? null,
+        industryOverview: extraction?.industryOverview ?? null,
+        transactionDetails: extraction?.transactionDetails ?? null,
+      },
+      financialMetrics: {
+        latestSnapshot,
+        history: input.includeHistory ? allSnapshots : [],
+        extractionRevenueHistory: extraction?.revenueHistory ?? [],
+        extractionEbitdaHistory: extraction?.ebitdaHistory ?? [],
+        extractionRevenueBreakdown: extraction?.revenueBreakdown ?? [],
+      },
+      risks: {
+        extractedKeyRisks: extraction?.keyRisks ?? [],
+        riskFlags: input.includeRiskFlags ? riskFlags : [],
+      },
+      extractionMeta: extraction
+        ? {
+          id: extraction.id,
+          source: extraction.source,
+          createdAt: extraction.createdAt,
+          updatedAt: extraction.updatedAt,
+          documentFileName: extraction.documentFileName ?? null,
+          documentCreatedAt: extraction.documentCreatedAt ?? null,
+        }
+        : null,
+    },
+    meta: {
+      includeHistory: input.includeHistory,
+      includeRiskFlags: input.includeRiskFlags,
+      snapshotCount: input.includeHistory ? allSnapshots.length : latestSnapshot ? 1 : 0,
+      riskFlagCount: input.includeRiskFlags ? riskFlags.length : 0,
+    },
+  };
+}
+
+export async function getDealLinkedCompanies(
+  input: z.infer<typeof getDealLinkedCompaniesInputSchema>,
+  context: ChatDbToolContext,
+) {
+  const dealOpportunityId = resolveDealOpportunityIdFromContext(
+    input.dealOpportunityId,
+    context,
+  );
+  if (!dealOpportunityId) {
+    return {
+      summary: "dealOpportunityId is required to list linked companies.",
+      data: [],
+      meta: { invalidRequest: true },
+    };
+  }
+
+  const rows = await db
+    .select({
+      linkId: dealOpportunityCompanyLinks.id,
+      createdAt: dealOpportunityCompanyLinks.createdAt,
+      notes: dealOpportunityCompanyLinks.notes,
+      companyId: companies.id,
+      name: companies.name,
+      industry: companies.industry,
+      location: companies.location,
+      coverageStatus: companies.coverageStatus,
+    })
+    .from(dealOpportunityCompanyLinks)
+    .innerJoin(companies, eq(dealOpportunityCompanyLinks.companyId, companies.id))
+    .where(eq(dealOpportunityCompanyLinks.dealOpportunityId, dealOpportunityId))
+    .orderBy(desc(dealOpportunityCompanyLinks.createdAt))
+    .limit(input.limit);
+
+  return {
+    summary: `Found ${rows.length} linked compan${rows.length === 1 ? "y" : "ies"}.`,
+    data: rows,
+    meta: { dealOpportunityId, count: rows.length, limit: input.limit },
+  };
+}
+
+export async function getDealLinkedInvestors(
+  input: z.infer<typeof getDealLinkedInvestorsInputSchema>,
+  context: ChatDbToolContext,
+) {
+  const dealOpportunityId = resolveDealOpportunityIdFromContext(
+    input.dealOpportunityId,
+    context,
+  );
+  if (!dealOpportunityId) {
+    return {
+      summary: "dealOpportunityId is required to list linked investors.",
+      data: [],
+      meta: { invalidRequest: true },
+    };
+  }
+
+  const rows = await db
+    .select({
+      linkId: investorDealOpportunityLinks.id,
+      createdAt: investorDealOpportunityLinks.createdAt,
+      notes: investorDealOpportunityLinks.notes,
+      investorId: investors.id,
+      name: investors.name,
+      type: investors.type,
+      minCheckSize: investors.minCheckSize,
+      maxCheckSize: investors.maxCheckSize,
+      stagePreference: investors.stagePreference,
+      status: investors.status,
+    })
+    .from(investorDealOpportunityLinks)
+    .innerJoin(investors, eq(investorDealOpportunityLinks.investorId, investors.id))
+    .where(eq(investorDealOpportunityLinks.dealOpportunityId, dealOpportunityId))
+    .orderBy(desc(investorDealOpportunityLinks.createdAt))
+    .limit(input.limit);
+
+  return {
+    summary: `Found ${rows.length} linked investor${rows.length === 1 ? "" : "s"}.`,
+    data: rows,
+    meta: { dealOpportunityId, count: rows.length, limit: input.limit },
+  };
+}
+
+export async function getDealRelationshipCounts(
+  input: z.infer<typeof getDealRelationshipCountsInputSchema>,
+  context: ChatDbToolContext,
+) {
+  const dealOpportunityId = resolveDealOpportunityIdFromContext(
+    input.dealOpportunityId,
+    context,
+  );
+  if (!dealOpportunityId) {
+    return {
+      summary: "dealOpportunityId is required to fetch relationship counts.",
+      data: null,
+      meta: { invalidRequest: true },
+    };
+  }
+
+  const [companyCountRows, investorCountRows, screenerRunCountRows] = await Promise.all([
+    db
+      .select({ value: count() })
+      .from(dealOpportunityCompanyLinks)
+      .where(eq(dealOpportunityCompanyLinks.dealOpportunityId, dealOpportunityId)),
+    db
+      .select({ value: count() })
+      .from(investorDealOpportunityLinks)
+      .where(eq(investorDealOpportunityLinks.dealOpportunityId, dealOpportunityId)),
+    db
+      .select({ value: count() })
+      .from(simScreeningRuns)
+      .innerJoin(
+        simScreeningSessions,
+        eq(simScreeningRuns.sessionId, simScreeningSessions.id),
+      )
+      .where(
+        eq(simScreeningSessions.dealOpportunityId, dealOpportunityId),
+      ),
+  ]);
+
+  const counts = {
+    companies: Number(companyCountRows[0]?.value ?? 0),
+    investors: Number(investorCountRows[0]?.value ?? 0),
+    screeningRuns: Number(screenerRunCountRows[0]?.value ?? 0),
+  };
+
+  return {
+    summary: "Loaded deal relationship counts.",
+    data: counts,
+    meta: { dealOpportunityId },
+  };
+}
 
 function withContextFilters(
   filters: z.infer<typeof listFiltersSchema> | undefined,
@@ -336,7 +1097,7 @@ export async function getEntityCounts(
   input: z.infer<typeof entityCountsInputSchema>,
   context: ChatDbToolContext,
 ) {
-  const filters = withContextFilters(input.filters, context);
+  const filters = withContextFilters(input.filters ?? undefined, context);
   const query = input.query?.trim() || undefined;
 
   const shouldCount = (entity: BusinessEntity) =>
@@ -474,7 +1235,7 @@ export async function listEntities(
   input: z.infer<typeof listEntitiesInputSchema>,
   context: ChatDbToolContext,
 ) {
-  const filters = withContextFilters(input.filters, context);
+  const filters = withContextFilters(input.filters ?? undefined, context);
   const query = input.query?.trim() || undefined;
   const limit = coerceLimit(input.limit);
   const offset = input.offset;
@@ -1509,7 +2270,7 @@ async function aggregateBusinessData(
   input: z.infer<typeof queryBusinessDataInputSchema>,
   context: ChatDbToolContext,
 ) {
-  const filters = withContextFilters(input.filters, context);
+  const filters = withContextFilters(input.filters ?? undefined, context);
 
   if (
     input.aggregate?.metric === "sumRevenue" ||
@@ -1542,7 +2303,7 @@ async function aggregateBusinessData(
         };
       }
 
-      const whereClause = buildLeadWhere(input.query, filters);
+      const whereClause = buildLeadWhere(input.query ?? undefined, filters);
       const rows = await db
         .select({ key: leads.status, value: count() })
         .from(leads)
@@ -1628,7 +2389,7 @@ async function aggregateBusinessData(
         };
       }
 
-      const whereClause = buildDocumentsWhere(input.query, filters);
+      const whereClause = buildDocumentsWhere(input.query ?? undefined, filters);
 
       if (groupBy === "category") {
         const rows = await db
@@ -1668,7 +2429,7 @@ async function aggregateBusinessData(
         };
       }
 
-      const whereClause = buildCompanyWhere(input.query, filters);
+      const whereClause = buildCompanyWhere(input.query ?? undefined, filters);
 
       if (groupBy === "industry") {
         const rows = await db
@@ -1708,7 +2469,7 @@ async function aggregateBusinessData(
         };
       }
 
-      const investorWhere = buildInvestorWhere(input.query, filters);
+      const investorWhere = buildInvestorWhere(input.query ?? undefined, filters);
       const investorCol = groupBy === "status" ? investors.status : investors.type;
       const rows = await db
         .select({ key: investorCol, value: count() })
@@ -1733,7 +2494,7 @@ async function aggregateBusinessData(
         };
       }
 
-      const leadWhere = buildInvestorLeadWhere(input.query, filters);
+      const leadWhere = buildInvestorLeadWhere(input.query ?? undefined, filters);
       const rows = await db
         .select({ key: investorLeads.status, value: count() })
         .from(investorLeads)

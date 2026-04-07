@@ -132,7 +132,7 @@ export function DealDetailTabs({
         ? "screenings"
         : defaultTab === "relationships"
           ? "linked-entities"
-        : defaultTab
+          : defaultTab
       : "overview";
 
   return (
@@ -340,7 +340,6 @@ export function DealDetailTabs({
               </dl>
             </div>
           )}
-
         </TabsContent>
 
         <TabsContent value="linked-entities">

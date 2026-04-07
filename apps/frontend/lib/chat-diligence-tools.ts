@@ -54,22 +54,22 @@ const requiredDueDiligenceCategories = [
 ] as const;
 
 export const diligenceScopeInputSchema = z.object({
-  dealOpportunityId: z.string().trim().optional(),
-  companyId: z.string().trim().optional(),
-  query: z.string().trim().optional(),
+  dealOpportunityId: z.string().trim().nullable().optional(),
+  companyId: z.string().trim().nullable().optional(),
+  query: z.string().trim().nullable().optional(),
 });
 
 export const retrieveDiligenceEvidenceInputSchema = z.object({
   question: z.string().trim().min(1),
-  scope: diligenceScopeInputSchema.optional(),
+  scope: diligenceScopeInputSchema.nullable().optional(),
   limit: z.number().int().min(1).max(MAX_EVIDENCE_LIMIT).default(DEFAULT_EVIDENCE_LIMIT),
   includeKeywordFallback: z.boolean().default(true),
   includeFullChunkText: z.boolean().default(false),
 });
 
 export const compareDiligenceEvidenceInputSchema = z.object({
-  question: z.string().trim().min(1).optional(),
-  scope: diligenceScopeInputSchema.optional(),
+  question: z.string().trim().min(1).nullable().optional(),
+  scope: diligenceScopeInputSchema.nullable().optional(),
   evidence: z
     .array(
       z.object({
@@ -80,12 +80,13 @@ export const compareDiligenceEvidenceInputSchema = z.object({
         fileName: z.string().nullable().optional(),
       }),
     )
+    .nullable()
     .optional(),
 });
 
 export const runDiligenceChecksInputSchema = z.object({
-  question: z.string().trim().optional(),
-  scope: diligenceScopeInputSchema.optional(),
+  question: z.string().trim().nullable().optional(),
+  scope: diligenceScopeInputSchema.nullable().optional(),
   evidence: z
     .array(
       z.object({
@@ -94,11 +95,12 @@ export const runDiligenceChecksInputSchema = z.object({
         snippet: z.string().nullable(),
       }),
     )
+    .nullable()
     .optional(),
 });
 
 export const summarizeDiligenceFindingsInputSchema = z.object({
-  question: z.string().trim().optional(),
+  question: z.string().trim().nullable().optional(),
   findings: z
     .array(
       z.object({
@@ -127,6 +129,7 @@ export const summarizeDiligenceFindingsInputSchema = z.object({
       presentCategories: z.array(z.string()),
       missingCategories: z.array(z.string()),
     })
+    .nullable()
     .optional(),
   sources: z
     .array(
@@ -380,7 +383,7 @@ export async function retrieveDiligenceEvidence(
   input: z.infer<typeof retrieveDiligenceEvidenceInputSchema>,
   context: ChatContext,
 ) {
-  const scope = await resolveDiligenceScopeInternal(input.scope, context);
+  const scope = await resolveDiligenceScopeInternal(input.scope ?? undefined, context);
   if (!scope.dealOpportunityId && !scope.companyId) {
     return {
       summary:
@@ -581,7 +584,7 @@ export async function runDiligenceChecks(
   input: z.infer<typeof runDiligenceChecksInputSchema>,
   context: ChatContext,
 ) {
-  const scope = await resolveDiligenceScopeInternal(input.scope, context);
+  const scope = await resolveDiligenceScopeInternal(input.scope ?? undefined, context);
   if (!scope.dealOpportunityId && !scope.companyId) {
     return {
       summary: "Cannot run diligence checks without a resolved scope.",
