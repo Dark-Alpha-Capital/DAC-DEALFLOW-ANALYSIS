@@ -9,6 +9,7 @@ import type {
   DealFinancialSnapshot,
 } from "@repo/db/schema";
 import type { SimScreeningRunForDealRow } from "@repo/db/queries";
+import type { CIMAnalysisData } from "./CIMAnalysisSection";
 import { ClientOnly } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealHeader } from "./deal-header";
@@ -56,6 +57,7 @@ interface DealDetailTabsProps {
   creatorName?: string | null;
   /** SIM / CIM template runs for sessions scoped to this deal opportunity. */
   simScreeningRunsForDeal?: SimScreeningRunForDealRow[];
+  cimAnalysis?: CIMAnalysisData | null;
 }
 
 export function DealDetailTabs({
@@ -76,6 +78,7 @@ export function DealDetailTabs({
   financialSnapshots = [],
   creatorName = null,
   simScreeningRunsForDeal = [],
+  cimAnalysis = null,
 }: DealDetailTabsProps) {
   const dealOutreach = outreach.filter((row) => row.dealOpportunityId === uid);
   const hasPipeline = !!currentOpportunity;
@@ -381,6 +384,7 @@ export function DealDetailTabs({
             <CIMAnalysisSection
               dealOpportunityId={uid}
               entityName={company?.name ?? deal.dealTeaser ?? "Deal"}
+              initialData={cimAnalysis}
             />
           </TabsContent>
         )}

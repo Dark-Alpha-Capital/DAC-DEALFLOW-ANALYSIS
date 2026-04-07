@@ -3,6 +3,8 @@ import {
   GetDealOpportunityById,
   GetDealWithAllRelations,
   GetRankedDealOpportunities,
+  getActiveSimForDeal,
+  GetCIMExtractionByDealOpportunityId,
 } from "@repo/db/queries";
 import db, { themes, asc, isNull } from "@repo/db";
 import { assertAuthenticated } from "@/lib/server/assert-session";
@@ -48,12 +50,42 @@ export const loadDealOpportunityDetailData = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {
-      const dealData = await GetDealWithAllRelations(data.uid);
-      return { dealData, error: null as string | null };
+      const [dealData, activeSim, extraction] = await Promise.all([
+        GetDealWithAllRelations(data.uid),
+        getActiveSimForDeal(data.uid),
+        GetCIMExtractionByDealOpportunityId(data.uid),
+      ]);
+
+      const hasFinancials = !!extraction;
+      const cimAnalysis = {
+        activeSim: activeSim
+          ? {
+            id: activeSim.id,
+            status: hasFinancials
+              ? ("ready" as const)
+              : ("processing" as const),
+          }
+          : null,
+        revenueHistory: extraction?.revenueHistory ?? {},
+        ebitdaHistory: extraction?.ebitdaHistory ?? {},
+        employeeCount: extraction?.employeeCount,
+        customerConcentration: extraction?.customerConcentration,
+        capexIntensity: extraction?.capexIntensity,
+        revenueBreakdown: extraction?.revenueBreakdown ?? {},
+        growthDrivers: extraction?.growthDrivers ?? [],
+        keyRisks: extraction?.keyRisks ?? [],
+        industryOverview: extraction?.industryOverview,
+        transactionDetails: extraction?.transactionDetails,
+        documentFileName: extraction?.documentFileName,
+        documentCreatedAt: extraction?.documentCreatedAt,
+      };
+
+      return { dealData, cimAnalysis, error: null as string | null };
     } catch (err) {
       console.error("Error fetching deal with all relations", err);
       return {
         dealData: null,
+        cimAnalysis: null,
         error: err instanceof Error ? err.message : String(err),
       };
     }

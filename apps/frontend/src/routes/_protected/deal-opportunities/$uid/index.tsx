@@ -23,9 +23,14 @@ export const Route = createFileRoute("/_protected/deal-opportunities/$uid/")({
 
 function DealOpportunityDetailRoute() {
   const { uid } = Route.useParams();
-  const { dealData, error } = Route.useLoaderData();
+  const { dealData, cimAnalysis, error } = Route.useLoaderData();
   return (
-    <DealOpportunityDetailView uid={uid} dealData={dealData} error={error} />
+    <DealOpportunityDetailView
+      uid={uid}
+      dealData={dealData}
+      cimAnalysis={cimAnalysis}
+      error={error}
+    />
   );
 }
 
@@ -36,9 +41,10 @@ type DealOppDetailLoader = Awaited<
 function DealOpportunityDetailView(props: {
   uid: string;
   dealData: DealOppDetailLoader["dealData"];
+  cimAnalysis: DealOppDetailLoader["cimAnalysis"];
   error: string | null;
 }) {
-  const { uid, dealData, error } = props;
+  const { uid, dealData, cimAnalysis, error } = props;
 
   if (error) {
     return (
@@ -103,6 +109,7 @@ function DealOpportunityDetailView(props: {
         financialSnapshots={dealData.financialSnapshots ?? []}
         creatorName={dealData.creatorName ?? null}
         simScreeningRunsForDeal={dealData.simScreeningRunsForDeal ?? []}
+        cimAnalysis={cimAnalysis}
       />
     </section>
   );
