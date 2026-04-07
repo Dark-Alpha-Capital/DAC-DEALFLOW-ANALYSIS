@@ -3,6 +3,7 @@ import { assertAuthenticated } from "@/lib/server/assert-session";
 import db, {
   companies,
   dealOpportunities,
+  dealOpportunityThemes,
   eq,
   leads,
   themes,
@@ -96,8 +97,13 @@ async function getThemesData() {
         themeName: themes.name,
         themeDeletedAt: themes.deletedAt,
       })
-      .from(companies)
-      .leftJoin(themes, eq(companies.themeId, themes.id))
+      .from(dealOpportunityThemes)
+      .innerJoin(
+        dealOpportunities,
+        eq(dealOpportunityThemes.dealOpportunityId, dealOpportunities.id),
+      )
+      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+      .leftJoin(themes, eq(dealOpportunityThemes.themeId, themes.id))
       .where(isNull(companies.deletedAt)),
     db
       .select({
@@ -106,8 +112,12 @@ async function getThemesData() {
         themeDeletedAt: themes.deletedAt,
       })
       .from(dealOpportunities)
+      .leftJoin(
+        dealOpportunityThemes,
+        eq(dealOpportunityThemes.dealOpportunityId, dealOpportunities.id),
+      )
+      .leftJoin(themes, eq(dealOpportunityThemes.themeId, themes.id))
       .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-      .leftJoin(themes, eq(companies.themeId, themes.id))
       .where(isNull(companies.deletedAt)),
   ]);
 
@@ -173,8 +183,13 @@ async function getTopDealsData(limit = 10) {
         themeName: themes.name,
         themeDeletedAt: themes.deletedAt,
       })
-      .from(companies)
-      .leftJoin(themes, eq(companies.themeId, themes.id))
+      .from(dealOpportunities)
+      .innerJoin(companies, eq(dealOpportunities.companyId, companies.id))
+      .leftJoin(
+        dealOpportunityThemes,
+        eq(dealOpportunityThemes.dealOpportunityId, dealOpportunities.id),
+      )
+      .leftJoin(themes, eq(dealOpportunityThemes.themeId, themes.id))
       .where(isNull(companies.deletedAt)),
   ]);
 

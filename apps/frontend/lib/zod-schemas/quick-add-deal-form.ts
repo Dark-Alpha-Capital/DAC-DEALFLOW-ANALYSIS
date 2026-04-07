@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { COVERAGE_STATUSES } from "./shared-form-enums";
 
 /** Comma-formatted numeric strings; empty → valid. */
 export const optionalFormattedNumberString = z
@@ -16,40 +15,14 @@ export const optionalFormattedNumberString = z
   );
 
 export const QuickAddDealFormSchema = z.object({
-  companyName: z.string().min(1, "Company name is required"),
-  industry: z.string().optional(),
-  location: z.string().optional(),
-  revenueEstimate: optionalFormattedNumberString,
-  ebitdaEstimate: optionalFormattedNumberString,
-  ebitdaMarginEstimate: optionalFormattedNumberString,
-  recurringRevenuePct: optionalFormattedNumberString,
-  customerConcentrationPct: optionalFormattedNumberString,
-  founderAgeEstimate: optionalFormattedNumberString,
-  themeId: z.string().optional(),
-  attractivenessScore: optionalFormattedNumberString,
-  coverageStatus: z.enum(COVERAGE_STATUSES).optional(),
-  businessModel: z.string().optional(),
-  employees: optionalFormattedNumberString,
-  revenueTtm: optionalFormattedNumberString,
-  ebitdaTtm: optionalFormattedNumberString,
-  grossMargin: optionalFormattedNumberString,
-  revenueCagr: optionalFormattedNumberString,
-  totalClients: optionalFormattedNumberString,
-  top10Concentration: optionalFormattedNumberString,
-  customerIndustries: z.array(z.string()),
-  revenueModelType: z.string().optional(),
-  expansionModel: z.string().optional(),
-  concentrationHigh: z.boolean().optional(),
-  marginLow: z.boolean().optional(),
-  vendorDependency: z.boolean().optional(),
-  growthLevers: z.array(z.string()),
   dealTeaser: z.string().min(1, "Deal title is required"),
+  themeId: z.string().optional(),
   sourceWebsite: z.string().optional(),
   brokerage: z.string().optional(),
-  revenue: z.string().optional(),
-  ebitda: z.string().optional(),
-  ebitdaMargin: z.string().optional(),
-  askingPrice: z.string().optional(),
+  revenue: optionalFormattedNumberString,
+  ebitda: optionalFormattedNumberString,
+  ebitdaMargin: optionalFormattedNumberString,
+  askingPrice: optionalFormattedNumberString,
   description: z.string().optional(),
   brokerFirstName: z.string().optional(),
   brokerLastName: z.string().optional(),

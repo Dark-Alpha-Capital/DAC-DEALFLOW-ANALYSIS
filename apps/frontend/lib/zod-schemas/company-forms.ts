@@ -12,7 +12,6 @@ export const AddCompanyFormSchema = z.object({
   recurringRevenuePct: z.coerce.number().optional(),
   customerConcentrationPct: z.coerce.number().optional(),
   founderAgeEstimate: z.coerce.number().optional(),
-  themeId: z.string().optional(),
   attractivenessScore: z.coerce.number().optional(),
   coverageStatus: z.enum(COVERAGE_STATUSES).optional(),
 });
@@ -28,7 +27,6 @@ export const EditCompanyFormSchema = z.object({
   recurringRevenuePct: z.coerce.number().optional(),
   customerConcentrationPct: z.coerce.number().optional(),
   founderAgeEstimate: z.coerce.number().optional(),
-  themeId: z.string().optional(),
   attractivenessScore: z.coerce.number().optional(),
   coverageStatus: z.enum(COVERAGE_STATUSES).optional(),
   businessModel: z.string().optional(),

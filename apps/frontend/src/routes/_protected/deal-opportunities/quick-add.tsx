@@ -29,8 +29,8 @@ function QuickAddDealRoute() {
       <div className="mt-4 mb-6 md:mt-6">
         <h1 className="text-3xl font-semibold md:text-4xl">Quick add deal</h1>
         <p className="text-muted-foreground">
-          Create the company and deal listing together. Only company name and
-          deal title are required; everything else is optional.
+          Create a deal opportunity only. Companies and investors can be linked
+          separately from the deal detail page.
         </p>
       </div>
 

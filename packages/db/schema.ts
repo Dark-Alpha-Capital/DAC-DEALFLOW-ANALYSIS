@@ -733,6 +733,36 @@ export const dealOpportunityCompanyLinks = pgTable(
   }),
 );
 
+export const dealOpportunityThemes = pgTable(
+  "DealOpportunityTheme",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    dealOpportunityId: text("dealOpportunityId")
+      .notNull()
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }),
+    themeId: text("themeId")
+      .notNull()
+      .references(() => themes.id, { onDelete: "cascade" }),
+    isPrimary: boolean("isPrimary").default(true).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    dealOppThemeUniqueIdx: uniqueIndex("deal_opp_theme_unique_idx").on(
+      table.dealOpportunityId,
+      table.themeId,
+    ),
+    dealOppThemeDealIdx: index("deal_opp_theme_deal_idx").on(
+      table.dealOpportunityId,
+    ),
+    dealOppThemeThemeIdx: index("deal_opp_theme_theme_idx").on(table.themeId),
+    dealOppPrimaryThemeUniqueIdx: uniqueIndex("deal_opp_primary_theme_unique_idx")
+      .on(table.dealOpportunityId)
+      .where(sql`${table.isPrimary} = true`),
+  }),
+);
+
 export const dealFinancialSnapshots = pgTable(
   "DealFinancialSnapshot",
   {
@@ -1727,6 +1757,7 @@ export const themesRelations = relations(themes, ({ one, many }) => ({
   companies: many(companies),
   themePerformance: many(themePerformance),
   companyCoverage: many(themeCompanyCoverage),
+  dealOpportunities: many(dealOpportunityThemes),
   documents: many(documents),
 }));
 
@@ -1852,6 +1883,7 @@ export const dealOpportunitiesRelations = relations(
     dealSims: many(dealSims),
     simScreeningSessions: many(simScreeningSessions),
     companyLinks: many(dealOpportunityCompanyLinks),
+    themes: many(dealOpportunityThemes),
     investorLinks: many(investorDealOpportunityLinks),
   }),
 );
@@ -1875,6 +1907,20 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
   investorLinks: many(investorCompanyLinks),
   dealOpportunityLinks: many(dealOpportunityCompanyLinks),
 }));
+
+export const dealOpportunityThemesRelations = relations(
+  dealOpportunityThemes,
+  ({ one }) => ({
+    dealOpportunity: one(dealOpportunities, {
+      fields: [dealOpportunityThemes.dealOpportunityId],
+      references: [dealOpportunities.id],
+    }),
+    theme: one(themes, {
+      fields: [dealOpportunityThemes.themeId],
+      references: [themes.id],
+    }),
+  }),
+);
 
 export const dealOpportunityCompanyLinksRelations = relations(
   dealOpportunityCompanyLinks,
@@ -2250,6 +2296,8 @@ export type DealOpportunityCompanyLink =
   typeof dealOpportunityCompanyLinks.$inferSelect;
 export type NewDealOpportunityCompanyLink =
   typeof dealOpportunityCompanyLinks.$inferInsert;
+export type DealOpportunityTheme = typeof dealOpportunityThemes.$inferSelect;
+export type NewDealOpportunityTheme = typeof dealOpportunityThemes.$inferInsert;
 export type DealFinancialSnapshot = typeof dealFinancialSnapshots.$inferSelect;
 export type NewDealFinancialSnapshot =
   typeof dealFinancialSnapshots.$inferInsert;

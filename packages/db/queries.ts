@@ -10,11 +10,13 @@ import {
   dealOpportunityScreenings,
   documents,
   dealOpportunities,
+  dealOpportunityThemes,
   companies,
   companyNotes,
   themes,
   contacts,
   outreach,
+  dealOpportunityCompanyLinks,
   industryIntelligence,
   themePerformance,
   theses,
@@ -25,6 +27,7 @@ import {
   companyFinancialSnapshots,
   dealRiskFlags,
   investors,
+  investorDealOpportunityLinks,
   investorLeads,
   investorInteractions,
   investorCompanyLinks,
@@ -96,15 +99,8 @@ export const GetCompanyById = async (id: string) => {
 export const GetCompanyWithAllRelations = async (id: string) => {
   try {
     const [companyRow] = await db
-      .select({
-        company: companies,
-        themeName: themes.name,
-      })
+      .select({ company: companies })
       .from(companies)
-      .leftJoin(
-        themes,
-        and(eq(companies.themeId, themes.id), isNull(themes.deletedAt)),
-      )
       .where(and(eq(companies.id, id), isNull(companies.deletedAt)));
 
     if (!companyRow) {
@@ -113,6 +109,8 @@ export const GetCompanyWithAllRelations = async (id: string) => {
 
     const [
       companyDealOpps,
+      companyLinkedDealOppRows,
+      primaryThemeRows,
       companyDocuments,
       companyContacts,
       companyNotesRows,
@@ -124,6 +122,36 @@ export const GetCompanyWithAllRelations = async (id: string) => {
         .from(dealOpportunities)
         .where(eq(dealOpportunities.companyId, id))
         .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id)),
+      db
+        .select({ dealOpportunity: dealOpportunities })
+        .from(dealOpportunityCompanyLinks)
+        .innerJoin(
+          dealOpportunities,
+          eq(dealOpportunityCompanyLinks.dealOpportunityId, dealOpportunities.id),
+        )
+        .where(eq(dealOpportunityCompanyLinks.companyId, id))
+        .orderBy(
+          desc(dealOpportunityCompanyLinks.createdAt),
+          desc(dealOpportunities.createdAt),
+          desc(dealOpportunities.id),
+        ),
+      db
+        .select({ themeName: themes.name })
+        .from(dealOpportunities)
+        .innerJoin(
+          dealOpportunityThemes,
+          eq(dealOpportunityThemes.dealOpportunityId, dealOpportunities.id),
+        )
+        .innerJoin(themes, eq(dealOpportunityThemes.themeId, themes.id))
+        .where(
+          and(
+            eq(dealOpportunities.companyId, id),
+            eq(dealOpportunityThemes.isPrimary, true),
+            isNull(themes.deletedAt),
+          ),
+        )
+        .orderBy(desc(dealOpportunities.createdAt))
+        .limit(1),
       db
         .select()
         .from(documents)
@@ -160,7 +188,21 @@ export const GetCompanyWithAllRelations = async (id: string) => {
         .orderBy(desc(investorCompanyLinks.createdAt)),
     ]);
 
-    const dealOppIds = companyDealOpps.map((o) => o.id);
+    const dealOpportunitiesById = new Map<string, (typeof companyDealOpps)[number]>();
+    for (const dealOpp of companyDealOpps) {
+      dealOpportunitiesById.set(dealOpp.id, dealOpp);
+    }
+    for (const row of companyLinkedDealOppRows) {
+      dealOpportunitiesById.set(row.dealOpportunity.id, row.dealOpportunity);
+    }
+    const mergedDealOpps = Array.from(dealOpportunitiesById.values()).sort((a, b) => {
+      const aTs = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTs = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (bTs !== aTs) return bTs - aTs;
+      return b.id.localeCompare(a.id);
+    });
+
+    const dealOppIds = mergedDealOpps.map((o) => o.id);
     const outreachRows = await db
       .select({
         id: outreach.id,
@@ -188,9 +230,9 @@ export const GetCompanyWithAllRelations = async (id: string) => {
     return {
       company: {
         ...companyRow.company,
-        themeName: companyRow.themeName,
+        themeName: primaryThemeRows[0]?.themeName ?? null,
       },
-      dealOpportunities: companyDealOpps,
+      dealOpportunities: mergedDealOpps,
       documents: companyDocuments,
       contacts: companyContacts,
       outreach: outreachRows,
@@ -1538,6 +1580,7 @@ export const GetInvestorWithRelations = async (id: string) => {
       link: typeof investorCompanyLinks.$inferSelect;
       company: typeof companies.$inferSelect;
     }[] = [];
+    let linkedDealOpportunities: (typeof dealOpportunities.$inferSelect)[] = [];
     try {
       linkedCompanies = await db
         .select({
@@ -1555,10 +1598,33 @@ export const GetInvestorWithRelations = async (id: string) => {
       );
     }
 
+    try {
+      const linkedDealRows = await db
+        .select({ dealOpportunity: dealOpportunities })
+        .from(investorDealOpportunityLinks)
+        .innerJoin(
+          dealOpportunities,
+          eq(investorDealOpportunityLinks.dealOpportunityId, dealOpportunities.id),
+        )
+        .where(eq(investorDealOpportunityLinks.investorId, id))
+        .orderBy(
+          desc(investorDealOpportunityLinks.createdAt),
+          desc(dealOpportunities.createdAt),
+          desc(dealOpportunities.id),
+        );
+      linkedDealOpportunities = linkedDealRows.map((row) => row.dealOpportunity);
+    } catch (linkErr) {
+      console.error(
+        "Investor-deal link query failed (ensure InvestorDealOpportunityLink exists: db:push or db:migrate in packages/db)",
+        linkErr,
+      );
+    }
+
     return {
       investor,
       interactions,
       linkedCompanies,
+      linkedDealOpportunities,
     };
   } catch (error) {
     console.error("Error fetching investor with relations", error);

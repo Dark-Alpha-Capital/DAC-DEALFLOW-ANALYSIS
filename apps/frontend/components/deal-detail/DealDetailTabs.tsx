@@ -13,7 +13,6 @@ import { ClientOnly } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealHeader } from "./deal-header";
 import { DealFinancialsSection } from "./DealFinancialsSection";
-import { DealPipelineSection } from "./DealPipelineSection";
 import { EntityContactsSection } from "./EntityContactsSection";
 import { EntityDocumentsSection } from "./EntityDocumentsSection";
 import {
@@ -119,13 +118,17 @@ export function DealDetailTabs({
     defaultTab === "screenings" ||
     defaultTab === "ai-screening" ||
     defaultTab === "financials" ||
-    defaultTab === "pipeline" ||
+    defaultTab === "sim-analysis" ||
+    defaultTab === "linked-entities" ||
+    defaultTab === "relationships" ||
     defaultTab === "outreach" ||
     defaultTab === "documents" ||
     defaultTab === "contacts" ||
     defaultTab === "notes"
       ? defaultTab === "ai-screening"
         ? "screenings"
+        : defaultTab === "relationships"
+          ? "linked-entities"
         : defaultTab
       : "overview";
 
@@ -142,7 +145,10 @@ export function DealDetailTabs({
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="screenings">Screenings</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
-          {hasPipeline && <TabsTrigger value="pipeline">Pipeline</TabsTrigger>}
+          {hasPipeline && (
+            <TabsTrigger value="sim-analysis">SIM Analysis</TabsTrigger>
+          )}
+          <TabsTrigger value="linked-entities">Linked entities</TabsTrigger>
           <TabsTrigger value="outreach">Outreach</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="contacts">Contacts</TabsTrigger>
@@ -332,6 +338,9 @@ export function DealDetailTabs({
             </div>
           )}
 
+        </TabsContent>
+
+        <TabsContent value="linked-entities">
           <DealRelationshipLinksSection dealOpportunityId={uid} />
         </TabsContent>
 
@@ -359,19 +368,19 @@ export function DealDetailTabs({
             currentOpportunity={currentOpportunity ?? undefined}
             financialSnapshots={financialSnapshots}
           />
-          {hasPipeline && (
-            <CIMAnalysisSection
-              dealOpportunityId={uid}
-              entityName={company?.name ?? deal.dealTeaser ?? "Deal"}
-            />
-          )}
         </TabsContent>
 
         {hasPipeline && (
-          <TabsContent value="pipeline">
-            <DealPipelineSection
-              dealId={uid}
-              currentOpportunity={currentOpportunity}
+          <TabsContent value="sim-analysis" className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold">SIM Analysis</h2>
+              <p className="text-muted-foreground text-sm">
+                Review extracted CIM/SIM insights in a dedicated workspace.
+              </p>
+            </div>
+            <CIMAnalysisSection
+              dealOpportunityId={uid}
+              entityName={company?.name ?? deal.dealTeaser ?? "Deal"}
             />
           </TabsContent>
         )}

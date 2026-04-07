@@ -69,7 +69,6 @@ export default function EditCompanyForm({ company }: { company: Company }) {
       recurringRevenuePct: company.recurringRevenuePct ?? undefined,
       customerConcentrationPct: company.customerConcentrationPct ?? undefined,
       founderAgeEstimate: company.founderAgeEstimate ?? undefined,
-      themeId: company.themeId ?? "",
       attractivenessScore: company.attractivenessScore ?? undefined,
       coverageStatus: company.coverageStatus,
       businessModel: company.businessModel ?? "",
@@ -399,19 +398,6 @@ export default function EditCompanyForm({ company }: { company: Company }) {
                   <FormLabel>Attractiveness Score</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="e.g., 75" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="themeId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Theme ID</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Optional theme reference" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -46,7 +46,7 @@ export function CompanyTabs({
       <TabsList className="w-full justify-start overflow-x-auto">
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="financials">Financials</TabsTrigger>
-        <TabsTrigger value="deals">Deal opportunities</TabsTrigger>
+        <TabsTrigger value="linked-entities">Linked entities</TabsTrigger>
         <TabsTrigger value="contacts">Contacts</TabsTrigger>
         <TabsTrigger value="investors">Investors</TabsTrigger>
         <TabsTrigger value="outreach">Outreach</TabsTrigger>
@@ -65,7 +65,7 @@ export function CompanyTabs({
         />
       </TabsContent>
 
-      <TabsContent value="deals">
+      <TabsContent value="linked-entities">
         <CompanyDealsList
           company={company}
           dealOpportunities={dealOpportunities}

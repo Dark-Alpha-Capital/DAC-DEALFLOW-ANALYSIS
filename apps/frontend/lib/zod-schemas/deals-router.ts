@@ -9,7 +9,6 @@ import {
   DealRiskType,
   DealRiskSeverity,
 } from "@repo/db";
-import { COVERAGE_STATUSES } from "./shared-form-enums";
 
 export const createDealSchema = z.object({
   first_name: z.string().optional(),
@@ -100,38 +99,9 @@ export const createDealOpportunitySchema = z.object({
   brokerLinkedIn: z.string().optional(),
 });
 
-export const createOpportunityQuickCompanySchema = z.object({
-  companyName: z.string().min(1, "Company name is required"),
-  industry: z.string().optional(),
-  location: z.string().optional(),
-  revenueEstimate: z.coerce.number().optional(),
-  ebitdaEstimate: z.coerce.number().optional(),
-  ebitdaMarginEstimate: z.coerce.number().optional(),
-  recurringRevenuePct: z.coerce.number().optional(),
-  customerConcentrationPct: z.coerce.number().optional(),
-  founderAgeEstimate: z.coerce.number().optional(),
-  themeId: z.string().optional(),
-  attractivenessScore: z.coerce.number().optional(),
-  coverageStatus: z.enum(COVERAGE_STATUSES).optional(),
-  businessModel: z.string().optional(),
-  employees: z.coerce.number().optional(),
-  revenueTtm: z.coerce.number().optional(),
-  ebitdaTtm: z.coerce.number().optional(),
-  grossMargin: z.coerce.number().optional(),
-  revenueCagr: z.coerce.number().optional(),
-  totalClients: z.coerce.number().optional(),
-  top10Concentration: z.coerce.number().optional(),
-  customerIndustries: z.array(z.string()).optional(),
-  revenueModelType: z.string().optional(),
-  expansionModel: z.string().optional(),
-  concentrationHigh: z.boolean().optional(),
-  marginLow: z.boolean().optional(),
-  vendorDependency: z.boolean().optional(),
-  growthLevers: z.array(z.string()).optional(),
-});
-
-export const createOpportunityQuickSchema = createOpportunityQuickCompanySchema.extend({
+export const createOpportunityQuickSchema = z.object({
   dealTeaser: z.string().min(1, "Deal title is required"),
+  themeId: z.string().optional(),
   sourceWebsite: z.string().optional(),
   brokerage: z.string().optional(),
   revenue: z.coerce.number().optional(),

@@ -27,10 +27,12 @@ import {
 import db, {
   deals,
   dealOpportunities,
+  dealOpportunityThemes,
   dealOpportunityCompanyLinks,
   dealOpportunityScreenings,
   aiScreenings,
   companies,
+  themes,
   investorDealOpportunityLinks,
   investors,
   leads,
@@ -59,7 +61,6 @@ import {
 } from "@/src/lib/workflow-jobs-api";
 import { setWorkflowJobState } from "@repo/db/workflow-jobs";
 import { createHash, randomUUID } from "crypto";
-import { createId } from "@paralleldrive/cuid2";
 import {
   GetDealById,
   GetDealOpportunityById,
@@ -115,21 +116,6 @@ function isUniqueViolationError(error: unknown): boolean {
     "code" in error &&
     (error as { code?: string }).code === "23505"
   );
-}
-
-function normalizeCompanyNameKey(value?: string | null): string {
-  return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function buildNormalizedNameForQuickAdd(
-  companyName: string,
-  location?: string | null,
-): string {
-  const base = normalizeCompanyNameKey(companyName);
-  const loc = normalizeCompanyNameKey(location ?? "");
-  const suffix = createId().replace(/-/g, "").slice(0, 12);
-  const parts = [base || "company", loc || null, suffix].filter(Boolean) as string[];
-  return parts.join("_").slice(0, 240);
 }
 
 export const dealsRouter = createTRPCRouter({
@@ -778,53 +764,25 @@ export const dealsRouter = createTRPCRouter({
         input.askingPrice != null;
 
       const result = await db.transaction(async (tx) => {
-        const name = input.companyName.trim().slice(0, 255);
-        const normalizedName = buildNormalizedNameForQuickAdd(
-          name,
-          input.location?.trim() || null,
-        );
-
-        const [company] = await tx
-          .insert(companies)
-          .values({
-            name,
-            normalizedName,
-            industry: input.industry?.trim() || null,
-            location: input.location?.trim() || null,
-            revenueEstimate: input.revenueEstimate ?? null,
-            ebitdaEstimate: input.ebitdaEstimate ?? null,
-            ebitdaMarginEstimate: input.ebitdaMarginEstimate ?? null,
-            recurringRevenuePct: input.recurringRevenuePct ?? null,
-            customerConcentrationPct: input.customerConcentrationPct ?? null,
-            founderAgeEstimate: input.founderAgeEstimate ?? null,
-            themeId: input.themeId?.trim() || null,
-            attractivenessScore: input.attractivenessScore ?? null,
-            coverageStatus: input.coverageStatus ?? "UNCONTACTED",
-            businessModel: input.businessModel?.trim() || null,
-            employees: input.employees ?? null,
-            revenueTtm: input.revenueTtm ?? null,
-            ebitdaTtm: input.ebitdaTtm ?? null,
-            grossMargin: input.grossMargin ?? null,
-            revenueCagr: input.revenueCagr ?? null,
-            totalClients: input.totalClients ?? null,
-            top10Concentration: input.top10Concentration ?? null,
-            customerIndustries:
-              input.customerIndustries?.length ? input.customerIndustries : null,
-            revenueModelType: input.revenueModelType?.trim() || null,
-            expansionModel: input.expansionModel?.trim() || null,
-            concentrationHigh: input.concentrationHigh ?? null,
-            marginLow: input.marginLow ?? null,
-            vendorDependency: input.vendorDependency ?? null,
-            growthLevers: input.growthLevers?.length ? input.growthLevers : null,
-          })
-          .returning();
-
-        if (!company) throw new Error("Failed to create company");
+        const normalizedThemeId = input.themeId?.trim() || null;
+        if (normalizedThemeId) {
+          const [theme] = await tx
+            .select({ id: themes.id })
+            .from(themes)
+            .where(and(eq(themes.id, normalizedThemeId), isNull(themes.deletedAt)))
+            .limit(1);
+          if (!theme) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Selected theme does not exist",
+            });
+          }
+        }
 
         const [opp] = await tx
           .insert(dealOpportunities)
           .values({
-            companyId: company.id,
+            companyId: null,
             leadId: null,
             sourceWebsite: input.sourceWebsite || null,
             brokerage: input.brokerage || null,
@@ -845,7 +803,15 @@ export const dealsRouter = createTRPCRouter({
 
         if (!opp) throw new Error("Failed to create deal opportunity");
 
-        return { company, opp };
+        if (normalizedThemeId) {
+          await tx.insert(dealOpportunityThemes).values({
+            dealOpportunityId: opp.id,
+            themeId: normalizedThemeId,
+            isPrimary: true,
+          });
+        }
+
+        return { opp };
       });
 
       if (hasFinancials) {
@@ -864,13 +830,10 @@ export const dealsRouter = createTRPCRouter({
       after(async () => {
         revalidatePath("/deal-opportunities");
         revalidatePath(`/deal-opportunities/${result.opp.id}`);
-        revalidatePath(`/companies/${result.company.id}`);
         revalidateTag("deals", "max");
-        revalidateTag("companies", "max");
       });
       return {
         dealOpportunityId: result.opp.id,
-        companyId: result.company.id,
       };
     }),
 
