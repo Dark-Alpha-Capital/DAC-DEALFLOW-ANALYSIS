@@ -40,7 +40,7 @@ export function getDefaultValues(lead: Lead): ConvertLeadToCompanyFormValues {
 
 interface ConvertLeadToCompanyFormProps {
   lead: Lead;
-  onSuccess?: (data: { companyId: string }) => void;
+  onSuccess?: (data: { companyId: string | null; dealOpportunityId?: string | null }) => void;
   compact?: boolean;
 }
 
@@ -55,9 +55,12 @@ export default function ConvertLeadToCompanyForm({
   const { mutate: convertToCompany, isPending } = useMutation(
     trpc.leads.convertToCompany.mutationOptions({
       onSuccess: (data) => {
-        toast.success("Lead converted to company");
+        toast.success("Lead converted to deal opportunity");
         if (onSuccess) {
           onSuccess(data);
+        } else if (data.dealOpportunityId) {
+          void router.invalidate();
+          router.push(`/deal-opportunities/${data.dealOpportunityId}`);
         } else if (data.companyId) {
           void router.invalidate();
           router.push(`/companies/${data.companyId}`);
@@ -92,9 +95,9 @@ export default function ConvertLeadToCompanyForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <FieldSet>
-          <FieldLegend>Company Information (from lead)</FieldLegend>
+          <FieldLegend>Lead Conversion Details</FieldLegend>
           <p className="text-muted-foreground mb-4 text-sm">
-            Review and edit the information below before creating the company.
+            A deal opportunity will be created from this lead. Company linkage is optional and can be added later.
           </p>
           <FieldGroup className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             <FormField
@@ -220,7 +223,7 @@ export default function ConvertLeadToCompanyForm({
               </Button>
             )}
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Converting..." : "Convert to Company"}
+              {isPending ? "Converting..." : "Convert to Deal Opportunity"}
             </Button>
           </div>
         </FieldSet>

@@ -23,6 +23,7 @@ export type FileUploadParams = {
   };
   fileCategory?: string;
   fileDescription?: string;
+  contentHash: string;
 };
 
 export type CimExtractionParams = {

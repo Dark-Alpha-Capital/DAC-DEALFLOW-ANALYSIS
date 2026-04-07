@@ -60,35 +60,43 @@ export async function getBitrixSyncPreviewData(
     return { success: false, message: "Deal opportunity not found" };
   }
 
-  const [company] = await db
-    .select()
-    .from(companies)
-    .where(and(eq(companies.id, opp.companyId), isNull(companies.deletedAt)))
-    .limit(1);
-
-  if (!company) {
-    return { success: false, message: "Company not found" };
-  }
+  const company = opp.companyId
+    ? (
+        await db
+          .select()
+          .from(companies)
+          .where(
+            and(eq(companies.id, opp.companyId), isNull(companies.deletedAt)),
+          )
+          .limit(1)
+      )[0]
+    : undefined;
 
   const latestSnapshot =
     await GetLatestDealFinancialSnapshotByDealOpportunityId(opp.id);
 
   const resolvedRevenue =
-    latestSnapshot?.revenue ?? opp.revenue ?? company.revenueEstimate ?? 0;
+    latestSnapshot?.revenue ??
+    opp.revenue ??
+    company?.revenueEstimate ??
+    0;
   const resolvedEbitda =
-    latestSnapshot?.ebitda ?? opp.ebitda ?? company.ebitdaEstimate ?? 0;
+    latestSnapshot?.ebitda ?? opp.ebitda ?? company?.ebitdaEstimate ?? 0;
   const resolvedEbitdaMargin =
     latestSnapshot?.ebitdaMargin ??
     opp.ebitdaMargin ??
-    company.ebitdaMarginEstimate ??
+    company?.ebitdaMarginEstimate ??
     0;
   const resolvedAskingPrice =
     latestSnapshot?.askingPrice ?? opp.askingPrice ?? null;
 
-  const titleParts = [company.name, opp.dealTeaser].filter(
+  const titleParts = [company?.name, opp.dealTeaser].filter(
     (x): x is string => typeof x === "string" && x.trim().length > 0,
   );
-  const defaultTitle = titleParts.join(" — ") || company.name;
+  const defaultTitle =
+    titleParts.join(" — ") ||
+    opp.dealTeaser?.trim() ||
+    "Deal opportunity";
 
   const env = getBitrixSyncEnv();
   const stages = getBitrixDealStages();
@@ -119,8 +127,8 @@ export async function getBitrixSyncPreviewData(
       currencyId: "USD",
       comments: opp.description ?? "",
       sourceWebsite: opp.sourceWebsite ?? "",
-      companyLocation: company.location ?? "",
-      industry: company.industry ?? "",
+      companyLocation: company?.location ?? "",
+      industry: company?.industry ?? "",
       brokerFirstName: opp.brokerFirstName ?? "",
       brokerLastName: opp.brokerLastName ?? "",
       brokerEmail: opp.brokerEmail ?? "",

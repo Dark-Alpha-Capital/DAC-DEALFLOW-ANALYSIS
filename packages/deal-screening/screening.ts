@@ -317,7 +317,10 @@ export async function buildDealScreeningInput(
   return {
     dealOpportunityId: row.opportunity.id,
     companyId: company.id,
-    companyName: company.name,
+    companyName:
+      company.name?.trim() ||
+      row.opportunity.dealTeaser?.trim() ||
+      null,
     ebitda:
       latestSnapshot?.ebitda ??
       row.opportunity.ebitda ??

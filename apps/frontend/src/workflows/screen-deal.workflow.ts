@@ -122,11 +122,13 @@ export class ScreenDealWorkflow extends WorkflowEntrypoint<
 
           if (opp) {
             const [company, latestSnapshot] = await Promise.all([
-              db
-                .select()
-                .from(companies)
-                .where(eq(companies.id, opp.companyId))
-                .then((rows) => rows[0]),
+              opp.companyId
+                ? db
+                    .select()
+                    .from(companies)
+                    .where(eq(companies.id, opp.companyId))
+                    .then((rows) => rows[0])
+                : Promise.resolve(undefined),
               db
                 .select()
                 .from(dealFinancialSnapshots)

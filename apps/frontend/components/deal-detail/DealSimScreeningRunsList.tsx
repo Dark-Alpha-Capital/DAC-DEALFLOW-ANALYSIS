@@ -38,7 +38,7 @@ export function DealSimScreeningRunsList({
         {runs.map((r) => (
           <li key={r.runId}>
             <Link
-              to="/cim-screening/$sessionId"
+              to="/screening/$sessionId"
               params={{ sessionId: r.sessionId }}
               search={{ runId: r.runId }}
               className="border-border hover:bg-muted/50 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors"

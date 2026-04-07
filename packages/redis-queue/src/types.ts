@@ -88,6 +88,7 @@ export interface FileUploadJobData {
   embedInVectorStore?: boolean;
   fileCategory?: string;
   fileDescription?: string;
+  contentHash: string;
   step?: string;
   validateResult?: {
     isValid: boolean;

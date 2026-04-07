@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { notFound } from "@tanstack/react-router";
-import db, { documents, dealOpportunities, eq } from "@repo/db";
+import db, { companies, dealOpportunities, desc, documents, eq, isNull } from "@repo/db";
 import {
   getAllScreeners,
   getScreenerById,
@@ -9,6 +9,7 @@ import {
   getSimScreeningRunsBySessionId,
   getSimScreeningSessionByIdForUser,
   listSimScreeningSessionsForUserWithMeta,
+  listSimScreeningLibraryDocumentsForUser,
   getDocumentChunksByIds,
 } from "@repo/db/queries";
 import { mapEvidenceChunkIdsToCitations } from "@/lib/map-sim-screening-evidence";
@@ -62,6 +63,40 @@ export const loadCimScreeningIndexData = createServerFn({ method: "GET" }).handl
     };
   },
 );
+
+export const loadCimScreeningNewRunData = createServerFn({
+  method: "GET",
+}).handler(async () => {
+  const session = await assertAuthenticated();
+  const userId = session.user.id;
+
+  const [screeners, opportunities, libraryDocs] = await Promise.all([
+    getAllScreeners(),
+    db
+      .select({
+        id: dealOpportunities.id,
+        companyId: dealOpportunities.companyId,
+        leadId: dealOpportunities.leadId,
+        dealTeaser: dealOpportunities.dealTeaser,
+        stage: dealOpportunities.stage,
+        status: dealOpportunities.status,
+        companyName: companies.name,
+        sourceWebsite: dealOpportunities.sourceWebsite,
+      })
+      .from(dealOpportunities)
+      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
+      .where(isNull(companies.deletedAt))
+      .orderBy(desc(dealOpportunities.updatedAt), desc(dealOpportunities.id))
+      .limit(100),
+    listSimScreeningLibraryDocumentsForUser(userId),
+  ]);
+
+  return {
+    screeners: screeners ?? [],
+    opportunities,
+    libraryDocs,
+  };
+});
 
 export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => cimScreeningSessionInputSchema.parse(raw))

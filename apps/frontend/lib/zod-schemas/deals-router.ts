@@ -73,8 +73,17 @@ export const updateSpecificationsSchema = z.object({
   status: z.nativeEnum(DealStatus),
 });
 
+const optionalCompanyId = z
+  .string()
+  .optional()
+  .transform((s) => {
+    if (s === "__none__" || s === undefined) return undefined;
+    const t = s?.trim();
+    return t ? t : undefined;
+  });
+
 export const createDealOpportunitySchema = z.object({
-  companyId: z.string().min(1, "Company is required"),
+  companyId: optionalCompanyId,
   leadId: z.string().optional(),
   sourceWebsite: z.string().optional(),
   brokerage: z.string().optional(),

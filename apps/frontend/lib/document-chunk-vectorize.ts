@@ -24,6 +24,13 @@ export function vectorizeMetadataFromChunkRow(
   };
 }
 
+function hasFiniteEmbeddingValues(values: number[]): boolean {
+  for (const value of values) {
+    if (!Number.isFinite(value)) return false;
+  }
+  return true;
+}
+
 export async function upsertDocumentChunkVectors(
   index: VectorizeIndex,
   chunks: ProcessedChunk[],
@@ -37,6 +44,11 @@ export async function upsertDocumentChunkVectors(
           `Vectorize upsert: chunk ${c.row.id} has invalid embedding length ${values?.length ?? 0} (expected ${EMBEDDING_DIMENSION})`,
         );
       }
+      if (!hasFiniteEmbeddingValues(values)) {
+        throw new Error(
+          `Vectorize upsert: chunk ${c.row.id} has non-finite embedding values`,
+        );
+      }
       return {
         id: String(c.row.id),
         namespace: c.row.documentId,
@@ -44,7 +56,38 @@ export async function upsertDocumentChunkVectors(
         metadata: vectorizeMetadataFromChunkRow(c.row),
       };
     });
-    const mutation = await index.upsert(vectors);
+    let mutation:
+      | { count?: number; ids?: string[]; mutationId?: string }
+      | undefined;
+    try {
+      mutation = await index.upsert(vectors);
+    } catch (batchError) {
+      console.warn("[upsertDocumentChunkVectors] Batch upsert failed; retrying per vector", {
+        batchSize: vectors.length,
+        error: batchError instanceof Error ? batchError.message : String(batchError),
+      });
+
+      const failedIds: string[] = [];
+      for (const vector of vectors) {
+        try {
+          await index.upsert([vector]);
+        } catch (singleError) {
+          failedIds.push(vector.id);
+          console.warn("[upsertDocumentChunkVectors] Single upsert failed", {
+            chunkId: vector.id,
+            documentId: vector.namespace,
+            error: singleError instanceof Error ? singleError.message : String(singleError),
+          });
+        }
+      }
+
+      if (failedIds.length > 0) {
+        throw new Error(
+          `Vectorize upsert failed for ${failedIds.length}/${vectors.length} vectors (first ids: ${failedIds.slice(0, 5).join(", ")})`,
+        );
+      }
+      continue;
+    }
     // Sync/beta API returns { count, ids }; async RC API returns { mutationId } only.
     // Vite/miniflare mocks often omit both — only validate when count is present.
     const processed =

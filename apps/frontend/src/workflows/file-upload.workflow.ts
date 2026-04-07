@@ -9,6 +9,7 @@ import { documents } from "@repo/db/schema";
 import { buildNextcloudFileUrl, fileExists } from "@repo/nextcloud";
 import {
   insertWorkflowJob,
+  setWorkflowJobState,
   updateWorkflowJobProgress,
 } from "@repo/db/workflow-jobs";
 import {
@@ -18,6 +19,15 @@ import {
 } from "./progress";
 import type { FileUploadParams, WorkflowWorkerEnv } from "./workflow-env";
 import { getSsrAppBaseUrl } from "@/lib/env.server";
+
+function isUniqueViolationError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
+}
 
 async function revalidateCacheTags(tags: string[]): Promise<void> {
   const frontendUrl = getSsrAppBaseUrl();
@@ -75,6 +85,9 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
         if (!entityId?.trim()) {
           throw new Error(`[file-upload] ${jobId}: entityId is required`);
         }
+        if (!p.contentHash?.trim()) {
+          throw new Error(`[file-upload] ${jobId}: contentHash is required`);
+        }
 
         await step.do("validate", async () => {
           await updateWorkflowJobProgress(instanceId, {
@@ -108,8 +121,15 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
 
         const saveResult = await step.do(
           "save-db",
-          { timeout: "5 minutes" },
-          async () => {
+          {
+            timeout: "5 minutes",
+            // Prevent repeated full replay when DB insert / RAG trigger fails.
+            retries: { limit: 0, delay: "1 second" },
+          },
+          async (stepCtx) => {
+            console.log(`[file-upload] ${jobId}: save-db attempt`, {
+              attempt: stepCtx.attempt,
+            });
             await updateWorkflowJobProgress(instanceId, {
               step: "Saving to database",
               percentage: 90,
@@ -127,6 +147,7 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
                 fileName,
                 fileSize,
                 mimeType,
+                contentHash: p.contentHash,
                 entityType: "DEAL_OPPORTUNITY",
                 entityId,
                 dealOpportunityId: entityId,
@@ -147,13 +168,23 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
               dealId: entityId,
               fileName,
             });
-            await this.env.RAG_INGESTION_WORKFLOW.create({
-              id: ragJobId,
-              params: {
-                documentId: documentRecord.id,
-                userId,
-              },
-            });
+            try {
+              await this.env.RAG_INGESTION_WORKFLOW.create({
+                id: ragJobId,
+                params: {
+                  documentId: documentRecord.id,
+                  userId,
+                },
+              });
+            } catch (error) {
+              await setWorkflowJobState(ragJobId, "failed", {
+                failedReason:
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to start workflow",
+              });
+              throw error;
+            }
 
             const cacheTags: string[] = [`deal-${entityId}`, "deals"];
             if (cacheTags.length > 0) {
@@ -182,6 +213,13 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
         await markWorkflowCompleted(instanceId, out);
         return out;
       } catch (err) {
+        if (isUniqueViolationError(err)) {
+          const duplicateError = new Error(
+            "This document was already uploaded for this deal",
+          );
+          await markWorkflowFailed(instanceId, duplicateError);
+          throw duplicateError;
+        }
         await markWorkflowFailed(instanceId, err);
         throw err;
       }

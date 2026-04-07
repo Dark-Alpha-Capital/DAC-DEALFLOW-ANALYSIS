@@ -59,7 +59,7 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
   const form = useForm<EditDealFormSchemaType>({
     resolver: zodResolver(EditDealFormSchema),
     defaultValues: {
-      companyId: opp.companyId,
+      companyId: opp.companyId ?? "__none__",
       sourceWebsite: opp.sourceWebsite ?? "",
       brokerage: opp.brokerage ?? "",
       revenue: opp.revenue ?? undefined,
@@ -91,14 +91,18 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
               name="companyId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Company *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={companies.length === 0}>
+                  <FormLabel>Company (optional)</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || "__none__"}
+                  >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={companies.length === 0 ? "Add a company first" : "Select company"} />
+                        <SelectValue placeholder="No company" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="__none__">No company</SelectItem>
                       {companies.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}

@@ -556,7 +556,7 @@ export const leadsRouter = createTRPCRouter({
     }),
 
   /**
-   * Convert a lead into a company + deal opportunity
+   * Convert a lead into a deal opportunity (company optional and attachable later)
    */
   convertToCompany: protectedProcedure
     .input(convertLeadToCompanySchema)
@@ -579,56 +579,10 @@ export const leadsRouter = createTRPCRouter({
           );
         }
 
-        const [insertedCompany] = await tx
-          .insert(companies)
-          .values({
-            name: input.name,
-            normalizedName: input.normalizedName,
-            industry: input.industry || lead.rawIndustry || null,
-            location: input.location || lead.companyLocation || null,
-            revenueEstimate: input.revenueEstimate ?? lead.revenue ?? null,
-            ebitdaEstimate: input.ebitdaEstimate ?? lead.ebitda ?? null,
-            firstSeenFromLeadId: lead.id,
-            coverageStatus: "UNCONTACTED",
-          })
-          .onConflictDoNothing({ target: companies.firstSeenFromLeadId })
-          .returning();
-
-        const [company] = insertedCompany
-          ? [insertedCompany]
-          : await tx
-            .select()
-            .from(companies)
-            .where(eq(companies.firstSeenFromLeadId, lead.id))
-            .orderBy(desc(companies.createdAt), desc(companies.id))
-            .limit(1);
-
-        if (!company) {
-          throw new Error("Failed to resolve company from lead conversion");
-        }
-
-        if (company.deletedAt) {
-          const [restoredCompany] = await tx
-            .update(companies)
-            .set({ deletedAt: null })
-            .where(eq(companies.id, company.id))
-            .returning();
-          if (!restoredCompany) {
-            throw new Error(
-              "Failed to restore previously soft-deleted company",
-            );
-          }
-        }
-
         const [existingOpp] = await tx
           .select({ id: dealOpportunities.id })
           .from(dealOpportunities)
-          .where(
-            and(
-              eq(dealOpportunities.companyId, company.id),
-              eq(dealOpportunities.leadId, lead.id),
-            ),
-          )
+          .where(eq(dealOpportunities.leadId, lead.id))
           .orderBy(
             desc(dealOpportunities.createdAt),
             desc(dealOpportunities.id),
@@ -640,7 +594,7 @@ export const leadsRouter = createTRPCRouter({
           : await tx
             .insert(dealOpportunities)
             .values({
-              companyId: company.id,
+              companyId: null,
               leadId: lead.id,
               sourceWebsite: lead.sourceWebsite,
               brokerage: lead.brokerage,
@@ -666,9 +620,9 @@ export const leadsRouter = createTRPCRouter({
 
         return {
           leadId: lead.id,
-          companyId: company.id,
+          companyId: null,
           dealOpportunityId: existingOpp?.id ?? createdOpp?.id ?? null,
-          alreadyConverted: !insertedCompany,
+          alreadyConverted: false,
           createdOpportunityFromLead: Boolean(createdOpp),
           leadRevenue: lead.revenue ?? null,
           leadEbitda: lead.ebitda ?? null,
@@ -678,12 +632,14 @@ export const leadsRouter = createTRPCRouter({
 
       after(async () => {
         revalidatePath("/leads");
-        revalidatePath("/companies");
-        revalidatePath(`/companies/${result.companyId}`);
+        revalidatePath("/deal-opportunities");
+        if (result.dealOpportunityId) {
+          revalidatePath(`/deal-opportunities/${result.dealOpportunityId}`);
+          revalidateTag(`deal-${result.dealOpportunityId}`, "max");
+        }
         revalidateTag("leads", "max");
         revalidateTag(`lead-${result.leadId}`, "max");
-        revalidateTag("companies", "max");
-        revalidateTag(`company-${result.companyId}`, "max");
+        revalidateTag("deals", "max");
       });
 
       if (result.dealOpportunityId) {

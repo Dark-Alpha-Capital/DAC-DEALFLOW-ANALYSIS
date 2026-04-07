@@ -116,7 +116,7 @@ export function CimScreeningBitrixSyncForm({
             : "Deal synced and run comment posted to Bitrix24",
         );
         void router.invalidate();
-        router.push(`/cim-screening/${sessionId}?runId=${runId}`);
+        router.push(`/screening/${sessionId}?runId=${runId}`);
         if (data.bitrixLink) {
           window.open(data.bitrixLink, "_blank", "noopener,noreferrer");
         }
@@ -132,7 +132,7 @@ export function CimScreeningBitrixSyncForm({
       <div className="mx-auto max-w-2xl space-y-6">
         <Button variant="ghost" asChild className="gap-2 pl-0">
           <Link
-            to="/cim-screening/$sessionId"
+            to="/screening/$sessionId"
             params={{ sessionId }}
             search={{ runId }}
           >
@@ -158,7 +158,7 @@ export function CimScreeningBitrixSyncForm({
     <div className="mx-auto max-w-2xl space-y-6">
       <Button variant="ghost" asChild className="gap-2 pl-0">
         <Link
-          to="/cim-screening/$sessionId"
+          to="/screening/$sessionId"
           params={{ sessionId }}
           search={{ runId }}
         >

@@ -392,10 +392,15 @@ export const GetDealWithAllRelations = async (uid: string) => {
     };
   }
 
-  const [company] = await db
-    .select()
-    .from(companies)
-    .where(and(eq(companies.id, opp.companyId), isNull(companies.deletedAt)));
+  const companyId = opp.companyId;
+
+  const companyRows = companyId
+    ? await db
+        .select()
+        .from(companies)
+        .where(and(eq(companies.id, companyId), isNull(companies.deletedAt)))
+    : [];
+  const company = companyRows[0];
 
   const [creatorRow] = opp.userId
     ? await db
@@ -404,6 +409,53 @@ export const GetDealWithAllRelations = async (uid: string) => {
         .where(eq(users.id, opp.userId))
         .limit(1)
     : [];
+
+  const companyDocsPromise = companyId
+    ? db
+        .select()
+        .from(documents)
+        .where(
+          and(
+            eq(documents.entityType, "COMPANY"),
+            eq(documents.entityId, companyId),
+          ),
+        )
+    : Promise.resolve([] as (typeof documents.$inferSelect)[]);
+
+  const dealOppsByCompanyPromise = companyId
+    ? db
+        .select()
+        .from(dealOpportunities)
+        .where(eq(dealOpportunities.companyId, companyId))
+        .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id))
+    : Promise.resolve([] as (typeof dealOpportunities.$inferSelect)[]);
+
+  const companyContactsPromise = companyId
+    ? db
+        .select()
+        .from(contacts)
+        .where(
+          and(
+            eq(contacts.entityType, "COMPANY"),
+            eq(contacts.entityId, companyId),
+          ),
+        )
+    : Promise.resolve([] as (typeof contacts.$inferSelect)[]);
+
+  const outreachWhere = companyId
+    ? or(
+        eq(outreach.companyId, companyId),
+        eq(outreach.dealOpportunityId, opp.id),
+      )
+    : eq(outreach.dealOpportunityId, opp.id);
+
+  const companyNotesPromise = companyId
+    ? db
+        .select()
+        .from(companyNotes)
+        .where(eq(companyNotes.companyId, companyId))
+        .orderBy(desc(companyNotes.createdAt))
+    : Promise.resolve([] as (typeof companyNotes.$inferSelect)[]);
 
   const [
     dealDocs,
@@ -422,35 +474,15 @@ export const GetDealWithAllRelations = async (uid: string) => {
     simScreeningRunsForDeal,
   ] = await Promise.all([
     getDealDocuments(opp.id),
-    db
-      .select()
-      .from(documents)
-      .where(
-        and(
-          eq(documents.entityType, "COMPANY"),
-          eq(documents.entityId, opp.companyId),
-        ),
-      ),
+    companyDocsPromise,
     getAllDealReasoningsWithScreenerNameByOpportunityId(opp.id),
     db
       .select()
       .from(dealOpportunityScreenings)
       .where(eq(dealOpportunityScreenings.dealOpportunityId, opp.id))
       .limit(1),
-    db
-      .select()
-      .from(dealOpportunities)
-      .where(eq(dealOpportunities.companyId, opp.companyId))
-      .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id)),
-    db
-      .select()
-      .from(contacts)
-      .where(
-        and(
-          eq(contacts.entityType, "COMPANY"),
-          eq(contacts.entityId, opp.companyId),
-        ),
-      ),
+    dealOppsByCompanyPromise,
+    companyContactsPromise,
     db
       .select()
       .from(contacts)
@@ -474,18 +506,9 @@ export const GetDealWithAllRelations = async (uid: string) => {
       })
       .from(outreach)
       .leftJoin(users, eq(outreach.createdById, users.id))
-      .where(
-        or(
-          eq(outreach.companyId, opp.companyId),
-          eq(outreach.dealOpportunityId, opp.id),
-        ),
-      )
+      .where(outreachWhere)
       .orderBy(desc(outreach.createdAt)),
-    db
-      .select()
-      .from(companyNotes)
-      .where(eq(companyNotes.companyId, opp.companyId))
-      .orderBy(desc(companyNotes.createdAt)),
+    companyNotesPromise,
     GetCIMExtractionByDealOpportunityId(opp.id).catch(() => null),
     GetLatestDealFinancialSnapshotByDealOpportunityId(opp.id),
     GetDealFinancialSnapshotsByDealOpportunityId(opp.id),
@@ -506,7 +529,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
 
   const dealView: Deal & { id: string } = {
     id: opp.id,
-    dealCaption: company?.name ?? "",
+    dealCaption: company?.name ?? opp.dealTeaser?.trim() ?? "",
     revenue: resolvedRevenue,
     ebitda: resolvedEbitda,
     ebitdaMargin: resolvedEbitdaMargin,

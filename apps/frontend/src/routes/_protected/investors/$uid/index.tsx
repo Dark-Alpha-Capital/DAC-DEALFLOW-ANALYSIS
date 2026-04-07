@@ -9,7 +9,7 @@ import {
   investorStatusLabels,
   investorRiskProfileLabels,
 } from "@/components/investors/columns";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDateStable } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvestorInteractions } from "@/components/investors/InvestorInteractions";
 import { InvestorCompanyLinkTab } from "@/components/investors/InvestorCompanyLinkTab";
@@ -117,7 +117,7 @@ function InvestorDetailRoute() {
             </h1>
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-muted-foreground text-xs">
-                Added {new Date(investor.createdAt).toLocaleDateString()}
+                Added {formatDateStable(investor.createdAt)}
               </span>
               <span className="text-muted-foreground">•</span>
               <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">

@@ -15,7 +15,7 @@ import {
   type LooseSearch,
 } from "@/lib/route-search";
 
-export const Route = createFileRoute("/_protected/investors")({
+export const Route = createFileRoute("/_protected/investors/")({
   validateSearch: (search: Record<string, unknown>): LooseSearch =>
     looseValidateSearch(search),
   staleTime: ROUTE_DATA_STALE_TIME_MS,

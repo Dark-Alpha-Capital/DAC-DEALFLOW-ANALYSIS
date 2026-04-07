@@ -1,4 +1,3 @@
-
 import type React from "react";
 
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -92,10 +91,7 @@ export function GlobalDocumentUploadDialog({
   const trpc = useTRPC();
 
   const fileAccept = useMemo(
-    () =>
-      category === "CIM"
-        ? ["application/pdf", ".pdf"]
-        : acceptedTypes,
+    () => (category === "CIM" ? ["application/pdf", ".pdf"] : acceptedTypes),
     [category, acceptedTypes],
   );
 
@@ -124,6 +120,16 @@ export function GlobalDocumentUploadDialog({
       },
       onError: (error) => {
         console.error("Upload failed:", error);
+        const isDuplicate =
+          error?.data?.code === "CONFLICT" ||
+          error.message.toLowerCase().includes("already uploaded");
+        if (isDuplicate) {
+          toast.warning("Document already uploaded", {
+            description:
+              "This file is already in your firm library. Use the existing document instead.",
+          });
+          return;
+        }
         toast.error("Upload failed", {
           description:
             error.message ||
@@ -141,10 +147,7 @@ export function GlobalDocumentUploadDialog({
       return;
     }
 
-    if (
-      category === "CIM" &&
-      !selected.name.toLowerCase().endsWith(".pdf")
-    ) {
+    if (category === "CIM" && !selected.name.toLowerCase().endsWith(".pdf")) {
       toast.error("CIM must be a PDF file");
       return;
     }
