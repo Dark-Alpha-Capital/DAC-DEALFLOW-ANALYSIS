@@ -102,19 +102,22 @@ export const DeleteScreenerById = async (screenerId: string) => {
   }
 };
 
+/** Returns number of rows deleted (0 if no matching question). */
 export const DeleteScreenerQuestionById = async (
   screenerId: string,
   questionId: string,
-) => {
+): Promise<number> => {
   try {
-    await db
+    const deleted = await db
       .delete(screenerQuestions)
       .where(
         and(
           eq(screenerQuestions.id, questionId),
           eq(screenerQuestions.screenerId, screenerId),
         ),
-      );
+      )
+      .returning({ id: screenerQuestions.id });
+    return deleted.length;
   } catch (error) {
     console.error("Error deleting screener question:", error);
     throw error;

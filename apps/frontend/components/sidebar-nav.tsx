@@ -31,13 +31,15 @@ type NavItem = {
 };
 
 const dealFlowItems: NavItem[] = [
-  { title: "Deal leads", url: "/leads", icon: FiUserPlus },
-  { title: "Investor leads", url: "/investor-leads", icon: FiUserPlus },
+  { title: "Screening", url: "/screening/", icon: FiClipboard },
+  { title: "Screeners", url: "/screeners", icon: FaScrewdriver },
   {
     title: "Deal opportunities",
     url: "/deal-opportunities",
     icon: FiTrendingUp,
   },
+  { title: "Deal leads", url: "/leads", icon: FiUserPlus },
+  { title: "Investor leads", url: "/investor-leads", icon: FiUserPlus },
   { title: "Companies", url: "/companies", icon: FiUsers },
   { title: "Investors", url: "/investors", icon: FiDollarSign },
   { title: "Investment Themes", url: "/investment-themes", icon: FaPalette },
@@ -45,8 +47,6 @@ const dealFlowItems: NavItem[] = [
 
 const workspaceItems: NavItem[] = [
   { title: "Docs", url: "/docs", icon: FiBookOpen },
-  { title: "Screeners", url: "/screeners", icon: FaScrewdriver },
-  { title: "Screening", url: "/screening/", icon: FiClipboard },
   { title: "Documents", url: "/documents", icon: FiFileText },
   { title: "Chat", url: "/chat", icon: FiMessageSquare },
 ];

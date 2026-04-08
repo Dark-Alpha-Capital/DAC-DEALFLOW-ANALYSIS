@@ -174,7 +174,17 @@ export const screenersRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      await DeleteScreenerQuestionById(input.screenerId, input.questionId);
+      const removed = await DeleteScreenerQuestionById(
+        input.screenerId,
+        input.questionId,
+      );
+      if (removed === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message:
+            "That question could not be deleted. It may still be saving—wait a moment and try again—or it was already removed.",
+        });
+      }
 
       const remaining = await db
         .select({ id: screenerQuestions.id })

@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "@/lib/navigation-shim";
 import { useForm } from "react-hook-form";
@@ -143,44 +142,14 @@ export default function ScreenerEditor({
 
   const createQuestion = useMutation(
     trpc.screeners.createQuestion.mutationOptions({
-      onMutate: async (variables) => {
-        await queryClient.cancelQueries({ queryKey: screenerQueryKey });
-        const previous = queryClient.getQueryData(screenerQueryKey);
-        const screenerData = previous as ScreenerWithQuestions | undefined;
-        if (screenerData?.questions) {
-          const maxPos =
-            screenerData.questions.length > 0
-              ? Math.max(...screenerData.questions.map((q) => q.position))
-              : -1;
-          const tempId = `temp-${Date.now()}`;
-          const newQuestion = {
-            id: tempId,
-            screenerId,
-            question: variables.question,
-            weight: Number(variables.weight),
-            responseType: "SCORE" as const,
-            position: maxPos + 1,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-          queryClient.setQueryData(screenerQueryKey, {
-            ...screenerData,
-            questions: [...screenerData.questions, newQuestion],
-          });
-        }
-        return { previous };
-      },
-      onError: (error, _variables, context) => {
-        if (context?.previous) {
-          queryClient.setQueryData(screenerQueryKey, context.previous);
-        }
-        toast.error(error.message || "Failed to add question");
-      },
-      onSuccess: () => {
+      onSuccess: async () => {
         questionForm.reset({ question: "", weight: 10 });
         toast.success("Question added");
+        await invalidateScreenerQueries();
       },
-      onSettled: () => invalidateScreenerQueries(),
+      onError: (error) => {
+        toast.error(error.message || "Failed to add question");
+      },
     }),
   );
 
@@ -222,28 +191,16 @@ export default function ScreenerEditor({
 
   const deleteQuestion = useMutation(
     trpc.screeners.deleteQuestion.mutationOptions({
-      onMutate: async (variables) => {
-        await queryClient.cancelQueries({ queryKey: screenerQueryKey });
-        const previous = queryClient.getQueryData(screenerQueryKey);
-        const screenerData = previous as ScreenerWithQuestions | undefined;
-        if (screenerData?.questions) {
-          queryClient.setQueryData(screenerQueryKey, {
-            ...screenerData,
-            questions: screenerData.questions.filter(
-              (q) => q.id !== variables.questionId,
-            ),
-          });
-        }
-        return { previous };
+      onSuccess: async (_data, variables) => {
+        setEditingQuestionId((current) =>
+          current === variables.questionId ? null : current,
+        );
+        toast.success("Question deleted");
+        await invalidateScreenerQueries();
       },
-      onError: (error, _variables, context) => {
-        if (context?.previous) {
-          queryClient.setQueryData(screenerQueryKey, context.previous);
-        }
+      onError: (error) => {
         toast.error(error.message || "Failed to delete question");
       },
-      onSuccess: () => toast.success("Question deleted"),
-      onSettled: () => invalidateScreenerQueries(),
     }),
   );
 
@@ -279,21 +236,6 @@ export default function ScreenerEditor({
     }),
   );
 
-  if (screenerQuery.isLoading) {
-    return (
-      <div className="text-muted-foreground text-sm">Loading screener...</div>
-    );
-  }
-
-  if (!screenerQuery.data) {
-    return (
-      <div className="text-muted-foreground text-sm">Screener not found.</div>
-    );
-  }
-
-  const screener = screenerQuery.data;
-  const questionIds = screener.questions.map((q) => q.id);
-
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -311,7 +253,10 @@ export default function ScreenerEditor({
       const { active, over } = event;
       if (!over || String(active.id) === String(over.id)) return;
 
-      const ids = questionIds;
+      const data = screenerQuery.data;
+      if (!data?.questions.length) return;
+
+      const ids = data.questions.map((q) => q.id);
       const oldIndex = ids.indexOf(String(active.id));
       const newIndex = ids.indexOf(String(over.id));
       if (oldIndex === -1 || newIndex === -1) return;
@@ -319,8 +264,23 @@ export default function ScreenerEditor({
       const newOrder = arrayMove(ids, oldIndex, newIndex);
       reorderQuestions.mutate({ screenerId, questionIds: newOrder });
     },
-    [questionIds, screenerId, reorderQuestions],
+    [screenerQuery.data, screenerId, reorderQuestions],
   );
+
+  if (screenerQuery.isLoading) {
+    return (
+      <div className="text-muted-foreground text-sm">Loading screener...</div>
+    );
+  }
+
+  if (!screenerQuery.data) {
+    return (
+      <div className="text-muted-foreground text-sm">Screener not found.</div>
+    );
+  }
+
+  const screener = screenerQuery.data;
+  const questionIds = screener.questions.map((q) => q.id);
 
   return (
     <div className="space-y-6">
@@ -527,7 +487,10 @@ export default function ScreenerEditor({
                           })
                         }
                         isSaving={updateQuestion.isPending}
-                        isDeleting={deleteQuestion.isPending}
+                        isDeleting={
+                          deleteQuestion.isPending &&
+                          deleteQuestion.variables?.questionId === question.id
+                        }
                       />
                     ))}
                   </div>
@@ -631,12 +594,16 @@ function SortableQuestionRow({
               type="button"
               variant="ghost"
               size="sm"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={onDelete}
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer disabled:cursor-not-allowed"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete();
+              }}
               disabled={isDeleting}
             >
               <Trash2 className="mr-1.5 h-4 w-4" />
-              Delete
+              {isDeleting ? "Deleting…" : "Delete"}
             </Button>
           </div>
         </div>
