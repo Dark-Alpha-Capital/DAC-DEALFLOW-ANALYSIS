@@ -5,24 +5,24 @@ import {
   Activity,
   ArrowLeft,
   Briefcase,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Layers,
+  ListOrdered,
   Loader2,
   RefreshCw,
-  Table2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTRPC } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
@@ -66,6 +66,12 @@ function humanizeRunStatus(status: string): string {
     .split("_")
     .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
     .join(" ");
+}
+
+function previewQuestionText(text: string, maxChars: number): string {
+  const t = text.trim().replace(/\s+/g, " ");
+  if (t.length <= maxChars) return t;
+  return `${t.slice(0, maxChars - 1)}…`;
 }
 
 function runStatusBadgeProps(status: string | undefined) {
@@ -173,6 +179,84 @@ function EvidenceBlock({ row }: { row: ScoreRow }) {
   );
 }
 
+function QuestionScoreCard({ row, index }: { row: ScoreRow; index: number }) {
+  const refCount = row.evidenceCitations?.length ?? 0;
+  return (
+    <Card className="border-border/70 hover:border-border shadow-sm transition-colors">
+      <CardHeader className="space-y-4 pb-3 sm:pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span
+            className="bg-muted text-muted-foreground border-border/60 inline-flex min-h-9 min-w-9 items-center justify-center rounded-md border px-2 text-xs font-semibold tabular-nums"
+            aria-label={`Question ${index}`}
+          >
+            {index}
+          </span>
+          <div className="flex flex-col items-end gap-0.5 text-right">
+            <span className="text-muted-foreground text-[0.65rem] font-medium tracking-wide uppercase">
+              Score
+            </span>
+            <span className="border-primary/25 bg-primary/8 text-foreground inline-flex min-w-[3.25rem] items-center justify-center rounded-lg border px-3 py-1.5 font-mono text-lg leading-none font-semibold tabular-nums sm:text-xl">
+              {row.score ?? "—"}
+            </span>
+          </div>
+        </div>
+        <CardTitle className="text-foreground max-w-none text-base leading-snug font-semibold text-pretty sm:text-[1.0625rem] sm:leading-snug">
+          {row.question}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-0">
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            Rationale
+          </p>
+          <div className="border-border/50 bg-muted/25 max-w-prose rounded-lg border px-3.5 py-3 text-sm leading-relaxed wrap-anywhere sm:px-4 sm:py-3.5 sm:text-[0.9375rem] sm:leading-relaxed">
+            {row.rationale?.trim() ? (
+              <p className="text-foreground whitespace-pre-wrap">
+                {row.rationale}
+              </p>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </div>
+        </div>
+        {refCount > 0 ? (
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger
+              type="button"
+              className="group border-border/60 bg-muted/15 hover:bg-muted/30 focus-visible:ring-ring flex h-11 min-h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 text-left text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none sm:h-10 sm:min-h-10"
+            >
+              <span>
+                References
+                <span className="text-muted-foreground ml-1.5 font-normal tabular-nums">
+                  ({refCount})
+                </span>
+              </span>
+              <ChevronDown
+                className="text-muted-foreground size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180"
+                aria-hidden
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 overflow-hidden">
+              <div className="border-border/40 mt-3 rounded-lg border border-dashed bg-transparent px-1 pt-2 pb-1 sm:px-2">
+                <EvidenceBlock row={row} />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : (
+          <div className="text-muted-foreground text-sm">
+            <span className="text-xs font-medium tracking-wide uppercase">
+              References
+            </span>
+            <div className="mt-1.5">
+              <EvidenceBlock row={row} />
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export const Route = createFileRoute("/_protected/screening/$sessionId/")({
   validateSearch: (search: Record<string, unknown>) => ({
     runId:
@@ -209,6 +293,7 @@ function CimScreeningSessionDetailPage() {
   const queryClient = useQueryClient();
   const user = useCurrentUser();
   const [newScreenerId, setNewScreenerId] = useState("");
+  const [questionIndex, setQuestionIndex] = useState(0);
 
   useEffect(() => {
     if (newScreenerId || screeners.length === 0) return;
@@ -302,6 +387,15 @@ function CimScreeningSessionDetailPage() {
     runIdFromSearch,
     trpc.simScreening,
   ]);
+
+  useEffect(() => {
+    setQuestionIndex(0);
+  }, [data?.selectedRunId, sessionId]);
+
+  useEffect(() => {
+    const len = data?.rows?.length ?? 0;
+    setQuestionIndex((prev) => (len === 0 ? 0 : Math.min(prev, len - 1)));
+  }, [data?.rows?.length]);
 
   const isLoading =
     !data && (fullSessionQuery.isPending || fullSessionQuery.isLoading);
@@ -801,101 +895,100 @@ function CimScreeningSessionDetailPage() {
 
         <section className="space-y-4">
           <SectionHeading
-            icon={Table2}
+            icon={ListOrdered}
             title="Question scores"
             description={
               runs.length === 0 || !selectedRunId
                 ? "Start a run to see scores here."
-                : "Scores, rationale, and RAG citation excerpts for the selected run."
+                : "Choose a question to view its score, rationale, and references."
             }
           />
           {rows.length === 0 ? (
             <div className="bg-muted/25 text-muted-foreground rounded-xl border border-dashed px-5 py-10 text-center text-sm sm:px-8 sm:py-14">
               {runs.length === 0
-                ? "No data yet. Upload and run a screener to populate this table."
+                ? "No data yet. Upload and run a screener to see scored questions."
                 : "No scored questions for this run yet. If the run is still processing, check back shortly."}
             </div>
           ) : (
-            <>
-              <div className="space-y-4 md:hidden">
-                {rows.map((row) => (
-                  <Card
-                    key={row.questionId}
-                    className="overflow-hidden shadow-sm"
+            <div className="mx-auto max-w-3xl space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Label
+                    htmlFor="question-score-select"
+                    className="text-muted-foreground text-xs font-medium"
                   >
-                    <CardHeader className="space-y-2 pb-3">
-                      <CardTitle className="text-sm leading-snug font-semibold text-pretty">
-                        {row.question}
-                      </CardTitle>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                          Score
-                        </span>
-                        <span className="bg-muted rounded-md px-2 py-0.5 font-mono text-sm font-semibold tabular-nums">
-                          {row.score ?? "—"}
-                        </span>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="border-border/60 space-y-4 border-t pt-4">
-                      <div>
-                        <p className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">
-                          Rationale
-                        </p>
-                        <p className="text-foreground text-sm leading-relaxed">
-                          {row.rationale ?? "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">
-                          References
-                        </p>
-                        <div className="text-sm">
-                          <EvidenceBlock row={row} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    Question ({rows.length} total)
+                  </Label>
+                  <div className="flex items-stretch gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-11 min-h-11 w-11 shrink-0 cursor-pointer sm:h-10 sm:min-h-10"
+                      disabled={questionIndex <= 0}
+                      aria-label="Previous question"
+                      onClick={() =>
+                        setQuestionIndex((i) => Math.max(0, i - 1))
+                      }
+                    >
+                      <ChevronLeft className="size-4" aria-hidden />
+                    </Button>
+                    <Select
+                      value={String(questionIndex)}
+                      onValueChange={(v) => {
+                        const next = Number.parseInt(v, 10);
+                        if (!Number.isNaN(next)) setQuestionIndex(next);
+                      }}
+                    >
+                      <SelectTrigger
+                        id="question-score-select"
+                        className="h-11 min-h-11 min-w-0 flex-1 cursor-pointer sm:h-10 sm:min-h-10"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rows.map((row, i) => (
+                          <SelectItem key={row.questionId} value={String(i)}>
+                            <span className="line-clamp-2 text-left">
+                              <span className="font-medium tabular-nums">
+                                Q{i + 1}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {" "}
+                                · {row.score ?? "—"} ·{" "}
+                              </span>
+                              {previewQuestionText(row.question, 80)}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-11 min-h-11 w-11 shrink-0 cursor-pointer sm:h-10 sm:min-h-10"
+                      disabled={questionIndex >= rows.length - 1}
+                      aria-label="Next question"
+                      onClick={() =>
+                        setQuestionIndex((i) =>
+                          Math.min(rows.length - 1, i + 1),
+                        )
+                      }
+                    >
+                      <ChevronRight className="size-4" aria-hidden />
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-muted-foreground shrink-0 text-center text-xs tabular-nums sm:pb-2 sm:text-left sm:text-sm">
+                  {questionIndex + 1} / {rows.length}
+                </p>
               </div>
-              <div className="border-border/80 -mx-4 hidden min-w-0 overflow-x-auto rounded-xl border shadow-sm sm:mx-0 md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="min-w-[11rem] pl-4">
-                        Question
-                      </TableHead>
-                      <TableHead className="w-20 whitespace-nowrap">
-                        Score
-                      </TableHead>
-                      <TableHead className="max-w-md min-w-[12rem]">
-                        Rationale
-                      </TableHead>
-                      <TableHead className="max-w-lg min-w-[14rem] pr-4">
-                        References
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow key={row.questionId} className="align-top">
-                        <TableCell className="max-w-xs pl-4 text-sm leading-relaxed wrap-anywhere">
-                          {row.question}
-                        </TableCell>
-                        <TableCell className="font-semibold tabular-nums">
-                          {row.score ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground max-w-md text-sm leading-relaxed wrap-anywhere">
-                          {row.rationale ?? "—"}
-                        </TableCell>
-                        <TableCell className="max-w-md pr-4 align-top text-sm wrap-anywhere">
-                          <EvidenceBlock row={row} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </>
+              <QuestionScoreCard
+                row={rows[questionIndex]!}
+                index={questionIndex + 1}
+              />
+            </div>
           )}
         </section>
       </section>
