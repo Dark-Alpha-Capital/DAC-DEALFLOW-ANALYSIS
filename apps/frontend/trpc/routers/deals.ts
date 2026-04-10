@@ -95,6 +95,10 @@ import {
   buildBitrixDealDetailUrl,
   buildCrmDealFieldsFromOpportunitySync,
   callBitrix,
+  getAiBitrixFormFieldMeta,
+  getBitrixDealFieldsCatalog,
+  getBitrixDealStages,
+  getBitrixDealTeaserFieldCode,
   getBitrixSyncEnv,
   inferPortalBaseFromWebhook,
 } from "@repo/bitrix-sync";
@@ -1602,6 +1606,29 @@ export const dealsRouter = createTRPCRouter({
       return result.data;
     }),
 
+  /** Stages and env flags for AI → Bitrix inject flow (no existing deal row). */
+  getBitrixAiInjectContext: protectedProcedure.query(async () => {
+    const env = getBitrixSyncEnv();
+    const stages = getBitrixDealStages();
+    const portalBase =
+      env?.portalBaseUrl?.trim() ||
+      (env?.webhookBaseUrl
+        ? inferPortalBaseFromWebhook(env.webhookBaseUrl)
+        : "");
+    const dealFieldsCatalog = getBitrixDealFieldsCatalog();
+    return {
+      webhookConfigured: Boolean(env?.webhookBaseUrl),
+      categoryIdConfigured: Boolean(env?.dealCategoryId?.trim()),
+      portalBaseUrl: portalBase,
+      dealCategoryId: env?.dealCategoryId ?? "",
+      stages,
+      suggestedStageId: env?.defaultStageId?.trim() ?? "",
+      teaserFieldConfigured: Boolean(getBitrixDealTeaserFieldCode()),
+      dealFieldsCatalogCount: dealFieldsCatalog.length,
+      aiBitrixFieldMeta: getAiBitrixFormFieldMeta(),
+    };
+  }),
+
   syncDealOpportunityToBitrix: protectedProcedure
     .input(bitrixSyncDealOpportunitySchema)
     .mutation(async ({ input }) => {
@@ -1651,6 +1678,9 @@ export const dealsRouter = createTRPCRouter({
         brokerPhone: input.brokerPhone ?? null,
         brokerLinkedIn: input.brokerLinkedIn ?? null,
         askingPrice: input.askingPrice ?? null,
+        revenue: input.revenue ?? null,
+        teaser: input.teaser ?? null,
+        description: input.description ?? null,
       });
 
       const portalBase =
@@ -1770,6 +1800,9 @@ export const dealsRouter = createTRPCRouter({
         brokerPhone: input.brokerPhone ?? null,
         brokerLinkedIn: input.brokerLinkedIn ?? null,
         askingPrice: input.askingPrice ?? null,
+        revenue: input.revenue ?? null,
+        teaser: input.teaser ?? null,
+        description: input.description ?? null,
       });
 
       const portalBase =

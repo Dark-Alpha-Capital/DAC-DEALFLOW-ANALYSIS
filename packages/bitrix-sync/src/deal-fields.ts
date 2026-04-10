@@ -1,6 +1,13 @@
+import { getBitrixDealTeaserFieldCode } from "./env";
+
 /**
  * Custom field codes shared with legacy raw-deal → Bitrix export.
  * Confirm in Bitrix24 CRM → Settings → CRM → Fields before changing.
+ * Optional narrative teaser UF: set env `BITRIX_DEAL_TEASER_UF` (field code).
+ *
+ * To refresh the portal’s field list (codes + labels) for the AI inject UI:
+ * `bun run fetch-deal-fields` in this package → `data/bitrix-deal-fields.json`,
+ * or set `BITRIX_DEAL_FIELDS_JSON` (see `deal-fields-catalog.ts`).
  */
 export const BITRIX_UF = {
   revenue: "UF_CRM_1715146259470",
@@ -37,6 +44,12 @@ export type OpportunitySyncPayload = {
   brokerPhone?: string | null;
   brokerLinkedIn?: string | null;
   askingPrice?: number | null;
+  /** TTM / company revenue for UF revenue when set; otherwise UF mirrors `opportunity`. */
+  revenue?: number | null;
+  /** Short teaser line, prepended to Bitrix COMMENTS. */
+  teaser?: string | null;
+  /** Longer narrative body merged into Bitrix COMMENTS. */
+  description?: string | null;
 };
 
 function stripEmpty(
@@ -49,12 +62,35 @@ function stripEmpty(
   );
 }
 
+const MAX_TEASER_UF_CHARS = 60_000;
+
+/** Teaser UF: teaser + description + comments (Bitrix narrative field). */
+function buildCombinedTeaserForUf(input: OpportunitySyncPayload): string | undefined {
+  const parts = [
+    input.teaser?.trim() || null,
+    input.description?.trim() || null,
+    input.comments?.trim() || null,
+  ].filter(Boolean) as string[];
+  if (parts.length === 0) return undefined;
+  let text = parts.join("\n\n");
+  if (text.length > MAX_TEASER_UF_CHARS) {
+    text = `${text.slice(0, MAX_TEASER_UF_CHARS)}\n\n[Truncated…]`;
+  }
+  return text;
+}
+
 /** Maps confirmed form values to Bitrix `crm.deal.add` / `crm.deal.update` `fields`. */
 export function buildCrmDealFieldsFromOpportunitySync(
   input: OpportunitySyncPayload,
 ): Record<string, unknown> {
   const currencyId = input.currencyId ?? "USD";
   const commentParts = [
+    input.teaser != null && input.teaser.trim() !== ""
+      ? `Teaser: ${input.teaser.trim()}`
+      : null,
+    input.description != null && input.description.trim() !== ""
+      ? input.description.trim()
+      : null,
     input.industry != null && input.industry !== ""
       ? `Industry: ${input.industry}`
       : null,
@@ -69,11 +105,16 @@ export function buildCrmDealFieldsFromOpportunitySync(
   const comments =
     commentParts.length > 0 ? commentParts.join(" | ") : undefined;
 
+  const revenueForUf =
+    input.revenue != null && !Number.isNaN(Number(input.revenue))
+      ? Number(input.revenue)
+      : input.opportunity;
+
   const rawFields: Record<string, unknown> = {
     TITLE: input.title,
     OPPORTUNITY: input.opportunity,
     CURRENCY_ID: currencyId,
-    [BITRIX_UF.revenue]: input.opportunity,
+    [BITRIX_UF.revenue]: revenueForUf,
     [BITRIX_UF.sourceWebsite]: input.sourceWebsite ?? undefined,
     [BITRIX_UF.companyLocation]: input.companyLocation ?? undefined,
     [BITRIX_UF.brokerFirstName]: input.brokerFirstName ?? undefined,
@@ -98,6 +139,12 @@ export function buildCrmDealFieldsFromOpportunitySync(
       VALUE: Number(input.askingPrice),
       CURRENCY: currencyId,
     };
+  }
+
+  const teaserFieldCode = getBitrixDealTeaserFieldCode();
+  const teaserBody = buildCombinedTeaserForUf(input);
+  if (teaserFieldCode && teaserBody) {
+    rawFields[teaserFieldCode] = teaserBody;
   }
 
   return stripEmpty(rawFields);

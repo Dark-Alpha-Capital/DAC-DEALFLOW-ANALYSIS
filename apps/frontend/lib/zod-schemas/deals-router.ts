@@ -205,6 +205,9 @@ export const bitrixSyncDealOpportunitySchema = z.object({
   askingPrice: z.number().nullable().optional(),
   ebitda: z.number().nullable().optional(),
   ebitdaMargin: z.number().nullable().optional(),
+  revenue: z.number().nullable().optional(),
+  teaser: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
 });
 
 export const bitrixSyncScreeningRunToDealSchema =

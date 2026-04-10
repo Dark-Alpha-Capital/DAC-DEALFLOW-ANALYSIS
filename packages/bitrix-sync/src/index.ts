@@ -5,6 +5,7 @@ export {
 } from "./client";
 export {
   getBitrixSyncEnv,
+  getBitrixDealTeaserFieldCode,
   requireBitrixWebhookBase,
   buildBitrixDealDetailUrl,
   inferPortalBaseFromWebhook,
@@ -23,3 +24,15 @@ export {
   suggestBitrixStageIdForAppStage,
   type BitrixDealStageRow,
 } from "./stages";
+export {
+  bitrixDealOpportunityExtractionSchema,
+  type BitrixDealOpportunityExtraction,
+} from "./deal-extraction-schema";
+export {
+  getBitrixDealFieldsCatalog,
+  getAiBitrixFormFieldMeta,
+  normalizeBitrixDealFieldsResult,
+  type BitrixDealFieldRow,
+  type BitrixDealFieldsFile,
+  type AiBitrixFormFieldKey,
+} from "./deal-fields-catalog";

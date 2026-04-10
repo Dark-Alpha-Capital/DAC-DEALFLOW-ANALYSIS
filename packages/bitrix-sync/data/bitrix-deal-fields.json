@@ -1,0 +1,694 @@
+{
+  "fetchedAt": "2026-04-10T13:06:34.213Z",
+  "source": "crm.deal.fields",
+  "fields": [
+    {
+      "fieldId": "ADDITIONAL_INFO",
+      "type": "string",
+      "title": "Additional information",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "ASSIGNED_BY_ID",
+      "type": "user",
+      "title": "Responsible person",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "BEGINDATE",
+      "type": "date",
+      "title": "Start date",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "CATEGORY_ID",
+      "type": "crm_category",
+      "title": "Pipeline",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "CLOSED",
+      "type": "char",
+      "title": "Closed",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "CLOSEDATE",
+      "type": "date",
+      "title": "End date",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "COMMENTS",
+      "type": "string",
+      "title": "Comment",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "COMPANY_ID",
+      "type": "crm_company",
+      "title": "Company",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "CONTACT_ID",
+      "type": "crm_contact",
+      "title": "Contact",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "CONTACT_IDS",
+      "type": "crm_contact",
+      "title": "Contacts",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": true
+    },
+    {
+      "fieldId": "CREATED_BY_ID",
+      "type": "user",
+      "title": "Created by",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "CURRENCY_ID",
+      "type": "crm_currency",
+      "title": "Currency",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "DATE_CREATE",
+      "type": "datetime",
+      "title": "Created on",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "DATE_MODIFY",
+      "type": "datetime",
+      "title": "Modified on",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "ID",
+      "type": "integer",
+      "title": "ID",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "IS_MANUAL_OPPORTUNITY",
+      "type": "char",
+      "title": "Amount calculation mode",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "IS_NEW",
+      "type": "char",
+      "title": "New deal",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "IS_RECURRING",
+      "type": "char",
+      "title": "Recurring deal",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "IS_REPEATED_APPROACH",
+      "type": "char",
+      "title": "Repeat inquiry",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "IS_RETURN_CUSTOMER",
+      "type": "char",
+      "title": "Repeat deal",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "LAST_ACTIVITY_BY",
+      "type": "user",
+      "title": "LAST_ACTIVITY_BY",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "LAST_ACTIVITY_TIME",
+      "type": "datetime",
+      "title": "LAST_ACTIVITY_TIME",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "LAST_COMMUNICATION_TIME",
+      "type": "string",
+      "title": "LAST_COMMUNICATION_TIME",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "LEAD_ID",
+      "type": "crm_lead",
+      "title": "Lead",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "LOCATION_ID",
+      "type": "location",
+      "title": "Location",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "MODIFY_BY_ID",
+      "type": "user",
+      "title": "Modified by",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "MOVED_BY_ID",
+      "type": "user",
+      "title": "MOVED_BY_ID",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "MOVED_TIME",
+      "type": "datetime",
+      "title": "Moved on",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "OPENED",
+      "type": "char",
+      "title": "Available to everyone",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "OPPORTUNITY",
+      "type": "double",
+      "title": "Total",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "ORIGIN_ID",
+      "type": "string",
+      "title": "Item ID in data source",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "ORIGINATOR_ID",
+      "type": "string",
+      "title": "External source",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "PREVIOUS_STAGE_ID",
+      "type": "crm_status",
+      "title": "Previous stage",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "PROBABILITY",
+      "type": "integer",
+      "title": "Probability",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "QUOTE_ID",
+      "type": "crm_quote",
+      "title": "Estimate",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "SOURCE_DESCRIPTION",
+      "type": "string",
+      "title": "Source information",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "SOURCE_ID",
+      "type": "crm_status",
+      "title": "Source",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "STAGE_ID",
+      "type": "crm_status",
+      "title": "Deal stage",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "STAGE_SEMANTIC_ID",
+      "type": "string",
+      "title": "Stage group",
+      "isRequired": false,
+      "isReadOnly": true,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "TAX_VALUE",
+      "type": "double",
+      "title": "Tax rate",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "TITLE",
+      "type": "string",
+      "title": "Name",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "TYPE_ID",
+      "type": "crm_status",
+      "title": "Type",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1711451843480",
+      "type": "file",
+      "title": "UF_CRM_1711451843480",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1711451969495",
+      "type": "file",
+      "title": "UF_CRM_1711451969495",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1711452000619",
+      "type": "file",
+      "title": "UF_CRM_1711452000619",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1711452024710",
+      "type": "file",
+      "title": "UF_CRM_1711452024710",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1711452052144",
+      "type": "file",
+      "title": "UF_CRM_1711452052144",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1711452136399",
+      "type": "file",
+      "title": "UF_CRM_1711452136399",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1711452630282",
+      "type": "file",
+      "title": "UF_CRM_1711452630282",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1711453123087",
+      "type": "string",
+      "title": "UF_CRM_1711453123087",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1711453168658",
+      "type": "string",
+      "title": "UF_CRM_1711453168658",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1715146259470",
+      "type": "money",
+      "title": "UF_CRM_1715146259470",
+      "isRequired": true,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1715146372084",
+      "type": "url",
+      "title": "UF_CRM_1715146372084",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1715146404315",
+      "type": "url",
+      "title": "UF_CRM_1715146404315",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1715146980041",
+      "type": "file",
+      "title": "UF_CRM_1715146980041",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": true
+    },
+    {
+      "fieldId": "UF_CRM_1717673027369",
+      "type": "file",
+      "title": "UF_CRM_1717673027369",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1718630813337",
+      "type": "file",
+      "title": "UF_CRM_1718630813337",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1719495863",
+      "type": "boolean",
+      "title": "UF_CRM_1719495863",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1719745217",
+      "type": "enumeration",
+      "title": "UF_CRM_1719745217",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1725445424",
+      "type": "employee",
+      "title": "UF_CRM_1725445424",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1727869474151",
+      "type": "string",
+      "title": "UF_CRM_1727869474151",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1727869546253",
+      "type": "enumeration",
+      "title": "UF_CRM_1727869546253",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1727888678216",
+      "type": "string",
+      "title": "UF_CRM_1727888678216",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1727888971381",
+      "type": "string",
+      "title": "UF_CRM_1727888971381",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1727889001723",
+      "type": "enumeration",
+      "title": "UF_CRM_1727889001723",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1727889391901",
+      "type": "string",
+      "title": "UF_CRM_1727889391901",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1727889446864",
+      "type": "enumeration",
+      "title": "UF_CRM_1727889446864",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1727889539189",
+      "type": "address",
+      "title": "UF_CRM_1727889539189",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1727889819492",
+      "type": "boolean",
+      "title": "UF_CRM_1727889819492",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1729100159456",
+      "type": "string",
+      "title": "UF_CRM_1729100159456",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1729599819567",
+      "type": "enumeration",
+      "title": "UF_CRM_1729599819567",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1729704250568",
+      "type": "file",
+      "title": "UF_CRM_1729704250568",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1755211118",
+      "type": "employee",
+      "title": "UF_CRM_1755211118",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1755272307",
+      "type": "employee",
+      "title": "UF_CRM_1755272307",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1756475586",
+      "type": "employee",
+      "title": "UF_CRM_1756475586",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1756475598",
+      "type": "employee",
+      "title": "UF_CRM_1756475598",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1756475611",
+      "type": "string",
+      "title": "UF_CRM_1756475611",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1756492026",
+      "type": "employee",
+      "title": "UF_CRM_1756492026",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": true
+    },
+    {
+      "fieldId": "UF_CRM_1761057953255",
+      "type": "string",
+      "title": "UF_CRM_1761057953255",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UF_CRM_1761145550056",
+      "type": "file",
+      "title": "UF_CRM_1761145550056",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": true
+    },
+    {
+      "fieldId": "UF_CRM_1763568458188",
+      "type": "url",
+      "title": "UF_CRM_1763568458188",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UTM_CAMPAIGN",
+      "type": "string",
+      "title": "Ad campaign UTM",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UTM_CONTENT",
+      "type": "string",
+      "title": "Campaign contents",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UTM_MEDIUM",
+      "type": "string",
+      "title": "Medium",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UTM_SOURCE",
+      "type": "string",
+      "title": "Ad system",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    },
+    {
+      "fieldId": "UTM_TERM",
+      "type": "string",
+      "title": "Campaign search term",
+      "isRequired": false,
+      "isReadOnly": false,
+      "isMultiple": false
+    }
+  ]
+}

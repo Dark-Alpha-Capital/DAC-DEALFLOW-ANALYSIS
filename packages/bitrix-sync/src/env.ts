@@ -32,6 +32,16 @@ export function requireBitrixWebhookBase(): string {
   return env.webhookBaseUrl;
 }
 
+/**
+ * Custom deal field code for teaser / long summary (e.g. `UF_CRM_1234567890`).
+ * Find it in Bitrix24 → CRM → Settings → Deal fields. When set, sync maps
+ * teaser + description + comments into this field.
+ */
+export function getBitrixDealTeaserFieldCode(): string | undefined {
+  const v = process.env.BITRIX_DEAL_TEASER_UF?.trim();
+  return v || undefined;
+}
+
 export function buildBitrixDealDetailUrl(
   portalBaseUrl: string,
   bitrixDealId: string,

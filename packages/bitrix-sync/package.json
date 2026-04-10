@@ -6,10 +6,12 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "fetch-stages": "bun run ./scripts/fetch-bitrix-stages.ts"
+    "fetch-stages": "bun run ./scripts/fetch-bitrix-stages.ts",
+    "fetch-deal-fields": "bun run ./scripts/fetch-bitrix-deal-fields.ts"
   },
   "dependencies": {
-    "axios": "^1.8.4"
+    "axios": "^1.8.4",
+    "zod": "^4.3.5"
   },
   "peerDependencies": {
     "typescript": "^5"
