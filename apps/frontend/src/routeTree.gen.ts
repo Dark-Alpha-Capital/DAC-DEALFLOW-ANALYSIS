@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
 import { Route as DocumentationRouteRouteImport } from './routes/_documentation/route'
 import { Route as ChatbotRouteRouteImport } from './routes/_chatbot/route'
@@ -43,6 +44,7 @@ import { Route as ApiHealthRedisRouteImport } from './routes/api/health/redis'
 import { Route as ApiDealOpportunitiesQuickAddRouteImport } from './routes/api/deal-opportunities/quick-add'
 import { Route as ApiDealOpportunitiesAiBitrixExtractRouteImport } from './routes/api/deal-opportunities/ai-bitrix-extract'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as PublicDealOpportunitiesAiBitrixRouteImport } from './routes/_public/deal-opportunities/ai-bitrix'
 import { Route as ProtectedScreeningNewRunRouteImport } from './routes/_protected/screening/new-run'
 import { Route as ProtectedScreenersUidRouteImport } from './routes/_protected/screeners/$uid'
 import { Route as ProtectedProfileUidRouteImport } from './routes/_protected/profile/$uid'
@@ -53,7 +55,6 @@ import { Route as ProtectedInvestorLeadsNewRouteImport } from './routes/_protect
 import { Route as ProtectedInvestmentThemesNewRouteImport } from './routes/_protected/investment-themes/new'
 import { Route as ProtectedDealOpportunitiesQuickAddRouteImport } from './routes/_protected/deal-opportunities/quick-add'
 import { Route as ProtectedDealOpportunitiesNewRouteImport } from './routes/_protected/deal-opportunities/new'
-import { Route as ProtectedDealOpportunitiesAiBitrixRouteImport } from './routes/_protected/deal-opportunities/ai-bitrix'
 import { Route as ProtectedCompaniesNewRouteImport } from './routes/_protected/companies/new'
 import { Route as ProtectedCompaniesUidRouteImport } from './routes/_protected/companies/$uid'
 import { Route as DocumentationDocsThemesRouteImport } from './routes/_documentation/docs/themes'
@@ -93,6 +94,10 @@ import { Route as ProtectedDealOpportunitiesUidEditRouteImport } from './routes/
 import { Route as ProtectedCompaniesUidEditRouteImport } from './routes/_protected/companies/$uid/edit'
 import { Route as ProtectedScreeningSessionIdSyncBitrix24IndexRouteImport } from './routes/_protected/screening/$sessionId/sync-bitrix-24/index'
 
+const PublicRouteRoute = PublicRouteRouteImport.update({
+  id: '/_public',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
   id: '/_protected',
   getParentRoute: () => rootRouteImport,
@@ -264,6 +269,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PublicDealOpportunitiesAiBitrixRoute =
+  PublicDealOpportunitiesAiBitrixRouteImport.update({
+    id: '/deal-opportunities/ai-bitrix',
+    path: '/deal-opportunities/ai-bitrix',
+    getParentRoute: () => PublicRouteRoute,
+  } as any)
 const ProtectedScreeningNewRunRoute =
   ProtectedScreeningNewRunRouteImport.update({
     id: '/screening/new-run',
@@ -317,12 +328,6 @@ const ProtectedDealOpportunitiesNewRoute =
   ProtectedDealOpportunitiesNewRouteImport.update({
     id: '/deal-opportunities/new',
     path: '/deal-opportunities/new',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedDealOpportunitiesAiBitrixRoute =
-  ProtectedDealOpportunitiesAiBitrixRouteImport.update({
-    id: '/deal-opportunities/ai-bitrix',
-    path: '/deal-opportunities/ai-bitrix',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
 const ProtectedCompaniesNewRoute = ProtectedCompaniesNewRouteImport.update({
@@ -577,7 +582,6 @@ export interface FileRoutesByFullPath {
   '/docs/themes': typeof DocumentationDocsThemesRoute
   '/companies/$uid': typeof ProtectedCompaniesUidRouteWithChildren
   '/companies/new': typeof ProtectedCompaniesNewRoute
-  '/deal-opportunities/ai-bitrix': typeof ProtectedDealOpportunitiesAiBitrixRoute
   '/deal-opportunities/new': typeof ProtectedDealOpportunitiesNewRoute
   '/deal-opportunities/quick-add': typeof ProtectedDealOpportunitiesQuickAddRoute
   '/investment-themes/new': typeof ProtectedInvestmentThemesNewRoute
@@ -588,6 +592,7 @@ export interface FileRoutesByFullPath {
   '/profile/$uid': typeof ProtectedProfileUidRoute
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/screening/new-run': typeof ProtectedScreeningNewRunRoute
+  '/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/ai-bitrix-extract': typeof ApiDealOpportunitiesAiBitrixExtractRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
@@ -657,7 +662,6 @@ export interface FileRoutesByTo {
   '/docs/themes': typeof DocumentationDocsThemesRoute
   '/companies/$uid': typeof ProtectedCompaniesUidRouteWithChildren
   '/companies/new': typeof ProtectedCompaniesNewRoute
-  '/deal-opportunities/ai-bitrix': typeof ProtectedDealOpportunitiesAiBitrixRoute
   '/deal-opportunities/new': typeof ProtectedDealOpportunitiesNewRoute
   '/deal-opportunities/quick-add': typeof ProtectedDealOpportunitiesQuickAddRoute
   '/investment-themes/new': typeof ProtectedInvestmentThemesNewRoute
@@ -668,6 +672,7 @@ export interface FileRoutesByTo {
   '/profile/$uid': typeof ProtectedProfileUidRoute
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/screening/new-run': typeof ProtectedScreeningNewRunRoute
+  '/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/ai-bitrix-extract': typeof ApiDealOpportunitiesAiBitrixExtractRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
@@ -707,6 +712,7 @@ export interface FileRoutesById {
   '/_chatbot': typeof ChatbotRouteRouteWithChildren
   '/_documentation': typeof DocumentationRouteRouteWithChildren
   '/_protected': typeof ProtectedRouteRouteWithChildren
+  '/_public': typeof PublicRouteRouteWithChildren
   '/_chatbot/chat': typeof ChatbotChatRouteWithChildren
   '/_documentation/docs': typeof DocumentationDocsRouteWithChildren
   '/_protected/admin': typeof ProtectedAdminRoute
@@ -743,7 +749,6 @@ export interface FileRoutesById {
   '/_documentation/docs/themes': typeof DocumentationDocsThemesRoute
   '/_protected/companies/$uid': typeof ProtectedCompaniesUidRouteWithChildren
   '/_protected/companies/new': typeof ProtectedCompaniesNewRoute
-  '/_protected/deal-opportunities/ai-bitrix': typeof ProtectedDealOpportunitiesAiBitrixRoute
   '/_protected/deal-opportunities/new': typeof ProtectedDealOpportunitiesNewRoute
   '/_protected/deal-opportunities/quick-add': typeof ProtectedDealOpportunitiesQuickAddRoute
   '/_protected/investment-themes/new': typeof ProtectedInvestmentThemesNewRoute
@@ -754,6 +759,7 @@ export interface FileRoutesById {
   '/_protected/profile/$uid': typeof ProtectedProfileUidRoute
   '/_protected/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/_protected/screening/new-run': typeof ProtectedScreeningNewRunRoute
+  '/_public/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/ai-bitrix-extract': typeof ApiDealOpportunitiesAiBitrixExtractRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
@@ -826,7 +832,6 @@ export interface FileRouteTypes {
     | '/docs/themes'
     | '/companies/$uid'
     | '/companies/new'
-    | '/deal-opportunities/ai-bitrix'
     | '/deal-opportunities/new'
     | '/deal-opportunities/quick-add'
     | '/investment-themes/new'
@@ -837,6 +842,7 @@ export interface FileRouteTypes {
     | '/profile/$uid'
     | '/screeners/$uid'
     | '/screening/new-run'
+    | '/deal-opportunities/ai-bitrix'
     | '/api/auth/$'
     | '/api/deal-opportunities/ai-bitrix-extract'
     | '/api/deal-opportunities/quick-add'
@@ -906,7 +912,6 @@ export interface FileRouteTypes {
     | '/docs/themes'
     | '/companies/$uid'
     | '/companies/new'
-    | '/deal-opportunities/ai-bitrix'
     | '/deal-opportunities/new'
     | '/deal-opportunities/quick-add'
     | '/investment-themes/new'
@@ -917,6 +922,7 @@ export interface FileRouteTypes {
     | '/profile/$uid'
     | '/screeners/$uid'
     | '/screening/new-run'
+    | '/deal-opportunities/ai-bitrix'
     | '/api/auth/$'
     | '/api/deal-opportunities/ai-bitrix-extract'
     | '/api/deal-opportunities/quick-add'
@@ -955,6 +961,7 @@ export interface FileRouteTypes {
     | '/_chatbot'
     | '/_documentation'
     | '/_protected'
+    | '/_public'
     | '/_chatbot/chat'
     | '/_documentation/docs'
     | '/_protected/admin'
@@ -991,7 +998,6 @@ export interface FileRouteTypes {
     | '/_documentation/docs/themes'
     | '/_protected/companies/$uid'
     | '/_protected/companies/new'
-    | '/_protected/deal-opportunities/ai-bitrix'
     | '/_protected/deal-opportunities/new'
     | '/_protected/deal-opportunities/quick-add'
     | '/_protected/investment-themes/new'
@@ -1002,6 +1008,7 @@ export interface FileRouteTypes {
     | '/_protected/profile/$uid'
     | '/_protected/screeners/$uid'
     | '/_protected/screening/new-run'
+    | '/_public/deal-opportunities/ai-bitrix'
     | '/api/auth/$'
     | '/api/deal-opportunities/ai-bitrix-extract'
     | '/api/deal-opportunities/quick-add'
@@ -1041,6 +1048,7 @@ export interface RootRouteChildren {
   ChatbotRouteRoute: typeof ChatbotRouteRouteWithChildren
   DocumentationRouteRoute: typeof DocumentationRouteRouteWithChildren
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
+  PublicRouteRoute: typeof PublicRouteRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
   ApiRevalidateRoute: typeof ApiRevalidateRoute
   ApiTrpcRoute: typeof ApiTrpcRouteWithChildren
@@ -1054,6 +1062,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_public': {
+      id: '/_public'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PublicRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_protected': {
       id: '/_protected'
       path: ''
@@ -1292,6 +1307,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_public/deal-opportunities/ai-bitrix': {
+      id: '/_public/deal-opportunities/ai-bitrix'
+      path: '/deal-opportunities/ai-bitrix'
+      fullPath: '/deal-opportunities/ai-bitrix'
+      preLoaderRoute: typeof PublicDealOpportunitiesAiBitrixRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
     '/_protected/screening/new-run': {
       id: '/_protected/screening/new-run'
       path: '/screening/new-run'
@@ -1360,13 +1382,6 @@ declare module '@tanstack/react-router' {
       path: '/deal-opportunities/new'
       fullPath: '/deal-opportunities/new'
       preLoaderRoute: typeof ProtectedDealOpportunitiesNewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/deal-opportunities/ai-bitrix': {
-      id: '/_protected/deal-opportunities/ai-bitrix'
-      path: '/deal-opportunities/ai-bitrix'
-      fullPath: '/deal-opportunities/ai-bitrix'
-      preLoaderRoute: typeof ProtectedDealOpportunitiesAiBitrixRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/companies/new': {
@@ -1768,7 +1783,6 @@ interface ProtectedRouteRouteChildren {
   ProtectedIndexRoute: typeof ProtectedIndexRoute
   ProtectedCompaniesUidRoute: typeof ProtectedCompaniesUidRouteWithChildren
   ProtectedCompaniesNewRoute: typeof ProtectedCompaniesNewRoute
-  ProtectedDealOpportunitiesAiBitrixRoute: typeof ProtectedDealOpportunitiesAiBitrixRoute
   ProtectedDealOpportunitiesNewRoute: typeof ProtectedDealOpportunitiesNewRoute
   ProtectedDealOpportunitiesQuickAddRoute: typeof ProtectedDealOpportunitiesQuickAddRoute
   ProtectedInvestmentThemesNewRoute: typeof ProtectedInvestmentThemesNewRoute
@@ -1815,8 +1829,6 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedIndexRoute: ProtectedIndexRoute,
   ProtectedCompaniesUidRoute: ProtectedCompaniesUidRouteWithChildren,
   ProtectedCompaniesNewRoute: ProtectedCompaniesNewRoute,
-  ProtectedDealOpportunitiesAiBitrixRoute:
-    ProtectedDealOpportunitiesAiBitrixRoute,
   ProtectedDealOpportunitiesNewRoute: ProtectedDealOpportunitiesNewRoute,
   ProtectedDealOpportunitiesQuickAddRoute:
     ProtectedDealOpportunitiesQuickAddRoute,
@@ -1861,6 +1873,18 @@ const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(
   ProtectedRouteRouteChildren,
 )
 
+interface PublicRouteRouteChildren {
+  PublicDealOpportunitiesAiBitrixRoute: typeof PublicDealOpportunitiesAiBitrixRoute
+}
+
+const PublicRouteRouteChildren: PublicRouteRouteChildren = {
+  PublicDealOpportunitiesAiBitrixRoute: PublicDealOpportunitiesAiBitrixRoute,
+}
+
+const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
+  PublicRouteRouteChildren,
+)
+
 interface ApiTrpcRouteChildren {
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
 }
@@ -1877,6 +1901,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatbotRouteRoute: ChatbotRouteRouteWithChildren,
   DocumentationRouteRoute: DocumentationRouteRouteWithChildren,
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
+  PublicRouteRoute: PublicRouteRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
   ApiRevalidateRoute: ApiRevalidateRoute,
   ApiTrpcRoute: ApiTrpcRouteWithChildren,

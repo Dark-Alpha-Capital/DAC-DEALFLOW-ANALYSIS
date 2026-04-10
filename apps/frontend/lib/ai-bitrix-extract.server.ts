@@ -1,7 +1,6 @@
 import { streamObject } from "ai";
 import { bitrixDealOpportunityExtractionSchema } from "@repo/bitrix-sync";
 import { getChatLanguageModel } from "@repo/ai-core";
-import { getSession } from "@/lib/auth-server";
 
 const MAX_RAW_TEXT_CHARS = 120_000;
 
@@ -13,11 +12,6 @@ Use "teaser" for a one-line hook and "description" for a longer narrative; put l
 Extract sourceWebsite whenever any URL or domain appears; null only if the text has no web reference.`;
 
 export async function postAiBitrixExtract(request: Request): Promise<Response> {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   let body: unknown;
   try {
     body = await request.json();

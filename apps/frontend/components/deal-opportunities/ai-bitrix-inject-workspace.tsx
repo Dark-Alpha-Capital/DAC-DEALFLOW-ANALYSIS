@@ -7,6 +7,7 @@ import { bitrixDealOpportunityExtractionSchema } from "@repo/bitrix-sync";
 import { toast } from "sonner";
 import { Check, Loader2, Pencil, Sparkles } from "lucide-react";
 import { useTRPC } from "@/trpc/client";
+import { useSession } from "@/lib/auth-client";
 import BackButton from "@/components/Buttons/back-button";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -152,6 +153,8 @@ function FieldLabel({
 export function AiBitrixInjectWorkspace() {
   const trpc = useTRPC();
   const router = useRouter();
+  const { data: sessionData } = useSession();
+  const isLoggedIn = Boolean(sessionData?.user?.id);
   const { data: bx } = useQuery(
     trpc.dealOpportunities.getBitrixAiInjectContext.queryOptions(),
   );
@@ -353,6 +356,23 @@ export function AiBitrixInjectWorkspace() {
             set <code className="text-xs">BITRIX_DEAL_FIELDS_JSON</code> so
             labels match your portal. Codes under each field still show the
             mapping we sync.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!isLoggedIn && (
+        <Alert>
+          <AlertTitle>Public tool</AlertTitle>
+          <AlertDescription className="text-sm">
+            Extract and review work without signing in. To create a deal
+            opportunity in the app and sync to Bitrix24,{" "}
+            <Link
+              to="/auth/login"
+              className="text-primary font-medium underline-offset-4 hover:underline"
+            >
+              sign in
+            </Link>
+            .
           </AlertDescription>
         </Alert>
       )}
@@ -1006,6 +1026,11 @@ export function AiBitrixInjectWorkspace() {
                 {validationError ? (
                   <p className="text-destructive text-sm">{validationError}</p>
                 ) : null}
+                {!isLoggedIn && draft ? (
+                  <p className="text-muted-foreground text-sm">
+                    Sign in to create the opportunity and sync to Bitrix.
+                  </p>
+                ) : null}
 
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Button
@@ -1013,6 +1038,7 @@ export function AiBitrixInjectWorkspace() {
                     disabled={
                       Boolean(validationError) ||
                       busy ||
+                      !isLoggedIn ||
                       !bx?.webhookConfigured ||
                       !bx?.categoryIdConfigured
                     }
@@ -1027,7 +1053,11 @@ export function AiBitrixInjectWorkspace() {
                     Create opportunity & sync to Bitrix
                   </Button>
                   <Button variant="outline" asChild>
-                    <Link to="/deal-opportunities">Cancel</Link>
+                    <Link
+                      to={isLoggedIn ? "/deal-opportunities" : "/auth/login"}
+                    >
+                      {isLoggedIn ? "Cancel" : "Sign in"}
+                    </Link>
                   </Button>
                 </div>
               </>

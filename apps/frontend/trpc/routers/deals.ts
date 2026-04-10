@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure, adminProcedure } from "../init";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+  adminProcedure,
+} from "../init";
 import {
   addFinancialSnapshotSchema,
   addRiskFlagSchema,
@@ -1606,8 +1611,8 @@ export const dealsRouter = createTRPCRouter({
       return result.data;
     }),
 
-  /** Stages and env flags for AI → Bitrix inject flow (no existing deal row). */
-  getBitrixAiInjectContext: protectedProcedure.query(async () => {
+  /** Stages and env flags for AI → Bitrix inject flow (public page; no existing deal row). */
+  getBitrixAiInjectContext: publicProcedure.query(async () => {
     const env = getBitrixSyncEnv();
     const stages = getBitrixDealStages();
     const portalBase =
