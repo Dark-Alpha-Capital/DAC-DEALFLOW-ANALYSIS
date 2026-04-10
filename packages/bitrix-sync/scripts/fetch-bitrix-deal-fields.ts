@@ -1,6 +1,10 @@
 /**
- * Fetches deal field metadata via REST `crm.deal.fields` and writes
- * `data/bitrix-deal-fields.json` (or use printed JSON as `BITRIX_DEAL_FIELDS_JSON`).
+ * Fetches CRM deal field metadata and writes `data/bitrix-deal-fields.json`
+ * (or use printed JSON as `BITRIX_DEAL_FIELDS_JSON`).
+ *
+ * Merges:
+ * - `crm.deal.fields` — standard + many portals include UF_* in one object
+ * - `crm.deal.userfield.list` (paginated) — all custom field definitions; fills gaps on older portals
  *
  * Env: `BITRIX24_WEBHOOK` in `packages/bitrix-sync/.env` (see `load-package-env.ts`).
  *
@@ -12,9 +16,14 @@ import "./load-package-env.ts";
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { callBitrix } from "../src/client";
+import { callBitrix, callBitrixListAll } from "../src/client";
 import { getBitrixSyncEnv } from "../src/env";
-import { normalizeBitrixDealFieldsResult } from "../src/deal-fields-catalog";
+import {
+  mergeBitrixDealFieldRows,
+  normalizeBitrixDealFieldsResult,
+  normalizeBitrixDealUserfieldListItem,
+  type BitrixDealFieldRow,
+} from "../src/deal-fields-catalog";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = join(__dirname, "..", "data", "bitrix-deal-fields.json");
@@ -32,15 +41,39 @@ async function main() {
     { webhookBaseUrl: env.webhookBaseUrl },
   );
 
-  const fields = normalizeBitrixDealFieldsResult(raw);
+  const fromDealFields = normalizeBitrixDealFieldsResult(raw);
+
+  let fromUserfieldListCount = 0;
+  const userfieldRows: BitrixDealFieldRow[] = [];
+  try {
+    const ufItems = await callBitrixListAll<Record<string, unknown>>(
+      "crm.deal.userfield.list",
+      { order: { ID: "ASC" } },
+      { webhookBaseUrl: env.webhookBaseUrl },
+    );
+    fromUserfieldListCount = ufItems.length;
+    for (const item of ufItems) {
+      const row = normalizeBitrixDealUserfieldListItem(item);
+      if (row) userfieldRows.push(row);
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(
+      `Warning: crm.deal.userfield.list failed — catalog may miss some custom fields.\n  ${msg}`,
+    );
+  }
+
+  const fields = mergeBitrixDealFieldRows(fromDealFields, userfieldRows);
   const payload = {
     fetchedAt: new Date().toISOString(),
-    source: "crm.deal.fields",
+    source: "crm.deal.fields + crm.deal.userfield.list",
     fields,
   };
 
   writeFileSync(OUT, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  console.error(`Wrote ${fields.length} fields to ${OUT}`);
+  console.error(
+    `Wrote ${fields.length} unique fields to ${OUT} (crm.deal.fields: ${fromDealFields.length}; userfield.list rows: ${fromUserfieldListCount})`,
+  );
 }
 
 main().catch((e: unknown) => {

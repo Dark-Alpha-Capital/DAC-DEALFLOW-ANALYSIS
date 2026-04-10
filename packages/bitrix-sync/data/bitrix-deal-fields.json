@@ -1,6 +1,6 @@
 {
-  "fetchedAt": "2026-04-10T13:06:34.213Z",
-  "source": "crm.deal.fields",
+  "fetchedAt": "2026-04-10T18:46:33.133Z",
+  "source": "crm.deal.fields + crm.deal.userfield.list",
   "fields": [
     {
       "fieldId": "ADDITIONAL_INFO",
@@ -343,312 +343,312 @@
       "type": "file",
       "title": "UF_CRM_1711451843480",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1711451969495",
       "type": "file",
       "title": "UF_CRM_1711451969495",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1711452000619",
       "type": "file",
       "title": "UF_CRM_1711452000619",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1711452024710",
       "type": "file",
       "title": "UF_CRM_1711452024710",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1711452052144",
       "type": "file",
       "title": "UF_CRM_1711452052144",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1711452136399",
       "type": "file",
       "title": "UF_CRM_1711452136399",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1711452630282",
       "type": "file",
       "title": "UF_CRM_1711452630282",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1711453123087",
       "type": "string",
       "title": "UF_CRM_1711453123087",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1711453168658",
       "type": "string",
       "title": "UF_CRM_1711453168658",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1715146259470",
       "type": "money",
       "title": "UF_CRM_1715146259470",
       "isRequired": true,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1715146372084",
       "type": "url",
       "title": "UF_CRM_1715146372084",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1715146404315",
       "type": "url",
       "title": "UF_CRM_1715146404315",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1715146980041",
       "type": "file",
       "title": "UF_CRM_1715146980041",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": true
+      "isMultiple": true,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1717673027369",
       "type": "file",
       "title": "UF_CRM_1717673027369",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1718630813337",
       "type": "file",
       "title": "UF_CRM_1718630813337",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1719495863",
       "type": "boolean",
       "title": "UF_CRM_1719495863",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1719745217",
       "type": "enumeration",
       "title": "UF_CRM_1719745217",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1725445424",
       "type": "employee",
       "title": "UF_CRM_1725445424",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1727869474151",
       "type": "string",
       "title": "UF_CRM_1727869474151",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1727869546253",
       "type": "enumeration",
       "title": "UF_CRM_1727869546253",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1727888678216",
       "type": "string",
       "title": "UF_CRM_1727888678216",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1727888971381",
       "type": "string",
       "title": "UF_CRM_1727888971381",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1727889001723",
       "type": "enumeration",
       "title": "UF_CRM_1727889001723",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1727889391901",
       "type": "string",
       "title": "UF_CRM_1727889391901",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1727889446864",
       "type": "enumeration",
       "title": "UF_CRM_1727889446864",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1727889539189",
       "type": "address",
       "title": "UF_CRM_1727889539189",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1727889819492",
       "type": "boolean",
       "title": "UF_CRM_1727889819492",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1729100159456",
       "type": "string",
       "title": "UF_CRM_1729100159456",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1729599819567",
       "type": "enumeration",
       "title": "UF_CRM_1729599819567",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1729704250568",
       "type": "file",
       "title": "UF_CRM_1729704250568",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1755211118",
       "type": "employee",
       "title": "UF_CRM_1755211118",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1755272307",
       "type": "employee",
       "title": "UF_CRM_1755272307",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1756475586",
       "type": "employee",
       "title": "UF_CRM_1756475586",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1756475598",
       "type": "employee",
       "title": "UF_CRM_1756475598",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1756475611",
       "type": "string",
       "title": "UF_CRM_1756475611",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1756492026",
       "type": "employee",
       "title": "UF_CRM_1756492026",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": true
+      "isMultiple": true,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1761057953255",
       "type": "string",
       "title": "UF_CRM_1761057953255",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1761145550056",
       "type": "file",
       "title": "UF_CRM_1761145550056",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": true
+      "isMultiple": true,
+      "isReadOnly": false
     },
     {
       "fieldId": "UF_CRM_1763568458188",
       "type": "url",
       "title": "UF_CRM_1763568458188",
       "isRequired": false,
-      "isReadOnly": false,
-      "isMultiple": false
+      "isMultiple": false,
+      "isReadOnly": false
     },
     {
       "fieldId": "UTM_CAMPAIGN",

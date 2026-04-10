@@ -1,6 +1,6 @@
 import defaultCatalog from "../data/bitrix-deal-fields.json";
-import { BITRIX_UF } from "./deal-fields";
 import { getBitrixDealTeaserFieldCode } from "./env";
+import { getBitrixOpportunitySyncUfCodes } from "./opportunity-uf";
 
 export type BitrixDealFieldRow = {
   fieldId: string;
@@ -72,6 +72,84 @@ export function normalizeBitrixDealFieldsResult(
   }
   rows.sort((a, b) => a.fieldId.localeCompare(b.fieldId));
   return rows;
+}
+
+/** One row from `crm.deal.userfield.list` → catalog row (covers portals where UF_* are omitted from `crm.deal.fields`). */
+export function normalizeBitrixDealUserfieldListItem(
+  item: Record<string, unknown>,
+): BitrixDealFieldRow | null {
+  const fieldId =
+    typeof item.FIELD_NAME === "string" ? item.FIELD_NAME.trim() : "";
+  if (!fieldId) return null;
+  const type =
+    typeof item.USER_TYPE_ID === "string" && item.USER_TYPE_ID.trim()
+      ? item.USER_TYPE_ID.trim()
+      : "unknown";
+  const title =
+    (typeof item.EDIT_FORM_LABEL === "string" &&
+      item.EDIT_FORM_LABEL.trim()) ||
+    (typeof item.LIST_COLUMN_LABEL === "string" &&
+      item.LIST_COLUMN_LABEL.trim()) ||
+    (typeof item.LIST_FILTER_LABEL === "string" &&
+      item.LIST_FILTER_LABEL.trim()) ||
+    fieldId;
+  const isMultiple =
+    item.MULTIPLE === "Y" ? true : item.MULTIPLE === "N" ? false : undefined;
+  const isRequired =
+    item.MANDATORY === "Y" ? true : item.MANDATORY === "N" ? false : undefined;
+  return {
+    fieldId,
+    type,
+    title,
+    isRequired,
+    isMultiple,
+  };
+}
+
+function pickMergedFieldTitle(
+  fieldId: string,
+  fromUserfield: string,
+  fromDealFields: string,
+): string {
+  const good = (t: string) => Boolean(t.trim()) && t.trim() !== fieldId;
+  const u = fromUserfield.trim();
+  const d = fromDealFields.trim();
+  if (good(d)) return d;
+  if (good(u)) return u;
+  return d || u || fieldId;
+}
+
+/**
+ * Union of `crm.deal.fields` and `crm.deal.userfield.list`.
+ * Merges labels when `crm.deal.fields` only exposes the raw `UF_*` id as the title.
+ */
+export function mergeBitrixDealFieldRows(
+  fromDealFields: BitrixDealFieldRow[],
+  fromUserfieldList: BitrixDealFieldRow[],
+): BitrixDealFieldRow[] {
+  const byId = new Map<string, BitrixDealFieldRow>();
+  for (const row of fromUserfieldList) {
+    byId.set(row.fieldId, { ...row });
+  }
+  for (const row of fromDealFields) {
+    const existing = byId.get(row.fieldId);
+    if (existing) {
+      byId.set(row.fieldId, {
+        ...existing,
+        ...row,
+        title: pickMergedFieldTitle(row.fieldId, existing.title, row.title),
+        isRequired:
+          row.isRequired !== undefined ? row.isRequired : existing.isRequired,
+        isReadOnly:
+          row.isReadOnly !== undefined ? row.isReadOnly : existing.isReadOnly,
+        isMultiple:
+          row.isMultiple !== undefined ? row.isMultiple : existing.isMultiple,
+      });
+    } else {
+      byId.set(row.fieldId, row);
+    }
+  }
+  return [...byId.values()].sort((a, b) => a.fieldId.localeCompare(b.fieldId));
 }
 
 function parseCatalogJson(raw: string): BitrixDealFieldRow[] {
@@ -195,37 +273,43 @@ export function getAiBitrixFormFieldMeta(): Record<
     key: AiBitrixFormFieldKey,
     bitrixFieldId: string,
   ): { label: string; bitrixFieldId: string } => {
-    const row = byId.get(bitrixFieldId);
+    const id = bitrixFieldId.trim();
+    if (!id) {
+      return { label: FALLBACK_LABELS[key], bitrixFieldId: "" };
+    }
+    const row = byId.get(id);
     const portalTitle = row?.title?.trim();
     const usePortalTitle =
       Boolean(portalTitle) &&
-      portalTitle !== bitrixFieldId &&
-      !mergedIntoComments(key, bitrixFieldId);
-    const label = usePortalTitle && portalTitle ? portalTitle : FALLBACK_LABELS[key];
-    return { label, bitrixFieldId };
+      portalTitle !== id &&
+      !mergedIntoComments(key, id);
+    const label =
+      usePortalTitle && portalTitle ? portalTitle : FALLBACK_LABELS[key];
+    return { label, bitrixFieldId: id };
   };
 
+  const uf = getBitrixOpportunitySyncUfCodes();
   const teaserTarget = teaserUf ?? "COMMENTS";
 
   return {
     title: resolve("title", "TITLE"),
     stageId: resolve("stageId", "STAGE_ID"),
     opportunity: resolve("opportunity", "OPPORTUNITY"),
-    revenue: resolve("revenue", BITRIX_UF.revenue),
+    revenue: resolve("revenue", uf.revenue),
     currencyId: resolve("currencyId", "CURRENCY_ID"),
     teaser: resolve("teaser", teaserTarget),
     description: resolve("description", "COMMENTS"),
     comments: resolve("comments", "COMMENTS"),
-    sourceWebsite: resolve("sourceWebsite", BITRIX_UF.sourceWebsite),
-    companyLocation: resolve("companyLocation", BITRIX_UF.companyLocation),
+    sourceWebsite: resolve("sourceWebsite", uf.sourceWebsite),
+    companyLocation: resolve("companyLocation", uf.companyLocation),
     industry: resolve("industry", "COMMENTS"),
-    askingPrice: resolve("askingPrice", BITRIX_UF.askingPrice),
+    askingPrice: resolve("askingPrice", uf.askingPrice),
     ebitda: resolve("ebitda", "COMMENTS"),
     ebitdaMargin: resolve("ebitdaMargin", "COMMENTS"),
-    brokerFirstName: resolve("brokerFirstName", BITRIX_UF.brokerFirstName),
-    brokerLastName: resolve("brokerLastName", BITRIX_UF.brokerLastName),
-    brokerEmail: resolve("brokerEmail", BITRIX_UF.brokerEmail),
-    brokerPhone: resolve("brokerPhone", BITRIX_UF.brokerWorkPhone),
-    brokerLinkedIn: resolve("brokerLinkedIn", BITRIX_UF.brokerLinkedIn),
+    brokerFirstName: resolve("brokerFirstName", uf.brokerFirstName),
+    brokerLastName: resolve("brokerLastName", uf.brokerLastName),
+    brokerEmail: resolve("brokerEmail", uf.brokerEmail),
+    brokerPhone: resolve("brokerPhone", uf.brokerWorkPhone),
+    brokerLinkedIn: resolve("brokerLinkedIn", uf.brokerLinkedIn),
   };
 }
