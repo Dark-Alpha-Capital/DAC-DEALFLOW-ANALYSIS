@@ -1,11 +1,11 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useRouter } from "@/lib/navigation-shim";
 import { bitrixDealOpportunityExtractionSchema } from "@repo/bitrix-sync";
 import { toast } from "sonner";
-import { Check, Loader2, Pencil, Sparkles } from "lucide-react";
+import { Check, Loader2, Sparkles } from "lucide-react";
 import { useTRPC } from "@/trpc/client";
 import { useSession } from "@/lib/auth-client";
 import BackButton from "@/components/Buttons/back-button";
@@ -161,7 +161,6 @@ export function AiBitrixInjectWorkspace() {
 
   const [rawText, setRawText] = useState("");
   const [draft, setDraft] = useState<ReviewDraft | null>(null);
-  const [editing, setEditing] = useState(false);
 
   const suggestedStage = bx?.suggestedStageId ?? "";
 
@@ -186,8 +185,7 @@ export function AiBitrixInjectWorkspace() {
         toast.error("Title and opportunity amount are required in the result");
         return;
       }
-      setDraft(next);
-      setEditing(false);
+           setDraft(next);
       toast.success("Extraction complete — review below");
     },
   });
@@ -214,21 +212,17 @@ export function AiBitrixInjectWorkspace() {
 
   const canExtract = rawText.trim().length > 0 && !isLoading;
 
-  const validationError = useMemo(() => {
-    if (!draft) return null;
-    if (!draft.title.trim()) return "Title is required";
-    if (!draft.stageId.trim()) return "Bitrix stage is required";
-    if (Number.isNaN(draft.opportunity)) return "Opportunity amount is invalid";
-    if (!draft.sourceWebsite.trim())
-      return "Source website is required (add a listing or company URL)";
-    return null;
-  }, [draft]);
-
-  const sourceWebsiteInvalid = draft != null && !draft.sourceWebsite.trim();
-
   const onConfirm = useCallback(async () => {
-    if (!draft || validationError) return;
+    if (!draft) return;
     const d = draft;
+    const title = d.title.trim() || "Untitled deal";
+    const stageId =
+      d.stageId.trim() ||
+      suggestedStage ||
+      stages[0]?.statusId ||
+      "NEW";
+    const opportunity = Number.isNaN(d.opportunity) ? 0 : d.opportunity;
+
     const descParts = [
       d.description.trim() || null,
       d.industry.trim() ? `Industry: ${d.industry.trim()}` : null,
@@ -236,7 +230,7 @@ export function AiBitrixInjectWorkspace() {
     ].filter(Boolean);
 
     const created = await createMutation.mutateAsync({
-      dealTeaser: d.teaser.trim() || d.title.trim(),
+      dealTeaser: d.teaser.trim() || title,
       description: descParts.length ? descParts.join("\n\n") : undefined,
       sourceWebsite: d.sourceWebsite.trim() || undefined,
       brokerFirstName: d.brokerFirstName.trim() || undefined,
@@ -244,7 +238,7 @@ export function AiBitrixInjectWorkspace() {
       brokerEmail: d.brokerEmail.trim() || undefined,
       brokerPhone: d.brokerPhone.trim() || undefined,
       brokerLinkedIn: d.brokerLinkedIn.trim() || undefined,
-      revenue: d.revenue ?? d.opportunity,
+      revenue: d.revenue ?? opportunity,
       ebitda: d.ebitda ?? undefined,
       ebitdaMargin: d.ebitdaMargin ?? undefined,
       askingPrice: d.askingPrice ?? undefined,
@@ -258,9 +252,9 @@ export function AiBitrixInjectWorkspace() {
 
     const synced = await syncMutation.mutateAsync({
       dealOpportunityId,
-      title: d.title.trim(),
-      stageId: d.stageId.trim(),
-      opportunity: d.opportunity,
+      title,
+      stageId,
+      opportunity,
       currencyId: d.currencyId.trim() || "USD",
       comments: d.comments.trim() || undefined,
       sourceWebsite: d.sourceWebsite.trim() || null,
@@ -274,7 +268,7 @@ export function AiBitrixInjectWorkspace() {
       askingPrice: d.askingPrice,
       ebitda: d.ebitda,
       ebitdaMargin: d.ebitdaMargin,
-      revenue: d.revenue,
+      revenue: d.revenue ?? opportunity,
       teaser: d.teaser.trim() || null,
       description: d.description.trim() || null,
     });
@@ -285,7 +279,14 @@ export function AiBitrixInjectWorkspace() {
       window.open(synced.bitrixLink, "_blank", "noopener,noreferrer");
     }
     router.push(`/deal-opportunities/${dealOpportunityId}`);
-  }, [createMutation, draft, router, syncMutation, validationError]);
+  }, [
+    createMutation,
+    draft,
+    router,
+    stages,
+    suggestedStage,
+    syncMutation,
+  ]);
 
   const displayObject = draft ?? object;
 
@@ -350,23 +351,6 @@ export function AiBitrixInjectWorkspace() {
         </Alert>
       )}
 
-      {!isLoggedIn && (
-        <Alert>
-          <AlertTitle>Public tool</AlertTitle>
-          <AlertDescription className="text-sm">
-            Extract and review work without signing in. To create a deal
-            opportunity in the app and sync to Bitrix24,{" "}
-            <Link
-              to="/auth/login"
-              className="text-primary font-medium underline-offset-4 hover:underline"
-            >
-              sign in
-            </Link>
-            .
-          </AlertDescription>
-        </Alert>
-      )}
-
       {bx?.webhookConfigured && !bx?.teaserFieldConfigured && (
         <Alert>
           <AlertTitle>Bitrix teaser field</AlertTitle>
@@ -427,7 +411,6 @@ export function AiBitrixInjectWorkspace() {
                 onClick={() => {
                   clear();
                   setDraft(null);
-                  setEditing(false);
                   setRawText("");
                 }}
               >
@@ -462,31 +445,10 @@ export function AiBitrixInjectWorkspace() {
                 {isLoading || displayObject
                   ? isLoading
                     ? "Fields appear as the model fills them in."
-                    : "Confirm values, pick a Bitrix stage, then create & sync."
+                    : "Edit values as needed, pick a Bitrix stage, then create & sync."
                   : "Run extract to populate fields from the text on the left."}
               </CardDescription>
             </div>
-            {draft && !isLoading ? (
-              <Button
-                type="button"
-                variant={editing ? "secondary" : "outline"}
-                size="sm"
-                className="shrink-0 gap-1.5"
-                onClick={() => setEditing((e) => !e)}
-              >
-                {editing ? (
-                  <>
-                    <Check className="h-3.5 w-3.5" />
-                    Done editing
-                  </>
-                ) : (
-                  <>
-                    <Pencil className="h-3.5 w-3.5" />
-                    Edit
-                  </>
-                )}
-              </Button>
-            ) : null}
           </CardHeader>
           <CardContent
             className={
@@ -518,7 +480,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.title.bitrixFieldId}>
                   {fm?.title.label ?? "Title"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     value={draft.title}
                     onChange={(e) =>
@@ -536,7 +498,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.opportunity.bitrixFieldId}>
                   {fm?.opportunity.label ?? "Opportunity (deal value)"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -568,7 +530,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.currencyId.bitrixFieldId}>
                   {fm?.currencyId.label ?? "Currency"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     value={draft.currencyId}
                     onChange={(e) =>
@@ -589,7 +551,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.revenue.bitrixFieldId}>
                   {fm?.revenue.label ?? "Revenue (TTM / company)"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -619,7 +581,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.teaser.bitrixFieldId}>
                   {fm?.teaser.label ?? "Teaser"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     value={draft.teaser}
                     onChange={(e) =>
@@ -640,7 +602,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.description.bitrixFieldId}>
                   {fm?.description.label ?? "Description"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Textarea
                     rows={4}
                     value={draft.description}
@@ -662,7 +624,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.comments.bitrixFieldId}>
                   {fm?.comments.label ?? "Comments (extra)"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Textarea
                     rows={3}
                     value={draft.comments}
@@ -680,20 +642,11 @@ export function AiBitrixInjectWorkspace() {
                 )}
               </div>
 
-              <div
-                className={
-                  sourceWebsiteInvalid
-                    ? "ring-destructive/35 ring-offset-background space-y-1.5 rounded-md ring-2 ring-offset-2"
-                    : "space-y-1.5"
-                }
-              >
-                <FieldLabel
-                  required
-                  bitrixFieldId={fm?.sourceWebsite.bitrixFieldId}
-                >
+              <div className="space-y-1.5">
+                <FieldLabel bitrixFieldId={fm?.sourceWebsite.bitrixFieldId}>
                   {fm?.sourceWebsite.label ?? "Source website"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     value={draft.sourceWebsite}
                     onChange={(e) =>
@@ -701,9 +654,6 @@ export function AiBitrixInjectWorkspace() {
                         d ? { ...d, sourceWebsite: e.target.value } : d,
                       )
                     }
-                    required
-                    aria-required
-                    aria-invalid={sourceWebsiteInvalid}
                     placeholder="https://…"
                     inputMode="url"
                     autoComplete="url"
@@ -720,7 +670,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.companyLocation.bitrixFieldId}>
                   {fm?.companyLocation.label ?? "Company location"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     value={draft.companyLocation}
                     onChange={(e) =>
@@ -741,7 +691,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.industry.bitrixFieldId}>
                   {fm?.industry.label ?? "Industry"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     value={draft.industry}
                     onChange={(e) =>
@@ -762,7 +712,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.askingPrice.bitrixFieldId}>
                   {fm?.askingPrice.label ?? "Asking price"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -795,7 +745,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.ebitda.bitrixFieldId}>
                   {fm?.ebitda.label ?? "EBITDA"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -825,7 +775,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.ebitdaMargin.bitrixFieldId}>
                   {fm?.ebitdaMargin.label ?? "EBITDA margin"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -860,7 +810,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.brokerFirstName.bitrixFieldId}>
                   {fm?.brokerFirstName.label ?? "Broker first name"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     value={draft.brokerFirstName}
                     onChange={(e) =>
@@ -881,7 +831,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.brokerLastName.bitrixFieldId}>
                   {fm?.brokerLastName.label ?? "Broker last name"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     value={draft.brokerLastName}
                     onChange={(e) =>
@@ -902,7 +852,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.brokerEmail.bitrixFieldId}>
                   {fm?.brokerEmail.label ?? "Broker email"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     value={draft.brokerEmail}
                     onChange={(e) =>
@@ -923,7 +873,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.brokerPhone.bitrixFieldId}>
                   {fm?.brokerPhone.label ?? "Broker phone"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     value={draft.brokerPhone}
                     onChange={(e) =>
@@ -944,7 +894,7 @@ export function AiBitrixInjectWorkspace() {
                 <FieldLabel bitrixFieldId={fm?.brokerLinkedIn.bitrixFieldId}>
                   {fm?.brokerLinkedIn.label ?? "Broker LinkedIn"}
                 </FieldLabel>
-                {editing && draft ? (
+                {draft ? (
                   <Input
                     value={draft.brokerLinkedIn}
                     onChange={(e) =>
@@ -1013,24 +963,10 @@ export function AiBitrixInjectWorkspace() {
                   )}
                 </div>
 
-                {validationError ? (
-                  <p className="text-destructive text-sm">{validationError}</p>
-                ) : null}
-                {!isLoggedIn && draft ? (
-                  <p className="text-muted-foreground text-sm">
-                    Sign in to create the opportunity and sync to Bitrix.
-                  </p>
-                ) : null}
-
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Button
                     type="button"
-                    disabled={
-                      Boolean(validationError) ||
-                      busy ||
-                      !isLoggedIn ||
-                      !bx?.webhookConfigured
-                    }
+                    disabled={busy || !draft}
                     onClick={() => void onConfirm()}
                     className="gap-2"
                   >

@@ -471,9 +471,11 @@ export const dealsRouter = createTRPCRouter({
       return { dealId: addedDeal?.id };
     }),
 
-  createOpportunity: protectedProcedure
+  /** Public so the Bitrix-embedded AI widget can create rows without app login (page is gated by Bitrix middleware). */
+  createOpportunity: publicProcedure
     .input(createDealOpportunitySchema)
     .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user?.id ?? null;
       const hasFinancials =
         input.revenue != null ||
         input.ebitda != null ||
@@ -498,7 +500,7 @@ export const dealsRouter = createTRPCRouter({
           brokerEmail: input.brokerEmail || null,
           brokerPhone: input.brokerPhone || null,
           brokerLinkedIn: input.brokerLinkedIn || null,
-          userId: ctx.user.id,
+          userId,
         })
         .returning();
 
@@ -511,7 +513,7 @@ export const dealsRouter = createTRPCRouter({
             ebitdaMargin: input.ebitdaMargin ?? null,
             askingPrice: input.askingPrice ?? null,
             source: "LISTING",
-            createdById: ctx.user.id,
+            createdById: userId,
           });
         }
         await upsertDealOpportunityScreening(added.id);
@@ -1633,7 +1635,8 @@ export const dealsRouter = createTRPCRouter({
     };
   }),
 
-  syncDealOpportunityToBitrix: protectedProcedure
+  /** Public for the Bitrix-embedded AI widget (same middleware story as createOpportunity). */
+  syncDealOpportunityToBitrix: publicProcedure
     .input(bitrixSyncDealOpportunitySchema)
     .mutation(async ({ input }) => {
       const env = getBitrixSyncEnv();
