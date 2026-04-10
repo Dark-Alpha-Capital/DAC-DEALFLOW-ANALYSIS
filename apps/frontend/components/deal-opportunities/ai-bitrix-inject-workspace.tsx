@@ -1,25 +1,15 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { useRouter } from "@/lib/navigation-shim";
 import { bitrixDealOpportunityExtractionSchema } from "@repo/bitrix-sync";
 import { toast } from "sonner";
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { useTRPC } from "@/trpc/client";
-import { useSession } from "@/lib/auth-client";
-import BackButton from "@/components/Buttons/back-button";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Select,
@@ -133,7 +123,7 @@ function FieldLabel({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+      <span className="text-xs font-semibold tracking-wide uppercase">
         {children}
         {isRequired ? (
           <span className="text-destructive ml-0.5" aria-hidden>
@@ -142,7 +132,7 @@ function FieldLabel({
         ) : null}
       </span>
       {bitrixFieldId ? (
-        <span className="text-muted-foreground/80 font-mono text-[10px] leading-tight tracking-tight">
+        <span className="text-foreground/70 font-mono text-[10px] leading-tight tracking-tight">
           {bitrixFieldId}
         </span>
       ) : null}
@@ -153,8 +143,6 @@ function FieldLabel({
 export function AiBitrixInjectWorkspace() {
   const trpc = useTRPC();
   const router = useRouter();
-  const { data: sessionData } = useSession();
-  const isLoggedIn = Boolean(sessionData?.user?.id);
   const { data: bx } = useQuery(
     trpc.dealOpportunities.getBitrixAiInjectContext.queryOptions(),
   );
@@ -185,7 +173,7 @@ export function AiBitrixInjectWorkspace() {
         toast.error("Title and opportunity amount are required in the result");
         return;
       }
-           setDraft(next);
+      setDraft(next);
       toast.success("Extraction complete — review below");
     },
   });
@@ -217,10 +205,7 @@ export function AiBitrixInjectWorkspace() {
     const d = draft;
     const title = d.title.trim() || "Untitled deal";
     const stageId =
-      d.stageId.trim() ||
-      suggestedStage ||
-      stages[0]?.statusId ||
-      "NEW";
+      d.stageId.trim() || suggestedStage || stages[0]?.statusId || "NEW";
     const opportunity = Number.isNaN(d.opportunity) ? 0 : d.opportunity;
 
     const descParts = [
@@ -279,40 +264,23 @@ export function AiBitrixInjectWorkspace() {
       window.open(synced.bitrixLink, "_blank", "noopener,noreferrer");
     }
     router.push(`/deal-opportunities/${dealOpportunityId}`);
-  }, [
-    createMutation,
-    draft,
-    router,
-    stages,
-    suggestedStage,
-    syncMutation,
-  ]);
+  }, [createMutation, draft, router, stages, suggestedStage, syncMutation]);
 
   const displayObject = draft ?? object;
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 pb-16">
-      <div>
-        <BackButton label="Back" />
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-lg">
-            <Sparkles className="h-5 w-5" aria-hidden />
-          </div>
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              AI → Bitrix24
-            </h1>
-            <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-relaxed">
-              Paste raw deal text. We stream fields that match your Bitrix sync,
-              then create a deal opportunity in the app and push to Bitrix in
-              one step.
-            </p>
-          </div>
-        </div>
-      </div>
+      <header className="space-y-1">
+        <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight md:text-4xl">
+          <Sparkles className="h-8 w-8 shrink-0" aria-hidden />
+          AI → Bitrix24
+        </h1>
+        <p className="text-foreground/80 max-w-2xl text-sm leading-relaxed">
+          Paste raw deal text. We stream fields that match your Bitrix sync,
+          then create a deal opportunity in the app and push to Bitrix in one
+          step.
+        </p>
+      </header>
 
       {!bx?.webhookConfigured && (
         <Alert variant="destructive">
@@ -351,33 +319,20 @@ export function AiBitrixInjectWorkspace() {
         </Alert>
       )}
 
-      {bx?.webhookConfigured && !bx?.teaserFieldConfigured && (
-        <Alert>
-          <AlertTitle>Bitrix teaser field</AlertTitle>
-          <AlertDescription className="text-sm">
-            Set <code className="text-xs">BITRIX_DEAL_TEASER_UF</code> to your
-            deal teaser/summary field code (CRM → Settings → Deal fields) so
-            teaser, description, and comments sync into that field.{" "}
-            <code className="text-xs">COMMENTS</code> still receives the full
-            merged text including industry and financial lines.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
-        <Card className="border-border/80 flex min-h-[320px] flex-col shadow-sm lg:min-h-[min(100vh-11rem,920px)]">
-          <CardHeader className="shrink-0 pb-4">
-            <CardTitle className="text-lg">Source text</CardTitle>
-            <CardDescription>
+      <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
+        <section className="flex min-h-[280px] flex-col gap-4 lg:min-h-[min(100vh-12rem,880px)]">
+          <div>
+            <h2 className="text-lg font-semibold">Source text</h2>
+            <p className="text-foreground/80 text-sm">
               Teaser, email thread, notes — anything that describes the deal.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
+            </p>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-4">
             <Textarea
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
               placeholder="Paste deal opportunity text here…"
-              className="bg-muted/30 border-border/60 min-h-[200px] flex-1 resize-y text-base leading-relaxed"
+              className="min-h-[200px] flex-1 resize-y text-base leading-relaxed"
               disabled={isLoading}
               aria-label="Raw deal text"
             />
@@ -422,495 +377,487 @@ export function AiBitrixInjectWorkspace() {
                 {error.message}
               </p>
             ) : null}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <Card
-          className={`border-border/80 flex min-h-[320px] flex-col shadow-sm lg:min-h-[min(100vh-11rem,920px)] ${
-            isLoading || displayObject
-              ? "from-muted/20 to-card bg-linear-to-b"
-              : ""
-          }`}
-        >
-          <CardHeader className="flex shrink-0 flex-row items-start justify-between gap-4 pb-4">
-            <div className="min-w-0">
-              <CardTitle className="text-lg">
-                {isLoading || displayObject
-                  ? isLoading
-                    ? "Streaming extraction"
-                    : "AI result — review"
-                  : "AI extraction"}
-              </CardTitle>
-              <CardDescription>
-                {isLoading || displayObject
-                  ? isLoading
-                    ? "Fields appear as the model fills them in."
-                    : "Edit values as needed, pick a Bitrix stage, then create & sync."
-                  : "Run extract to populate fields from the text on the left."}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent
+        <section className="flex min-h-[280px] flex-col gap-4 lg:min-h-[min(100vh-12rem,880px)]">
+          <div>
+            <h2 className="text-lg font-semibold">
+              {isLoading || displayObject
+                ? isLoading
+                  ? "Streaming extraction"
+                  : "AI result — review"
+                : "AI extraction"}
+            </h2>
+            <p className="text-foreground/80 text-sm">
+              {isLoading || displayObject
+                ? isLoading
+                  ? "Fields appear as the model fills them in."
+                  : "Edit values as needed, pick a Bitrix stage, then create & sync."
+                : "Run extract to populate fields from the text on the left."}
+            </p>
+          </div>
+          <div
             className={
               isLoading || displayObject
                 ? "flex min-h-0 flex-1 flex-col space-y-6 overflow-y-auto"
-                : "text-muted-foreground flex flex-1 flex-col items-center justify-center gap-3 py-10 text-center text-sm"
+                : "text-foreground/80 flex flex-1 flex-col items-center justify-center gap-3 py-10 text-center text-sm"
             }
           >
             {!isLoading && !displayObject ? (
               <>
-                <Sparkles
-                  className="text-muted-foreground/50 h-10 w-10"
-                  aria-hidden
-                />
+                <Sparkles className="h-10 w-10 opacity-50" aria-hidden />
                 <p>Paste deal text on the left, then use Extract with AI.</p>
               </>
             ) : null}
 
             {isLoading && !displayObject ? (
-              <div className="text-muted-foreground flex items-center gap-2 text-sm">
+              <div className="text-foreground/80 flex items-center gap-2 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Waiting for first tokens…
               </div>
             ) : null}
 
             {(isLoading || displayObject) && (
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div className="space-y-1.5 sm:col-span-2">
-                <FieldLabel bitrixFieldId={fm?.title.bitrixFieldId}>
-                  {fm?.title.label ?? "Title"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    value={draft.title}
-                    onChange={(e) =>
-                      setDraft((d) => (d ? { ...d, title: e.target.value } : d))
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm font-medium">
-                    {(displayObject as { title?: string })?.title || "—"}
-                  </p>
-                )}
-              </div>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <FieldLabel bitrixFieldId={fm?.title.bitrixFieldId}>
+                    {fm?.title.label ?? "Title"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      value={draft.title}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, title: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-sm font-medium">
+                      {(displayObject as { title?: string })?.title || "—"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.opportunity.bitrixFieldId}>
-                  {fm?.opportunity.label ?? "Opportunity (deal value)"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    value={commaInputValue(draft.opportunity)}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d
-                          ? {
-                              ...d,
-                              opportunity: parseRequiredCommaNumber(
-                                formatNumberWithCommas(e.target.value),
-                              ),
-                            }
-                          : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm tabular-nums">
-                    {commaReadOnly(
-                      (displayObject as { opportunity?: number })?.opportunity,
-                    )}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.opportunity.bitrixFieldId}>
+                    {fm?.opportunity.label ?? "Opportunity (deal value)"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={commaInputValue(draft.opportunity)}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d
+                            ? {
+                                ...d,
+                                opportunity: parseRequiredCommaNumber(
+                                  formatNumberWithCommas(e.target.value),
+                                ),
+                              }
+                            : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-sm tabular-nums">
+                      {commaReadOnly(
+                        (displayObject as { opportunity?: number })
+                          ?.opportunity,
+                      )}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.currencyId.bitrixFieldId}>
-                  {fm?.currencyId.label ?? "Currency"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    value={draft.currencyId}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, currencyId: e.target.value } : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground font-mono text-sm">
-                    {(displayObject as { currencyId?: string })?.currencyId ||
-                      "USD"}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.currencyId.bitrixFieldId}>
+                    {fm?.currencyId.label ?? "Currency"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      value={draft.currencyId}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, currencyId: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="font-mono text-sm">
+                      {(displayObject as { currencyId?: string })?.currencyId ||
+                        "USD"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.revenue.bitrixFieldId}>
-                  {fm?.revenue.label ?? "Revenue (TTM / company)"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    value={commaInputValue(draft.revenue)}
-                    onChange={(e) => {
-                      const f = formatNumberWithCommas(e.target.value);
-                      const p = unformatNumber(f).trim();
-                      setDraft((d) => {
-                        if (!d) return d;
-                        if (p === "") return { ...d, revenue: null };
-                        const n = Number(p);
-                        return Number.isFinite(n) ? { ...d, revenue: n } : d;
-                      });
-                    }}
-                  />
-                ) : (
-                  <p className="text-foreground text-sm tabular-nums">
-                    {commaReadOnly(
-                      (displayObject as { revenue?: number | null })?.revenue,
-                    )}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.revenue.bitrixFieldId}>
+                    {fm?.revenue.label ?? "Revenue (TTM / company)"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={commaInputValue(draft.revenue)}
+                      onChange={(e) => {
+                        const f = formatNumberWithCommas(e.target.value);
+                        const p = unformatNumber(f).trim();
+                        setDraft((d) => {
+                          if (!d) return d;
+                          if (p === "") return { ...d, revenue: null };
+                          const n = Number(p);
+                          return Number.isFinite(n) ? { ...d, revenue: n } : d;
+                        });
+                      }}
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm tabular-nums">
+                      {commaReadOnly(
+                        (displayObject as { revenue?: number | null })?.revenue,
+                      )}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <FieldLabel bitrixFieldId={fm?.teaser.bitrixFieldId}>
-                  {fm?.teaser.label ?? "Teaser"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    value={draft.teaser}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, teaser: e.target.value } : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm">
-                    {(displayObject as { teaser?: string | null })?.teaser ||
-                      "—"}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <FieldLabel bitrixFieldId={fm?.teaser.bitrixFieldId}>
+                    {fm?.teaser.label ?? "Teaser"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      value={draft.teaser}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, teaser: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm">
+                      {(displayObject as { teaser?: string | null })?.teaser ||
+                        "—"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <FieldLabel bitrixFieldId={fm?.description.bitrixFieldId}>
-                  {fm?.description.label ?? "Description"}
-                </FieldLabel>
-                {draft ? (
-                  <Textarea
-                    rows={4}
-                    value={draft.description}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, description: e.target.value } : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm whitespace-pre-wrap">
-                    {(displayObject as { description?: string | null })
-                      ?.description || "—"}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <FieldLabel bitrixFieldId={fm?.description.bitrixFieldId}>
+                    {fm?.description.label ?? "Description"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Textarea
+                      rows={4}
+                      value={draft.description}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, description: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm whitespace-pre-wrap">
+                      {(displayObject as { description?: string | null })
+                        ?.description || "—"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <FieldLabel bitrixFieldId={fm?.comments.bitrixFieldId}>
-                  {fm?.comments.label ?? "Comments (extra)"}
-                </FieldLabel>
-                {draft ? (
-                  <Textarea
-                    rows={3}
-                    value={draft.comments}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, comments: e.target.value } : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm whitespace-pre-wrap">
-                    {(displayObject as { comments?: string | null })
-                      ?.comments || "—"}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <FieldLabel bitrixFieldId={fm?.comments.bitrixFieldId}>
+                    {fm?.comments.label ?? "Comments (extra)"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Textarea
+                      rows={3}
+                      value={draft.comments}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, comments: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm whitespace-pre-wrap">
+                      {(displayObject as { comments?: string | null })
+                        ?.comments || "—"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.sourceWebsite.bitrixFieldId}>
-                  {fm?.sourceWebsite.label ?? "Source website"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    value={draft.sourceWebsite}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, sourceWebsite: e.target.value } : d,
-                      )
-                    }
-                    placeholder="https://…"
-                    inputMode="url"
-                    autoComplete="url"
-                  />
-                ) : (
-                  <p className="text-foreground text-sm break-all">
-                    {(displayObject as { sourceWebsite?: string | null })
-                      ?.sourceWebsite || "—"}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.sourceWebsite.bitrixFieldId}>
+                    {fm?.sourceWebsite.label ?? "Source website"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      value={draft.sourceWebsite}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, sourceWebsite: e.target.value } : d,
+                        )
+                      }
+                      placeholder="https://…"
+                      inputMode="url"
+                      autoComplete="url"
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm break-all">
+                      {(displayObject as { sourceWebsite?: string | null })
+                        ?.sourceWebsite || "—"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.companyLocation.bitrixFieldId}>
-                  {fm?.companyLocation.label ?? "Company location"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    value={draft.companyLocation}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, companyLocation: e.target.value } : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm">
-                    {(displayObject as { companyLocation?: string | null })
-                      ?.companyLocation || "—"}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.companyLocation.bitrixFieldId}>
+                    {fm?.companyLocation.label ?? "Company location"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      value={draft.companyLocation}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, companyLocation: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm">
+                      {(displayObject as { companyLocation?: string | null })
+                        ?.companyLocation || "—"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <FieldLabel bitrixFieldId={fm?.industry.bitrixFieldId}>
-                  {fm?.industry.label ?? "Industry"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    value={draft.industry}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, industry: e.target.value } : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm">
-                    {(displayObject as { industry?: string | null })
-                      ?.industry || "—"}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <FieldLabel bitrixFieldId={fm?.industry.bitrixFieldId}>
+                    {fm?.industry.label ?? "Industry"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      value={draft.industry}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, industry: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm">
+                      {(displayObject as { industry?: string | null })
+                        ?.industry || "—"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.askingPrice.bitrixFieldId}>
-                  {fm?.askingPrice.label ?? "Asking price"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    value={commaInputValue(draft.askingPrice)}
-                    onChange={(e) => {
-                      const f = formatNumberWithCommas(e.target.value);
-                      const p = unformatNumber(f).trim();
-                      setDraft((d) => {
-                        if (!d) return d;
-                        if (p === "") return { ...d, askingPrice: null };
-                        const n = Number(p);
-                        return Number.isFinite(n)
-                          ? { ...d, askingPrice: n }
-                          : d;
-                      });
-                    }}
-                  />
-                ) : (
-                  <p className="text-foreground text-sm tabular-nums">
-                    {commaReadOnly(
-                      (displayObject as { askingPrice?: number | null })
-                        ?.askingPrice,
-                    )}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.askingPrice.bitrixFieldId}>
+                    {fm?.askingPrice.label ?? "Asking price"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={commaInputValue(draft.askingPrice)}
+                      onChange={(e) => {
+                        const f = formatNumberWithCommas(e.target.value);
+                        const p = unformatNumber(f).trim();
+                        setDraft((d) => {
+                          if (!d) return d;
+                          if (p === "") return { ...d, askingPrice: null };
+                          const n = Number(p);
+                          return Number.isFinite(n)
+                            ? { ...d, askingPrice: n }
+                            : d;
+                        });
+                      }}
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm tabular-nums">
+                      {commaReadOnly(
+                        (displayObject as { askingPrice?: number | null })
+                          ?.askingPrice,
+                      )}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.ebitda.bitrixFieldId}>
-                  {fm?.ebitda.label ?? "EBITDA"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    value={commaInputValue(draft.ebitda)}
-                    onChange={(e) => {
-                      const f = formatNumberWithCommas(e.target.value);
-                      const p = unformatNumber(f).trim();
-                      setDraft((d) => {
-                        if (!d) return d;
-                        if (p === "") return { ...d, ebitda: null };
-                        const n = Number(p);
-                        return Number.isFinite(n) ? { ...d, ebitda: n } : d;
-                      });
-                    }}
-                  />
-                ) : (
-                  <p className="text-foreground text-sm tabular-nums">
-                    {commaReadOnly(
-                      (displayObject as { ebitda?: number | null })?.ebitda,
-                    )}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.ebitda.bitrixFieldId}>
+                    {fm?.ebitda.label ?? "EBITDA"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={commaInputValue(draft.ebitda)}
+                      onChange={(e) => {
+                        const f = formatNumberWithCommas(e.target.value);
+                        const p = unformatNumber(f).trim();
+                        setDraft((d) => {
+                          if (!d) return d;
+                          if (p === "") return { ...d, ebitda: null };
+                          const n = Number(p);
+                          return Number.isFinite(n) ? { ...d, ebitda: n } : d;
+                        });
+                      }}
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm tabular-nums">
+                      {commaReadOnly(
+                        (displayObject as { ebitda?: number | null })?.ebitda,
+                      )}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.ebitdaMargin.bitrixFieldId}>
-                  {fm?.ebitdaMargin.label ?? "EBITDA margin"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    value={commaInputValue(draft.ebitdaMargin)}
-                    onChange={(e) => {
-                      const f = formatNumberWithCommas(e.target.value);
-                      const p = unformatNumber(f).trim();
-                      setDraft((d) => {
-                        if (!d) return d;
-                        if (p === "") return { ...d, ebitdaMargin: null };
-                        const n = Number(p);
-                        return Number.isFinite(n)
-                          ? { ...d, ebitdaMargin: n }
-                          : d;
-                      });
-                    }}
-                  />
-                ) : (
-                  <p className="text-foreground text-sm tabular-nums">
-                    {commaReadOnly(
-                      (displayObject as { ebitdaMargin?: number | null })
-                        ?.ebitdaMargin,
-                    )}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.ebitdaMargin.bitrixFieldId}>
+                    {fm?.ebitdaMargin.label ?? "EBITDA margin"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={commaInputValue(draft.ebitdaMargin)}
+                      onChange={(e) => {
+                        const f = formatNumberWithCommas(e.target.value);
+                        const p = unformatNumber(f).trim();
+                        setDraft((d) => {
+                          if (!d) return d;
+                          if (p === "") return { ...d, ebitdaMargin: null };
+                          const n = Number(p);
+                          return Number.isFinite(n)
+                            ? { ...d, ebitdaMargin: n }
+                            : d;
+                        });
+                      }}
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm tabular-nums">
+                      {commaReadOnly(
+                        (displayObject as { ebitdaMargin?: number | null })
+                          ?.ebitdaMargin,
+                      )}
+                    </p>
+                  )}
+                </div>
 
-              <Separator className="my-2 sm:col-span-2" />
+                <Separator className="my-2 sm:col-span-2" />
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.brokerFirstName.bitrixFieldId}>
-                  {fm?.brokerFirstName.label ?? "Broker first name"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    value={draft.brokerFirstName}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, brokerFirstName: e.target.value } : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm">
-                    {(displayObject as { brokerFirstName?: string | null })
-                      ?.brokerFirstName || "—"}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.brokerFirstName.bitrixFieldId}>
+                    {fm?.brokerFirstName.label ?? "Broker first name"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      value={draft.brokerFirstName}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, brokerFirstName: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm">
+                      {(displayObject as { brokerFirstName?: string | null })
+                        ?.brokerFirstName || "—"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.brokerLastName.bitrixFieldId}>
-                  {fm?.brokerLastName.label ?? "Broker last name"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    value={draft.brokerLastName}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, brokerLastName: e.target.value } : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm">
-                    {(displayObject as { brokerLastName?: string | null })
-                      ?.brokerLastName || "—"}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.brokerLastName.bitrixFieldId}>
+                    {fm?.brokerLastName.label ?? "Broker last name"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      value={draft.brokerLastName}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, brokerLastName: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm">
+                      {(displayObject as { brokerLastName?: string | null })
+                        ?.brokerLastName || "—"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <FieldLabel bitrixFieldId={fm?.brokerEmail.bitrixFieldId}>
-                  {fm?.brokerEmail.label ?? "Broker email"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    value={draft.brokerEmail}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, brokerEmail: e.target.value } : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm break-all">
-                    {(displayObject as { brokerEmail?: string | null })
-                      ?.brokerEmail || "—"}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <FieldLabel bitrixFieldId={fm?.brokerEmail.bitrixFieldId}>
+                    {fm?.brokerEmail.label ?? "Broker email"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      value={draft.brokerEmail}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, brokerEmail: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm break-all">
+                      {(displayObject as { brokerEmail?: string | null })
+                        ?.brokerEmail || "—"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.brokerPhone.bitrixFieldId}>
-                  {fm?.brokerPhone.label ?? "Broker phone"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    value={draft.brokerPhone}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, brokerPhone: e.target.value } : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm">
-                    {(displayObject as { brokerPhone?: string | null })
-                      ?.brokerPhone || "—"}
-                  </p>
-                )}
-              </div>
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.brokerPhone.bitrixFieldId}>
+                    {fm?.brokerPhone.label ?? "Broker phone"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      value={draft.brokerPhone}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, brokerPhone: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm">
+                      {(displayObject as { brokerPhone?: string | null })
+                        ?.brokerPhone || "—"}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel bitrixFieldId={fm?.brokerLinkedIn.bitrixFieldId}>
-                  {fm?.brokerLinkedIn.label ?? "Broker LinkedIn"}
-                </FieldLabel>
-                {draft ? (
-                  <Input
-                    value={draft.brokerLinkedIn}
-                    onChange={(e) =>
-                      setDraft((d) =>
-                        d ? { ...d, brokerLinkedIn: e.target.value } : d,
-                      )
-                    }
-                  />
-                ) : (
-                  <p className="text-foreground text-sm break-all">
-                    {(displayObject as { brokerLinkedIn?: string | null })
-                      ?.brokerLinkedIn || "—"}
-                  </p>
-                )}
+                <div className="space-y-1.5">
+                  <FieldLabel bitrixFieldId={fm?.brokerLinkedIn.bitrixFieldId}>
+                    {fm?.brokerLinkedIn.label ?? "Broker LinkedIn"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Input
+                      value={draft.brokerLinkedIn}
+                      onChange={(e) =>
+                        setDraft((d) =>
+                          d ? { ...d, brokerLinkedIn: e.target.value } : d,
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm break-all">
+                      {(displayObject as { brokerLinkedIn?: string | null })
+                        ?.brokerLinkedIn || "—"}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
             )}
 
             {draft && !isLoading ? (
@@ -925,7 +872,7 @@ export function AiBitrixInjectWorkspace() {
                       {fm?.stageId.label ?? "Bitrix stage"}
                     </Label>
                     {fm?.stageId.bitrixFieldId ? (
-                      <p className="text-muted-foreground font-mono text-[10px] tracking-tight">
+                      <p className="text-foreground/70 font-mono text-[10px] tracking-tight">
                         {fm.stageId.bitrixFieldId}
                       </p>
                     ) : null}
@@ -977,18 +924,11 @@ export function AiBitrixInjectWorkspace() {
                     )}
                     Create opportunity & sync to Bitrix
                   </Button>
-                  <Button variant="outline" asChild>
-                    <Link
-                      to={isLoggedIn ? "/deal-opportunities" : "/auth/login"}
-                    >
-                      {isLoggedIn ? "Cancel" : "Sign in"}
-                    </Link>
-                  </Button>
                 </div>
               </>
             ) : null}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
     </div>
   );
