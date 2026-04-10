@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import {
+  BITRIX_DEAL_PIPELINE_ID,
   buildCrmDealFieldsFromLegacyRawDeal,
   callBitrix,
 } from "@repo/bitrix-sync";
@@ -15,7 +16,7 @@ async function exportDealToBitrixImpl(deal: ExportDealInput) {
   await assertAuthenticated();
 
   const env = getServerEnv();
-  const categoryId = env.BITRIX_DEAL_CATEGORY_ID?.trim();
+  const categoryId = BITRIX_DEAL_PIPELINE_ID;
   const stageId = env.BITRIX_DEFAULT_STAGE_ID?.trim();
 
   const fields = buildCrmDealFieldsFromLegacyRawDeal(

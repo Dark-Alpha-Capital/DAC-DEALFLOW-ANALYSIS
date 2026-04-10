@@ -1623,7 +1623,6 @@ export const dealsRouter = createTRPCRouter({
     const dealFieldsCatalog = getBitrixDealFieldsCatalog();
     return {
       webhookConfigured: Boolean(env?.webhookBaseUrl),
-      categoryIdConfigured: Boolean(env?.dealCategoryId?.trim()),
       portalBaseUrl: portalBase,
       dealCategoryId: env?.dealCategoryId ?? "",
       stages,
@@ -1643,13 +1642,6 @@ export const dealsRouter = createTRPCRouter({
           code: "PRECONDITION_FAILED",
           message:
             "Bitrix is not configured (set BITRIX24_WEBHOOK on the server).",
-        });
-      }
-      if (!env.dealCategoryId?.trim()) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message:
-            "BITRIX_DEAL_CATEGORY_ID is not set — add your Bitrix deal pipeline id.",
         });
       }
 
@@ -1739,13 +1731,6 @@ export const dealsRouter = createTRPCRouter({
           code: "PRECONDITION_FAILED",
           message:
             "Bitrix is not configured (set BITRIX24_WEBHOOK on the server).",
-        });
-      }
-      if (!env.dealCategoryId?.trim()) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message:
-            "BITRIX_DEAL_CATEGORY_ID is not set — add your Bitrix deal pipeline id.",
         });
       }
 

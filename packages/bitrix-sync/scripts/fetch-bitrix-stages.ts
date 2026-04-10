@@ -9,9 +9,9 @@
  * - **`id: 0`** (or omit in some setups) → **default** deal pipeline.
  * - **`id: 1`, `2`, …** → other funnels; discover them with `--list-pipelines`.
  *
- * This matches `BITRIX_DEAL_CATEGORY_ID` in the app: the pipeline you sync deals into.
+ * This matches `BITRIX_DEAL_PIPELINE_ID` in the app (`packages/bitrix-sync/src/env.ts`).
  *
- * Env: put `BITRIX24_WEBHOOK`, `BITRIX_DEAL_CATEGORY_ID`, etc. in `packages/bitrix-sync/.env`.
+ * Env: put `BITRIX24_WEBHOOK` in `packages/bitrix-sync/.env`. Override pipeline with `--pipeline <id>`.
  * The script loads that file automatically (see `load-package-env.ts`).
  *
  * If you see `insufficient_scope` / HTTP 401: the inbound webhook’s permissions are too narrow.
@@ -26,7 +26,7 @@
  */
 import "./load-package-env.ts";
 import { callBitrix } from "../src/client";
-import { getBitrixSyncEnv } from "../src/env";
+import { BITRIX_DEAL_PIPELINE_ID, getBitrixSyncEnv } from "../src/env";
 
 type StageRow = {
   NAME: string;
@@ -63,15 +63,18 @@ async function main() {
     }));
     console.log(JSON.stringify(out, null, 2));
     console.error(
-      "\nUse the `id` of the pipeline you use for PE deals as BITRIX_DEAL_CATEGORY_ID, then run fetch-stages without --list-pipelines.",
+      "\nUse the `id` of the pipeline you use for PE deals (or set `BITRIX_DEAL_PIPELINE_ID` in code), then run fetch-stages without --list-pipelines.",
     );
     return;
   }
 
-  const dealPipelineId = process.env.BITRIX_DEAL_CATEGORY_ID?.trim() || "0";
-  if (dealPipelineId === undefined || dealPipelineId === "") {
+  const argPipeline = process.argv.findIndex((a) => a === "--pipeline");
+  const fromArg =
+    argPipeline >= 0 ? process.argv[argPipeline + 1]?.trim() : "";
+  const dealPipelineId = fromArg || BITRIX_DEAL_PIPELINE_ID;
+  if (!dealPipelineId) {
     console.error(
-      "Set BITRIX_DEAL_CATEGORY_ID (deal pipeline / funnel id). Try 0 for the default pipeline, or run with --list-pipelines to see ids.",
+      "Missing pipeline id. Pass --pipeline <id> (try 0 for default), or run with --list-pipelines.",
     );
     process.exit(1);
   }

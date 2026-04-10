@@ -4,6 +4,7 @@ export {
   type BitrixErrorBody,
 } from "./client";
 export {
+  BITRIX_DEAL_PIPELINE_ID,
   getBitrixSyncEnv,
   getBitrixDealTeaserFieldCode,
   requireBitrixWebhookBase,

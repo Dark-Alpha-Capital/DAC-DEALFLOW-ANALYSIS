@@ -1,3 +1,8 @@
+/**
+ * Bitrix CRM deal pipeline / funnel id (`CATEGORY_ID` on `crm.deal.add` / `update`).
+ * `0` = portal default pipeline (Dark Alpha Capital).
+ */
+export const BITRIX_DEAL_PIPELINE_ID = "0";
 
 export type BitrixSyncEnv = {
   webhookBaseUrl: string;
@@ -11,7 +16,7 @@ export function getBitrixSyncEnv(): BitrixSyncEnv | null {
   const raw = process.env.BITRIX24_WEBHOOK?.trim();
   if (!raw) return null;
   const webhookBaseUrl = raw.replace(/\/+$/, "");
-  const dealCategoryId = process.env.BITRIX_DEAL_CATEGORY_ID?.trim() ?? "";
+  const dealCategoryId = BITRIX_DEAL_PIPELINE_ID;
   const portalBaseUrl = (process.env.BITRIX24_PORTAL_BASE ?? "")
     .trim()
     .replace(/\/+$/, "");

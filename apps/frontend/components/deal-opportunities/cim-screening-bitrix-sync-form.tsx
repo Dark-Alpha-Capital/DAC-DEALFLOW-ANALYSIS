@@ -185,17 +185,7 @@ export function CimScreeningBitrixSyncForm({
         </Alert>
       )}
 
-      {p.webhookConfigured && !p.categoryIdConfigured && (
-        <Alert variant="destructive">
-          <AlertTitle>Pipeline id missing</AlertTitle>
-          <AlertDescription>
-            Set <code className="text-xs">BITRIX_DEAL_CATEGORY_ID</code> to your
-            Bitrix deal pipeline (category) id.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {needsManualStageId && p.categoryIdConfigured && (
+      {needsManualStageId && p.webhookConfigured && (
         <Alert>
           <AlertTitle>No stage list in the app</AlertTitle>
           <AlertDescription>
@@ -362,11 +352,7 @@ export function CimScreeningBitrixSyncForm({
 
           <Button
             type="submit"
-            disabled={
-              syncMutation.isPending ||
-              !p.webhookConfigured ||
-              !p.categoryIdConfigured
-            }
+            disabled={syncMutation.isPending || !p.webhookConfigured}
           >
             {syncMutation.isPending
               ? "Syncing…"

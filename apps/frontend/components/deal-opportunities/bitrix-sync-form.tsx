@@ -165,28 +165,18 @@ export function BitrixSyncForm({
         </Alert>
       )}
 
-      {p.webhookConfigured && !p.categoryIdConfigured && (
-        <Alert variant="destructive">
-          <AlertTitle>Pipeline id missing</AlertTitle>
-          <AlertDescription>
-            Set <code className="text-xs">BITRIX_DEAL_CATEGORY_ID</code> to your
-            Bitrix deal pipeline (category) id.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {needsManualStageId && p.categoryIdConfigured && (
+      {needsManualStageId && p.webhookConfigured && (
         <Alert>
           <AlertTitle>No stage list in the app</AlertTitle>
           <AlertDescription>
             Run <code className="text-xs">bun run fetch-stages</code> in{" "}
-            <code className="text-xs">packages/bitrix-sync</code> (with{" "}
-            <code className="text-xs">BITRIX_DEAL_CATEGORY_ID</code>) and paste
-            JSON into{" "}
-            <code className="text-xs">data/bitrix-deal-stages.json</code>, or
-            set <code className="text-xs">BITRIX_DEAL_STAGES_JSON</code>. You
-            can still enter a raw <code className="text-xs">STAGE_ID</code>{" "}
-            below if you know it.
+            <code className="text-xs">packages/bitrix-sync</code> and paste JSON
+            into{" "}
+            <code className="text-xs">data/bitrix-deal-stages.json</code>, or set{" "}
+            <code className="text-xs">BITRIX_DEAL_STAGES_JSON</code>. Use{" "}
+            <code className="text-xs">--pipeline &lt;id&gt;</code> if not the
+            default pipeline. You can still enter a raw{" "}
+            <code className="text-xs">STAGE_ID</code> below if you know it.
           </AlertDescription>
         </Alert>
       )}
@@ -488,11 +478,7 @@ export function BitrixSyncForm({
 
           <Button
             type="submit"
-            disabled={
-              syncMutation.isPending ||
-              !p.webhookConfigured ||
-              !p.categoryIdConfigured
-            }
+            disabled={syncMutation.isPending || !p.webhookConfigured}
           >
             {syncMutation.isPending
               ? "Syncing…"

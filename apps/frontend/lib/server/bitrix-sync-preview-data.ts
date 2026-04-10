@@ -18,7 +18,6 @@ import {
 
 export type BitrixSyncPreviewData = {
   webhookConfigured: boolean;
-  categoryIdConfigured: boolean;
   portalBaseUrl: string;
   dealCategoryId: string;
   stages: ReturnType<typeof getBitrixDealStages>;
@@ -112,7 +111,6 @@ export async function getBitrixSyncPreviewData(
 
   const data: BitrixSyncPreviewData = {
     webhookConfigured: Boolean(env?.webhookBaseUrl),
-    categoryIdConfigured: Boolean(env?.dealCategoryId?.trim()),
     portalBaseUrl: portalBase,
     dealCategoryId: env?.dealCategoryId ?? "",
     stages,

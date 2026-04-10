@@ -323,17 +323,7 @@ export function AiBitrixInjectWorkspace() {
         </Alert>
       )}
 
-      {bx?.webhookConfigured && !bx?.categoryIdConfigured && (
-        <Alert variant="destructive">
-          <AlertTitle>Pipeline id missing</AlertTitle>
-          <AlertDescription>
-            Set <code className="text-xs">BITRIX_DEAL_CATEGORY_ID</code> for
-            your Bitrix deal pipeline.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {needsManualStageId && bx?.categoryIdConfigured && (
+      {needsManualStageId && bx?.webhookConfigured && (
         <Alert>
           <AlertTitle>No stage list in the app</AlertTitle>
           <AlertDescription className="text-sm">
@@ -1039,8 +1029,7 @@ export function AiBitrixInjectWorkspace() {
                       Boolean(validationError) ||
                       busy ||
                       !isLoggedIn ||
-                      !bx?.webhookConfigured ||
-                      !bx?.categoryIdConfigured
+                      !bx?.webhookConfigured
                     }
                     onClick={() => void onConfirm()}
                     className="gap-2"
