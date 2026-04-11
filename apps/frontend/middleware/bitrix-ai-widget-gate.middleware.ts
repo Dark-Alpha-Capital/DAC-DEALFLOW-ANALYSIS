@@ -1,4 +1,5 @@
 import { createMiddleware } from "@tanstack/react-start";
+import { auth } from "@/auth";
 import {
   BITRIX_AI_EXTRACT_API_PATH,
   BITRIX_AI_WIDGET_PAGE_PATH,
@@ -10,9 +11,14 @@ import {
   verifyBitrixAuthId,
 } from "@/lib/server/bitrix-ai-widget-gate";
 
+async function hasValidAppSession(request: Request): Promise<boolean> {
+  const session = await auth.api.getSession({ headers: request.headers });
+  return session?.user != null;
+}
+
 /**
- * Restricts `/deal-opportunities/ai-bitrix` and the public extract API as documented
- * in Bitrix24 widget auth (AUTH_ID + user.current). Other routes are untouched.
+ * Restricts `/deal-opportunities/ai-bitrix` and the public extract API:
+ * Bitrix24 widget auth (AUTH_ID + user.current) or signed-in app user. Other routes unchanged.
  */
 export const bitrixAiWidgetGateRequestMiddleware = createMiddleware().server(
   async ({ request, pathname, next }) => {
@@ -30,9 +36,15 @@ export const bitrixAiWidgetGateRequestMiddleware = createMiddleware().server(
       norm.startsWith(`${BITRIX_AI_EXTRACT_API_PATH}/`);
 
     if (isExtract) {
-      if (!isAiBitrixExtractRequestAllowed(request)) {
+      const allowed =
+        (await hasValidAppSession(request)) ||
+        isAiBitrixExtractRequestAllowed(request);
+      if (!allowed) {
         return new Response(
-          JSON.stringify({ error: "Forbidden: open from Bitrix24 or this app" }),
+          JSON.stringify({
+            error:
+              "Forbidden: sign in, open from Bitrix24, or use this app origin",
+          }),
           {
             status: 403,
             headers: {
@@ -46,6 +58,9 @@ export const bitrixAiWidgetGateRequestMiddleware = createMiddleware().server(
     }
 
     if (norm === BITRIX_AI_WIDGET_PAGE_PATH) {
+      if (await hasValidAppSession(request)) {
+        return next();
+      }
       const { authId, domain } = await readBitrixWidgetAuthParams(request);
       if (
         !authId ||

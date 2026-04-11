@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRouter } from "@/lib/navigation-shim";
+import { formatNumberWithCommas } from "@/lib/utils";
 
 function isInteractiveRowClickTarget(target: EventTarget | null) {
   return (
@@ -82,14 +83,34 @@ export function DealsDataTable({
 
   return (
     <div className="w-full">
-      <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex flex-col gap-3 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
         <Input
           placeholder="Search company..."
           value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
           onChange={(e) =>
             table.getColumn("title")?.setFilterValue(e.target.value)
           }
-          className="w-full sm:max-w-sm"
+          className="w-full sm:max-w-[11rem] sm:grow sm:basis-[10rem]"
+        />
+        <Input
+          placeholder="Filter revenue..."
+          inputMode="decimal"
+          value={(table.getColumn("revenue")?.getFilterValue() as string) ?? ""}
+          onChange={(e) => {
+            const formatted = formatNumberWithCommas(e.target.value);
+            table.getColumn("revenue")?.setFilterValue(formatted);
+          }}
+          className="w-full tabular-nums sm:max-w-[11rem] sm:grow sm:basis-[10rem]"
+        />
+        <Input
+          placeholder="Filter EBITDA..."
+          inputMode="decimal"
+          value={(table.getColumn("ebitda")?.getFilterValue() as string) ?? ""}
+          onChange={(e) => {
+            const formatted = formatNumberWithCommas(e.target.value);
+            table.getColumn("ebitda")?.setFilterValue(formatted);
+          }}
+          className="w-full tabular-nums sm:max-w-[11rem] sm:grow sm:basis-[10rem]"
         />
         <Select
           value={
@@ -102,7 +123,7 @@ export function DealsDataTable({
               ?.setFilterValue(v === "all" ? "" : v)
           }
         >
-          <SelectTrigger className="w-full sm:w-44">
+          <SelectTrigger className="w-full shrink-0 sm:w-44">
             <SelectValue placeholder="Screening" />
           </SelectTrigger>
           <SelectContent>

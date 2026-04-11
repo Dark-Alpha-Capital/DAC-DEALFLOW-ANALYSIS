@@ -9,6 +9,34 @@ import { DealActionsCell } from "./deal-actions-cell";
 
 export type DealOppRow = RankedDealOpportunityRow;
 
+const COMPANY_PREVIEW_WORDS = 2;
+
+function previewCompanyLabel(text: string, maxWords: number): string {
+  const trimmed = text.trim();
+  if (!trimmed) return "—";
+  const words = trimmed.split(/\s+/);
+  if (words.length <= maxWords) return trimmed;
+  return `${words.slice(0, maxWords).join(" ")}...`;
+}
+
+/** Match typed digits (ignores $, commas, etc.) against the stored number. */
+function filterNumericColumnSubstring(
+  row: RankedDealOpportunityRow,
+  filterValue: unknown,
+  getAmount: (r: RankedDealOpportunityRow) => unknown,
+): boolean {
+  const q = String(filterValue ?? "").trim();
+  if (!q) return true;
+  const digitsQ = q.replace(/\D/g, "");
+  if (!digitsQ) return true;
+  const raw = getAmount(row);
+  if (raw == null || typeof raw !== "number" || !Number.isFinite(raw)) {
+    return false;
+  }
+  const digitsV = String(raw).replace(/\D/g, "");
+  return digitsV.includes(digitsQ);
+}
+
 export const columns: ColumnDef<DealOppRow>[] = [
   {
     id: "select",
@@ -46,11 +74,16 @@ export const columns: ColumnDef<DealOppRow>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => (
-      <span className="block truncate font-medium">
-        {row.original.company?.name ?? row.original.opp.dealTeaser ?? "—"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const full =
+        row.original.company?.name ?? row.original.opp.dealTeaser ?? "";
+      const display = previewCompanyLabel(full, COMPANY_PREVIEW_WORDS);
+      return (
+        <span className="block max-w-[14rem] font-medium" title={full || undefined}>
+          {display}
+        </span>
+      );
+    },
     meta: { className: "text-left" },
     filterFn: (row, id, value) => {
       const val =
@@ -120,6 +153,8 @@ export const columns: ColumnDef<DealOppRow>[] = [
         </span>
       );
     },
+    filterFn: (row, _id, value) =>
+      filterNumericColumnSubstring(row.original, value, (r) => r.opp.revenue),
     meta: { className: "text-right" },
   },
   {
@@ -143,6 +178,8 @@ export const columns: ColumnDef<DealOppRow>[] = [
         </span>
       );
     },
+    filterFn: (row, _id, value) =>
+      filterNumericColumnSubstring(row.original, value, (r) => r.opp.ebitda),
     meta: { className: "text-right" },
   },
   {

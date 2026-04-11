@@ -1,8 +1,8 @@
 /**
  * Gates the Bitrix-embedded AI → Bitrix widget page and its extract API.
- * - Local dev (localhost / 127.0.0.1): no Bitrix check.
- * - Production page load: Bitrix AUTH_ID + DOMAIN, verified via user.current.
- * - Production extract POST: Referer/Origin from Bitrix or same app origin (SPA fetch).
+ * - Local dev (localhost / 127.0.0.1): no gate.
+ * - Production page load: valid Bitrix AUTH_ID + DOMAIN (user.current), OR signed-in app user.
+ * - Production extract: Referer/Origin from Bitrix or same app, OR signed-in app user.
  */
 
 export const BITRIX_AI_WIDGET_PAGE_PATH = "/deal-opportunities/ai-bitrix";
@@ -139,8 +139,8 @@ export function bitrixWidgetForbiddenHtml(): string {
 </head>
 <body>
   <h1>Access denied</h1>
-  <p>This tool is only available when opened from your Bitrix24 app (widget), or on <code>localhost</code> for development.</p>
-  <p>If you are embedding it in Bitrix24, ensure the handler URL receives <code>AUTH_ID</code> and <code>DOMAIN</code> from Bitrix (query string or form POST).</p>
+  <p>This tool is only available when opened from your Bitrix24 app (widget), when signed in to this site, or on <code>localhost</code> for development.</p>
+  <p>If you are embedding it in Bitrix24, ensure the handler URL receives <code>AUTH_ID</code> and <code>DOMAIN</code> from Bitrix (query string or form POST). Otherwise, <a href="/auth/login">sign in</a>.</p>
 </body>
 </html>`;
 }
