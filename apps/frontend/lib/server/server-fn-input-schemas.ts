@@ -19,6 +19,22 @@ export const rankedDealOpportunitiesPageInputSchema = z.object({
   query: z.string().max(500).optional(),
 });
 
+export const dealOpportunitiesKanbanInitialInputSchema = z.object({
+  query: z.string().max(500).optional(),
+  limitPerStage: z.number().int().positive().max(100).optional().default(40),
+  pipelineCategoryId: z.string().max(20).optional().default("0"),
+});
+
+export const dealOpportunitiesKanbanStagePageInputSchema = z.object({
+  columnStageId: z.string().min(1),
+  fallbackStageId: z.string().min(1),
+  allPipelineStageIds: z.array(z.string().min(1)),
+  query: z.string().max(500).optional(),
+  offset: z.number().int().nonnegative(),
+  limit: z.number().int().positive().max(100),
+  pipelineCategoryId: z.string().max(20).optional().default("0"),
+});
+
 export const dealOpportunityIdSchema = z.object({
   dealOpportunityId: uidSchema,
 });

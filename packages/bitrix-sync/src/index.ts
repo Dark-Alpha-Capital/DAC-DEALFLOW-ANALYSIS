@@ -58,6 +58,7 @@ export {
   extractBitrixDealContactIds,
   extractBitrixDealListStageIdRaw,
   extractBitrixString,
+  formatBitrixAddressValue,
   fetchBitrixCompanyTitleMap,
   fetchBitrixContactBrokerMap,
   fetchDealsForSyncPipeline,

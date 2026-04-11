@@ -648,6 +648,10 @@ export const dealOpportunities = pgTable(
 
     // Deal-specific metadata
     sourceWebsite: text("sourceWebsite"),
+    /** Listing / target location (e.g. Bitrix State + Company Address). */
+    companyLocation: text("companyLocation"),
+    cimLink: text("cimLink"),
+    dataRoomLink: text("dataRoomLink"),
     brokerage: text("brokerage"),
 
     // Financial snapshot at listing time

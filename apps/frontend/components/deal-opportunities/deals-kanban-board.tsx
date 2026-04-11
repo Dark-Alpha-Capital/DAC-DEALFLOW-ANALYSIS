@@ -19,9 +19,9 @@ import type { RankedDealOpportunityRow } from "@repo/db/queries";
 import type { BitrixDealStageRow } from "@repo/bitrix-sync";
 import {
   BITRIX_DEAL_PIPELINE_ID,
-  getDefaultBitrixStageId,
   normalizeBitrixStageIdForPipeline,
 } from "@repo/bitrix-sync";
+import { loadRankedDealOpportunitiesKanbanStagePage } from "@/lib/server/deal-opportunities-route-data";
 import { useRouter } from "@/lib/navigation-shim";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,14 @@ import { toast } from "sonner";
 import { KanbanDealOpportunityActions } from "./kanban-deal-card-actions";
 
 const STAGE_COLUMN_PREFIX = "stage-column:";
+
+function kanbanDealTitle(row: RankedDealOpportunityRow): string {
+  return (
+    row.opp.title?.trim() ||
+    row.opp.dealTeaser?.trim() ||
+    "Untitled deal"
+  );
+}
 
 const COLUMN_HEADER_CLASSES = [
   "bg-violet-600 text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.15)] dark:bg-violet-600",
@@ -85,6 +93,23 @@ function groupByBitrixStage(
     else fallbackBucket.push(row);
   }
   return map;
+}
+
+function flattenKanbanInitialRows(
+  pipelineStages: BitrixDealStageRow[],
+  initialRowsByStage: Record<string, RankedDealOpportunityRow[]>,
+): RankedDealOpportunityRow[] {
+  const seen = new Set<string>();
+  const out: RankedDealOpportunityRow[] = [];
+  for (const col of pipelineStages) {
+    for (const row of initialRowsByStage[col.statusId] ?? []) {
+      if (!seen.has(row.opp.id)) {
+        seen.add(row.opp.id);
+        out.push(row);
+      }
+    }
+  }
+  return out;
 }
 
 function KanbanDealCardBody({ row }: { row: RankedDealOpportunityRow }) {
@@ -156,11 +181,7 @@ function KanbanDraggableCard({
   const style = {
     transform: CSS.Translate.toString(transform),
   };
-  const title =
-    row.company?.name ??
-    row.opp.title?.trim() ??
-    row.opp.dealTeaser ??
-    "Untitled deal";
+  const title = kanbanDealTitle(row);
   return (
     <div
       ref={setNodeRef}
@@ -208,13 +229,19 @@ function StageDropColumn({
   stage,
   label,
   columnIndex,
-  dealCount,
+  totalInColumn,
+  loadedInColumn,
+  onLoadMore,
+  loadMorePending,
   children,
 }: {
   stage: string;
   label: string;
   columnIndex: number;
-  dealCount: number;
+  totalInColumn: number;
+  loadedInColumn: number;
+  onLoadMore: () => void;
+  loadMorePending: boolean;
   children: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -231,7 +258,7 @@ function StageDropColumn({
         "transition-colors duration-200 motion-reduce:transition-none",
         isOver && "bg-primary/[0.04] dark:bg-primary/[0.06]",
       )}
-      aria-label={`${label}, ${dealCount} ${dealCount === 1 ? "deal" : "deals"}`}
+      aria-label={`${label}, ${totalInColumn} ${totalInColumn === 1 ? "deal" : "deals"} total, ${loadedInColumn} loaded`}
     >
       <div
         className={cn(
@@ -240,42 +267,77 @@ function StageDropColumn({
         )}
       >
         {label}{" "}
-        <span className="font-bold tabular-nums opacity-95">({dealCount})</span>
+        <span className="font-bold tabular-nums opacity-95">
+          ({totalInColumn}
+          {loadedInColumn < totalInColumn
+            ? ` · ${loadedInColumn} shown`
+            : ""}
+          )
+        </span>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain p-4 touch-pan-y sm:gap-5 sm:p-5">
         {children}
+        {loadedInColumn < totalInColumn ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-1 w-full shrink-0"
+            disabled={loadMorePending}
+            onClick={onLoadMore}
+          >
+            {loadMorePending
+              ? "Loading…"
+              : `Load more (${totalInColumn - loadedInColumn} more in this stage)`}
+          </Button>
+        ) : null}
       </div>
     </div>
   );
 }
 
 export function DealsKanbanBoard({
-  deals,
   pipelineStages,
+  countsByStage,
+  initialRowsByStage,
+  limitPerStage,
+  pipelineCategoryId,
+  fallbackStageId,
+  allPipelineStageIds,
+  query,
 }: {
-  deals: RankedDealOpportunityRow[];
   pipelineStages: BitrixDealStageRow[];
+  countsByStage: Record<string, number>;
+  initialRowsByStage: Record<string, RankedDealOpportunityRow[]>;
+  limitPerStage: number;
+  pipelineCategoryId: string;
+  fallbackStageId: string;
+  allPipelineStageIds: string[];
+  query: string;
 }) {
   const router = useRouter();
   const trpc = useTRPC();
-  const fallbackStageId = React.useMemo(
-    () => getDefaultBitrixStageId(pipelineStages),
-    [pipelineStages],
-  );
   const stageIdSet = React.useMemo(
     () => new Set(pipelineStages.map((s) => s.statusId)),
     [pipelineStages],
   );
+  const initialFlat = React.useMemo(
+    () => flattenKanbanInitialRows(pipelineStages, initialRowsByStage),
+    [pipelineStages, initialRowsByStage],
+  );
   const [localDeals, setLocalDeals] =
-    React.useState<RankedDealOpportunityRow[]>(deals);
+    React.useState<RankedDealOpportunityRow[]>(initialFlat);
   const [activeRow, setActiveRow] =
     React.useState<RankedDealOpportunityRow | null>(null);
+  const [loadingStageId, setLoadingStageId] = React.useState<string | null>(
+    null,
+  );
   const localDealsRef = React.useRef(localDeals);
   const ignoreNextCardClickRef = React.useRef(false);
 
   React.useEffect(() => {
-    setLocalDeals(deals);
-  }, [deals]);
+    setLocalDeals(initialFlat);
+  }, [initialFlat, query]);
 
   React.useEffect(() => {
     localDealsRef.current = localDeals;
@@ -287,6 +349,53 @@ export function DealsKanbanBoard({
         ? groupByBitrixStage(localDeals, pipelineStages, fallbackStageId)
         : new Map<string, RankedDealOpportunityRow[]>(),
     [localDeals, pipelineStages, fallbackStageId],
+  );
+
+  const loadMoreForStage = React.useCallback(
+    async (stageId: string) => {
+      const columnDeals = byStage.get(stageId) ?? [];
+      const loaded = columnDeals.length;
+      const total = countsByStage[stageId] ?? 0;
+      if (loaded >= total) return;
+      setLoadingStageId(stageId);
+      try {
+        const { rows } = await loadRankedDealOpportunitiesKanbanStagePage({
+          data: {
+            columnStageId: stageId,
+            fallbackStageId,
+            allPipelineStageIds,
+            query,
+            offset: loaded,
+            limit: limitPerStage,
+            pipelineCategoryId,
+          },
+        });
+        setLocalDeals((prev) => {
+          const ids = new Set(prev.map((r) => r.opp.id));
+          const merged = [...prev];
+          for (const r of rows) {
+            if (!ids.has(r.opp.id)) {
+              ids.add(r.opp.id);
+              merged.push(r);
+            }
+          }
+          return merged;
+        });
+      } catch {
+        toast.error("Could not load more deals for this stage");
+      } finally {
+        setLoadingStageId(null);
+      }
+    },
+    [
+      byStage,
+      countsByStage,
+      fallbackStageId,
+      allPipelineStageIds,
+      query,
+      limitPerStage,
+      pipelineCategoryId,
+    ],
   );
 
   const updateStage = useMutation(
@@ -309,7 +418,6 @@ export function DealsKanbanBoard({
       },
       onSuccess: () => {
         toast.success("Stage updated");
-        void router.invalidate();
       },
     }),
   );
@@ -453,13 +561,17 @@ export function DealsKanbanBoard({
             <div className="flex h-full min-h-0 w-max min-w-0 flex-1 items-stretch gap-6 px-1 py-1 sm:gap-8 sm:px-2 md:gap-10 [&>div]:border-r [&>div]:border-border [&>div:last-child]:border-r-0">
               {pipelineStages.map((col, columnIndex) => {
                 const columnDeals = byStage.get(col.statusId) ?? [];
+                const totalInColumn = countsByStage[col.statusId] ?? 0;
                 return (
                   <StageDropColumn
                     key={col.statusId}
                     stage={col.statusId}
                     label={col.name}
                     columnIndex={columnIndex}
-                    dealCount={columnDeals.length}
+                    totalInColumn={totalInColumn}
+                    loadedInColumn={columnDeals.length}
+                    onLoadMore={() => void loadMoreForStage(col.statusId)}
+                    loadMorePending={loadingStageId === col.statusId}
                   >
                     {columnDeals.length === 0 ? (
                       <div className="min-h-0 flex-1" aria-hidden />
@@ -488,10 +600,7 @@ export function DealsKanbanBoard({
             >
               <div className="space-y-2">
                 <p className="line-clamp-2 text-sm font-semibold leading-snug">
-                  {activeRow.company?.name ??
-                    activeRow.opp.title?.trim() ??
-                    activeRow.opp.dealTeaser ??
-                    "Untitled deal"}
+                  {kanbanDealTitle(activeRow)}
                 </p>
                 <KanbanDealCardBody row={activeRow} />
               </div>

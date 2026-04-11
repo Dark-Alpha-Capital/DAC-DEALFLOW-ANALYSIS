@@ -54,14 +54,28 @@ export const AddDealFormSchema = z.object({
   brokerLinkedIn: z.string().optional(),
 });
 
+/** Optional numeric field: empty, commas, and partial decimals safe (no `""` → 0). */
+function optionalNumericField() {
+  return z.preprocess((val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    if (typeof val === "number") {
+      return Number.isFinite(val) ? val : undefined;
+    }
+    const s = String(val).replace(/,/g, "").trim();
+    if (s === "" || s === ".") return undefined;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : undefined;
+  }, z.number().optional());
+}
+
 export const EditDealFormSchema = z.object({
   companyId: optionalCompanyIdField,
   sourceWebsite: z.string().optional(),
   brokerage: z.string().optional(),
-  revenue: z.coerce.number().optional(),
-  ebitda: z.coerce.number().optional(),
-  ebitdaMargin: z.coerce.number().optional(),
-  askingPrice: z.coerce.number().optional(),
+  revenue: optionalNumericField(),
+  ebitda: optionalNumericField(),
+  ebitdaMargin: optionalNumericField(),
+  askingPrice: optionalNumericField(),
   title: z.string().optional(),
   dealTeaser: z.string().optional(),
   description: z.string().optional(),

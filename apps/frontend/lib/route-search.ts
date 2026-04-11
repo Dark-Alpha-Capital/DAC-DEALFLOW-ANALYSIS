@@ -15,8 +15,12 @@ export function asStringArray(value: string | string[] | undefined) {
   return typeof value === "string" ? [value] : (value ?? []);
 }
 
-export function asNumber(value: string | string[] | undefined, fallback: number) {
-  const parsed = Number(asString(value));
+export function asNumber(
+  value: string | string[] | number | undefined,
+  fallback: number,
+) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const parsed = Number(asString(value as string | string[] | undefined));
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 

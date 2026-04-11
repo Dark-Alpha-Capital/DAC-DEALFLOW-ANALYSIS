@@ -10,12 +10,13 @@ import {
   eq,
   and,
   desc,
-  asc,
   count,
   or,
   ilike,
   isNull,
+  not,
   sql,
+  type SQL,
 } from "drizzle-orm";
 
 /**
@@ -141,14 +142,31 @@ interface GetDealOpportunitiesResult {
   totalPages: number;
 }
 
+/** Columns loaded for deal opportunities list / kanban (no `Company` join). */
+export type DealOpportunityListOpp = Pick<
+  typeof dealOpportunities.$inferSelect,
+  | "id"
+  | "companyId"
+  | "title"
+  | "dealTeaser"
+  | "description"
+  | "companyLocation"
+  | "brokerage"
+  | "stage"
+  | "status"
+  | "revenue"
+  | "ebitda"
+  | "askingPrice"
+  | "dealType"
+  | "reviewState"
+  | "createdAt"
+  | "updatedAt"
+  | "bitrixId"
+  | "bitrixLink"
+>;
+
 export interface RankedDealOpportunityRow {
-  opp: typeof dealOpportunities.$inferSelect;
-  company: {
-    id: string | null;
-    name: string | null;
-    industry: string | null;
-    location: string | null;
-  } | null;
+  opp: DealOpportunityListOpp;
   screening: typeof dealOpportunityScreenings.$inferSelect | null;
 }
 
@@ -226,6 +244,27 @@ export const GetDealOpportunitiesByStages = async () => {
   }
 };
 
+const dealOpportunityListOpp = {
+  id: dealOpportunities.id,
+  companyId: dealOpportunities.companyId,
+  title: dealOpportunities.title,
+  dealTeaser: dealOpportunities.dealTeaser,
+  description: dealOpportunities.description,
+  companyLocation: dealOpportunities.companyLocation,
+  brokerage: dealOpportunities.brokerage,
+  stage: dealOpportunities.stage,
+  status: dealOpportunities.status,
+  revenue: dealOpportunities.revenue,
+  ebitda: dealOpportunities.ebitda,
+  askingPrice: dealOpportunities.askingPrice,
+  dealType: dealOpportunities.dealType,
+  reviewState: dealOpportunities.reviewState,
+  createdAt: dealOpportunities.createdAt,
+  updatedAt: dealOpportunities.updatedAt,
+  bitrixId: dealOpportunities.bitrixId,
+  bitrixLink: dealOpportunities.bitrixLink,
+} as const;
+
 const rankedDealOpportunitiesOrderBy = [
   sql`case
     when ${dealOpportunityScreenings.status} = 'PASS' then 0
@@ -252,22 +291,14 @@ export const GetRankedDealOpportunities = async (): Promise<
   try {
     return await db
       .select({
-        opp: dealOpportunities,
-        company: {
-          id: companies.id,
-          name: companies.name,
-          industry: companies.industry,
-          location: companies.location,
-        },
+        opp: dealOpportunityListOpp,
         screening: dealOpportunityScreenings,
       })
       .from(dealOpportunities)
-      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
       .leftJoin(
         dealOpportunityScreenings,
         eq(dealOpportunityScreenings.dealOpportunityId, dealOpportunities.id),
       )
-      .where(isNull(companies.deletedAt))
       .orderBy(...rankedDealOpportunitiesOrderBy);
   } catch (error) {
     console.error("Failed query: ranked deal opportunities", error);
@@ -281,7 +312,7 @@ export type GetRankedDealOpportunitiesPaginatedResult = {
   totalPages: number;
 };
 
-/** Ranked deal opportunities with optional text search (company name, teaser, description). */
+/** Ranked deal opportunities with optional text search on listing fields (no `Company` join). */
 export const GetRankedDealOpportunitiesPaginated = async ({
   offset = 0,
   limit = 25,
@@ -292,43 +323,28 @@ export const GetRankedDealOpportunitiesPaginated = async ({
   query?: string;
 }): Promise<GetRankedDealOpportunitiesPaginatedResult> => {
   const trimmed = query.trim().slice(0, 500);
+  const pattern = `%${escapeIlikePattern(trimmed)}%`;
   const searchFilter =
     trimmed.length > 0
       ? or(
-        ilike(
-          companies.name,
-          `%${escapeIlikePattern(trimmed)}%`,
-        ),
-        ilike(
-          dealOpportunities.dealTeaser,
-          `%${escapeIlikePattern(trimmed)}%`,
-        ),
-        ilike(
-          dealOpportunities.description,
-          `%${escapeIlikePattern(trimmed)}%`,
-        ),
+        ilike(dealOpportunities.title, pattern),
+        ilike(dealOpportunities.dealTeaser, pattern),
+        ilike(dealOpportunities.description, pattern),
+        ilike(dealOpportunities.companyLocation, pattern),
+        ilike(dealOpportunities.brokerage, pattern),
       )
       : undefined;
 
-  const baseWhere = isNull(companies.deletedAt);
-  const whereClause =
-    searchFilter != null ? and(baseWhere, searchFilter) : baseWhere;
+  const whereClause = searchFilter ?? sql`true`;
 
   try {
     const baseFrom = () =>
       db
         .select({
-          opp: dealOpportunities,
-          company: {
-            id: companies.id,
-            name: companies.name,
-            industry: companies.industry,
-            location: companies.location,
-          },
+          opp: dealOpportunityListOpp,
           screening: dealOpportunityScreenings,
         })
         .from(dealOpportunities)
-        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
         .leftJoin(
           dealOpportunityScreenings,
           eq(
@@ -346,7 +362,6 @@ export const GetRankedDealOpportunitiesPaginated = async ({
       db
         .select({ count: count() })
         .from(dealOpportunities)
-        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
         .leftJoin(
           dealOpportunityScreenings,
           eq(
@@ -363,6 +378,187 @@ export const GetRankedDealOpportunitiesPaginated = async ({
     return { data: rows, totalCount, totalPages };
   } catch (error) {
     console.error("Failed query: ranked deal opportunities (paginated)", error);
+    throw error;
+  }
+};
+
+/**
+ * Aligns with Bitrix `normalizeBitrixStageIdForPipeline` (see `@repo/bitrix-sync`) so DB
+ * queries bucket the same way as the Kanban UI.
+ */
+export function normalizeStoredDealStageForPipeline(
+  stageId: string,
+  pipelineCategoryId: string,
+): string {
+  const t = stageId.trim();
+  const cat = String(pipelineCategoryId ?? "").trim();
+  if (!t || !cat) return t;
+  const m = /^C(\d+):(.+)$/i.exec(t);
+  const rest = m?.[2]?.trim();
+  const prefixCat = m?.[1];
+  if (prefixCat != null && rest && prefixCat === cat) {
+    return rest;
+  }
+  return t;
+}
+
+function rankedDealTextSearchFilter(query: string): SQL | undefined {
+  const trimmed = query.trim().slice(0, 500);
+  if (trimmed.length === 0) return undefined;
+  const pattern = `%${escapeIlikePattern(trimmed)}%`;
+  return or(
+    ilike(dealOpportunities.title, pattern),
+    ilike(dealOpportunities.dealTeaser, pattern),
+    ilike(dealOpportunities.description, pattern),
+    ilike(dealOpportunities.companyLocation, pattern),
+    ilike(dealOpportunities.brokerage, pattern),
+  );
+}
+
+function dealStageMatchesCanonical(
+  canonicalStageId: string,
+  pipelineCategoryId: string,
+): SQL {
+  const c = canonicalStageId.trim();
+  const cat = pipelineCategoryId.trim();
+  const prefixed = `C${cat}:${c}`;
+  return or(
+    eq(dealOpportunities.stage, c),
+    eq(dealOpportunities.stage, prefixed),
+  )!;
+}
+
+function kanbanColumnStageWhere(args: {
+  columnStageId: string;
+  fallbackStageId: string;
+  allPipelineStageIds: readonly string[];
+  pipelineCategoryId: string;
+}): SQL {
+  const {
+    columnStageId,
+    fallbackStageId,
+    allPipelineStageIds,
+    pipelineCategoryId,
+  } = args;
+  const col = columnStageId.trim();
+  const fb = fallbackStageId.trim();
+  const cat = pipelineCategoryId.trim();
+
+  if (col !== fb) {
+    return dealStageMatchesCanonical(col, cat);
+  }
+
+  const others = allPipelineStageIds
+    .map((s) => s.trim())
+    .filter((s) => s !== fb);
+  if (others.length === 0) {
+    return sql`true`;
+  }
+
+  const matchOthers = or(
+    ...others.map((s) => dealStageMatchesCanonical(s, cat)),
+  )!;
+  return or(dealStageMatchesCanonical(fb, cat), not(matchOthers))!;
+}
+
+export type GetRankedDealOpportunityKanbanSummaryResult = {
+  totalCount: number;
+  countsByStage: Record<string, number>;
+};
+
+/**
+ * One lightweight pass for total matches + per-column counts (same search as ranked list).
+ */
+export const GetRankedDealOpportunityKanbanSummary = async ({
+  query = "",
+  pipelineCategoryId = "0",
+  pipelineStageIds,
+  fallbackStageId,
+}: {
+  query?: string;
+  pipelineCategoryId?: string;
+  pipelineStageIds: readonly string[];
+  fallbackStageId: string;
+}): Promise<GetRankedDealOpportunityKanbanSummaryResult> => {
+  const search = rankedDealTextSearchFilter(query);
+  const whereClause = search ?? sql`true`;
+  const idSet = new Set(pipelineStageIds.map((s) => s.trim()));
+  const fb = fallbackStageId.trim();
+  const cat = pipelineCategoryId.trim();
+
+  try {
+    const rows = await db
+      .select({ stage: dealOpportunities.stage })
+      .from(dealOpportunities)
+      .where(whereClause);
+
+    const countsByStage: Record<string, number> = Object.fromEntries(
+      pipelineStageIds.map((id) => [id.trim(), 0]),
+    );
+
+    for (const r of rows) {
+      const raw = r.stage?.trim() || fb;
+      const norm = normalizeStoredDealStageForPipeline(raw, cat);
+      const bucket = idSet.has(norm) ? norm : fb;
+      countsByStage[bucket] = (countsByStage[bucket] ?? 0) + 1;
+    }
+
+    return { totalCount: rows.length, countsByStage };
+  } catch (error) {
+    console.error("Failed query: kanban deal opportunity summary", error);
+    throw error;
+  }
+};
+
+export const GetRankedDealOpportunitiesForKanbanColumnPaginated = async ({
+  columnStageId,
+  fallbackStageId,
+  allPipelineStageIds,
+  query = "",
+  offset = 0,
+  limit = 40,
+  pipelineCategoryId = "0",
+}: {
+  columnStageId: string;
+  fallbackStageId: string;
+  allPipelineStageIds: readonly string[];
+  query?: string;
+  offset?: number;
+  limit?: number;
+  pipelineCategoryId?: string;
+}): Promise<RankedDealOpportunityRow[]> => {
+  const search = rankedDealTextSearchFilter(query);
+  const stageSql = kanbanColumnStageWhere({
+    columnStageId,
+    fallbackStageId,
+    allPipelineStageIds,
+    pipelineCategoryId,
+  });
+  const whereClause = search ? and(search, stageSql) : stageSql;
+
+  try {
+    return await db
+      .select({
+        opp: dealOpportunityListOpp,
+        screening: dealOpportunityScreenings,
+      })
+      .from(dealOpportunities)
+      .leftJoin(
+        dealOpportunityScreenings,
+        eq(
+          dealOpportunityScreenings.dealOpportunityId,
+          dealOpportunities.id,
+        ),
+      )
+      .where(whereClause)
+      .orderBy(...rankedDealOpportunitiesOrderBy)
+      .limit(limit)
+      .offset(offset);
+  } catch (error) {
+    console.error(
+      "Failed query: ranked deal opportunities (kanban column paginated)",
+      error,
+    );
     throw error;
   }
 };

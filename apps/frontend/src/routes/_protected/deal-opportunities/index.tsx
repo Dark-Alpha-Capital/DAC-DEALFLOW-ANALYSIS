@@ -42,8 +42,14 @@ export const Route = createFileRoute("/_protected/deal-opportunities/")({
 function DealOpportunitiesRoute() {
   const { q } = Route.useSearch();
   const loaderData = Route.useLoaderData();
-  const { deals, pipelineStages, totalCount, totalPages, currentPage, pageSize } =
-    loaderData;
+  const {
+    deals,
+    pipelineStages,
+    totalCount,
+    totalPages,
+    currentPage,
+    pageSize,
+  } = loaderData;
   const hasSearch = q.trim().length > 0;
   const dealsSummary =
     totalCount === 0

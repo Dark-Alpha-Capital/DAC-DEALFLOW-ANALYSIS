@@ -581,7 +581,8 @@ export const GetDealWithAllRelations = async (uid: string) => {
     ebitdaMargin: resolvedEbitdaMargin,
     brokerage: opp.brokerage ?? "",
     industry: company?.industry ?? "",
-    companyLocation: company?.location ?? null,
+    companyLocation:
+      opp.companyLocation?.trim() || company?.location || null,
     sourceWebsite: opp.sourceWebsite ?? "",
     dealType: opp.dealType,
     status: opp.status,
@@ -1223,14 +1224,30 @@ interface GetDealOpportunitiesResult {
   totalPages: number;
 }
 
+export type DealOpportunityListOpp = Pick<
+  typeof dealOpportunities.$inferSelect,
+  | "id"
+  | "companyId"
+  | "title"
+  | "dealTeaser"
+  | "description"
+  | "companyLocation"
+  | "brokerage"
+  | "stage"
+  | "status"
+  | "revenue"
+  | "ebitda"
+  | "askingPrice"
+  | "dealType"
+  | "reviewState"
+  | "createdAt"
+  | "updatedAt"
+  | "bitrixId"
+  | "bitrixLink"
+>;
+
 export interface RankedDealOpportunityRow {
-  opp: typeof dealOpportunities.$inferSelect;
-  company: {
-    id: string | null;
-    name: string | null;
-    industry: string | null;
-    location: string | null;
-  } | null;
+  opp: DealOpportunityListOpp;
   screening: typeof dealOpportunityScreenings.$inferSelect | null;
 }
 
@@ -1308,6 +1325,27 @@ export const GetDealOpportunitiesByStages = async () => {
   }
 };
 
+const dealOpportunityListOpp = {
+  id: dealOpportunities.id,
+  companyId: dealOpportunities.companyId,
+  title: dealOpportunities.title,
+  dealTeaser: dealOpportunities.dealTeaser,
+  description: dealOpportunities.description,
+  companyLocation: dealOpportunities.companyLocation,
+  brokerage: dealOpportunities.brokerage,
+  stage: dealOpportunities.stage,
+  status: dealOpportunities.status,
+  revenue: dealOpportunities.revenue,
+  ebitda: dealOpportunities.ebitda,
+  askingPrice: dealOpportunities.askingPrice,
+  dealType: dealOpportunities.dealType,
+  reviewState: dealOpportunities.reviewState,
+  createdAt: dealOpportunities.createdAt,
+  updatedAt: dealOpportunities.updatedAt,
+  bitrixId: dealOpportunities.bitrixId,
+  bitrixLink: dealOpportunities.bitrixLink,
+} as const;
+
 const rankedDealOpportunitiesOrderBy = [
   sql`case
     when ${dealOpportunityScreenings.status} = 'PASS' then 0
@@ -1334,22 +1372,14 @@ export const GetRankedDealOpportunities = async (): Promise<
   try {
     return await db
       .select({
-        opp: dealOpportunities,
-        company: {
-          id: companies.id,
-          name: companies.name,
-          industry: companies.industry,
-          location: companies.location,
-        },
+        opp: dealOpportunityListOpp,
         screening: dealOpportunityScreenings,
       })
       .from(dealOpportunities)
-      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
       .leftJoin(
         dealOpportunityScreenings,
         eq(dealOpportunityScreenings.dealOpportunityId, dealOpportunities.id),
       )
-      .where(isNull(companies.deletedAt))
       .orderBy(...rankedDealOpportunitiesOrderBy);
   } catch (error) {
     console.error("Failed query: ranked deal opportunities", error);
@@ -1363,7 +1393,7 @@ export type GetRankedDealOpportunitiesPaginatedResult = {
   totalPages: number;
 };
 
-/** Ranked deal opportunities with optional text search (company name, teaser, description). */
+/** Ranked deal opportunities with optional text search on listing fields (no `Company` join). */
 export const GetRankedDealOpportunitiesPaginated = async ({
   offset = 0,
   limit = 25,
@@ -1374,43 +1404,28 @@ export const GetRankedDealOpportunitiesPaginated = async ({
   query?: string;
 }): Promise<GetRankedDealOpportunitiesPaginatedResult> => {
   const trimmed = query.trim().slice(0, 500);
+  const pattern = `%${escapeIlikePattern(trimmed)}%`;
   const searchFilter =
     trimmed.length > 0
       ? or(
-        ilike(
-          companies.name,
-          `%${escapeIlikePattern(trimmed)}%`,
-        ),
-        ilike(
-          dealOpportunities.dealTeaser,
-          `%${escapeIlikePattern(trimmed)}%`,
-        ),
-        ilike(
-          dealOpportunities.description,
-          `%${escapeIlikePattern(trimmed)}%`,
-        ),
+        ilike(dealOpportunities.title, pattern),
+        ilike(dealOpportunities.dealTeaser, pattern),
+        ilike(dealOpportunities.description, pattern),
+        ilike(dealOpportunities.companyLocation, pattern),
+        ilike(dealOpportunities.brokerage, pattern),
       )
       : undefined;
 
-  const baseWhere = isNull(companies.deletedAt);
-  const whereClause =
-    searchFilter != null ? and(baseWhere, searchFilter) : baseWhere;
+  const whereClause = searchFilter ?? sql`true`;
 
   try {
     const baseFrom = () =>
       db
         .select({
-          opp: dealOpportunities,
-          company: {
-            id: companies.id,
-            name: companies.name,
-            industry: companies.industry,
-            location: companies.location,
-          },
+          opp: dealOpportunityListOpp,
           screening: dealOpportunityScreenings,
         })
         .from(dealOpportunities)
-        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
         .leftJoin(
           dealOpportunityScreenings,
           eq(
@@ -1428,7 +1443,6 @@ export const GetRankedDealOpportunitiesPaginated = async ({
       db
         .select({ count: count() })
         .from(dealOpportunities)
-        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
         .leftJoin(
           dealOpportunityScreenings,
           eq(
@@ -2650,3 +2664,10 @@ export async function listCimScreeningSessionsForUserWithMeta(
 
 /** TRPC / app helpers live in `queries/deal-trpc.ts`; re-exported here because `@repo/db/queries` resolves to this file. */
 export * from "./queries/deal-trpc";
+
+export {
+  normalizeStoredDealStageForPipeline,
+  GetRankedDealOpportunityKanbanSummary,
+  GetRankedDealOpportunitiesForKanbanColumnPaginated,
+} from "./queries/deal-opportunity";
+export type { GetRankedDealOpportunityKanbanSummaryResult } from "./queries/deal-opportunity";

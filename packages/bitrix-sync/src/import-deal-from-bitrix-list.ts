@@ -55,6 +55,10 @@ export type NormalizedBitrixDealImport = {
   brokerLinkedIn: string | null;
   /** Bitrix linked company `TITLE` when `COMPANY_ID` is set and companies were batch-loaded. */
   brokerage: string | null;
+  /** State / address combined for `DealOpportunity.companyLocation`. */
+  companyLocation: string | null;
+  cimLink: string | null;
+  dataRoomLink: string | null;
   bitrixCreatedAt: Date | null;
 };
 
@@ -94,6 +98,29 @@ export function extractBitrixString(v: unknown): string | null {
     if (typeof o.TEXT === "string") return extractBitrixString(o.TEXT);
   }
   return null;
+}
+
+/**
+ * Bitrix `address` user field: object with ADDRESS / CITY / REGION / … or nested `VALUE`.
+ */
+export function formatBitrixAddressValue(v: unknown): string | null {
+  if (v == null) return null;
+  const flat = extractBitrixString(v);
+  if (flat) return flat;
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  if ("VALUE" in o && o.VALUE != null && typeof o.VALUE === "object") {
+    return formatBitrixAddressValue(o.VALUE);
+  }
+  const parts = [
+    extractBitrixString(o.ADDRESS ?? o.address),
+    extractBitrixString(o.CITY ?? o.city),
+    extractBitrixString(o.REGION ?? o.REGION_NAME ?? o.region),
+    extractBitrixString(o.POSTAL_CODE ?? o.POSTCODE ?? o.postalCode),
+    extractBitrixString(o.COUNTRY ?? o.country),
+  ].filter(Boolean);
+  if (parts.length > 0) return parts.join(", ");
+  return extractBitrixString(o.TEXT ?? o.text);
 }
 
 function firstBitrixPhone(v: unknown): string | null {
@@ -506,9 +533,13 @@ export function normalizeBitrixListRow(
       ? revenueUf
       : opportunity;
 
-  const askingPrice = uf.askingPrice.trim()
+  let askingPrice: number | null = uf.askingPrice.trim()
     ? coerceBitrixNumeric(row[uf.askingPrice])
     : null;
+  if (askingPrice == null && uf.askingPrice.trim()) {
+    const apStr = extractBitrixString(row[uf.askingPrice]);
+    if (apStr) askingPrice = coerceBitrixNumeric(apStr);
+  }
 
   const sourceWebsite = uf.sourceWebsite.trim()
     ? extractBitrixString(row[uf.sourceWebsite])
@@ -519,17 +550,41 @@ export function normalizeBitrixListRow(
     : null;
 
   const teaserUfText = teaserCode ? extractBitrixString(row[teaserCode]) : null;
-  const companyLocation = uf.companyLocation.trim()
+  const stateOrRegion = uf.companyLocation.trim()
     ? extractBitrixString(row[uf.companyLocation])
     : null;
+  let addressFormatted: string | null = null;
+  if (uf.companyAddress.trim()) {
+    addressFormatted = formatBitrixAddressValue(row[uf.companyAddress]);
+  }
+  if (!addressFormatted?.trim() && uf.companyAddressLine.trim()) {
+    addressFormatted = extractBitrixString(row[uf.companyAddressLine]);
+  }
+  const listingLocation =
+    [stateOrRegion, addressFormatted].filter(Boolean).join(" · ") || null;
+
+  const cimLink = uf.cimLink.trim()
+    ? extractBitrixString(row[uf.cimLink])
+    : null;
+  const dataRoomLink = uf.dataRoomLink.trim()
+    ? extractBitrixString(row[uf.dataRoomLink])
+    : null;
+
   const comments = extractBitrixString(row.COMMENTS);
   /** Standard Bitrix deal fields (returned by default `crm.deal.list` without `select`). */
   const sourceDescription = extractBitrixString(row.SOURCE_DESCRIPTION);
   const additionalInfo = extractBitrixString(row.ADDITIONAL_INFO);
   const description =
     [
-      dealListingUrl ? `Deal link: ${dealListingUrl}` : null,
-      companyLocation ? `Location: ${companyLocation}` : null,
+      dealListingUrl &&
+      dealListingUrl !== sourceWebsite &&
+      dealListingUrl !== cimLink &&
+      dealListingUrl !== dataRoomLink
+        ? `Deal link: ${dealListingUrl}`
+        : null,
+      listingLocation ? `Location: ${listingLocation}` : null,
+      cimLink ? `CIM: ${cimLink}` : null,
+      dataRoomLink ? `Data room: ${dataRoomLink}` : null,
       comments,
       sourceDescription,
       additionalInfo,
@@ -677,6 +732,9 @@ export function normalizeBitrixListRow(
     brokerPhone,
     brokerLinkedIn,
     brokerage: brokerage?.trim() ? brokerage.trim() : null,
+    companyLocation: listingLocation,
+    cimLink,
+    dataRoomLink,
     bitrixCreatedAt: parseBitrixDate(row.DATE_CREATE),
   };
 }

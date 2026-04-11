@@ -19,6 +19,9 @@ const dealOpportunitiesRouteApi = getRouteApi("/_protected/deal-opportunities/")
 
 type DealsViewMode = "table" | "kanban";
 
+/** Kanban is implemented but not offered in the UI; flip to `true` to restore the layout toggle. */
+const SHOW_KANBAN_IN_UI = false;
+
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 export function DealsWorkspace({
@@ -43,7 +46,7 @@ export function DealsWorkspace({
     select: (s) => s.isLoading,
   });
 
-  const [view, setView] = React.useState<DealsViewMode>("kanban");
+  const [view, setView] = React.useState<DealsViewMode>("table");
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [draftQ, setDraftQ] = React.useState(q);
 
@@ -115,7 +118,7 @@ export function DealsWorkspace({
                 });
               }
             }}
-            placeholder="Company, teaser, or description…"
+            placeholder="Title, teaser, location, brokerage…"
             className="h-11 w-full max-w-xl text-base sm:text-sm"
             aria-describedby="deal-opportunities-search-hint"
             aria-controls="deal-opportunities-results"
@@ -124,9 +127,9 @@ export function DealsWorkspace({
             id="deal-opportunities-search-hint"
             className="text-muted-foreground text-xs leading-snug"
           >
-            Matches company name, deal teaser, and description. Updates shortly
-            after you stop typing. Press Enter to search immediately, Escape to
-            clear.
+            Matches listing title, teaser, description, location, and
+            brokerage. Updates shortly after you stop typing. Press Enter to
+            search immediately, Escape to clear.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -169,7 +172,33 @@ export function DealsWorkspace({
       </div>
 
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-        {deals.length > 0 && view === "table" ? (
+        {SHOW_KANBAN_IN_UI ? (
+          deals.length > 0 && view === "table" ? (
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={toggleAll}
+                  aria-label="Select all deals on this page"
+                />
+                <span>Select all on page</span>
+              </label>
+              <BulkScreenDealsDialog
+                selectedIds={selectedIds}
+                onSuccess={() => {
+                  setRowSelection({});
+                  void router.invalidate();
+                }}
+              />
+            </div>
+          ) : deals.length > 0 && view === "kanban" ? (
+            <span className="text-muted-foreground text-sm">
+              Switch to table to select deals and bulk screen.
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-sm" />
+          )
+        ) : deals.length > 0 ? (
           <div className="flex flex-wrap items-center gap-4">
             <label className="flex cursor-pointer items-center gap-2 text-sm">
               <Checkbox
@@ -187,38 +216,36 @@ export function DealsWorkspace({
               }}
             />
           </div>
-        ) : deals.length > 0 && view === "kanban" ? (
-          <span className="text-muted-foreground text-sm">
-            Switch to table to select deals and bulk screen.
-          </span>
         ) : (
           <span className="text-muted-foreground text-sm" />
         )}
-        <ToggleGroup
-          type="single"
-          value={view}
-          onValueChange={(v) => {
-            if (v === "table" || v === "kanban") setView(v);
-          }}
-          variant="outline"
-          size="sm"
-          aria-label="Deal list layout"
-        >
-          <ToggleGroupItem
-            value="table"
-            aria-label="Table view"
-            className="px-0"
+        {SHOW_KANBAN_IN_UI ? (
+          <ToggleGroup
+            type="single"
+            value={view}
+            onValueChange={(v) => {
+              if (v === "table" || v === "kanban") setView(v);
+            }}
+            variant="outline"
+            size="sm"
+            aria-label="Deal list layout"
           >
-            <Table2 className="h-4 w-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="kanban"
-            aria-label="Kanban view"
-            className="px-0"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </ToggleGroupItem>
-        </ToggleGroup>
+            <ToggleGroupItem
+              value="table"
+              aria-label="Table view"
+              className="px-0"
+            >
+              <Table2 className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="kanban"
+              aria-label="Kanban view"
+              className="px-0"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        ) : null}
       </div>
 
       <div
@@ -226,17 +253,26 @@ export function DealsWorkspace({
         aria-busy={isRouteLoading}
         className="min-w-0"
       >
-        {view === "table" ? (
+        {SHOW_KANBAN_IN_UI && view === "kanban" ? (
+          <div className="min-w-0 pt-1 pb-6 sm:px-1 sm:pb-8">
+            <DealsKanbanBoard
+              pipelineStages={pipelineStages}
+              countsByStage={{}}
+              initialRowsByStage={{}}
+              limitPerStage={40}
+              pipelineCategoryId="0"
+              fallbackStageId="NEW"
+              allPipelineStageIds={pipelineStages.map((s) => s.statusId)}
+              query={q}
+            />
+          </div>
+        ) : (
           <DealsDataTable
             columns={columns}
             data={deals}
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
           />
-        ) : (
-          <div className="min-w-0 pt-1 pb-6 sm:px-1 sm:pb-8">
-            <DealsKanbanBoard deals={deals} pipelineStages={pipelineStages} />
-          </div>
         )}
       </div>
 

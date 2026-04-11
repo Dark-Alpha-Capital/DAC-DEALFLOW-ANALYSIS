@@ -11,8 +11,16 @@
  */
 export const BITRIX_UF_DEFAULTS = {
   revenue: "UF_CRM_1715146259470",
+  /** Deal Link (external listing URL). */
   sourceWebsite: "UF_CRM_1715146404315",
+  /** State / region (short location line). */
   companyLocation: "UF_CRM_1711453168658",
+  /** Bitrix `address` user field (Company Address). */
+  companyAddress: "UF_CRM_1727889539189",
+  /** Optional plain-text address UF when `companyAddress` is empty. */
+  companyAddressLine: "UF_CRM_1727888678216",
+  cimLink: "UF_CRM_1715146372084",
+  dataRoomLink: "UF_CRM_1763568458188",
   brokerFirstName: "",
   brokerLastName: "",
   brokerEmail: "",
@@ -46,6 +54,19 @@ export function getBitrixOpportunitySyncUfCodes(): {
     companyLocation: e(
       "BITRIX_UF_COMPANY_LOCATION",
       BITRIX_UF_DEFAULTS.companyLocation,
+    ),
+    companyAddress: e(
+      "BITRIX_UF_COMPANY_ADDRESS",
+      BITRIX_UF_DEFAULTS.companyAddress,
+    ),
+    companyAddressLine: e(
+      "BITRIX_UF_COMPANY_ADDRESS_LINE",
+      BITRIX_UF_DEFAULTS.companyAddressLine,
+    ),
+    cimLink: e("BITRIX_UF_CIM_LINK", BITRIX_UF_DEFAULTS.cimLink),
+    dataRoomLink: e(
+      "BITRIX_UF_DATA_ROOM_LINK",
+      BITRIX_UF_DEFAULTS.dataRoomLink,
     ),
     brokerFirstName: e(
       "BITRIX_UF_BROKER_FIRST_NAME",

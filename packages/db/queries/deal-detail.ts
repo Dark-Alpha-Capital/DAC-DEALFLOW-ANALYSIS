@@ -210,7 +210,8 @@ export const GetDealWithAllRelations = async (uid: string) => {
     ebitdaMargin: resolvedEbitdaMargin,
     brokerage: opp.brokerage ?? "",
     industry: company?.industry ?? "",
-    companyLocation: company?.location ?? null,
+    companyLocation:
+      opp.companyLocation?.trim() || company?.location || null,
     sourceWebsite: opp.sourceWebsite ?? "",
     dealType: opp.dealType,
     status: opp.status,
