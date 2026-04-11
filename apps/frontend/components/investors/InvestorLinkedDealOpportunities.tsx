@@ -1,7 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import type { DealOpportunity } from "@repo/db";
+import { resolveBitrixStageLabel } from "@repo/bitrix-sync";
 import { ChevronRight } from "lucide-react";
 import { formatCurrency, formatDateStable } from "@/lib/utils";
+import { useTRPC } from "@/trpc/client";
 
 interface InvestorLinkedDealOpportunitiesProps {
   investorName: string;
@@ -23,6 +26,11 @@ export function InvestorLinkedDealOpportunities({
   investorName,
   dealOpportunities,
 }: InvestorLinkedDealOpportunitiesProps) {
+  const trpc = useTRPC();
+  const { data: pipelineStages = [] } = useQuery(
+    trpc.dealOpportunities.getBitrixPipelineStages.queryOptions(),
+  );
+
   if (dealOpportunities.length === 0) {
     return (
       <div className="border-border space-y-2 border-b pb-6">
@@ -70,7 +78,9 @@ export function InvestorLinkedDealOpportunities({
                     </Link>
                   </td>
                   <td className="text-muted-foreground whitespace-nowrap px-3 py-2">
-                    {fmtEnum(opp.stage)}
+                    {pipelineStages.length > 0
+                      ? resolveBitrixStageLabel(opp.stage, pipelineStages)
+                      : opp.stage}
                   </td>
                   <td className="text-muted-foreground whitespace-nowrap px-3 py-2">
                     {fmtEnum(opp.status)}

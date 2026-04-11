@@ -1,9 +1,13 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { companyNotes, eq } from "@repo/db";
+import {
+  listCompanyNotesByCompanyId,
+  insertCompanyNote,
+  updateCompanyNoteById,
+  deleteCompanyNoteById,
+} from "@repo/db/mutations";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
-import { desc } from "drizzle-orm";
 
 export const companyNotesRouter = createTRPCRouter({
   listByCompany: protectedProcedure
@@ -13,11 +17,7 @@ export const companyNotesRouter = createTRPCRouter({
       }),
     )
     .query(async ({ input }) => {
-      return db
-        .select()
-        .from(companyNotes)
-        .where(eq(companyNotes.companyId, input.companyId))
-        .orderBy(desc(companyNotes.createdAt));
+      return listCompanyNotesByCompanyId(input.companyId);
     }),
 
   create: protectedProcedure
@@ -30,15 +30,12 @@ export const companyNotesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const [note] = await db
-        .insert(companyNotes)
-        .values({
-          companyId: input.companyId,
-          title: input.title ?? null,
-          content: input.content,
-          createdById: ctx.user.id,
-        })
-        .returning();
+      const note = await insertCompanyNote({
+        companyId: input.companyId,
+        title: input.title ?? null,
+        content: input.content,
+        createdById: ctx.user.id,
+      });
 
       after(async () => {
         revalidatePath(`/companies/${input.companyId}`);
@@ -59,14 +56,11 @@ export const companyNotesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const [updated] = await db
-        .update(companyNotes)
-        .set({
-          title: input.title ?? null,
-          content: input.content,
-        })
-        .where(eq(companyNotes.id, input.id))
-        .returning();
+      const updated = await updateCompanyNoteById({
+        id: input.id,
+        title: input.title ?? null,
+        content: input.content,
+      });
 
       if (updated) {
         after(async () => {
@@ -87,10 +81,7 @@ export const companyNotesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const [deleted] = await db
-        .delete(companyNotes)
-        .where(eq(companyNotes.id, input.id))
-        .returning();
+      const deleted = await deleteCompanyNoteById(input.id);
 
       if (deleted) {
         after(async () => {
@@ -103,4 +94,3 @@ export const companyNotesRouter = createTRPCRouter({
       return { success: true };
     }),
 });
-

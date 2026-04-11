@@ -1,4 +1,4 @@
-import { db } from ".";
+import { db } from "..";
 import {
   deals,
   screeners,
@@ -7,23 +7,23 @@ import {
   aiScreenings,
   questionnaires,
   cimExtractions,
-  dealSims,
+  dealCims,
   dealFinancialSnapshots,
   companyFinancialSnapshots,
   companies,
   dealRiskFlags,
   dealOpportunities,
-  simScreeningSessions,
-  simScreeningRuns,
-  simScreeningAnswers,
-} from "./schema";
+  cimScreeningSessions,
+  cimScreeningRuns,
+  cimScreeningAnswers,
+} from "../schema";
 import type {
   DealFinancialSnapshotSource,
   CompanyFinancialSnapshotSource,
   DealRiskSeverity,
   DealRiskType,
   ScreenerResponseSource,
-} from "./enums";
+} from "../enums";
 import { eq, inArray, and, desc } from "drizzle-orm";
 
 export interface CIMExtractionPayload {
@@ -211,24 +211,24 @@ export const DeleteQuestionnaireById = async (questionnaireId: string) => {
 };
 
 /**
- * Archive the current active SIM for a deal opportunity.
+ * Archive the current active CIM upload for a deal opportunity.
  */
-export const archiveActiveDealSim = async (dealOpportunityId: string) => {
+export const archiveActiveDealCim = async (dealOpportunityId: string) => {
   await db
-    .update(dealSims)
+    .update(dealCims)
     .set({ status: "ARCHIVED" })
     .where(
       and(
-        eq(dealSims.dealOpportunityId, dealOpportunityId),
-        eq(dealSims.status, "ACTIVE"),
+        eq(dealCims.dealOpportunityId, dealOpportunityId),
+        eq(dealCims.status, "ACTIVE"),
       ),
     );
 };
 
 /**
- * Create a new DealSim (active). Call archiveActiveDealSim first if replacing.
+ * Create a new DealCim (active). Call archiveActiveDealCim first if replacing.
  */
-export const createDealSim = async ({
+export const createDealCim = async ({
   dealOpportunityId,
   documentId,
   storageKey,
@@ -240,7 +240,7 @@ export const createDealSim = async ({
   uploadedById?: string;
 }) => {
   const [row] = await db
-    .insert(dealSims)
+    .insert(dealCims)
     .values({
       dealOpportunityId,
       documentId,
@@ -253,10 +253,10 @@ export const createDealSim = async ({
 };
 
 /**
- * Replace SIM: archive current active, create new active. Returns new sim.
+ * Replace CIM: archive current active, create new active. Returns new row.
  * Runs in a transaction to prevent race conditions.
  */
-export const replaceDealSim = async ({
+export const replaceDealCim = async ({
   dealOpportunityId,
   documentId,
   storageKey,
@@ -269,16 +269,16 @@ export const replaceDealSim = async ({
 }) => {
   return db.transaction(async (tx) => {
     await tx
-      .update(dealSims)
+      .update(dealCims)
       .set({ status: "ARCHIVED" })
       .where(
         and(
-          eq(dealSims.dealOpportunityId, dealOpportunityId),
-          eq(dealSims.status, "ACTIVE"),
+          eq(dealCims.dealOpportunityId, dealOpportunityId),
+          eq(dealCims.status, "ACTIVE"),
         ),
       );
     const [row] = await tx
-      .insert(dealSims)
+      .insert(dealCims)
       .values({
         dealOpportunityId,
         documentId,
@@ -287,17 +287,17 @@ export const replaceDealSim = async ({
         uploadedById: uploadedById ?? null,
       })
       .returning();
-    if (!row) throw new Error("Failed to create DealSim");
+    if (!row) throw new Error("Failed to create DealCim");
     return row;
   });
 };
 
 /**
- * Upsert CIM extraction for a SIM.
- * Uses simId as the canonical link; one extraction per SIM.
+ * Upsert CIM extraction for a DealCim row.
+ * Uses dealCimId as the canonical link; one extraction per CIM upload.
  */
 export const upsertCIMExtraction = async ({
-  simId,
+  dealCimId,
   documentId,
   dealOpportunityId,
   payload,
@@ -306,7 +306,7 @@ export const upsertCIMExtraction = async ({
   source = "AI",
   updatedByUserId,
 }: {
-  simId: string;
+  dealCimId: string;
   documentId?: string;
   dealOpportunityId?: string;
   payload: CIMExtractionPayload;
@@ -316,7 +316,7 @@ export const upsertCIMExtraction = async ({
   updatedByUserId?: string;
 }) => {
   const values = {
-    simId,
+    dealCimId,
     documentId: documentId ?? null,
     dealOpportunityId: dealOpportunityId ?? null,
     revenueHistory: payload.revenueHistory ?? null,
@@ -340,7 +340,7 @@ export const upsertCIMExtraction = async ({
       .insert(cimExtractions)
       .values(values)
       .onConflictDoUpdate({
-        target: [cimExtractions.simId],
+        target: [cimExtractions.dealCimId],
         set: {
           documentId: values.documentId,
           dealOpportunityId: values.dealOpportunityId,
@@ -543,20 +543,22 @@ export const upsertCustomerConcentrationSystemRiskFlag = async ({
 };
 
 /**
- * Delete all financials (CIM extraction) for a SIM.
+ * Delete all financials (CIM extraction) for a DealCim row.
  */
-export const deleteFinancialsForSim = async (simId: string) => {
-  await db.delete(cimExtractions).where(eq(cimExtractions.simId, simId));
+export const deleteFinancialsForDealCim = async (dealCimId: string) => {
+  await db
+    .delete(cimExtractions)
+    .where(eq(cimExtractions.dealCimId, dealCimId));
 };
 
-export type SimScreeningSessionStatus =
+export type CimScreeningSessionStatus =
   | "PENDING"
   | "INGESTING"
   | "SCREENING"
   | "COMPLETED"
   | "FAILED";
 
-export async function insertSimScreeningSession(input: {
+export async function insertCimScreeningSession(input: {
   userId: string;
   documentId?: string | null;
   dealOpportunityId?: string | null;
@@ -565,11 +567,11 @@ export async function insertSimScreeningSession(input: {
   const dealId = input.dealOpportunityId?.trim() || null;
   if ((docId ? 1 : 0) + (dealId ? 1 : 0) !== 1) {
     throw new Error(
-      "insertSimScreeningSession: exactly one of documentId or dealOpportunityId is required",
+      "insertCimScreeningSession: exactly one of documentId or dealOpportunityId is required",
     );
   }
   const [row] = await db
-    .insert(simScreeningSessions)
+    .insert(cimScreeningSessions)
     .values({
       userId: input.userId,
       documentId: docId,
@@ -579,13 +581,13 @@ export async function insertSimScreeningSession(input: {
   return row ?? null;
 }
 
-export async function insertSimScreeningRun(input: {
+export async function insertCimScreeningRun(input: {
   sessionId: string;
   screenerId: string;
   workflowInstanceId: string | null;
 }) {
   const [row] = await db
-    .insert(simScreeningRuns)
+    .insert(cimScreeningRuns)
     .values({
       sessionId: input.sessionId,
       screenerId: input.screenerId,
@@ -596,21 +598,21 @@ export async function insertSimScreeningRun(input: {
   return row ?? null;
 }
 
-export async function updateSimScreeningRun(
+export async function updateCimScreeningRun(
   runId: string,
   patch: Partial<{
-    status: SimScreeningSessionStatus;
+    status: CimScreeningSessionStatus;
     workflowInstanceId: string | null;
     errorMessage: string | null;
   }>,
 ) {
   await db
-    .update(simScreeningRuns)
+    .update(cimScreeningRuns)
     .set({ ...patch, updatedAt: new Date() })
-    .where(eq(simScreeningRuns.id, runId));
+    .where(eq(cimScreeningRuns.id, runId));
 }
 
-export async function upsertSimScreeningAnswer(input: {
+export async function upsertCimScreeningAnswer(input: {
   runId: string;
   questionId: string;
   score: number;
@@ -618,7 +620,7 @@ export async function upsertSimScreeningAnswer(input: {
   evidenceChunkIds?: string[] | null;
 }) {
   await db
-    .insert(simScreeningAnswers)
+    .insert(cimScreeningAnswers)
     .values({
       runId: input.runId,
       questionId: input.questionId,
@@ -627,7 +629,7 @@ export async function upsertSimScreeningAnswer(input: {
       evidenceChunkIds: input.evidenceChunkIds ?? null,
     })
     .onConflictDoUpdate({
-      target: [simScreeningAnswers.runId, simScreeningAnswers.questionId],
+      target: [cimScreeningAnswers.runId, cimScreeningAnswers.questionId],
       set: {
         score: input.score,
         rationale: input.rationale,
@@ -637,8 +639,8 @@ export async function upsertSimScreeningAnswer(input: {
     });
 }
 
-export async function deleteSimScreeningAnswersForRun(runId: string) {
+export async function deleteCimScreeningAnswersForRun(runId: string) {
   await db
-    .delete(simScreeningAnswers)
-    .where(eq(simScreeningAnswers.runId, runId));
+    .delete(cimScreeningAnswers)
+    .where(eq(cimScreeningAnswers.runId, runId));
 }

@@ -13,6 +13,12 @@ export const offsetLimitSchema = z.object({
   limit: z.number().int().positive().max(500),
 });
 
+export const rankedDealOpportunitiesPageInputSchema = z.object({
+  offset: z.number().int().nonnegative(),
+  limit: z.number().int().positive().max(100),
+  query: z.string().max(500).optional(),
+});
+
 export const dealOpportunityIdSchema = z.object({
   dealOpportunityId: uidSchema,
 });

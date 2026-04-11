@@ -15,7 +15,8 @@ export const optionalFormattedNumberString = z
   );
 
 export const QuickAddDealFormSchema = z.object({
-  dealTeaser: z.string().min(1, "Deal title is required"),
+  title: z.string().min(1, "Deal title is required"),
+  dealTeaser: z.string().optional(),
   themeId: z.string().optional(),
   sourceWebsite: z.string().optional(),
   brokerage: z.string().optional(),

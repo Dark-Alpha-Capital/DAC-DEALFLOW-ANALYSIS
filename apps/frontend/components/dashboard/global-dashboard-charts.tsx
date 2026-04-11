@@ -7,19 +7,6 @@ import {
 } from "@/components/ui/chart";
 import type { ReactNode } from "react";
 
-const STAGE_LABELS: Record<string, string> = {
-  LISTED: "Listed",
-  INITIAL_REVIEW: "Initial Review",
-  SCREENED: "Screened",
-  MEETING_HELD: "Meeting Held",
-  IOI_SUBMITTED: "IOI Submitted",
-  LOI_SUBMITTED: "LOI Submitted",
-  DILIGENCE: "Diligence",
-  CLOSED: "Closed",
-  DEAD: "Dead",
-  UNKNOWN: "Unknown",
-};
-
 const LEAD_STATUS_LABELS: Record<string, string> = {
   NEW: "New",
   PROCESSED: "Processed",
@@ -42,23 +29,10 @@ const leadFlowConfig = {
   },
 } satisfies ChartConfig;
 
-const stageOrder = [
-  "LISTED",
-  "INITIAL_REVIEW",
-  "SCREENED",
-  "MEETING_HELD",
-  "IOI_SUBMITTED",
-  "LOI_SUBMITTED",
-  "DILIGENCE",
-  "CLOSED",
-  "DEAD",
-  "UNKNOWN",
-] as const;
-
 const leadStatusOrder = ["NEW", "PROCESSED", "DUPLICATE", "REJECTED", "UNKNOWN"] as const;
 
 type PipelineSlice = {
-  dealsByStage: Array<{ stage: string; count: number }>;
+  dealsByStage: Array<{ stage: string; stageLabel: string; count: number }>;
   leadFlow: Array<{ status: string; count: number }>;
 };
 
@@ -88,12 +62,12 @@ function SegmentedPanel({
 }
 
 function DealsByStage({ data }: { data: PipelineSlice["dealsByStage"] }) {
-  const chartData = stageOrder
-    .map((stage) => ({
-      stage: STAGE_LABELS[stage] ?? stage,
-      count: data.find((row) => row.stage === stage)?.count ?? 0,
-    }))
-    .filter((row) => row.count > 0);
+  const chartData = data
+    .filter((row) => row.count > 0)
+    .map((row) => ({
+      stage: row.stageLabel,
+      count: row.count,
+    }));
 
   return (
     <SegmentedPanel

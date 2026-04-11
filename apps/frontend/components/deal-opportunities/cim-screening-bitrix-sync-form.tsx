@@ -77,6 +77,8 @@ export function CimScreeningBitrixSyncForm({
       askingPrice: null,
       ebitda: null,
       ebitdaMargin: null,
+      teaser: "",
+      revenue: null,
       runId,
       screeningComment,
     },
@@ -102,6 +104,8 @@ export function CimScreeningBitrixSyncForm({
       askingPrice: d.askingPrice ?? null,
       ebitda: d.ebitda ?? null,
       ebitdaMargin: d.ebitdaMargin ?? null,
+      teaser: d.teaser ?? "",
+      revenue: d.opportunity,
       runId,
       screeningComment,
     });
@@ -256,6 +260,8 @@ export function CimScreeningBitrixSyncForm({
               askingPrice: values.askingPrice ?? null,
               ebitda: values.ebitda ?? null,
               ebitdaMargin: values.ebitdaMargin ?? null,
+              teaser: values.teaser?.trim() || null,
+              revenue: values.revenue ?? null,
               screeningComment: values.screeningComment,
             }),
           )}
@@ -268,6 +274,24 @@ export function CimScreeningBitrixSyncForm({
                 <FormLabel>Title</FormLabel>
                 <FormControl>
                   <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="teaser"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Teaser</FormLabel>
+                <FormControl>
+                  <Textarea
+                    rows={3}
+                    {...field}
+                    value={field.value ?? ""}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

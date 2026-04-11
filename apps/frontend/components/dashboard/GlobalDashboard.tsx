@@ -15,21 +15,8 @@ import {
   GlobalDashboardThemeCharts,
 } from "./global-dashboard-charts";
 
-const STAGE_LABELS: Record<string, string> = {
-  LISTED: "Listed",
-  INITIAL_REVIEW: "Initial Review",
-  SCREENED: "Screened",
-  MEETING_HELD: "Meeting Held",
-  IOI_SUBMITTED: "IOI Submitted",
-  LOI_SUBMITTED: "LOI Submitted",
-  DILIGENCE: "Diligence",
-  CLOSED: "Closed",
-  DEAD: "Dead",
-  UNKNOWN: "Unknown",
-};
-
 type PipelineData = {
-  dealsByStage: Array<{ stage: string; count: number }>;
+  dealsByStage: Array<{ stage: string; stageLabel: string; count: number }>;
   leadFlow: Array<{ status: string; count: number }>;
   kpis: {
     newLeads: number;
@@ -49,6 +36,7 @@ type TopDeal = {
   companyName: string;
   themeName: string | null;
   stage: string;
+  stageLabel: string;
   latestScore: number;
   latestScreenedAt: string;
 };
@@ -126,7 +114,7 @@ function TopDeals({ data }: { data: TopDeal[] }) {
                   </Link>
                 </TableCell>
                 <TableCell>{row.themeName ?? "Unassigned"}</TableCell>
-                <TableCell>{STAGE_LABELS[row.stage] ?? row.stage}</TableCell>
+                <TableCell>{row.stageLabel}</TableCell>
                 <TableCell>
                   <Badge variant="secondary">{row.latestScore}</Badge>
                 </TableCell>

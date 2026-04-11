@@ -44,8 +44,8 @@ import {
   getDealLinkedInvestorsInputSchema,
   getDealRelationshipCounts,
   getDealRelationshipCountsInputSchema,
-  getDealSimAnalysis,
-  getDealSimAnalysisInputSchema,
+  getDealCimAnalysis,
+  getDealCimAnalysisInputSchema,
   getDealScreeningTemplateQuestions,
   getDealScreeningTemplateQuestionsInputSchema,
   getEntityById,
@@ -55,10 +55,10 @@ import {
   getScreenerQuestionsForChat,
   getScreenerQuestionsInputSchema,
   getEntityByIdInputSchema,
-  getSimScreeningRunAnswers,
-  getSimScreeningRunAnswersInputSchema,
-  getSimScreeningSessionDetail,
-  getSimScreeningSessionDetailInputSchema,
+  getCimScreeningRunAnswers,
+  getCimScreeningRunAnswersInputSchema,
+  getCimScreeningSessionDetail,
+  getCimScreeningSessionDetailInputSchema,
   listScreenedDealOpportunities,
   listScreenedDealOpportunitiesInputSchema,
   listScreeners,
@@ -67,10 +67,10 @@ import {
   listScreenersInputSchema,
   listEntities,
   listEntitiesInputSchema,
-  listSimScreeningRuns,
-  listSimScreeningRunsInputSchema,
-  listSimScreeningSessions,
-  listSimScreeningSessionsInputSchema,
+  listCimScreeningRuns,
+  listCimScreeningRunsInputSchema,
+  listCimScreeningSessions,
+  listCimScreeningSessionsInputSchema,
   queryBusinessData,
   queryBusinessDataInputSchema,
   themeDossierInputSchema,
@@ -106,16 +106,16 @@ type ChatToolName =
   | "getInvestmentThemeDossier"
   | "getEntityDocuments"
   | "queryBusinessData"
-  | "listSimScreeningSessions"
+  | "listCimScreeningSessions"
   | "listScreenedDealOpportunities"
-  | "listSimScreeningRuns"
-  | "getSimScreeningRunAnswers"
-  | "getSimScreeningSessionDetail"
+  | "listCimScreeningRuns"
+  | "getCimScreeningRunAnswers"
+  | "getCimScreeningSessionDetail"
   | "listScreeners"
   | "getScreenerQuestions"
   | "listDealScreeningTemplates"
   | "getDealScreeningTemplateQuestions"
-  | "getDealSimAnalysis"
+  | "getDealCimAnalysis"
   | "getDealLinkedCompanies"
   | "getDealLinkedInvestors"
   | "getDealRelationshipCounts";
@@ -185,14 +185,14 @@ function getActiveToolsForStep(stepNumber: number): ChatToolName[] {
       "getInvestmentThemeDossier",
       "getEntityDocuments",
       "queryBusinessData",
-      "listSimScreeningSessions",
+      "listCimScreeningSessions",
       "listScreenedDealOpportunities",
-      "listSimScreeningRuns",
+      "listCimScreeningRuns",
       "listScreeners",
       "getScreenerQuestions",
       "listDealScreeningTemplates",
       "getDealScreeningTemplateQuestions",
-      "getDealSimAnalysis",
+      "getDealCimAnalysis",
       "getDealLinkedCompanies",
       "getDealLinkedInvestors",
       "getDealRelationshipCounts",
@@ -210,11 +210,11 @@ function getActiveToolsForStep(stepNumber: number): ChatToolName[] {
       "getEntityDocuments",
       "queryBusinessData",
       "listScreenedDealOpportunities",
-      "listSimScreeningRuns",
-      "getSimScreeningRunAnswers",
-      "getSimScreeningSessionDetail",
+      "listCimScreeningRuns",
+      "getCimScreeningRunAnswers",
+      "getCimScreeningSessionDetail",
       "getDealScreeningTemplateQuestions",
-      "getDealSimAnalysis",
+      "getDealCimAnalysis",
       "getDealLinkedCompanies",
       "getDealLinkedInvestors",
       "getDealRelationshipCounts",
@@ -229,9 +229,9 @@ function getActiveToolsForStep(stepNumber: number): ChatToolName[] {
     "getDealOpportunityDossier",
     "getInvestmentThemeDossier",
     "queryBusinessData",
-    "getSimScreeningRunAnswers",
-    "getSimScreeningSessionDetail",
-    "getDealSimAnalysis",
+    "getCimScreeningRunAnswers",
+    "getCimScreeningSessionDetail",
+    "getDealCimAnalysis",
     "getDealLinkedCompanies",
     "getDealLinkedInvestors",
     "getDealRelationshipCounts",
@@ -349,12 +349,12 @@ function createChatTools(chat: ChatSession, strict: boolean) {
       strict,
       execute: executeWithWorkerDb((input) => queryBusinessData(input, scope)),
     }),
-    listSimScreeningSessions: tool({
+    listCimScreeningSessions: tool({
       description:
-        "List SIM screening sessions for the current user, optionally filtered to a deal opportunity.",
-      inputSchema: listSimScreeningSessionsInputSchema,
+        "List CIM template screening sessions for the current user, optionally filtered to a deal opportunity.",
+      inputSchema: listCimScreeningSessionsInputSchema,
       strict,
-      execute: executeWithWorkerDb((input) => listSimScreeningSessions(input, scope)),
+      execute: executeWithWorkerDb((input) => listCimScreeningSessions(input, scope)),
     }),
     listScreenedDealOpportunities: tool({
       description:
@@ -363,26 +363,26 @@ function createChatTools(chat: ChatSession, strict: boolean) {
       strict,
       execute: executeWithWorkerDb((input) => listScreenedDealOpportunities(input, scope)),
     }),
-    listSimScreeningRuns: tool({
+    listCimScreeningRuns: tool({
       description:
-        "List screening runs for a session, a deal opportunity, or all sessions for the current user.",
-      inputSchema: listSimScreeningRunsInputSchema,
+        "List CIM template screening runs for a session, a deal opportunity, or all sessions for the current user.",
+      inputSchema: listCimScreeningRunsInputSchema,
       strict,
-      execute: executeWithWorkerDb((input) => listSimScreeningRuns(input, scope)),
+      execute: executeWithWorkerDb((input) => listCimScreeningRuns(input, scope)),
     }),
-    getSimScreeningRunAnswers: tool({
+    getCimScreeningRunAnswers: tool({
       description:
-        "Fetch question-by-question answers for a screening run, with optional evidence excerpts.",
-      inputSchema: getSimScreeningRunAnswersInputSchema,
+        "Fetch question-by-question answers for a CIM template screening run, with optional evidence excerpts.",
+      inputSchema: getCimScreeningRunAnswersInputSchema,
       strict,
-      execute: executeWithWorkerDb((input) => getSimScreeningRunAnswers(input)),
+      execute: executeWithWorkerDb((input) => getCimScreeningRunAnswers(input)),
     }),
-    getSimScreeningSessionDetail: tool({
+    getCimScreeningSessionDetail: tool({
       description:
-        "Fetch one screening session with its runs and optional latest-run Q&A.",
-      inputSchema: getSimScreeningSessionDetailInputSchema,
+        "Fetch one CIM template screening session with its runs and optional latest-run Q&A.",
+      inputSchema: getCimScreeningSessionDetailInputSchema,
       strict,
-      execute: executeWithWorkerDb((input) => getSimScreeningSessionDetail(input, scope)),
+      execute: executeWithWorkerDb((input) => getCimScreeningSessionDetail(input, scope)),
     }),
     listScreeners: tool({
       description:
@@ -412,12 +412,12 @@ function createChatTools(chat: ChatSession, strict: boolean) {
       strict,
       execute: executeWithWorkerDb((input) => getDealScreeningTemplateQuestions(input)),
     }),
-    getDealSimAnalysis: tool({
+    getDealCimAnalysis: tool({
       description:
-        "Fetch SIM analysis sections for a deal opportunity: growth narrative, financial metrics, risks, and extraction metadata.",
-      inputSchema: getDealSimAnalysisInputSchema,
+        "Fetch CIM analysis sections for a deal opportunity: growth narrative, financial metrics, risks, and extraction metadata.",
+      inputSchema: getDealCimAnalysisInputSchema,
       strict,
-      execute: executeWithWorkerDb((input) => getDealSimAnalysis(input, scope)),
+      execute: executeWithWorkerDb((input) => getDealCimAnalysis(input, scope)),
     }),
     getDealLinkedCompanies: tool({
       description:

@@ -5,14 +5,14 @@ import {
   getAllScreeners,
   getScreenerById,
   getScreenerQuestions,
-  getSimScreeningAnswersByRunId,
-  getSimScreeningRunsBySessionId,
-  getSimScreeningSessionByIdForUser,
-  listSimScreeningSessionsForUserWithMeta,
-  listSimScreeningLibraryDocumentsForUser,
+  getCimScreeningAnswersByRunId,
+  getCimScreeningRunsBySessionId,
+  getCimScreeningSessionByIdForUser,
+  listCimScreeningSessionsForUserWithMeta,
+  listCimScreeningLibraryDocumentsForUser,
   getDocumentChunksByIds,
 } from "@repo/db/queries";
-import { mapEvidenceChunkIdsToCitations } from "@/lib/map-sim-screening-evidence";
+import { mapEvidenceChunkIdsToCitations } from "@/lib/map-cim-screening-evidence";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import { getJobByIdForUser } from "@/src/lib/workflow-jobs-api";
 import { assertAuthenticated } from "@/lib/server/assert-session";
@@ -30,7 +30,7 @@ function buildScreeningCommentForRun(input: {
   rows: Array<{ question: string; score: number | null; rationale: string | null }>;
 }) {
   const headerLines = [
-    "SIM Screening Sync",
+    "CIM template screening sync",
     `Session ID: ${input.sessionId}`,
     `Run ID: ${input.runId}`,
     `Template: ${input.screenerName}`,
@@ -54,7 +54,7 @@ export const loadCimScreeningIndexData = createServerFn({ method: "GET" }).handl
     const userId = session.user.id;
     const [screeners, recentSessions] = await Promise.all([
       getAllScreeners(),
-      listSimScreeningSessionsForUserWithMeta(userId, 20),
+      listCimScreeningSessionsForUserWithMeta(userId, 20),
     ]);
 
     return {
@@ -77,6 +77,7 @@ export const loadCimScreeningNewRunData = createServerFn({
         id: dealOpportunities.id,
         companyId: dealOpportunities.companyId,
         leadId: dealOpportunities.leadId,
+        title: dealOpportunities.title,
         dealTeaser: dealOpportunities.dealTeaser,
         stage: dealOpportunities.stage,
         status: dealOpportunities.status,
@@ -88,7 +89,7 @@ export const loadCimScreeningNewRunData = createServerFn({
       .where(isNull(companies.deletedAt))
       .orderBy(desc(dealOpportunities.updatedAt), desc(dealOpportunities.id))
       .limit(100),
-    listSimScreeningLibraryDocumentsForUser(userId),
+    listCimScreeningLibraryDocumentsForUser(userId),
   ]);
 
   return {
@@ -103,7 +104,7 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const session = await assertAuthenticated();
     const userId = session.user.id;
-    const screeningSession = await getSimScreeningSessionByIdForUser(
+    const screeningSession = await getCimScreeningSessionByIdForUser(
       data.sessionId,
       userId,
     );
@@ -112,7 +113,7 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
     }
 
     const [runs, documentRow, dealRow, screeners] = await Promise.all([
-      getSimScreeningRunsBySessionId(screeningSession.id),
+      getCimScreeningRunsBySessionId(screeningSession.id),
       screeningSession.documentId
         ? db
             .select()
@@ -125,6 +126,7 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
         ? db
             .select({
               id: dealOpportunities.id,
+              title: dealOpportunities.title,
               dealTeaser: dealOpportunities.dealTeaser,
               description: dealOpportunities.description,
             })
@@ -151,13 +153,13 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
         ? getScreenerQuestions(selectedRun.screenerId)
         : Promise.resolve([]),
       selectedRun
-        ? getSimScreeningAnswersByRunId(selectedRun.id)
+        ? getCimScreeningAnswersByRunId(selectedRun.id)
         : Promise.resolve([]),
       selectedRun ? getScreenerById(selectedRun.screenerId) : Promise.resolve(null),
       selectedRun?.workflowInstanceId
         ? getJobByIdForUser(
             userId,
-            QUEUE_NAMES.SIM_SCREENING,
+            QUEUE_NAMES.CIM_SCREENING,
             selectedRun.workflowInstanceId,
           )
         : Promise.resolve(null),
@@ -212,6 +214,7 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
         dealOpportunity: dealRow
           ? {
               id: dealRow.id,
+              title: dealRow.title,
               dealTeaser: dealRow.dealTeaser,
               description: dealRow.description,
             }
@@ -272,7 +275,7 @@ export const loadCimScreeningBitrixSyncData = createServerFn({ method: "GET" })
     const session = await assertAuthenticated();
     const userId = session.user.id;
 
-    const screeningSession = await getSimScreeningSessionByIdForUser(
+    const screeningSession = await getCimScreeningSessionByIdForUser(
       data.sessionId,
       userId,
     );
@@ -287,7 +290,7 @@ export const loadCimScreeningBitrixSyncData = createServerFn({ method: "GET" })
     }
 
     const run = (
-      await getSimScreeningRunsBySessionId(screeningSession.id)
+      await getCimScreeningRunsBySessionId(screeningSession.id)
     ).find((r) => r.id === data.runId);
     if (!run) {
       return {
@@ -310,7 +313,7 @@ export const loadCimScreeningBitrixSyncData = createServerFn({ method: "GET" })
 
     const [questions, answers, previewResult] = await Promise.all([
       getScreenerQuestions(run.screenerId),
-      getSimScreeningAnswersByRunId(run.id),
+      getCimScreeningAnswersByRunId(run.id),
       getBitrixSyncPreviewData(screeningSession.dealOpportunityId),
     ]);
 

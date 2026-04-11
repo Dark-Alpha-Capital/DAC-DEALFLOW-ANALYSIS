@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { deals, eq, DealType } from "@repo/db";
-import { DeleteQuestionnaireById, DeleteReasoningById } from "@repo/db/mutations";
+import { DealType } from "@repo/db";
+import { DeleteQuestionnaireById, DeleteReasoningById, insertAiInferredDeal } from "@repo/db/mutations";
 import { del } from "@vercel/blob";
 import { after } from "@/lib/after";
 import { revalidatePath } from "@/lib/cache-invalidation";
@@ -52,27 +52,24 @@ export const miscRouter = createTRPCRouter({
   saveInferredDeal: protectedProcedure
     .input(inferDealSchema)
     .mutation(async ({ input, ctx }) => {
-      const [docRef] = await db
-        .insert(deals)
-        .values({
-          sourceWebsite: input.sourceWebsite || "",
-          firstName: input.firstName || "",
-          lastName: input.lastName || "",
-          email: input.email || "",
-          companyLocation: input.companyLocation || "",
-          dealCaption: input.dealCaption || "",
-          industry: input.industry || "",
-          askingPrice: input.askingPrice || 0,
-          revenue: input.revenue || 0,
-          grossRevenue: input.grossRevenue || 0,
-          title: input.title || "",
-          ebitda: input.ebitda || 0,
-          ebitdaMargin: input.ebitdaMargin || 0,
-          brokerage: input.brokerage || "Not Mentioned",
-          dealType: DealType.AI_INFERRED,
-          userId: ctx.user.id,
-        })
-        .returning();
+      const docRef = await insertAiInferredDeal({
+        sourceWebsite: input.sourceWebsite || "",
+        firstName: input.firstName || "",
+        lastName: input.lastName || "",
+        email: input.email || "",
+        companyLocation: input.companyLocation || "",
+        dealCaption: input.dealCaption || "",
+        industry: input.industry || "",
+        askingPrice: input.askingPrice || 0,
+        revenue: input.revenue || 0,
+        grossRevenue: input.grossRevenue || 0,
+        title: input.title || "",
+        ebitda: input.ebitda || 0,
+        ebitdaMargin: input.ebitdaMargin || 0,
+        brokerage: input.brokerage || "Not Mentioned",
+        dealType: DealType.AI_INFERRED,
+        userId: ctx.user.id,
+      });
 
       return { dealId: docRef?.id };
     }),

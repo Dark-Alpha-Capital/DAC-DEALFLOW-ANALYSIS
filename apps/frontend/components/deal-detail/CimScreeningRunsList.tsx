@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ExternalLink, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { SimScreeningRunForDealRow } from "@repo/db/queries";
+import type { CimScreeningRunForDealRow } from "@repo/db/queries";
 import { cn } from "@/lib/utils";
 
 function humanizeStatus(status: string): string {
@@ -21,10 +21,10 @@ function statusBadgeClass(status: string): string {
   return "font-normal";
 }
 
-export function DealSimScreeningRunsList({
+export function CimScreeningRunsList({
   runs,
 }: {
-  runs: SimScreeningRunForDealRow[];
+  runs: CimScreeningRunForDealRow[];
 }) {
   if (runs.length === 0) return null;
 
@@ -32,7 +32,7 @@ export function DealSimScreeningRunsList({
     <div className="space-y-3">
       <h3 className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
         <Layers className="h-4 w-4" />
-        SIM / CIM template runs
+        CIM template runs
       </h3>
       <ul className="space-y-2">
         {runs.map((r) => (

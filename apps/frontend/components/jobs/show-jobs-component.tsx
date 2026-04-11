@@ -383,7 +383,7 @@ export function ShowJobsComponent({
               <SelectItem value="file-upload">File Upload</SelectItem>
               <SelectItem value="cim-extraction">CIM Extraction</SelectItem>
               <SelectItem value="rag-ingestion">RAG Ingestion</SelectItem>
-              <SelectItem value="sim-screening">SIM screening</SelectItem>
+              <SelectItem value="cim-screening">CIM screening</SelectItem>
             </SelectContent>
           </Select>
 

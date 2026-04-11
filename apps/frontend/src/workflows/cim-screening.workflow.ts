@@ -9,14 +9,14 @@ import db, { count, eq, runDbWithWorkerNeonPool } from "@repo/db";
 import { documents, documentChunks } from "@repo/db/schema";
 import { getScreenerQuestions } from "@repo/db/queries";
 import {
-  updateSimScreeningRun,
-  upsertSimScreeningAnswer,
+  updateCimScreeningRun,
+  upsertCimScreeningAnswer,
 } from "@repo/db/mutations";
 import { getEmbedding } from "@repo/rag-engine";
 import { updateWorkflowJobProgress } from "@repo/db/workflow-jobs";
 import { searchDocumentChunksVector } from "@/lib/document-chunk-vectorize";
 import {
-  buildSimScreeningQuestionPrompt,
+  buildCimScreeningQuestionPrompt,
   getOpenAIProvider,
 } from "@repo/ai-core";
 import {
@@ -24,16 +24,17 @@ import {
   markWorkflowFailed,
   markWorkflowRunning,
 } from "./progress";
-import type { SimScreeningParams, WorkflowWorkerEnv } from "./workflow-env";
+import type { CimScreeningParams, WorkflowWorkerEnv } from "./workflow-env";
 
 const openai = getOpenAIProvider();
-const SIM_SCREENING_MODEL = process.env.SIM_SCREENING_MODEL?.trim() || "gpt-5.1";
+const CIM_SCREENING_MODEL =
+  process.env.CIM_SCREENING_MODEL?.trim() || "gpt-5.1";
 
 const RETRIEVAL_TOP_K = 8;
 const RETRIEVAL_TOP_K_DEAL = 14;
 
-/** Structured logs for CIM / SIM screening workflow runs (Workers + dashboard). */
-const LOG = "[SimScreeningWorkflow]";
+/** Structured logs for CIM template screening workflow runs (Workers + dashboard). */
+const LOG = "[CimScreeningWorkflow]";
 
 function logDetail(
   phase: string,
@@ -42,7 +43,11 @@ function logDetail(
   console.log(`${LOG} ${phase}`, { ts: new Date().toISOString(), ...data });
 }
 
-function logError(phase: string, err: unknown, extra: Record<string, unknown> = {}): void {
+function logError(
+  phase: string,
+  err: unknown,
+  extra: Record<string, unknown> = {},
+): void {
   console.error(`${LOG} ${phase}`, {
     ts: new Date().toISOString(),
     message: err instanceof Error ? err.message : String(err),
@@ -51,12 +56,12 @@ function logError(phase: string, err: unknown, extra: Record<string, unknown> = 
   });
 }
 
-export class SimScreeningWorkflow extends WorkflowEntrypoint<
+export class CimScreeningWorkflow extends WorkflowEntrypoint<
   WorkflowWorkerEnv,
-  SimScreeningParams
+  CimScreeningParams
 > {
   async run(
-    event: WorkflowEvent<SimScreeningParams>,
+    event: WorkflowEvent<CimScreeningParams>,
     step: WorkflowStep,
   ): Promise<{ success: boolean; sessionId: string }> {
     const instanceId = event.instanceId;
@@ -70,11 +75,11 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
     } = event.payload;
 
     const dealOppId = payloadDealOppId?.trim();
-    const simDocumentId = payloadDocumentId?.trim();
+    const libraryDocumentId = payloadDocumentId?.trim();
     const isDealScope = Boolean(dealOppId);
-    if (isDealScope === Boolean(simDocumentId)) {
+    if (isDealScope === Boolean(libraryDocumentId)) {
       throw new Error(
-        "SimScreeningWorkflow: set exactly one of documentId or dealOpportunityId",
+        "CimScreeningWorkflow: set exactly one of documentId or dealOpportunityId",
       );
     }
 
@@ -83,10 +88,10 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
       sessionId,
       runId,
       userId,
-      documentId: simDocumentId ?? null,
+      documentId: libraryDocumentId ?? null,
       dealOpportunityId: dealOppId ?? null,
       screenerId,
-      scope: isDealScope ? "deal_opportunity" : "sim_document",
+      scope: isDealScope ? "deal_opportunity" : "library_document",
     });
 
     try {
@@ -101,7 +106,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
                 "DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config",
               );
             }
-            await updateSimScreeningRun(runId, { status: "INGESTING" });
+            await updateCimScreeningRun(runId, { status: "INGESTING" });
             await updateWorkflowJobProgress(instanceId, {
               step: "Validating deal documents",
               percentage: 10,
@@ -127,87 +132,90 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
           }),
         );
       } else {
-        await step.do("validate-library-document", { timeout: "5 minutes" }, async () =>
-          runDbWithWorkerNeonPool(async () => {
-            const documentId = simDocumentId!;
-            logDetail("step.validate-library-document.enter", {
-              instanceId,
-              runId,
-              documentId,
-            });
-            if (!this.env.DOCUMENT_CHUNKS_INDEX) {
-              throw new Error(
-                "DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config",
-              );
-            }
-            await updateSimScreeningRun(runId, { status: "INGESTING" });
-            await updateWorkflowJobProgress(instanceId, {
-              step: "Validating ingested document",
-              percentage: 10,
-            });
-
-            const [document] = await db
-              .select()
-              .from(documents)
-              .where(eq(documents.id, documentId))
-              .limit(1);
-
-            if (!document) {
-              logDetail("validate.document.missing", { documentId });
-              throw new Error(`Document ${documentId} not found`);
-            }
-            logDetail("validate.document.loaded", {
-              documentId,
-              fileName: document.fileName,
-              category: document.category,
-              ingestionStatus: document.ingestionStatus,
-              uploadedById: document.uploadedById,
-            });
-            if (document.uploadedById !== userId) {
-              logDetail("validate.document.forbidden_user", {
+        await step.do(
+          "validate-library-document",
+          { timeout: "5 minutes" },
+          async () =>
+            runDbWithWorkerNeonPool(async () => {
+              const documentId = libraryDocumentId!;
+              logDetail("step.validate-library-document.enter", {
+                instanceId,
+                runId,
                 documentId,
-                expectedUserId: userId,
-                actualUploadedById: document.uploadedById,
               });
-              throw new Error("Document does not belong to this user");
-            }
-            if (
-              document.category !== "SIM_SCREENING" &&
-              document.category !== "CIM"
-            ) {
-              logDetail("validate.document.bad_category", {
+              if (!this.env.DOCUMENT_CHUNKS_INDEX) {
+                throw new Error(
+                  "DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config",
+                );
+              }
+              await updateCimScreeningRun(runId, { status: "INGESTING" });
+              await updateWorkflowJobProgress(instanceId, {
+                step: "Validating ingested document",
+                percentage: 10,
+              });
+
+              const [document] = await db
+                .select()
+                .from(documents)
+                .where(eq(documents.id, documentId))
+                .limit(1);
+
+              if (!document) {
+                logDetail("validate.document.missing", { documentId });
+                throw new Error(`Document ${documentId} not found`);
+              }
+              logDetail("validate.document.loaded", {
                 documentId,
+                fileName: document.fileName,
                 category: document.category,
+                ingestionStatus: document.ingestionStatus,
+                uploadedById: document.uploadedById,
               });
-              throw new Error(
-                "Document is not a CIM library or SIM screening upload",
-              );
-            }
-            if (document.ingestionStatus !== "PROCESSED") {
-              throw new Error(
-                "Document is not ingested. Finish firm document (RAG) ingestion first, then start screening.",
-              );
-            }
+              if (document.uploadedById !== userId) {
+                logDetail("validate.document.forbidden_user", {
+                  documentId,
+                  expectedUserId: userId,
+                  actualUploadedById: document.uploadedById,
+                });
+                throw new Error("Document does not belong to this user");
+              }
+              if (
+                document.category !== "CIM_SCREENING" &&
+                document.category !== "CIM"
+              ) {
+                logDetail("validate.document.bad_category", {
+                  documentId,
+                  category: document.category,
+                });
+                throw new Error(
+                  "Document is not a CIM library or CIM template screening upload",
+                );
+              }
+              if (document.ingestionStatus !== "PROCESSED") {
+                throw new Error(
+                  "Document is not ingested. Finish firm document (RAG) ingestion first, then start screening.",
+                );
+              }
 
-            const [chunkCountRow] = await db
-              .select({ n: count() })
-              .from(documentChunks)
-              .where(eq(documentChunks.documentId, documentId));
-            const chunkRowsInDb = Number(chunkCountRow?.n ?? 0);
-            if (chunkRowsInDb === 0) {
-              throw new Error(
-                "No document chunks in the store for this file. Re-ingest from Firm documents.",
-              );
-            }
-            logDetail("step.validate-library-document.ok", {
-              documentId,
-              chunkRowsInDb,
-            });
-            await updateWorkflowJobProgress(instanceId, {
-              step: "Ready to screen",
-              percentage: 40,
-            });
-          }),
+              const [chunkCountRow] = await db
+                .select({ n: count() })
+                .from(documentChunks)
+                .where(eq(documentChunks.documentId, documentId));
+              const chunkRowsInDb = Number(chunkCountRow?.n ?? 0);
+              if (chunkRowsInDb === 0) {
+                throw new Error(
+                  "No document chunks in the store for this file. Re-ingest from Firm documents.",
+                );
+              }
+              logDetail("step.validate-library-document.ok", {
+                documentId,
+                chunkRowsInDb,
+              });
+              await updateWorkflowJobProgress(instanceId, {
+                step: "Ready to screen",
+                percentage: 40,
+              });
+            }),
         );
       }
 
@@ -218,9 +226,9 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             instanceId,
             runId,
             screenerId,
-            documentId: simDocumentId ?? null,
+            documentId: libraryDocumentId ?? null,
             dealOpportunityId: dealOppId ?? null,
-            scope: isDealScope ? "deal_opportunity" : "sim_document",
+            scope: isDealScope ? "deal_opportunity" : "library_document",
           });
           if (!this.env.DOCUMENT_CHUNKS_INDEX) {
             throw new Error(
@@ -231,53 +239,53 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
 
           const [chunkCountRow] = isDealScope
             ? await db
-              .select({ n: count() })
-              .from(documentChunks)
-              .where(eq(documentChunks.dealOpportunityId, dealOppId!))
+                .select({ n: count() })
+                .from(documentChunks)
+                .where(eq(documentChunks.dealOpportunityId, dealOppId!))
             : await db
-              .select({ n: count() })
-              .from(documentChunks)
-              .where(eq(documentChunks.documentId, simDocumentId!));
+                .select({ n: count() })
+                .from(documentChunks)
+                .where(eq(documentChunks.documentId, libraryDocumentId!));
           const chunkRowsInDb = Number(chunkCountRow?.n ?? 0);
 
           const [screeningDoc] = isDealScope
             ? [null]
             : await db
-              .select({
-                entityType: documents.entityType,
-                entityId: documents.entityId,
-                dealOpportunityId: documents.dealOpportunityId,
-                companyId: documents.companyId,
-                themeId: documents.themeId,
-              })
-              .from(documents)
-              .where(eq(documents.id, simDocumentId!))
-              .limit(1);
+                .select({
+                  entityType: documents.entityType,
+                  entityId: documents.entityId,
+                  dealOpportunityId: documents.dealOpportunityId,
+                  companyId: documents.companyId,
+                  themeId: documents.themeId,
+                })
+                .from(documents)
+                .where(eq(documents.id, libraryDocumentId!))
+                .limit(1);
 
           logDetail("screen.rag.preflight", {
-            documentId: simDocumentId ?? null,
+            documentId: libraryDocumentId ?? null,
             dealOpportunityId: dealOppId ?? null,
             chunkRowsInDb,
-            vectorizeNamespace: isDealScope ? null : simDocumentId,
+            vectorizeNamespace: isDealScope ? null : libraryDocumentId,
             retrievalTopK: isDealScope ? RETRIEVAL_TOP_K_DEAL : RETRIEVAL_TOP_K,
             vectorMetadataScope: isDealScope
               ? {
-                entityType: "DEAL_OPPORTUNITY" as const,
-                dealOpportunityId: dealOppId,
-              }
+                  entityType: "DEAL_OPPORTUNITY" as const,
+                  dealOpportunityId: dealOppId,
+                }
               : screeningDoc
                 ? {
-                  entityType: screeningDoc.entityType,
-                  entityId: screeningDoc.entityId,
-                  dealOpportunityId: screeningDoc.dealOpportunityId,
-                  companyId: screeningDoc.companyId,
-                  themeId: screeningDoc.themeId,
-                }
+                    entityType: screeningDoc.entityType,
+                    entityId: screeningDoc.entityId,
+                    dealOpportunityId: screeningDoc.dealOpportunityId,
+                    companyId: screeningDoc.companyId,
+                    themeId: screeningDoc.themeId,
+                  }
                 : null,
           });
           if (chunkRowsInDb === 0) {
             logDetail("screen.rag.preflight.warn_no_chunks", {
-              documentId: simDocumentId ?? null,
+              documentId: libraryDocumentId ?? null,
               dealOpportunityId: dealOppId ?? null,
               message: isDealScope
                 ? "No DocumentChunk rows for this deal; vector search will return nothing"
@@ -285,7 +293,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             });
           }
 
-          await updateSimScreeningRun(runId, { status: "SCREENING" });
+          await updateCimScreeningRun(runId, { status: "SCREENING" });
           await updateWorkflowJobProgress(instanceId, {
             step: "Loading screener questions",
             percentage: 45,
@@ -336,33 +344,33 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             const ragT0 = Date.now();
             const hits = isDealScope
               ? await searchDocumentChunksVector(db, vectorIndex, {
-                queryEmbedding,
-                limit: RETRIEVAL_TOP_K_DEAL,
-                entityType: "DEAL_OPPORTUNITY",
-                dealOpportunityId: dealOppId!,
-              })
+                  queryEmbedding,
+                  limit: RETRIEVAL_TOP_K_DEAL,
+                  entityType: "DEAL_OPPORTUNITY",
+                  dealOpportunityId: dealOppId!,
+                })
               : await searchDocumentChunksVector(db, vectorIndex, {
-                queryEmbedding,
-                limit: RETRIEVAL_TOP_K,
-                documentId: simDocumentId!,
-                ...(screeningDoc
-                  ? {
-                    entityType: screeningDoc.entityType,
-                    entityId: screeningDoc.entityId ?? null,
-                    dealOpportunityId: screeningDoc.dealOpportunityId ?? "",
-                    companyId: screeningDoc.companyId ?? "",
-                    themeId: screeningDoc.themeId ?? "",
-                  }
-                  : {}),
-              });
+                  queryEmbedding,
+                  limit: RETRIEVAL_TOP_K,
+                  documentId: libraryDocumentId!,
+                  ...(screeningDoc
+                    ? {
+                        entityType: screeningDoc.entityType,
+                        entityId: screeningDoc.entityId ?? null,
+                        dealOpportunityId: screeningDoc.dealOpportunityId ?? "",
+                        companyId: screeningDoc.companyId ?? "",
+                        themeId: screeningDoc.themeId ?? "",
+                      }
+                    : {}),
+                });
             const textHits = hits.filter(
               (h) => h.chunkText && h.chunkText.trim().length > 0,
             );
             logDetail("screen.question.vector_search", {
               questionId: q.id,
-              documentId: simDocumentId ?? null,
+              documentId: libraryDocumentId ?? null,
               dealOpportunityId: dealOppId ?? null,
-              vectorizeNamespace: isDealScope ? null : simDocumentId,
+              vectorizeNamespace: isDealScope ? null : libraryDocumentId,
               hitCount: hits.length,
               textHitCount: textHits.length,
               topChunkIds: hits.slice(0, 5).map((h) => h.id),
@@ -372,25 +380,25 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             const excerpts =
               textHits.length > 0
                 ? textHits
-                  .map(
-                    (h, idx) =>
-                      `[Excerpt ${idx + 1}]\n${h.chunkText!.trim()}`,
-                  )
-                  .join("\n\n")
+                    .map(
+                      (h, idx) =>
+                        `[Excerpt ${idx + 1}]\n${h.chunkText!.trim()}`,
+                    )
+                    .join("\n\n")
                 : "No text excerpts were retrieved for this question.";
             logDetail("screen.question.excerpts_built", {
               questionId: q.id,
               excerptCharLength: excerpts.length,
             });
 
-            const prompt = buildSimScreeningQuestionPrompt({
+            const prompt = buildCimScreeningQuestionPrompt({
               question: q.question,
               excerpts,
             });
 
             const llmT0 = Date.now();
             const { object } = await generateObject({
-              model: openai(SIM_SCREENING_MODEL),
+              model: openai(CIM_SCREENING_MODEL),
               schema: z.object({
                 score: z.number().min(0).max(10),
                 rationale: z.string(),
@@ -399,17 +407,15 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             });
             logDetail("screen.question.llm_done", {
               questionId: q.id,
-              model: SIM_SCREENING_MODEL,
+              model: CIM_SCREENING_MODEL,
               rawScore: object.score,
               rationaleLength: object.rationale?.length ?? 0,
               elapsedMs: Date.now() - llmT0,
             });
 
-            const score = Math.round(
-              Math.min(10, Math.max(0, object.score)),
-            );
+            const score = Math.round(Math.min(10, Math.max(0, object.score)));
 
-            await upsertSimScreeningAnswer({
+            await upsertCimScreeningAnswer({
               runId,
               questionId: q.id,
               score,
@@ -424,7 +430,7 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
             });
           }
 
-          await updateSimScreeningRun(runId, { status: "COMPLETED" });
+          await updateCimScreeningRun(runId, { status: "COMPLETED" });
           await updateWorkflowJobProgress(instanceId, {
             step: "Completed",
             percentage: 100,
@@ -448,13 +454,13 @@ export class SimScreeningWorkflow extends WorkflowEntrypoint<
         instanceId,
         sessionId,
         runId,
-        documentId: simDocumentId ?? null,
+        documentId: libraryDocumentId ?? null,
         dealOpportunityId: dealOppId ?? null,
       });
       const message = err instanceof Error ? err.message : String(err);
       try {
         await runDbWithWorkerNeonPool(async () =>
-          updateSimScreeningRun(runId, {
+          updateCimScreeningRun(runId, {
             status: "FAILED",
             errorMessage: message,
           }),

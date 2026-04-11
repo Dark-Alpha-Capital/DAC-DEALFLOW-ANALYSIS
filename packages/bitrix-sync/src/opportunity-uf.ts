@@ -4,9 +4,10 @@
  * Defaults match the DAC portal snapshot in `data/bitrix-deal-fields.json`.
  * Override any key with env `BITRIX_UF_<KEY>` (see `getBitrixOpportunitySyncUfCodes`).
  *
- * Broker fields default to empty: set `BITRIX_UF_BROKER_FIRST_NAME` etc. to real
- * `UF_CRM_*` codes from `bun run fetch-deal-fields` — legacy placeholders like
- * `UF_CRM_FIRST_NAME` are not valid on most portals.
+ * Broker UFs default to empty: import fills broker name/email/phone from the deal's
+ * linked CRM contact (`CONTACT_ID` / `CONTACT_IDS`) when UFs are unset. To map
+ * explicit broker UFs, set `BITRIX_UF_BROKER_*` to real `UF_CRM_*` from
+ * `bun run fetch-deal-fields`.
  */
 export const BITRIX_UF_DEFAULTS = {
   revenue: "UF_CRM_1715146259470",
@@ -18,6 +19,12 @@ export const BITRIX_UF_DEFAULTS = {
   brokerLinkedIn: "",
   brokerWorkPhone: "",
   askingPrice: "UF_CRM_1727869474151",
+  /** EBITDA money UF; also set `BITRIX_DEAL_EBITDA_UF` or refresh `fetch-deal-fields` for auto-detect. */
+  ebitda: "",
+  /** EBITDA margin % UF (optional). */
+  ebitdaMargin: "",
+  /** External listing URL (Bitrix “Deal Link”); set `BITRIX_UF_DEAL_LISTING_URL` to your `UF_CRM_*` code. */
+  dealListingUrl: "",
 } as const;
 
 /** Alias for older imports; same object as {@link BITRIX_UF_DEFAULTS}. */
@@ -58,5 +65,14 @@ export function getBitrixOpportunitySyncUfCodes(): {
       BITRIX_UF_DEFAULTS.brokerWorkPhone,
     ),
     askingPrice: e("BITRIX_UF_ASKING_PRICE", BITRIX_UF_DEFAULTS.askingPrice),
+    ebitda: e("BITRIX_UF_EBITDA", BITRIX_UF_DEFAULTS.ebitda),
+    ebitdaMargin: e(
+      "BITRIX_UF_EBITDA_MARGIN",
+      BITRIX_UF_DEFAULTS.ebitdaMargin,
+    ),
+    dealListingUrl: e(
+      "BITRIX_UF_DEAL_LISTING_URL",
+      BITRIX_UF_DEFAULTS.dealListingUrl,
+    ),
   };
 }

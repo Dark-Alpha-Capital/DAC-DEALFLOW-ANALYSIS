@@ -1,4 +1,4 @@
-import { getBitrixDealTeaserFieldCode } from "./env";
+import { resolveBitrixDealTeaserFieldCode } from "./deal-fields-catalog";
 import { formatDealUfPayloadValue } from "./deal-field-format";
 import { getBitrixOpportunitySyncUfCodes } from "./opportunity-uf";
 
@@ -86,7 +86,7 @@ export function buildCrmDealFieldsFromOpportunitySync(
 ): Record<string, unknown> {
   const uf = getBitrixOpportunitySyncUfCodes();
   const currencyId = input.currencyId ?? "USD";
-  const teaserFieldCode = getBitrixDealTeaserFieldCode()?.trim() || "";
+  const teaserFieldCode = resolveBitrixDealTeaserFieldCode()?.trim() || "";
   const ufNarrativeBody = buildCombinedTeaserForUf(input);
 
   const narrativeCommentsNoUf = [

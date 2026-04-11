@@ -2,17 +2,19 @@ import { createServerFn } from "@tanstack/react-start";
 import {
   GetDealOpportunityById,
   GetDealWithAllRelations,
-  GetRankedDealOpportunities,
-  getActiveSimForDeal,
+  GetRankedDealOpportunitiesPaginated,
+  getActiveCimForDeal,
   GetCIMExtractionByDealOpportunityId,
 } from "@repo/db/queries";
 import db, { themes, asc, isNull } from "@repo/db";
 import { assertAuthenticated } from "@/lib/server/assert-session";
 import {
   dealOpportunityIdSchema,
+  rankedDealOpportunitiesPageInputSchema,
   uidParamSchema,
 } from "@/lib/server/server-fn-input-schemas";
 import { getBitrixSyncPreviewData } from "./bitrix-sync-preview-data";
+import { getBitrixDealStages } from "@repo/bitrix-sync";
 
 /** Same rows as `trpc.themes.listForSelect` — for quick-add theme picker + route loader. */
 export const loadThemesForSelectData = createServerFn({ method: "GET" }).handler(
@@ -33,34 +35,42 @@ export const loadThemesForSelectData = createServerFn({ method: "GET" }).handler
 
 export const loadRankedDealOpportunitiesPageData = createServerFn({
   method: "GET",
-}).handler(async () => {
-  await assertAuthenticated();
-  const rows = await GetRankedDealOpportunities();
-  const seen = new Set<string>();
-  const deals = rows.filter((r) => {
-    if (seen.has(r.opp.id)) return false;
-    seen.add(r.opp.id);
-    return true;
+})
+  .inputValidator((raw: unknown) =>
+    rankedDealOpportunitiesPageInputSchema.parse(raw),
+  )
+  .handler(async ({ data }) => {
+    await assertAuthenticated();
+    const { data: rows, totalCount, totalPages } =
+      await GetRankedDealOpportunitiesPaginated({
+        offset: data.offset,
+        limit: data.limit,
+        query: data.query ?? "",
+      });
+    return {
+      deals: rows,
+      totalCount,
+      totalPages,
+      pipelineStages: getBitrixDealStages(),
+    };
   });
-  return { deals };
-});
 
 export const loadDealOpportunityDetailData = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {
-      const [dealData, activeSim, extraction] = await Promise.all([
+      const [dealData, activeCim, extraction] = await Promise.all([
         GetDealWithAllRelations(data.uid),
-        getActiveSimForDeal(data.uid),
+        getActiveCimForDeal(data.uid),
         GetCIMExtractionByDealOpportunityId(data.uid),
       ]);
 
       const hasFinancials = !!extraction;
       const cimAnalysis = {
-        activeSim: activeSim
+        activeCim: activeCim
           ? {
-            id: activeSim.id,
+            id: activeCim.id,
             status: hasFinancials
               ? ("ready" as const)
               : ("processing" as const),

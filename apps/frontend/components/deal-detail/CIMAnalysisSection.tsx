@@ -1,5 +1,5 @@
-
 import { useState } from "react";
+import type { inferRouterOutputs } from "@trpc/server";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import {
@@ -28,28 +28,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import type { AppRouter } from "@/trpc/routers/_app";
+
+export type CIMAnalysisData =
+  inferRouterOutputs<AppRouter>["dealOpportunities"]["getCIMAnalysisForOpportunity"];
 
 interface CIMAnalysisSectionProps {
   dealOpportunityId: string;
   entityName?: string;
   initialData?: CIMAnalysisData | null;
 }
-
-export type CIMAnalysisData = {
-  activeSim: { id: string; status: "ready" | "processing" } | null;
-  revenueHistory: Record<string, number>;
-  ebitdaHistory: Record<string, number>;
-  employeeCount?: number | null;
-  customerConcentration?: number | null;
-  capexIntensity?: string | null;
-  revenueBreakdown: Record<string, number>;
-  growthDrivers: string[];
-  keyRisks: string[];
-  industryOverview?: string | null;
-  transactionDetails?: string | null;
-  documentFileName?: string | null;
-  documentCreatedAt?: Date | string | null;
-};
 
 const hasAnyFinancials = (data: {
   revenueHistory?: Record<string, number>;
@@ -168,11 +156,11 @@ export function CIMAnalysisSection({
     );
   }
 
-  const activeSim = data?.activeSim;
-  const isProcessing = activeSim?.status === "processing";
+  const activeCim = data?.activeCim;
+  const isProcessing = activeCim?.status === "processing";
   const hasFinancials = data && hasAnyFinancials(data);
 
-  if (!data || (!activeSim && !hasFinancials)) {
+  if (!data || (!activeCim && !hasFinancials)) {
     return (
       <div className="space-y-4">
         <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -192,7 +180,7 @@ export function CIMAnalysisSection({
     );
   }
 
-  if (activeSim && isProcessing) {
+  if (activeCim && isProcessing) {
     return (
       <div className="space-y-4">
         <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -204,7 +192,7 @@ export function CIMAnalysisSection({
             CIM uploaded. Extraction running in background.
           </p>
           <p className="text-muted-foreground mt-1 text-xs">
-            Only the latest SIM is used. Uploading a new SIM replaces the
+            Only the latest CIM is used. Uploading a new CIM replaces the
             current one.
           </p>
           <div className="mt-3">
@@ -224,7 +212,7 @@ export function CIMAnalysisSection({
     );
   }
 
-  if (activeSim && !hasFinancials) {
+  if (activeCim && !hasFinancials) {
     return (
       <div className="space-y-4">
         <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -233,10 +221,10 @@ export function CIMAnalysisSection({
         </h2>
         <div className="rounded-lg border border-dashed p-4">
           <p className="text-muted-foreground text-sm">
-            No financials available for this SIM yet.
+            No financials available for this CIM yet.
           </p>
           <p className="text-muted-foreground mt-1 text-xs">
-            Only the latest SIM is used. Uploading a new SIM replaces the
+            Only the latest CIM is used. Uploading a new CIM replaces the
             current one.
           </p>
           <div className="mt-3">
@@ -273,7 +261,7 @@ export function CIMAnalysisSection({
         </h2>
         <div className="flex items-center gap-2">
           <p className="text-muted-foreground text-xs">
-            Only the latest SIM is used. Uploading a new SIM replaces the
+            Only the latest CIM is used. Uploading a new CIM replaces the
             current one.
           </p>
           <UploadCIMDialog
@@ -325,7 +313,7 @@ export function CIMAnalysisSection({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete financials?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete all extracted financials for this SIM. The SIM
+              This will delete all extracted financials for this CIM. The CIM
               file remains stored, but you will lose the numbers until you
               re-extract or edit them again. Continue?
             </AlertDialogDescription>

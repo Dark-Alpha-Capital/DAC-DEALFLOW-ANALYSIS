@@ -27,7 +27,7 @@ export type FileUploadParams = {
 };
 
 export type CimExtractionParams = {
-  simId: string;
+  dealCimId: string;
   documentId?: string;
   dealOpportunityId?: string;
   filePath: string;
@@ -51,14 +51,14 @@ export type ScreenDealParams =
       dealOpportunityId?: string;
     };
 
-/** SIM upload: set documentId. Deal opportunity (multi-doc RAG): set dealOpportunityId. */
-export type SimScreeningParams = {
+/** Library CIM upload: set documentId. Deal opportunity (multi-doc RAG): set dealOpportunityId. */
+export type CimScreeningParams = {
   jobId: string;
   userId: string;
   screenerId: string;
   sessionId: string;
   runId: string;
-  /** SIM PDF path */
+  /** Firm library CIM PDF */
   documentId?: string;
   /** Template screening across all ingested chunks for this deal */
   dealOpportunityId?: string;
@@ -71,6 +71,6 @@ export interface WorkflowWorkerEnv {
   FILE_UPLOAD_WORKFLOW: Workflow<FileUploadParams>;
   CIM_EXTRACTION_WORKFLOW: Workflow<CimExtractionParams>;
   RAG_INGESTION_WORKFLOW: Workflow<RagIngestionParams>;
-  SIM_SCREENING_WORKFLOW: Workflow<SimScreeningParams>;
+  CIM_SCREENING_WORKFLOW: Workflow<CimScreeningParams>;
   RATE_LIMIT_KV?: KVNamespace;
 }

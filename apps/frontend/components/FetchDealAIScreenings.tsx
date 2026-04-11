@@ -1,25 +1,25 @@
 import { AlertTriangle } from "lucide-react";
 import type { AiScreening } from "@repo/db/schema";
-import type { SimScreeningRunForDealRow } from "@repo/db/queries";
+import type { CimScreeningRunForDealRow } from "@repo/db/queries";
 import { DealType } from "@repo/db/enums";
 import AIReasoning from "./AiReasoning";
 import { RunAiScreeningButton } from "@/components/deal-opportunities/run-ai-screening-button";
-import { DealSimScreeningRunsList } from "@/components/deal-detail/DealSimScreeningRunsList";
+import { CimScreeningRunsList } from "@/components/deal-detail/CimScreeningRunsList";
 
 const FetchDealAIScreenings = ({
   dealId,
   dealType,
   aiScreenings,
-  simScreeningRunsForDeal = [],
+  cimScreeningRunsForDeal = [],
 }: {
   dealId: string;
   dealType: DealType;
   aiScreenings: AiScreening[];
-  simScreeningRunsForDeal?: SimScreeningRunForDealRow[];
+  cimScreeningRunsForDeal?: CimScreeningRunForDealRow[];
 }) => {
-  const hasSimRuns = simScreeningRunsForDeal.length > 0;
+  const hasCimRuns = cimScreeningRunsForDeal.length > 0;
   const hasLegacy = aiScreenings && aiScreenings.length > 0;
-  const showEmpty = !hasSimRuns && !hasLegacy;
+  const showEmpty = !hasCimRuns && !hasLegacy;
 
   return (
     <div className="space-y-6">
@@ -27,7 +27,7 @@ const FetchDealAIScreenings = ({
         <RunAiScreeningButton dealOpportunityId={dealId} />
       </div>
 
-      <DealSimScreeningRunsList runs={simScreeningRunsForDeal} />
+      <CimScreeningRunsList runs={cimScreeningRunsForDeal} />
 
       <div>
         {hasLegacy ? (
@@ -55,8 +55,8 @@ const FetchDealAIScreenings = ({
                 <p className="text-muted-foreground mt-2 text-sm">
                   Run template screening from this deal (CIM screening) or use
                   &quot;Run AI screening&quot; for RAG across ingested
-                  documents. SIM sessions linked to this opportunity appear
-                  here.
+                  documents. CIM template sessions linked to this opportunity
+                  appear here.
                 </p>
               </div>
             ) : (

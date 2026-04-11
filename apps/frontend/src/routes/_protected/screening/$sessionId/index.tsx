@@ -54,10 +54,10 @@ import CimScreeningSessionPending from "@/components/skeletons/cim-screening-eke
 import { cn, formatBytes } from "@/lib/utils";
 import type { AppRouter } from "@/trpc/routers/_app";
 
-type SimScreeningGetSessionOutput =
-  inferRouterOutputs<AppRouter>["simScreening"]["getSession"];
-type SimScreeningGetSessionStatusOutput =
-  inferRouterOutputs<AppRouter>["simScreening"]["getSessionStatus"];
+type CimScreeningGetSessionOutput =
+  inferRouterOutputs<AppRouter>["cimScreening"]["getSession"];
+type CimScreeningGetSessionStatusOutput =
+  inferRouterOutputs<AppRouter>["cimScreening"]["getSessionStatus"];
 
 const SESSION_POLL_INTERVAL_MS = 3_000;
 
@@ -104,7 +104,7 @@ function runStatusBadgeProps(status: string | undefined) {
   };
 }
 
-type ScoreRow = SimScreeningGetSessionOutput["rows"][number];
+type ScoreRow = CimScreeningGetSessionOutput["rows"][number];
 
 function MetaRow({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -301,11 +301,11 @@ function CimScreeningSessionDetailPage() {
   }, [newScreenerId, screeners]);
 
   const fullSessionQuery = useQuery({
-    ...trpc.simScreening.getSession.queryOptions({
+    ...trpc.cimScreening.getSession.queryOptions({
       sessionId,
       runId: runIdFromSearch,
     }),
-    initialData: initialSessionData as SimScreeningGetSessionOutput,
+    initialData: initialSessionData as CimScreeningGetSessionOutput,
     staleTime: 60_000,
   });
 
@@ -316,7 +316,7 @@ function CimScreeningSessionDetailPage() {
     runStatusForPoll !== "FAILED";
 
   const pollSessionQuery = useQuery({
-    ...trpc.simScreening.getSessionStatus.queryOptions({
+    ...trpc.cimScreening.getSessionStatus.queryOptions({
       sessionId,
       runId: runIdFromSearch,
     }),
@@ -324,10 +324,10 @@ function CimScreeningSessionDetailPage() {
     refetchInterval: SESSION_POLL_INTERVAL_MS,
   });
 
-  const data = useMemo((): SimScreeningGetSessionOutput | undefined => {
+  const data = useMemo((): CimScreeningGetSessionOutput | undefined => {
     const full = fullSessionQuery.data;
     if (!full) return undefined;
-    const live: SimScreeningGetSessionStatusOutput | undefined =
+    const live: CimScreeningGetSessionStatusOutput | undefined =
       pollSessionQuery.data;
     if (!live) return full;
 
@@ -375,7 +375,7 @@ function CimScreeningSessionDetailPage() {
     if (lastTerminalInvalidateKey.current === key) return;
     lastTerminalInvalidateKey.current = key;
     void queryClient.invalidateQueries({
-      queryKey: trpc.simScreening.getSession.queryKey({
+      queryKey: trpc.cimScreening.getSession.queryKey({
         sessionId,
         runId: runIdFromSearch,
       }),
@@ -385,7 +385,7 @@ function CimScreeningSessionDetailPage() {
     queryClient,
     sessionId,
     runIdFromSearch,
-    trpc.simScreening,
+    trpc.cimScreening,
   ]);
 
   useEffect(() => {
@@ -402,7 +402,7 @@ function CimScreeningSessionDetailPage() {
   const error = fullSessionQuery.error;
 
   const retryMutation = useMutation(
-    trpc.simScreening.retry.mutationOptions({
+    trpc.cimScreening.retry.mutationOptions({
       onSuccess: (res) => {
         window.dispatchEvent(
           new CustomEvent("newJobs", {
@@ -411,18 +411,21 @@ function CimScreeningSessionDetailPage() {
                 jobId: res.jobId,
                 fileName:
                   data?.document?.fileName ??
-                  (data?.dealOpportunity?.dealTeaser?.trim()
-                    ? data.dealOpportunity.dealTeaser.trim().slice(0, 120)
-                    : "Deal opportunity"),
+                  (() => {
+                    const h =
+                      data?.dealOpportunity?.title?.trim() ||
+                      data?.dealOpportunity?.dealTeaser?.trim();
+                    return h ? h.slice(0, 120) : "Deal opportunity";
+                  })(),
                 userId: user?.id ?? "",
-                queueName: QUEUE_NAMES.SIM_SCREENING,
+                queueName: QUEUE_NAMES.CIM_SCREENING,
               },
             ],
           }),
         );
-        queryClient.invalidateQueries(trpc.simScreening.pathFilter());
+        queryClient.invalidateQueries(trpc.cimScreening.pathFilter());
         queryClient.invalidateQueries({
-          queryKey: trpc.simScreening.listSessions.queryKey({ limit: 20 }),
+          queryKey: trpc.cimScreening.listSessions.queryKey({ limit: 20 }),
         });
         void router.invalidate();
         toast.success("Retry started");
@@ -434,7 +437,7 @@ function CimScreeningSessionDetailPage() {
   );
 
   const startRunMutation = useMutation(
-    trpc.simScreening.startRun.mutationOptions({
+    trpc.cimScreening.startRun.mutationOptions({
       onSuccess: (res) => {
         window.dispatchEvent(
           new CustomEvent("newJobs", {
@@ -443,11 +446,14 @@ function CimScreeningSessionDetailPage() {
                 jobId: res.jobId,
                 fileName:
                   data?.document?.fileName ??
-                  (data?.dealOpportunity?.dealTeaser?.trim()
-                    ? data.dealOpportunity.dealTeaser.trim().slice(0, 120)
-                    : "Deal opportunity"),
+                  (() => {
+                    const h =
+                      data?.dealOpportunity?.title?.trim() ||
+                      data?.dealOpportunity?.dealTeaser?.trim();
+                    return h ? h.slice(0, 120) : "Deal opportunity";
+                  })(),
                 userId: user?.id ?? "",
-                queueName: QUEUE_NAMES.SIM_SCREENING,
+                queueName: QUEUE_NAMES.CIM_SCREENING,
               },
             ],
           }),
@@ -458,9 +464,9 @@ function CimScreeningSessionDetailPage() {
           search: { runId: res.runId },
           replace: true,
         });
-        queryClient.invalidateQueries(trpc.simScreening.pathFilter());
+        queryClient.invalidateQueries(trpc.cimScreening.pathFilter());
         queryClient.invalidateQueries({
-          queryKey: trpc.simScreening.listSessions.queryKey({ limit: 20 }),
+          queryKey: trpc.cimScreening.listSessions.queryKey({ limit: 20 }),
         });
         void router.invalidate();
         toast.success("Screening run started");
@@ -618,6 +624,11 @@ function CimScreeningSessionDetailPage() {
               ) : dealOpp ? (
                 <div className="space-y-4">
                   <div className="border-border/60 bg-muted/20 rounded-md border px-3 py-1 sm:px-4">
+                    <MetaRow label="Title">
+                      <span className="wrap-break-word">
+                        {dealOpp.title?.trim() || "—"}
+                      </span>
+                    </MetaRow>
                     <MetaRow label="Teaser">
                       <span className="wrap-break-word">
                         {dealOpp.dealTeaser?.trim() || "—"}

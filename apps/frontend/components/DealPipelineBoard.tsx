@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useRouter } from "@/lib/navigation-shim";
@@ -9,6 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatCurrency } from "@/lib/utils";
 import DealDetailsPanel from "@/components/DealDetailsPanel";
+import {
+  BITRIX_DEAL_PIPELINE_ID,
+  type BitrixDealStageRow,
+  normalizeBitrixStageIdForPipeline,
+} from "@repo/bitrix-sync";
 
 type DealOppRow = {
   opp: import("@repo/db").DealOpportunity;
@@ -21,29 +25,33 @@ type DealOppRow = {
 
 type DealPipelineBoardProps = {
   data: DealOppRow[];
+  pipelineStages: BitrixDealStageRow[];
 };
 
-const PIPELINE_COLUMNS: {
-  id: string;
-  label: string;
-  stages: string[];
-}[] = [
-  { id: "LISTED", label: "Listed", stages: ["LISTED", "INITIAL_REVIEW"] },
-  { id: "SCREENED", label: "Screened", stages: ["SCREENED"] },
-  { id: "MEETING_HELD", label: "Meeting", stages: ["MEETING_HELD"] },
-  { id: "IOI_SUBMITTED", label: "IOI", stages: ["IOI_SUBMITTED"] },
-  { id: "LOI_SUBMITTED", label: "LOI", stages: ["LOI_SUBMITTED"] },
-  { id: "DILIGENCE", label: "Diligence", stages: ["DILIGENCE"] },
-  { id: "CLOSED", label: "Closed", stages: ["CLOSED", "DEAD"] },
-];
+export default function DealPipelineBoard({
+  data,
+  pipelineStages,
+}: DealPipelineBoardProps) {
+  const pipelineColumns = useMemo(() => {
+    if (pipelineStages.length === 0) {
+      return [{ id: "NEW", label: "Deals", stages: [] as string[] }];
+    }
+    return pipelineStages.map((s) => ({
+      id: s.statusId,
+      label: s.name,
+      stages: [s.statusId],
+    }));
+  }, [pipelineStages]);
 
-function getColumnIdForStage(stage: string | null | undefined): string {
-  if (!stage) return "LISTED";
-  const match = PIPELINE_COLUMNS.find((col) => col.stages.includes(stage));
-  return match?.id ?? "LISTED";
-}
+  function getColumnIdForStage(stage: string | null | undefined): string {
+    const sid = normalizeBitrixStageIdForPipeline(
+      stage?.trim() || "",
+      BITRIX_DEAL_PIPELINE_ID,
+    );
+    const match = pipelineColumns.find((col) => col.stages.includes(sid));
+    return match?.id ?? pipelineColumns[0]?.id ?? "NEW";
+  }
 
-export default function DealPipelineBoard({ data }: DealPipelineBoardProps) {
   const [rows, setRows] = useState<DealOppRow[]>(data);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const trpc = useTRPC();
@@ -67,7 +75,7 @@ export default function DealPipelineBoard({ data }: DealPipelineBoardProps) {
 
   const columns = useMemo(() => {
     const grouped: Record<string, DealOppRow[]> = {};
-    for (const col of PIPELINE_COLUMNS) {
+    for (const col of pipelineColumns) {
       grouped[col.id] = [];
     }
 
@@ -81,11 +89,11 @@ export default function DealPipelineBoard({ data }: DealPipelineBoardProps) {
       grouped[columnId].push(row);
     }
 
-    return PIPELINE_COLUMNS.map((col) => ({
+    return pipelineColumns.map((col) => ({
       ...col,
       items: grouped[col.id] ?? [],
     }));
-  }, [rows]);
+  }, [rows, pipelineColumns]);
 
   const selectedRow = useMemo(
     () => rows.find((row) => row.opp.id === selectedId) ?? null,
@@ -93,7 +101,7 @@ export default function DealPipelineBoard({ data }: DealPipelineBoardProps) {
   );
 
   const handleStageChange = (id: string, targetColumnId: string) => {
-    const target = PIPELINE_COLUMNS.find((col) => col.id === targetColumnId);
+    const target = pipelineColumns.find((col) => col.id === targetColumnId);
     if (!target) return;
 
     // Optimistic local update
@@ -102,13 +110,13 @@ export default function DealPipelineBoard({ data }: DealPipelineBoardProps) {
         row.opp.id === id
           ? {
               ...row,
-              opp: { ...row.opp, stage: target.id as any },
+              opp: { ...row.opp, stage: target.id },
             }
           : row,
       ),
     );
 
-    updateStage({ id, stage: target.id as any });
+    updateStage({ id, stage: target.id });
   };
 
   return (
@@ -138,6 +146,7 @@ export default function DealPipelineBoard({ data }: DealPipelineBoardProps) {
                       key={row.opp.id}
                       row={row}
                       currentColumnId={column.id}
+                      stageOptions={pipelineColumns}
                       onStageChange={handleStageChange}
                       onSelect={setSelectedId}
                       isSelected={row.opp.id === selectedId}
@@ -162,6 +171,7 @@ export default function DealPipelineBoard({ data }: DealPipelineBoardProps) {
 type DealPipelineCardProps = {
   row: DealOppRow;
   currentColumnId: string;
+  stageOptions: { id: string; label: string }[];
   isSelected: boolean;
   isUpdating: boolean;
   onStageChange: (id: string, targetColumnId: string) => void;
@@ -171,12 +181,17 @@ type DealPipelineCardProps = {
 function DealPipelineCard({
   row,
   currentColumnId,
+  stageOptions,
   isSelected,
   isUpdating,
   onStageChange,
   onSelect,
 }: DealPipelineCardProps) {
-  const title = row.company?.name ?? row.opp.dealTeaser ?? "Deal";
+  const title =
+    row.company?.name ??
+    row.opp.title?.trim() ??
+    row.opp.dealTeaser ??
+    "Deal";
   const detailHref = `/deal-opportunities/${row.opp.id}`;
 
   return (
@@ -232,7 +247,7 @@ function DealPipelineCard({
           }}
           disabled={isUpdating}
         >
-          {PIPELINE_COLUMNS.map((col) => (
+          {stageOptions.map((col) => (
             <option key={col.id} value={col.id}>
               {col.label}
             </option>

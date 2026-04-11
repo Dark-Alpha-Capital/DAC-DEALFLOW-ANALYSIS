@@ -49,9 +49,9 @@
       "class_name": "RagIngestionWorkflow"
     },
     {
-      "name": "sim-screening",
-      "binding": "SIM_SCREENING_WORKFLOW",
-      "class_name": "SimScreeningWorkflow"
+      "name": "cim-screening",
+      "binding": "CIM_SCREENING_WORKFLOW",
+      "class_name": "CimScreeningWorkflow"
     }
   ]
 }

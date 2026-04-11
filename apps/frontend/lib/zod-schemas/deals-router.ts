@@ -90,6 +90,7 @@ export const createDealOpportunitySchema = z.object({
   ebitda: z.coerce.number().optional(),
   ebitdaMargin: z.coerce.number().optional(),
   askingPrice: z.coerce.number().optional(),
+  title: z.string().optional(),
   dealTeaser: z.string().optional(),
   description: z.string().optional(),
   brokerFirstName: z.string().optional(),
@@ -100,7 +101,8 @@ export const createDealOpportunitySchema = z.object({
 });
 
 export const createOpportunityQuickSchema = z.object({
-  dealTeaser: z.string().min(1, "Deal title is required"),
+  title: z.string().min(1, "Deal title is required"),
+  dealTeaser: z.string().optional(),
   themeId: z.string().optional(),
   sourceWebsite: z.string().optional(),
   brokerage: z.string().optional(),
@@ -136,17 +138,8 @@ export const addRiskFlagSchema = z.object({
 
 export const updateOpportunityStageSchema = z.object({
   id: z.string(),
-  stage: z.enum([
-    "LISTED",
-    "INITIAL_REVIEW",
-    "SCREENED",
-    "MEETING_HELD",
-    "IOI_SUBMITTED",
-    "LOI_SUBMITTED",
-    "DILIGENCE",
-    "CLOSED",
-    "DEAD",
-  ]),
+  /** Bitrix `STAGE_ID` for the configured deal pipeline. */
+  stage: z.string().min(1),
 });
 
 export const screenOpportunitySchema = z.object({

@@ -10,9 +10,17 @@ import {
   uploadFileSchema,
   uploadGlobalDocumentSchema,
 } from "@/lib/zod-schemas/files-router";
-import { and, eq } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { documents } from "@repo/db";
+import db from "@repo/db";
+import {
+  findDocumentDuplicateForCheck,
+  findDocumentByContentHashForEntity,
+  findGlobalDocumentByContentHash,
+  insertDocumentRow,
+  updateDocumentById,
+  getDocumentFileMetaForDelete,
+  deleteDocumentById,
+} from "@repo/db/mutations";
 import { uploadBuffer, deleteFile } from "@repo/nextcloud";
 import {
   insertWorkflowJob,
@@ -41,33 +49,18 @@ export const filesRouter = createTRPCRouter({
   checkDuplicate: protectedProcedure
     .input(checkDocumentDuplicateSchema)
     .query(async ({ input }) => {
-      const [existingDocument] = await db
-        .select({
-          id: documents.id,
-          title: documents.title,
-          fileName: documents.fileName,
-          entityType: documents.entityType,
-          entityId: documents.entityId,
-        })
-        .from(documents)
-        .where(
-          input.scopeType === "GLOBAL"
-            ? and(
-              eq(documents.entityType, "GLOBAL"),
-              eq(documents.contentHash, input.contentHash),
-            )
-            : and(
-              eq(documents.contentHash, input.contentHash),
-              input.entityType === "COMPANY"
-                ? eq(documents.companyId, input.entityId)
-                : input.entityType === "LEAD"
-                  ? eq(documents.leadId, input.entityId)
-                  : input.entityType === "DEAL_OPPORTUNITY"
-                    ? eq(documents.dealOpportunityId, input.entityId)
-                    : eq(documents.themeId, input.entityId),
-            ),
-        )
-        .limit(1);
+      const existingDocument =
+        input.scopeType === "GLOBAL"
+          ? await findDocumentDuplicateForCheck({
+              scopeType: "GLOBAL",
+              contentHash: input.contentHash,
+            })
+          : await findDocumentDuplicateForCheck({
+              scopeType: "ENTITY",
+              contentHash: input.contentHash,
+              entityType: input.entityType,
+              entityId: input.entityId,
+            });
 
       return {
         isDuplicate: Boolean(existingDocument),
@@ -89,22 +82,11 @@ export const filesRouter = createTRPCRouter({
       const buffer = Buffer.from(base64Data, "base64");
       const contentHash = createHash("sha256").update(buffer).digest("hex");
 
-      const [existingDocument] = await db
-        .select({ id: documents.id })
-        .from(documents)
-        .where(
-          and(
-            eq(documents.contentHash, contentHash),
-            input.entityType === "COMPANY"
-              ? eq(documents.companyId, input.entityId)
-              : input.entityType === "LEAD"
-                ? eq(documents.leadId, input.entityId)
-                : input.entityType === "DEAL_OPPORTUNITY"
-                  ? eq(documents.dealOpportunityId, input.entityId)
-                  : eq(documents.themeId, input.entityId),
-          ),
-        )
-        .limit(1);
+      const existingDocument = await findDocumentByContentHashForEntity({
+        contentHash,
+        entityType: input.entityType,
+        entityId: input.entityId,
+      });
 
       if (existingDocument) {
         throw new TRPCError({
@@ -120,15 +102,10 @@ export const filesRouter = createTRPCRouter({
       const fileUrl = await uploadBuffer(buffer, finalPath);
       const mimeType = input.fileType || "application/octet-stream";
 
-      let documentRecord:
-        | {
-          id: string;
-        }
-        | undefined;
+      let documentRecord: { id: string } | undefined;
       try {
-        [documentRecord] = await db
-          .insert(documents)
-          .values({
+        documentRecord =
+          (await insertDocumentRow({
             entityType: input.entityType,
             entityId: input.entityId,
             companyId:
@@ -152,8 +129,7 @@ export const filesRouter = createTRPCRouter({
             mimeType,
             contentHash,
             uploadedById: userId,
-          })
-          .returning({ id: documents.id });
+          })) ?? undefined;
       } catch (error) {
         if (isUniqueViolationError(error)) {
           throw new TRPCError({
@@ -221,16 +197,9 @@ export const filesRouter = createTRPCRouter({
       const buffer = Buffer.from(base64Data, "base64");
       const contentHash = createHash("sha256").update(buffer).digest("hex");
 
-      const [existingGlobalDocument] = await db
-        .select({ id: documents.id })
-        .from(documents)
-        .where(
-          and(
-            eq(documents.entityType, "GLOBAL"),
-            eq(documents.contentHash, contentHash),
-          ),
-        )
-        .limit(1);
+      const existingGlobalDocument = await findGlobalDocumentByContentHash(
+        contentHash,
+      );
 
       if (existingGlobalDocument) {
         throw new TRPCError({
@@ -244,15 +213,10 @@ export const filesRouter = createTRPCRouter({
       const fileUrl = await uploadBuffer(buffer, finalPath);
       const mimeType = input.fileType || "application/octet-stream";
 
-      let documentRecord:
-        | {
-          id: string;
-        }
-        | undefined;
+      let documentRecord: { id: string } | undefined;
       try {
-        [documentRecord] = await db
-          .insert(documents)
-          .values({
+        documentRecord =
+          (await insertDocumentRow({
             entityType: "GLOBAL",
             entityId: null,
             title: input.title,
@@ -264,8 +228,7 @@ export const filesRouter = createTRPCRouter({
             mimeType,
             contentHash,
             uploadedById: userId,
-          })
-          .returning({ id: documents.id });
+          })) ?? undefined;
       } catch (error) {
         if (isUniqueViolationError(error)) {
           throw new TRPCError({
@@ -323,10 +286,7 @@ export const filesRouter = createTRPCRouter({
         return { success: true };
       }
 
-      await db
-        .update(documents)
-        .set(updateData)
-        .where(eq(documents.id, documentId));
+      await updateDocumentById(documentId, updateData);
 
       return { success: true };
     }),
@@ -334,17 +294,7 @@ export const filesRouter = createTRPCRouter({
   deleteDocument: protectedProcedure
     .input(deleteDocumentInputSchema)
     .mutation(async ({ input }) => {
-      const [doc] = await db
-        .select({
-          fileUrl: documents.fileUrl,
-          entityType: documents.entityType,
-          entityId: documents.entityId,
-          companyId: documents.companyId,
-          dealOpportunityId: documents.dealOpportunityId,
-        })
-        .from(documents)
-        .where(eq(documents.id, input.documentId))
-        .limit(1);
+      const doc = await getDocumentFileMetaForDelete(input.documentId);
 
       if (!doc) {
         throw new TRPCError({
@@ -379,7 +329,7 @@ export const filesRouter = createTRPCRouter({
 
       await deleteFile(doc.fileUrl);
 
-      await db.delete(documents).where(eq(documents.id, input.documentId));
+      await deleteDocumentById(input.documentId);
 
       return { success: true };
     }),

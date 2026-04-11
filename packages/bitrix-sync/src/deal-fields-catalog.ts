@@ -1,5 +1,9 @@
 import defaultCatalog from "../data/bitrix-deal-fields.json";
-import { getBitrixDealTeaserFieldCode } from "./env";
+import {
+  getBitrixDealEbitdaFieldCode,
+  getBitrixDealEbitdaMarginFieldCode,
+  getBitrixDealTeaserFieldCode,
+} from "./env";
 import { getBitrixOpportunitySyncUfCodes } from "./opportunity-uf";
 
 export type BitrixDealFieldRow = {
@@ -209,6 +213,62 @@ export function getBitrixDealFieldsCatalog(): BitrixDealFieldRow[] {
   return [];
 }
 
+/**
+ * Teaser UF: explicit `BITRIX_DEAL_TEASER_UF`, else a single catalog field whose
+ * title contains "Teaser" (from `fetch-deal-fields` / `BITRIX_DEAL_FIELDS_JSON`).
+ */
+export function resolveBitrixDealTeaserFieldCode(): string | undefined {
+  const fromEnv = getBitrixDealTeaserFieldCode();
+  if (fromEnv) return fromEnv;
+  const catalog = getBitrixDealFieldsCatalog();
+  const hits = catalog.filter(
+    (f) =>
+      /\bteaser\b/i.test(f.title) &&
+      f.fieldId !== "COMMENTS" &&
+      f.fieldId !== "TITLE",
+  );
+  if (hits.length === 1) return hits[0]!.fieldId;
+  return undefined;
+}
+
+/**
+ * EBITDA deal UF: `BITRIX_DEAL_EBITDA_UF` / `BITRIX_UF_EBITDA`, else exactly one catalog UF whose title contains “EBITDA” but not “margin”.
+ */
+export function resolveBitrixDealEbitdaFieldCode(): string | undefined {
+  const fromEnv =
+    getBitrixDealEbitdaFieldCode() ||
+    getBitrixOpportunitySyncUfCodes().ebitda.trim();
+  if (fromEnv) return fromEnv;
+  const catalog = getBitrixDealFieldsCatalog();
+  const hits = catalog.filter((f) => {
+    if (!f.fieldId.startsWith("UF_")) return false;
+    const t = f.title.trim();
+    if (!/\bebitda\b/i.test(t)) return false;
+    if (/\bmargin\b/i.test(t)) return false;
+    return true;
+  });
+  if (hits.length === 1) return hits[0]!.fieldId;
+  return undefined;
+}
+
+/**
+ * EBITDA margin % UF: env or exactly one catalog UF whose title matches EBITDA + margin.
+ */
+export function resolveBitrixDealEbitdaMarginFieldCode(): string | undefined {
+  const fromEnv =
+    getBitrixDealEbitdaMarginFieldCode() ||
+    getBitrixOpportunitySyncUfCodes().ebitdaMargin.trim();
+  if (fromEnv) return fromEnv;
+  const catalog = getBitrixDealFieldsCatalog();
+  const hits = catalog.filter((f) => {
+    if (!f.fieldId.startsWith("UF_")) return false;
+    const t = f.title.toLowerCase();
+    return t.includes("ebitda") && t.includes("margin");
+  });
+  if (hits.length === 1) return hits[0]!.fieldId;
+  return undefined;
+}
+
 export type AiBitrixFormFieldKey =
   | "title"
   | "stageId"
@@ -259,7 +319,7 @@ export function getAiBitrixFormFieldMeta(): Record<
 > {
   const catalog = getBitrixDealFieldsCatalog();
   const byId = new Map(catalog.map((f) => [f.fieldId, f]));
-  const teaserUf = getBitrixDealTeaserFieldCode();
+  const teaserUf = resolveBitrixDealTeaserFieldCode();
 
   const mergedIntoComments = (key: AiBitrixFormFieldKey, bitrixFieldId: string) =>
     bitrixFieldId === "COMMENTS" &&
@@ -290,6 +350,8 @@ export function getAiBitrixFormFieldMeta(): Record<
 
   const uf = getBitrixOpportunitySyncUfCodes();
   const teaserTarget = teaserUf ?? "COMMENTS";
+  const ebitdaTarget = resolveBitrixDealEbitdaFieldCode() ?? "";
+  const ebitdaMarginTarget = resolveBitrixDealEbitdaMarginFieldCode() ?? "";
 
   return {
     title: resolve("title", "TITLE"),
@@ -304,8 +366,11 @@ export function getAiBitrixFormFieldMeta(): Record<
     companyLocation: resolve("companyLocation", uf.companyLocation),
     industry: resolve("industry", "COMMENTS"),
     askingPrice: resolve("askingPrice", uf.askingPrice),
-    ebitda: resolve("ebitda", "COMMENTS"),
-    ebitdaMargin: resolve("ebitdaMargin", "COMMENTS"),
+    ebitda: resolve("ebitda", ebitdaTarget || "COMMENTS"),
+    ebitdaMargin: resolve(
+      "ebitdaMargin",
+      ebitdaMarginTarget || "COMMENTS",
+    ),
     brokerFirstName: resolve("brokerFirstName", uf.brokerFirstName),
     brokerLastName: resolve("brokerLastName", uf.brokerLastName),
     brokerEmail: resolve("brokerEmail", uf.brokerEmail),

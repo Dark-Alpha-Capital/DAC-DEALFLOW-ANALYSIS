@@ -29,31 +29,43 @@ import {
   uploadCIMSchema,
   uploadDealDocumentSchema,
 } from "@/lib/zod-schemas/deals-router";
-import db, {
-  deals,
-  dealOpportunities,
-  dealOpportunityThemes,
-  dealOpportunityCompanyLinks,
-  dealOpportunityScreenings,
-  aiScreenings,
-  companies,
-  themes,
-  investorDealOpportunityLinks,
-  investors,
-  leads,
-  eq,
-  and,
-  or,
-  isNull,
-  ilike,
-  desc,
+import {
   DealType,
-  documents,
   DealDocumentCategory,
   DocumentCategory,
   ReviewState,
 } from "@repo/db";
-import { DeleteDealById, BulkDeleteDeals } from "@repo/db/mutations";
+import {
+  DeleteDealById,
+  BulkDeleteDeals,
+  insertDealOpportunityCimDocument,
+  insertManualDealRow,
+  insertDealOpportunityRow,
+  insertDealOpportunityCompanyLink,
+  updateDealOpportunityCompanyId,
+  deleteDealOpportunityCompanyLinkById,
+  insertInvestorDealOpportunityLink,
+  deleteInvestorDealOpportunityLinkById,
+  createDealOpportunityQuickTx,
+  updateDealOpportunityStageById,
+  deleteDeterministicScreeningForDealOpportunity,
+  insertQualitativeAiScreeningRow,
+  updateDealOpportunityListingFields,
+  deleteDealOpportunityRow,
+  updateLegacyDealRow,
+  updateLegacyDealTags,
+  updateDealOpportunityReviewAndStatus,
+  updateLegacyDealReviewAndStatus,
+  updateDealOpportunityBitrixFields,
+  insertDealOpportunityFromBitrixImport,
+  replaceDealCim,
+  upsertCIMExtraction,
+  deleteFinancialsForDealCim,
+  createDealFinancialSnapshot,
+  createDealRiskFlag,
+  insertCimScreeningSession,
+  insertCimScreeningRun,
+} from "@repo/db/mutations";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import type { FileUploadJobData, EntityMetadata } from "@repo/redis-queue/types";
@@ -62,7 +74,7 @@ import {
   startCimExtractionWorkflow,
   startFileUploadWorkflow,
   startRagIngestionWorkflow,
-  startSimScreeningWorkflow,
+  startCimScreeningWorkflow,
 } from "@/src/lib/workflow-jobs-api";
 import { setWorkflowJobState } from "@repo/db/workflow-jobs";
 import { createHash, randomUUID } from "crypto";
@@ -71,24 +83,31 @@ import {
   GetDealOpportunityById,
   GetDealOpportunityByLegacyDealId,
   GetCIMExtractionByDealOpportunityId,
-  getActiveSimForDeal,
+  getActiveCimForDeal,
   GetLatestDealFinancialSnapshotByDealOpportunityId,
   GetDealFinancialSnapshotsByDealOpportunityId,
   GetDealRiskFlagsByDealOpportunityId,
   countDocumentChunksByDealOpportunityId,
   getScreenerById,
-  getSimScreeningRunByIdForUser,
-  getSimScreeningSessionByIdForUser,
+  getCimScreeningRunByIdForUser,
+  getCimScreeningSessionByIdForUser,
+  searchDealOpportunitiesForChat,
+  findDealOpportunityDocumentByContentHash,
+  getDocumentFileMetaById,
+  listDealOpportunityCompanyLinksJoined,
+  getDealOpportunityIdAndPrimaryCompany,
+  getCompanyIdExists,
+  findDealOpportunityCompanyLinkDup,
+  getLatestCompanyLinkForDealOpportunity,
+  listInvestorDealOpportunityLinksJoined,
+  getDealOpportunityIdOnly,
+  getInvestorIdExists,
+  findInvestorDealOpportunityLinkDup,
+  getCompanyRowByIdForDealUpload,
+  getCompanyRowByIdForAiScreening,
+  getLeadRowById,
+  selectDealOpportunityBitrixIds,
 } from "@repo/db/queries";
-import {
-  replaceDealSim,
-  upsertCIMExtraction,
-  deleteFinancialsForSim,
-  createDealFinancialSnapshot,
-  createDealRiskFlag,
-  insertSimScreeningSession,
-  insertSimScreeningRun,
-} from "@repo/db/mutations";
 import { buildNextcloudFileUrl, uploadBuffer } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
@@ -97,17 +116,31 @@ import {
   runAiQualitativeScreening,
 } from "@repo/deal-screening";
 import {
+  BITRIX_DEAL_PIPELINE_ID,
   buildBitrixDealDetailUrl,
   buildCrmDealFieldsFromOpportunitySync,
   callBitrix,
+  type BitrixContactBrokerFields,
+  extractBitrixDealCompanyId,
+  extractBitrixDealContactIds,
+  extractBitrixDealListStageIdRaw,
+  fetchBitrixCompanyTitleMap,
+  fetchBitrixContactBrokerMap,
+  fetchDealsForSyncPipeline,
+  getBitrixDealStages,
+  getDefaultBitrixStageId,
   getAiBitrixFormFieldMeta,
   getBitrixDealFieldsCatalog,
-  getBitrixDealStages,
-  getBitrixDealTeaserFieldCode,
   getBitrixSyncEnv,
   inferPortalBaseFromWebhook,
+  normalizeBitrixListRow,
+  resolveBitrixDealTeaserFieldCode,
 } from "@repo/bitrix-sync";
 import { getBitrixSyncPreviewData } from "@/lib/server/bitrix-sync-preview-data";
+
+function defaultDealOpportunityStage(): string {
+  return getDefaultBitrixStageId(getBitrixDealStages());
+}
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -133,36 +166,7 @@ export const dealsRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const query = input?.query?.trim();
       const limit = input?.limit ?? 20;
-      const predicates = [isNull(companies.deletedAt)];
-
-      if (query) {
-        const searchTerm = `%${query}%`;
-        predicates.push(
-          or(
-            ilike(companies.name, searchTerm),
-            ilike(dealOpportunities.dealTeaser, searchTerm),
-            ilike(dealOpportunities.sourceWebsite, searchTerm),
-            ilike(dealOpportunities.brokerage, searchTerm),
-          )!,
-        );
-      }
-
-      return db
-        .select({
-          id: dealOpportunities.id,
-          companyId: dealOpportunities.companyId,
-          leadId: dealOpportunities.leadId,
-          dealTeaser: dealOpportunities.dealTeaser,
-          stage: dealOpportunities.stage,
-          status: dealOpportunities.status,
-          companyName: companies.name,
-          sourceWebsite: dealOpportunities.sourceWebsite,
-        })
-        .from(dealOpportunities)
-        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-        .where(and(...predicates))
-        .orderBy(desc(dealOpportunities.updatedAt), desc(dealOpportunities.id))
-        .limit(limit);
+      return searchDealOpportunitiesForChat({ query, limit });
     }),
 
   uploadCIM: protectedProcedure
@@ -195,16 +199,10 @@ export const dealsRouter = createTRPCRouter({
       const buffer = Buffer.from(base64Data, "base64");
       const contentHash = createHash("sha256").update(buffer).digest("hex");
 
-      const [existingDealDocument] = await db
-        .select({ id: documents.id })
-        .from(documents)
-        .where(
-          and(
-            eq(documents.dealOpportunityId, input.dealOpportunityId),
-            eq(documents.contentHash, contentHash),
-          ),
-        )
-        .limit(1);
+      const existingDealDocument = await findDealOpportunityDocumentByContentHash(
+        input.dealOpportunityId,
+        contentHash,
+      );
 
       if (existingDealDocument) {
         throw new TRPCError({
@@ -224,25 +222,22 @@ export const dealsRouter = createTRPCRouter({
         }
         | undefined;
       try {
-        [documentRecord] = await db
-          .insert(documents)
-          .values({
-            entityType: "DEAL_OPPORTUNITY",
-            entityId: input.dealOpportunityId,
-            dealOpportunityId: input.dealOpportunityId,
-            title: input.title,
-            description: input.description?.trim()
-              ? input.description.trim()
-              : null,
-            category: input.category,
-            fileUrl: publicUrl,
-            fileName: input.fileName,
-            fileSize: buffer.length,
-            mimeType: "application/pdf",
-            contentHash,
-            uploadedById: userId,
-          })
-          .returning({ id: documents.id });
+        documentRecord = await insertDealOpportunityCimDocument({
+          entityType: "DEAL_OPPORTUNITY",
+          entityId: input.dealOpportunityId,
+          dealOpportunityId: input.dealOpportunityId,
+          title: input.title,
+          description: input.description?.trim()
+            ? input.description.trim()
+            : null,
+          category: input.category,
+          fileUrl: publicUrl,
+          fileName: input.fileName,
+          fileSize: buffer.length,
+          mimeType: "application/pdf",
+          contentHash,
+          uploadedById: userId,
+        });
       } catch (error) {
         if (isUniqueViolationError(error)) {
           throw new TRPCError({
@@ -260,7 +255,7 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      const sim = await replaceDealSim({
+      const dealCim = await replaceDealCim({
         dealOpportunityId: input.dealOpportunityId,
         documentId: documentRecord.id,
         storageKey: finalPath,
@@ -297,7 +292,7 @@ export const dealsRouter = createTRPCRouter({
         fileName: input.fileName,
       });
       await startCimExtractionWorkflow(jobId, {
-        simId: sim.id,
+        dealCimId: dealCim.id,
         documentId: documentRecord.id,
         dealOpportunityId: input.dealOpportunityId,
         filePath: finalPath,
@@ -313,45 +308,37 @@ export const dealsRouter = createTRPCRouter({
         success: true,
         jobId,
         documentId: documentRecord.id,
-        simId: sim.id,
+        dealCimId: dealCim.id,
       };
     }),
 
-  getActiveSimForOpportunity: protectedProcedure
+  getActiveCimForOpportunity: protectedProcedure
     .input(dealOpportunityIdInputSchema)
     .query(async ({ input }) => {
-      const sim = await getActiveSimForDeal(input.dealOpportunityId);
-      if (!sim) return null;
-      const [doc] = await db
-        .select({
-          fileName: documents.fileName,
-          createdAt: documents.createdAt,
-        })
-        .from(documents)
-        .where(eq(documents.id, sim.documentId))
-        .limit(1);
+      const cim = await getActiveCimForDeal(input.dealOpportunityId);
+      if (!cim) return null;
+      const doc = await getDocumentFileMetaById(cim.documentId);
       return {
-        id: sim.id,
-        documentId: sim.documentId,
+        id: cim.id,
+        documentId: cim.documentId,
         fileName: doc?.fileName ?? null,
-        uploadedAt: sim.uploadedAt,
-        status: sim.status,
+        uploadedAt: cim.uploadedAt,
+        status: cim.status,
       };
     }),
 
   getCIMAnalysisForOpportunity: protectedProcedure
     .input(dealOpportunityIdInputSchema)
     .query(async ({ input }) => {
-      const activeSim = await getActiveSimForDeal(input.dealOpportunityId);
+      const activeCim = await getActiveCimForDeal(input.dealOpportunityId);
       const extraction = await GetCIMExtractionByDealOpportunityId(
         input.dealOpportunityId,
       );
-      const hasActiveSim = !!activeSim;
       const hasFinancials = !!extraction;
       return {
-        activeSim: activeSim
+        activeCim: activeCim
           ? {
-            id: activeSim.id,
+            id: activeCim.id,
             status: hasFinancials
               ? ("ready" as const)
               : ("processing" as const),
@@ -375,11 +362,11 @@ export const dealsRouter = createTRPCRouter({
   editFinancials: protectedProcedure
     .input(editFinancialsSchema)
     .mutation(async ({ input, ctx }) => {
-      const sim = await getActiveSimForDeal(input.dealOpportunityId);
-      if (!sim) {
+      const cim = await getActiveCimForDeal(input.dealOpportunityId);
+      if (!cim) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "No active SIM found for this deal",
+          message: "No active CIM upload found for this deal",
         });
       }
       const existing = await GetCIMExtractionByDealOpportunityId(
@@ -406,7 +393,7 @@ export const dealsRouter = createTRPCRouter({
           input.transactionDetails ?? existing?.transactionDetails ?? null,
       };
       await upsertCIMExtraction({
-        simId: sim.id,
+        dealCimId: cim.id,
         dealOpportunityId: input.dealOpportunityId,
         payload,
         source: "USER",
@@ -422,14 +409,14 @@ export const dealsRouter = createTRPCRouter({
   deleteFinancials: protectedProcedure
     .input(dealOpportunityIdInputSchema)
     .mutation(async ({ input }) => {
-      const sim = await getActiveSimForDeal(input.dealOpportunityId);
-      if (!sim) {
+      const cim = await getActiveCimForDeal(input.dealOpportunityId);
+      if (!cim) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "No active SIM found for this deal",
+          message: "No active CIM upload found for this deal",
         });
       }
-      await deleteFinancialsForSim(sim.id);
+      await deleteFinancialsForDealCim(cim.id);
       after(async () => {
         revalidateTag(`deal-${input.dealOpportunityId}`, "max");
         revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
@@ -440,29 +427,26 @@ export const dealsRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createDealSchema)
     .mutation(async ({ input, ctx }) => {
-      const [addedDeal] = await db
-        .insert(deals)
-        .values({
-          title: input.title,
-          dealCaption: input.deal_caption,
-          firstName: input.first_name,
-          lastName: input.last_name,
-          email: input.email,
-          linkedinUrl: input.linkedinurl,
-          workPhone: input.work_phone,
-          revenue: input.revenue,
-          ebitda: input.ebitda,
-          ebitdaMargin: input.ebitda_margin,
-          grossRevenue: input.gross_revenue,
-          companyLocation: input.company_location,
-          brokerage: input.brokerage,
-          sourceWebsite: input.source_website || "",
-          industry: input.industry,
-          askingPrice: input.asking_price,
-          dealType: DealType.MANUAL,
-          userId: ctx.user.id,
-        })
-        .returning();
+      const addedDeal = await insertManualDealRow({
+        title: input.title,
+        dealCaption: input.deal_caption,
+        firstName: input.first_name,
+        lastName: input.last_name,
+        email: input.email,
+        linkedinUrl: input.linkedinurl,
+        workPhone: input.work_phone,
+        revenue: input.revenue,
+        ebitda: input.ebitda,
+        ebitdaMargin: input.ebitda_margin,
+        grossRevenue: input.gross_revenue,
+        companyLocation: input.company_location,
+        brokerage: input.brokerage,
+        sourceWebsite: input.source_website || "",
+        industry: input.industry,
+        askingPrice: input.asking_price,
+        dealType: DealType.MANUAL,
+        userId: ctx.user.id,
+      });
 
       after(async () => {
         revalidatePath("/manual-deals");
@@ -482,27 +466,26 @@ export const dealsRouter = createTRPCRouter({
         input.ebitdaMargin != null ||
         input.askingPrice != null;
 
-      const [added] = await db
-        .insert(dealOpportunities)
-        .values({
-          companyId: input.companyId ?? null,
-          leadId: input.leadId || null,
-          sourceWebsite: input.sourceWebsite || null,
-          brokerage: input.brokerage || null,
-          revenue: null,
-          ebitda: null,
-          ebitdaMargin: null,
-          askingPrice: null,
-          dealTeaser: input.dealTeaser || null,
-          description: input.description || null,
-          brokerFirstName: input.brokerFirstName || null,
-          brokerLastName: input.brokerLastName || null,
-          brokerEmail: input.brokerEmail || null,
-          brokerPhone: input.brokerPhone || null,
-          brokerLinkedIn: input.brokerLinkedIn || null,
-          userId,
-        })
-        .returning();
+      const added = await insertDealOpportunityRow({
+        companyId: input.companyId ?? null,
+        leadId: input.leadId || null,
+        sourceWebsite: input.sourceWebsite || null,
+        brokerage: input.brokerage || null,
+        revenue: null,
+        ebitda: null,
+        ebitdaMargin: null,
+        askingPrice: null,
+        title: input.title?.trim() || null,
+        dealTeaser: input.dealTeaser || null,
+        description: input.description || null,
+        brokerFirstName: input.brokerFirstName || null,
+        brokerLastName: input.brokerLastName || null,
+        brokerEmail: input.brokerEmail || null,
+        brokerPhone: input.brokerPhone || null,
+        brokerLinkedIn: input.brokerLinkedIn || null,
+        userId,
+        stage: defaultDealOpportunityStage(),
+      });
 
       if (added?.id) {
         if (hasFinancials) {
@@ -516,7 +499,6 @@ export const dealsRouter = createTRPCRouter({
             createdById: userId,
           });
         }
-        await upsertDealOpportunityScreening(added.id);
       }
 
       after(async () => {
@@ -529,31 +511,7 @@ export const dealsRouter = createTRPCRouter({
   listCompanyLinks: protectedProcedure
     .input(z.object({ dealOpportunityId: z.string() }))
     .query(async ({ input }) => {
-      return db
-        .select({
-          link: dealOpportunityCompanyLinks,
-          company: {
-            id: companies.id,
-            name: companies.name,
-            industry: companies.industry,
-            location: companies.location,
-          },
-        })
-        .from(dealOpportunityCompanyLinks)
-        .innerJoin(
-          companies,
-          eq(dealOpportunityCompanyLinks.companyId, companies.id),
-        )
-        .where(
-          and(
-            eq(
-              dealOpportunityCompanyLinks.dealOpportunityId,
-              input.dealOpportunityId,
-            ),
-            isNull(companies.deletedAt),
-          ),
-        )
-        .orderBy(desc(dealOpportunityCompanyLinks.createdAt));
+      return listDealOpportunityCompanyLinksJoined(input.dealOpportunityId);
     }),
 
   addCompanyLink: protectedProcedure
@@ -565,39 +523,27 @@ export const dealsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const [opp] = await db
-        .select({ id: dealOpportunities.id, companyId: dealOpportunities.companyId })
-        .from(dealOpportunities)
-        .where(eq(dealOpportunities.id, input.dealOpportunityId))
-        .limit(1);
+      const opp = await getDealOpportunityIdAndPrimaryCompany(
+        input.dealOpportunityId,
+      );
       if (!opp) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Deal opportunity not found" });
       }
 
-      const [company] = await db
-        .select({ id: companies.id })
-        .from(companies)
-        .where(and(eq(companies.id, input.companyId), isNull(companies.deletedAt)))
-        .limit(1);
+      const company = await getCompanyIdExists(input.companyId);
       if (!company) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Company not found" });
       }
 
-      const [dup] = await db
-        .select({ id: dealOpportunityCompanyLinks.id })
-        .from(dealOpportunityCompanyLinks)
-        .where(
-          and(
-            eq(dealOpportunityCompanyLinks.dealOpportunityId, input.dealOpportunityId),
-            eq(dealOpportunityCompanyLinks.companyId, input.companyId),
-          ),
-        )
-        .limit(1);
+      const dup = await findDealOpportunityCompanyLinkDup(
+        input.dealOpportunityId,
+        input.companyId,
+      );
       if (dup) {
         throw new TRPCError({ code: "CONFLICT", message: "Company already linked to this deal" });
       }
 
-      await db.insert(dealOpportunityCompanyLinks).values({
+      await insertDealOpportunityCompanyLink({
         dealOpportunityId: input.dealOpportunityId,
         companyId: input.companyId,
         notes: input.notes?.trim() || null,
@@ -605,10 +551,10 @@ export const dealsRouter = createTRPCRouter({
 
       // Keep legacy single-company field aligned for compatibility.
       if (!opp.companyId) {
-        await db
-          .update(dealOpportunities)
-          .set({ companyId: input.companyId })
-          .where(eq(dealOpportunities.id, input.dealOpportunityId));
+        await updateDealOpportunityCompanyId(
+          input.dealOpportunityId,
+          input.companyId,
+        );
       }
 
       after(async () => {
@@ -625,31 +571,23 @@ export const dealsRouter = createTRPCRouter({
   removeCompanyLink: protectedProcedure
     .input(z.object({ linkId: z.string() }))
     .mutation(async ({ input }) => {
-      const [removed] = await db
-        .delete(dealOpportunityCompanyLinks)
-        .where(eq(dealOpportunityCompanyLinks.id, input.linkId))
-        .returning();
+      const removed = await deleteDealOpportunityCompanyLinkById(input.linkId);
       if (!removed) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
       }
 
-      const [opp] = await db
-        .select({ id: dealOpportunities.id, companyId: dealOpportunities.companyId })
-        .from(dealOpportunities)
-        .where(eq(dealOpportunities.id, removed.dealOpportunityId))
-        .limit(1);
+      const opp = await getDealOpportunityIdAndPrimaryCompany(
+        removed.dealOpportunityId,
+      );
 
       if (opp && opp.companyId === removed.companyId) {
-        const [fallback] = await db
-          .select({ companyId: dealOpportunityCompanyLinks.companyId })
-          .from(dealOpportunityCompanyLinks)
-          .where(eq(dealOpportunityCompanyLinks.dealOpportunityId, removed.dealOpportunityId))
-          .orderBy(desc(dealOpportunityCompanyLinks.createdAt))
-          .limit(1);
-        await db
-          .update(dealOpportunities)
-          .set({ companyId: fallback?.companyId ?? null })
-          .where(eq(dealOpportunities.id, removed.dealOpportunityId));
+        const fallback = await getLatestCompanyLinkForDealOpportunity(
+          removed.dealOpportunityId,
+        );
+        await updateDealOpportunityCompanyId(
+          removed.dealOpportunityId,
+          fallback?.companyId ?? null,
+        );
       }
 
       after(async () => {
@@ -666,23 +604,7 @@ export const dealsRouter = createTRPCRouter({
   listInvestorLinks: protectedProcedure
     .input(z.object({ dealOpportunityId: z.string() }))
     .query(async ({ input }) => {
-      return db
-        .select({
-          link: investorDealOpportunityLinks,
-          investor: {
-            id: investors.id,
-            name: investors.name,
-            type: investors.type,
-            status: investors.status,
-          },
-        })
-        .from(investorDealOpportunityLinks)
-        .innerJoin(
-          investors,
-          eq(investorDealOpportunityLinks.investorId, investors.id),
-        )
-        .where(eq(investorDealOpportunityLinks.dealOpportunityId, input.dealOpportunityId))
-        .orderBy(desc(investorDealOpportunityLinks.createdAt));
+      return listInvestorDealOpportunityLinksJoined(input.dealOpportunityId);
     }),
 
   addInvestorLink: protectedProcedure
@@ -694,39 +616,25 @@ export const dealsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const [opp] = await db
-        .select({ id: dealOpportunities.id })
-        .from(dealOpportunities)
-        .where(eq(dealOpportunities.id, input.dealOpportunityId))
-        .limit(1);
+      const opp = await getDealOpportunityIdOnly(input.dealOpportunityId);
       if (!opp) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Deal opportunity not found" });
       }
 
-      const [investor] = await db
-        .select({ id: investors.id })
-        .from(investors)
-        .where(eq(investors.id, input.investorId))
-        .limit(1);
+      const investor = await getInvestorIdExists(input.investorId);
       if (!investor) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Investor not found" });
       }
 
-      const [dup] = await db
-        .select({ id: investorDealOpportunityLinks.id })
-        .from(investorDealOpportunityLinks)
-        .where(
-          and(
-            eq(investorDealOpportunityLinks.dealOpportunityId, input.dealOpportunityId),
-            eq(investorDealOpportunityLinks.investorId, input.investorId),
-          ),
-        )
-        .limit(1);
+      const dup = await findInvestorDealOpportunityLinkDup(
+        input.dealOpportunityId,
+        input.investorId,
+      );
       if (dup) {
         throw new TRPCError({ code: "CONFLICT", message: "Investor already linked to this deal" });
       }
 
-      await db.insert(investorDealOpportunityLinks).values({
+      await insertInvestorDealOpportunityLink({
         dealOpportunityId: input.dealOpportunityId,
         investorId: input.investorId,
         notes: input.notes?.trim() || null,
@@ -746,10 +654,7 @@ export const dealsRouter = createTRPCRouter({
   removeInvestorLink: protectedProcedure
     .input(z.object({ linkId: z.string() }))
     .mutation(async ({ input }) => {
-      const [removed] = await db
-        .delete(investorDealOpportunityLinks)
-        .where(eq(investorDealOpportunityLinks.id, input.linkId))
-        .returning();
+      const removed = await deleteInvestorDealOpportunityLinkById(input.linkId);
       if (!removed) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
       }
@@ -774,25 +679,12 @@ export const dealsRouter = createTRPCRouter({
         input.ebitdaMargin != null ||
         input.askingPrice != null;
 
-      const result = await db.transaction(async (tx) => {
-        const normalizedThemeId = input.themeId?.trim() || null;
-        if (normalizedThemeId) {
-          const [theme] = await tx
-            .select({ id: themes.id })
-            .from(themes)
-            .where(and(eq(themes.id, normalizedThemeId), isNull(themes.deletedAt)))
-            .limit(1);
-          if (!theme) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Selected theme does not exist",
-            });
-          }
-        }
-
-        const [opp] = await tx
-          .insert(dealOpportunities)
-          .values({
+      let result: Awaited<ReturnType<typeof createDealOpportunityQuickTx>>;
+      try {
+        result = await createDealOpportunityQuickTx({
+          userId: ctx.user.id,
+          themeId: input.themeId?.trim() || null,
+          fields: {
             companyId: null,
             leadId: null,
             sourceWebsite: input.sourceWebsite || null,
@@ -801,7 +693,8 @@ export const dealsRouter = createTRPCRouter({
             ebitda: null,
             ebitdaMargin: null,
             askingPrice: null,
-            dealTeaser: input.dealTeaser || null,
+            title: input.title?.trim() || null,
+            dealTeaser: input.dealTeaser?.trim() || null,
             description: input.description || null,
             brokerFirstName: input.brokerFirstName || null,
             brokerLastName: input.brokerLastName || null,
@@ -809,21 +702,18 @@ export const dealsRouter = createTRPCRouter({
             brokerPhone: input.brokerPhone || null,
             brokerLinkedIn: input.brokerLinkedIn || null,
             userId: ctx.user.id,
-          })
-          .returning();
-
-        if (!opp) throw new Error("Failed to create deal opportunity");
-
-        if (normalizedThemeId) {
-          await tx.insert(dealOpportunityThemes).values({
-            dealOpportunityId: opp.id,
-            themeId: normalizedThemeId,
-            isPrimary: true,
+            stage: defaultDealOpportunityStage(),
+          },
+        });
+      } catch (e) {
+        if (e instanceof Error && e.message === "THEME_NOT_FOUND") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected theme does not exist",
           });
         }
-
-        return { opp };
-      });
+        throw e;
+      }
 
       if (hasFinancials) {
         await createDealFinancialSnapshot({
@@ -836,7 +726,6 @@ export const dealsRouter = createTRPCRouter({
           createdById: ctx.user.id,
         });
       }
-      await upsertDealOpportunityScreening(result.opp.id);
 
       after(async () => {
         revalidatePath("/deal-opportunities");
@@ -851,10 +740,7 @@ export const dealsRouter = createTRPCRouter({
   updateOpportunityStage: protectedProcedure
     .input(updateOpportunityStageSchema)
     .mutation(async ({ input }) => {
-      await db
-        .update(dealOpportunities)
-        .set({ stage: input.stage })
-        .where(eq(dealOpportunities.id, input.id));
+      await updateDealOpportunityStageById(input.id, input.stage);
 
       after(async () => {
         revalidatePath("/deal-opportunities");
@@ -878,8 +764,6 @@ export const dealsRouter = createTRPCRouter({
         notes: input.notes ?? null,
         createdById: ctx.user.id,
       });
-
-      await upsertDealOpportunityScreening(input.dealOpportunityId);
 
       after(async () => {
         revalidatePath("/deal-opportunities");
@@ -939,14 +823,9 @@ export const dealsRouter = createTRPCRouter({
   deleteDeterministicScreening: protectedProcedure
     .input(dealOpportunityIdInputSchema)
     .mutation(async ({ input }) => {
-      await db
-        .delete(dealOpportunityScreenings)
-        .where(
-          eq(
-            dealOpportunityScreenings.dealOpportunityId,
-            input.dealOpportunityId,
-          ),
-        );
+      await deleteDeterministicScreeningForDealOpportunity(
+        input.dealOpportunityId,
+      );
 
       after(async () => {
         revalidatePath("/deal-opportunities");
@@ -972,35 +851,19 @@ export const dealsRouter = createTRPCRouter({
       }
 
       const companyPromise = opp.companyId
-        ? db
-          .select()
-          .from(companies)
-          .where(
-            and(
-              eq(companies.id, opp.companyId),
-              isNull(companies.deletedAt),
-            ),
-          )
-          .limit(1)
-          .then((r) => r[0] ?? null)
+        ? getCompanyRowByIdForAiScreening(opp.companyId)
         : Promise.resolve(null);
 
       const [company, leadFromOpp, latestSnapshot] = await Promise.all([
         companyPromise,
-        opp.leadId
-          ? db.select().from(leads).where(eq(leads.id, opp.leadId)).limit(1)
-          : Promise.resolve([]),
+        opp.leadId ? getLeadRowById(opp.leadId) : Promise.resolve(null),
         GetLatestDealFinancialSnapshotByDealOpportunityId(opp.id),
       ]);
 
       const leadId = opp.leadId ?? company?.firstSeenFromLeadId ?? null;
       const leadRow =
-        leadFromOpp[0] ??
-        (leadId
-          ? ((
-            await db.select().from(leads).where(eq(leads.id, leadId)).limit(1)
-          )[0] ?? null)
-          : null);
+        leadFromOpp ??
+        (leadId ? await getLeadRowById(leadId) : null);
 
       const sections: string[] = [];
 
@@ -1129,7 +992,7 @@ export const dealsRouter = createTRPCRouter({
         keyRisks: result.keyRisks,
       });
 
-      await db.insert(aiScreenings).values({
+      await insertQualitativeAiScreeningRow({
         dealOpportunityId: opp.id,
         title: "Qualitative Analysis",
         explanation: result.explanation,
@@ -1187,7 +1050,7 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      const session = await insertSimScreeningSession({
+      const session = await insertCimScreeningSession({
         userId,
         dealOpportunityId: opp.id,
       });
@@ -1199,7 +1062,7 @@ export const dealsRouter = createTRPCRouter({
       }
 
       const jobId = randomUUID();
-      const run = await insertSimScreeningRun({
+      const run = await insertCimScreeningRun({
         sessionId: session.id,
         screenerId: input.screenerId,
         workflowInstanceId: jobId,
@@ -1211,22 +1074,21 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      const teaser = opp.dealTeaser?.trim();
+      const headline =
+        opp.title?.trim() || opp.dealTeaser?.trim() || "Deal opportunity";
       const fileLabel =
-        teaser && teaser.length > 120
-          ? `${teaser.slice(0, 120)}…`
-          : teaser ?? "Deal opportunity";
+        headline.length > 120 ? `${headline.slice(0, 120)}…` : headline;
 
       await insertWorkflowJob({
         instanceId: jobId,
-        workflowKind: "sim-screening",
+        workflowKind: "cim-screening",
         userId,
         dealId: opp.id,
         fileName: fileLabel,
         screenerId: input.screenerId,
       });
 
-      await startSimScreeningWorkflow(jobId, {
+      await startCimScreeningWorkflow(jobId, {
         jobId,
         userId,
         dealOpportunityId: opp.id,
@@ -1239,7 +1101,7 @@ export const dealsRouter = createTRPCRouter({
         sessionId: session.id,
         runId: run.id,
         jobId,
-        queueName: QUEUE_NAMES.SIM_SCREENING,
+        queueName: QUEUE_NAMES.CIM_SCREENING,
       };
     }),
 
@@ -1252,22 +1114,20 @@ export const dealsRouter = createTRPCRouter({
         data.ebitda != null ||
         data.ebitdaMargin != null ||
         data.askingPrice != null;
-      await db
-        .update(dealOpportunities)
-        .set({
-          companyId: data.companyId ?? null,
-          leadId: data.leadId || null,
-          sourceWebsite: data.sourceWebsite || null,
-          brokerage: data.brokerage || null,
-          dealTeaser: data.dealTeaser || null,
-          description: data.description || null,
-          brokerFirstName: data.brokerFirstName || null,
-          brokerLastName: data.brokerLastName || null,
-          brokerEmail: data.brokerEmail || null,
-          brokerPhone: data.brokerPhone || null,
-          brokerLinkedIn: data.brokerLinkedIn || null,
-        })
-        .where(eq(dealOpportunities.id, id));
+      await updateDealOpportunityListingFields(id, {
+        companyId: data.companyId ?? null,
+        leadId: data.leadId || null,
+        sourceWebsite: data.sourceWebsite || null,
+        brokerage: data.brokerage || null,
+        title: data.title ?? null,
+        dealTeaser: data.dealTeaser || null,
+        description: data.description || null,
+        brokerFirstName: data.brokerFirstName || null,
+        brokerLastName: data.brokerLastName || null,
+        brokerEmail: data.brokerEmail || null,
+        brokerPhone: data.brokerPhone || null,
+        brokerLinkedIn: data.brokerLinkedIn || null,
+      });
 
       if (hasFinancials) {
         await createDealFinancialSnapshot({
@@ -1280,8 +1140,6 @@ export const dealsRouter = createTRPCRouter({
           createdById: ctx.user.id,
         });
       }
-
-      await upsertDealOpportunityScreening(id);
 
       after(async () => {
         revalidatePath("/deal-opportunities");
@@ -1296,9 +1154,7 @@ export const dealsRouter = createTRPCRouter({
   deleteOpportunity: protectedProcedure
     .input(deleteOpportunityInputSchema)
     .mutation(async ({ input }) => {
-      await db
-        .delete(dealOpportunities)
-        .where(eq(dealOpportunities.id, input.id));
+      await deleteDealOpportunityRow(input.id);
       after(async () => {
         revalidatePath("/deal-opportunities");
         revalidateTag("deals", "max");
@@ -1312,27 +1168,24 @@ export const dealsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
 
-      await db
-        .update(deals)
-        .set({
-          title: data.title,
-          dealCaption: data.deal_caption,
-          firstName: data.first_name,
-          lastName: data.last_name,
-          email: data.email,
-          linkedinUrl: data.linkedinurl,
-          workPhone: data.work_phone,
-          revenue: data.revenue,
-          ebitda: data.ebitda,
-          ebitdaMargin: data.ebitda_margin,
-          grossRevenue: data.gross_revenue,
-          companyLocation: data.company_location,
-          brokerage: data.brokerage,
-          sourceWebsite: data.source_website || "",
-          industry: data.industry,
-          askingPrice: data.asking_price,
-        })
-        .where(eq(deals.id, id));
+      await updateLegacyDealRow(id, {
+        title: data.title,
+        dealCaption: data.deal_caption,
+        firstName: data.first_name ?? "",
+        lastName: data.last_name ?? "",
+        email: data.email ?? "",
+        linkedinUrl: data.linkedinurl ?? null,
+        workPhone: data.work_phone ?? null,
+        revenue: data.revenue ?? 0,
+        ebitda: data.ebitda ?? 0,
+        ebitdaMargin: data.ebitda_margin ?? 0,
+        grossRevenue: data.gross_revenue ?? null,
+        companyLocation: data.company_location ?? "",
+        brokerage: data.brokerage ?? "",
+        sourceWebsite: data.source_website || "",
+        industry: data.industry ?? "",
+        askingPrice: data.asking_price ?? 0,
+      });
 
       after(async () => {
         revalidatePath(`/raw-deals/${id}`);
@@ -1365,10 +1218,7 @@ export const dealsRouter = createTRPCRouter({
   updateTags: protectedProcedure
     .input(updateTagsSchema)
     .mutation(async ({ input }) => {
-      await db
-        .update(deals)
-        .set({ tags: input.tags })
-        .where(eq(deals.id, input.dealId));
+      await updateLegacyDealTags(input.dealId, input.tags);
 
       after(async () => {
         revalidatePath(`/raw-deals/${input.dealId}`);
@@ -1387,15 +1237,17 @@ export const dealsRouter = createTRPCRouter({
         opp = await GetDealOpportunityByLegacyDealId(dealId);
       }
       if (opp) {
-        await db
-          .update(dealOpportunities)
-          .set({ reviewState: reviewState as ReviewState, status })
-          .where(eq(dealOpportunities.id, dealId));
+        await updateDealOpportunityReviewAndStatus(
+          dealId,
+          reviewState as ReviewState,
+          status,
+        );
       } else {
-        await db
-          .update(deals)
-          .set({ reviewState: reviewState as ReviewState, status })
-          .where(eq(deals.id, dealId));
+        await updateLegacyDealReviewAndStatus(
+          dealId,
+          reviewState as ReviewState,
+          status,
+        );
       }
 
       after(async () => {
@@ -1446,12 +1298,13 @@ export const dealsRouter = createTRPCRouter({
       let entityMetadata: EntityMetadata;
       if (opp.companyId) {
         const companyId = opp.companyId;
-        const [company] = await db
-          .select()
-          .from(companies)
-          .where(eq(companies.id, companyId));
+        const company = await getCompanyRowByIdForDealUpload(companyId);
         entityMetadata = {
-          name: company?.name ?? opp.dealTeaser?.trim() ?? "Unknown Deal",
+          name:
+            company?.name ??
+            opp.title?.trim() ??
+            opp.dealTeaser?.trim() ??
+            "Unknown Deal",
           sector: company?.industry ?? null,
           stage: null,
           headquarters: company?.location ?? null,
@@ -1464,7 +1317,8 @@ export const dealsRouter = createTRPCRouter({
         };
       } else {
         entityMetadata = {
-          name: opp.dealTeaser?.trim() || "Unknown Deal",
+          name:
+            opp.title?.trim() || opp.dealTeaser?.trim() || "Unknown Deal",
           sector: null,
           stage: null,
           headquarters: null,
@@ -1483,16 +1337,10 @@ export const dealsRouter = createTRPCRouter({
       const buffer = Buffer.from(base64Data, "base64");
       const contentHash = createHash("sha256").update(buffer).digest("hex");
 
-      const [existingDealDocument] = await db
-        .select({ id: documents.id })
-        .from(documents)
-        .where(
-          and(
-            eq(documents.dealOpportunityId, entityId),
-            eq(documents.contentHash, contentHash),
-          ),
-        )
-        .limit(1);
+      const existingDealDocument = await findDealOpportunityDocumentByContentHash(
+        entityId,
+        contentHash,
+      );
 
       if (existingDealDocument) {
         throw new TRPCError({
@@ -1600,6 +1448,10 @@ export const dealsRouter = createTRPCRouter({
       };
     }),
 
+  getBitrixPipelineStages: protectedProcedure.query(() =>
+    getBitrixDealStages(),
+  ),
+
   getBitrixSyncPreview: protectedProcedure
     .input(dealOpportunityIdMinInputSchema)
     .query(async ({ input }) => {
@@ -1629,7 +1481,7 @@ export const dealsRouter = createTRPCRouter({
       dealCategoryId: env?.dealCategoryId ?? "",
       stages,
       suggestedStageId: env?.defaultStageId?.trim() ?? "",
-      teaserFieldConfigured: Boolean(getBitrixDealTeaserFieldCode()),
+      teaserFieldConfigured: Boolean(resolveBitrixDealTeaserFieldCode()),
       dealFieldsCatalogCount: dealFieldsCatalog.length,
       aiBitrixFieldMeta: getAiBitrixFormFieldMeta(),
     };
@@ -1705,14 +1557,11 @@ export const dealsRouter = createTRPCRouter({
         ? buildBitrixDealDetailUrl(portalBase, bitrixId)
         : null;
 
-      await db
-        .update(dealOpportunities)
-        .set({
-          bitrixId,
-          bitrixLink: bitrixLink || null,
-          bitrixCreatedAt: opp.bitrixCreatedAt ?? new Date(),
-        })
-        .where(eq(dealOpportunities.id, opp.id));
+      await updateDealOpportunityBitrixFields(opp.id, {
+        bitrixId,
+        bitrixLink: bitrixLink || null,
+        bitrixCreatedAt: opp.bitrixCreatedAt ?? new Date(),
+      });
 
       after(async () => {
         revalidatePath("/deal-opportunities");
@@ -1737,7 +1586,7 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      const session = await getSimScreeningSessionByIdForUser(
+      const session = await getCimScreeningSessionByIdForUser(
         input.sessionId,
         ctx.user.id,
       );
@@ -1748,7 +1597,7 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      const run = await getSimScreeningRunByIdForUser(input.runId, ctx.user.id);
+      const run = await getCimScreeningRunByIdForUser(input.runId, ctx.user.id);
       if (!run || run.sessionId !== session.id) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -1828,14 +1677,11 @@ export const dealsRouter = createTRPCRouter({
         ? buildBitrixDealDetailUrl(portalBase, bitrixId)
         : null;
 
-      await db
-        .update(dealOpportunities)
-        .set({
-          bitrixId,
-          bitrixLink: bitrixLink || null,
-          bitrixCreatedAt: opp.bitrixCreatedAt ?? new Date(),
-        })
-        .where(eq(dealOpportunities.id, opp.id));
+      await updateDealOpportunityBitrixFields(opp.id, {
+        bitrixId,
+        bitrixLink: bitrixLink || null,
+        bitrixCreatedAt: opp.bitrixCreatedAt ?? new Date(),
+      });
 
       after(async () => {
         revalidatePath("/deal-opportunities");
@@ -1848,4 +1694,274 @@ export const dealsRouter = createTRPCRouter({
 
       return { bitrixId, bitrixLink };
     }),
+
+  syncDealOpportunitiesFromBitrix: protectedProcedure.mutation(
+    async ({ ctx }) => {
+      const log = "[bitrix-pull-deals]";
+      const env = getBitrixSyncEnv();
+      if (!env?.webhookBaseUrl) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "BITRIX24_WEBHOOK is not configured.",
+        });
+      }
+
+      const rawRows = await fetchDealsForSyncPipeline();
+
+      console.log(rawRows.slice(12, 20))
+      const bitrixStages = getBitrixDealStages();
+
+      const firstRow = rawRows[0];
+      const firstRowFieldKeys =
+        firstRow && typeof firstRow === "object"
+          ? Object.keys(firstRow as object).sort()
+          : [];
+      let missingRawStageId = 0;
+      for (const r of rawRows) {
+        if (!extractBitrixDealListStageIdRaw(r as Record<string, unknown>)) {
+          missingRawStageId += 1;
+        }
+      }
+      const stageFieldSample = rawRows.slice(0, 5).map((r) => {
+        const row = r as Record<string, unknown>;
+        return { id: row.ID, STAGE_ID: row.STAGE_ID, stage_id: row.stage_id };
+      });
+      console.info(log, "crm.deal.list", {
+        pipelineCategoryId: BITRIX_DEAL_PIPELINE_ID,
+        rawRowCount: rawRows.length,
+        configuredStageCount: bitrixStages.length,
+        missingRawStageIdCount: missingRawStageId,
+        firstRowFieldKeys,
+        stageFieldSample,
+      });
+
+      const contactIds = rawRows.flatMap((r) =>
+        extractBitrixDealContactIds(r as Record<string, unknown>),
+      );
+
+      let contactById = new Map<string, BitrixContactBrokerFields>();
+      try {
+        contactById = await fetchBitrixContactBrokerMap(contactIds, {
+          webhookBaseUrl: env.webhookBaseUrl,
+        });
+      } catch (e) {
+        console.warn(
+          log,
+          "crm.contact.list failed; broker UFs only",
+          e instanceof Error ? e.message : e,
+        );
+      }
+      console.info(log, "contacts resolved", {
+        contactIdRefs: contactIds.length,
+        distinctContactIds: new Set(contactIds).size,
+        contactMapSize: contactById.size,
+      });
+
+      const companyIds = rawRows
+        .map((r) => extractBitrixDealCompanyId(r as Record<string, unknown>))
+        .filter((id): id is string => Boolean(id));
+
+      let companyTitleById = new Map<string, string>();
+      try {
+        companyTitleById = await fetchBitrixCompanyTitleMap(companyIds, {
+          webhookBaseUrl: env.webhookBaseUrl,
+        });
+      } catch (e) {
+        console.warn(
+          log,
+          "crm.company.list failed; brokerage names omitted",
+          e instanceof Error ? e.message : e,
+        );
+      }
+      console.info(log, "companies resolved", {
+        companyIdRefs: companyIds.length,
+        distinctCompanyIds: new Set(companyIds).size,
+        companyMapSize: companyTitleById.size,
+      });
+
+      const normalized = rawRows
+        .map((r) =>
+          normalizeBitrixListRow(r as Record<string, unknown>, bitrixStages, {
+            contactById,
+            companyTitleById,
+          }),
+        )
+        .filter((n): n is NonNullable<typeof n> => n != null);
+
+      const stageHistogram: Record<string, number> = {};
+      for (const n of normalized) {
+        stageHistogram[n.stage] = (stageHistogram[n.stage] ?? 0) + 1;
+      }
+      console.info(log, "rows normalized", {
+        normalizedCount: normalized.length,
+        droppedNoBitrixId: rawRows.length - normalized.length,
+        distinctStages: Object.keys(stageHistogram).length,
+        stageHistogram,
+      });
+
+      const impliedEbitdaRows = normalized.filter((n) =>
+        (n.ebitdaParseDebug?.notes ?? []).some((x) =>
+          x.startsWith("ebitda:implied"),
+        ),
+      ).length;
+      console.info(log, "ebitda / margin (normalized, pre-insert)", {
+        totalRows: normalized.length,
+        withRevenue: normalized.filter((n) => n.revenue != null).length,
+        withEbitda: normalized.filter((n) => n.ebitda != null).length,
+        withEbitdaMargin: normalized.filter((n) => n.ebitdaMargin != null)
+          .length,
+        withNeither: normalized.filter(
+          (n) => n.ebitda == null && n.ebitdaMargin == null,
+        ).length,
+        impliedEbitdaFromRevenueMargin: impliedEbitdaRows,
+      });
+      console.info(
+        log,
+        "ebitda parse sample (first 10 bitrixIds)",
+        normalized.slice(0, 10).map((n) => ({
+          bitrixId: n.bitrixId,
+          title: n.title,
+          revenue: n.revenue,
+          ebitda: n.ebitda,
+          ebitdaMargin: n.ebitdaMargin,
+          notes: n.ebitdaParseDebug?.notes ?? [],
+        })),
+      );
+
+      const totalFromBitrix = normalized.length;
+      if (totalFromBitrix === 0) {
+        console.info(log, "early exit: nothing to import");
+        return { imported: 0, skipped: 0, totalFromBitrix: 0 };
+      }
+
+      const existingRows = await selectDealOpportunityBitrixIds(
+        normalized.map((n) => n.bitrixId),
+      );
+      const existing = new Set(
+        existingRows
+          .map((r) => r.bitrixId)
+          .filter((id): id is string => Boolean(id?.trim())),
+      );
+      console.info(log, "existing deal opportunities", {
+        existingBitrixIdCount: existing.size,
+        candidateCount: totalFromBitrix,
+      });
+
+      const portalBase =
+        env.portalBaseUrl?.trim() ||
+        inferPortalBaseFromWebhook(env.webhookBaseUrl);
+
+      let imported = 0;
+      let skipped = 0;
+      let financialDetailLogsRemaining = 20;
+
+      for (const row of normalized) {
+        if (existing.has(row.bitrixId)) {
+          skipped += 1;
+          continue;
+        }
+
+        const bitrixLink = portalBase
+          ? buildBitrixDealDetailUrl(portalBase, row.bitrixId)
+          : null;
+
+        try {
+          if (financialDetailLogsRemaining > 0) {
+            financialDetailLogsRemaining -= 1;
+            console.info(log, "row financials (detail sample)", {
+              bitrixId: row.bitrixId,
+              title: row.title,
+              revenue: row.revenue,
+              ebitda: row.ebitda,
+              ebitdaMargin: row.ebitdaMargin,
+              askingPrice: row.askingPrice,
+              ebitdaParseNotes: row.ebitdaParseDebug?.notes ?? [],
+            });
+          }
+          const added = await insertDealOpportunityFromBitrixImport({
+            stage: row.stage,
+            brokerage: row.brokerage,
+            sourceWebsite: row.sourceWebsite,
+            revenue: row.revenue,
+            ebitda: row.ebitda,
+            ebitdaMargin: row.ebitdaMargin,
+            askingPrice: row.askingPrice,
+            title: row.title,
+            dealTeaser: row.dealTeaser,
+            description: row.description,
+            brokerFirstName: row.brokerFirstName,
+            brokerLastName: row.brokerLastName,
+            brokerEmail: row.brokerEmail,
+            brokerPhone: row.brokerPhone,
+            brokerLinkedIn: row.brokerLinkedIn,
+            bitrixId: row.bitrixId,
+            bitrixLink: bitrixLink || null,
+            bitrixCreatedAt: row.bitrixCreatedAt ?? new Date(),
+            userId: ctx.user.id,
+            dealType: DealType.MANUAL,
+          });
+
+          if (!added?.id) {
+            console.warn(log, "insert returned no row id", {
+              bitrixId: row.bitrixId,
+            });
+            continue;
+          }
+
+          if (
+            row.revenue != null ||
+            row.ebitda != null ||
+            row.ebitdaMargin != null ||
+            row.askingPrice != null
+          ) {
+            await createDealFinancialSnapshot({
+              dealOpportunityId: added.id,
+              revenue: row.revenue ?? null,
+              ebitda: row.ebitda ?? null,
+              ebitdaMargin: row.ebitdaMargin ?? null,
+              askingPrice: row.askingPrice ?? null,
+              source: "LISTING",
+              createdById: ctx.user.id,
+            });
+          }
+          imported += 1;
+          existing.add(row.bitrixId);
+          console.debug(log, "imported", {
+            bitrixId: row.bitrixId,
+            dealOpportunityId: added.id,
+            title: row.title,
+            stage: row.stage,
+          });
+        } catch (e) {
+          if (isUniqueViolationError(e)) {
+            skipped += 1;
+            existing.add(row.bitrixId);
+            console.debug(log, "skip unique violation (concurrent import?)", {
+              bitrixId: row.bitrixId,
+            });
+            continue;
+          }
+          console.error(log, "import failed", {
+            bitrixId: row.bitrixId,
+            error: e instanceof Error ? e.message : e,
+          });
+          throw e;
+        }
+      }
+
+      after(async () => {
+        revalidatePath("/deal-opportunities");
+        revalidateTag("deals", "max");
+      });
+
+      console.info(log, "sync complete", {
+        rawRowCount: rawRows.length,
+        normalizedCount: totalFromBitrix,
+        imported,
+        skipped,
+      });
+
+      return { imported, skipped, totalFromBitrix };
+    },
+  ),
 });

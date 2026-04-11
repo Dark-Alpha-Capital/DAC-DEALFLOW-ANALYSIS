@@ -41,11 +41,12 @@ export class CimExtractionWorkflow extends WorkflowEntrypoint<
     step: WorkflowStep,
   ): Promise<{ success: boolean }> {
     const instanceId = event.instanceId;
-    const { simId, documentId, dealOpportunityId, filePath } = event.payload;
+    const { dealCimId, documentId, dealOpportunityId, filePath } =
+      event.payload;
 
     console.log(`${LOG} run() start`, {
       instanceId,
-      simId,
+      dealCimId,
       documentId: documentId ?? null,
       dealOpportunityId: dealOpportunityId ?? null,
       filePathSuffix: filePath?.slice(-80) ?? null,
@@ -109,12 +110,12 @@ export class CimExtractionWorkflow extends WorkflowEntrypoint<
               percentage: 90,
             });
             console.log(`${LOG} progress 90% — upsertCIMExtraction`, {
-              simId,
+              dealCimId,
               documentId: documentId ?? null,
               dealOpportunityId: dealOpportunityId ?? null,
             });
             await upsertCIMExtraction({
-              simId,
+              dealCimId,
               documentId: documentId ?? undefined,
               dealOpportunityId: dealOpportunityId ?? undefined,
               payload,

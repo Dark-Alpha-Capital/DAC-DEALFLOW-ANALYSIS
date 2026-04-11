@@ -10,10 +10,12 @@ import {
   GetLatestDealFinancialSnapshotByDealOpportunityId,
 } from "@repo/db/queries";
 import {
+  BITRIX_DEAL_PIPELINE_ID,
   getBitrixDealStages,
   getBitrixSyncEnv,
+  getDefaultBitrixStageId,
   inferPortalBaseFromWebhook,
-  suggestBitrixStageIdForAppStage,
+  normalizeBitrixStageIdForPipeline,
 } from "@repo/bitrix-sync";
 
 export type BitrixSyncPreviewData = {
@@ -42,6 +44,8 @@ export type BitrixSyncPreviewData = {
     askingPrice: number | null;
     ebitda: number;
     ebitdaMargin: number;
+    /** Maps to Bitrix teaser UF when configured */
+    teaser: string;
   };
 };
 
@@ -89,21 +93,30 @@ export async function getBitrixSyncPreviewData(
   const resolvedAskingPrice =
     latestSnapshot?.askingPrice ?? opp.askingPrice ?? null;
 
-  const titleParts = [company?.name, opp.dealTeaser].filter(
-    (x): x is string => typeof x === "string" && x.trim().length > 0,
-  );
   const defaultTitle =
-    titleParts.join(" — ") ||
+    opp.title?.trim() ||
+    company?.name?.trim() ||
     opp.dealTeaser?.trim() ||
     "Deal opportunity";
+  const defaultTeaser = opp.dealTeaser?.trim() ?? "";
 
   const env = getBitrixSyncEnv();
   const stages = getBitrixDealStages();
-  const suggestedStageId = suggestBitrixStageIdForAppStage(
-    opp.stage,
-    stages,
-    env?.defaultStageId,
+  const stageIds = new Set(stages.map((s) => s.statusId));
+  const fallback =
+    env?.defaultStageId?.trim() || getDefaultBitrixStageId(stages);
+  const pipelineCat =
+    env?.dealCategoryId?.trim() || BITRIX_DEAL_PIPELINE_ID;
+  const rawStage = opp.stage?.trim() ?? "";
+  const canonicalStage = normalizeBitrixStageIdForPipeline(
+    rawStage,
+    pipelineCat,
   );
+  const suggestedStageId = stageIds.has(canonicalStage)
+    ? canonicalStage
+    : stageIds.has(rawStage)
+      ? rawStage
+      : fallback;
 
   const portalBase =
     env?.portalBaseUrl?.trim() ||
@@ -135,6 +148,7 @@ export async function getBitrixSyncPreviewData(
       askingPrice: resolvedAskingPrice,
       ebitda: resolvedEbitda,
       ebitdaMargin: resolvedEbitdaMargin,
+      teaser: defaultTeaser,
     },
   };
 

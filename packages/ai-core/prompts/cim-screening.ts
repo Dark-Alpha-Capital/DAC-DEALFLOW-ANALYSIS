@@ -1,8 +1,8 @@
-export function buildSimScreeningQuestionPrompt(params: {
+export function buildCimScreeningQuestionPrompt(params: {
   question: string;
   excerpts: string;
 }): string {
-  return `You are screening a confidential information memorandum (SIM/CIM). Answer ONLY using the excerpts below. If the excerpts do not contain enough information, state that explicitly and use a conservative score.
+  return `You are screening a confidential information memorandum (CIM). Answer ONLY using the excerpts below. If the excerpts do not contain enough information, state that explicitly and use a conservative score.
 
 Excerpts from the document:
 ---

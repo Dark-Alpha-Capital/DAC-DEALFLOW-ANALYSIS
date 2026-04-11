@@ -1,6 +1,6 @@
 
 import { useRouter } from "@/lib/navigation-shim";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
 import {
@@ -12,30 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import type { DealOpportunity } from "@repo/db/schema";
-
-const STAGE_ORDER = [
-  "LISTED",
-  "INITIAL_REVIEW",
-  "SCREENED",
-  "MEETING_HELD",
-  "IOI_SUBMITTED",
-  "LOI_SUBMITTED",
-  "DILIGENCE",
-  "CLOSED",
-  "DEAD",
-] as const;
-
-const STAGE_LABELS: Record<string, string> = {
-  LISTED: "Listed",
-  INITIAL_REVIEW: "Initial Review",
-  SCREENED: "Screened",
-  MEETING_HELD: "Meeting",
-  IOI_SUBMITTED: "IOI",
-  LOI_SUBMITTED: "LOI",
-  DILIGENCE: "Diligence",
-  CLOSED: "Closed",
-  DEAD: "Dead",
-};
+import { resolveBitrixStageLabel } from "@repo/bitrix-sync";
 
 interface DealPipelineSectionProps {
   dealId: string;
@@ -52,8 +29,15 @@ export function DealPipelineSection({
 }: DealPipelineSectionProps) {
   const router = useRouter();
   const trpc = useTRPC();
-  const currentStage = currentOpportunity.stage ?? "LISTED";
-  const currentLabel = STAGE_LABELS[currentStage] ?? currentStage;
+  const { data: pipelineStages = [] } = useQuery(
+    trpc.dealOpportunities.getBitrixPipelineStages.queryOptions(),
+  );
+
+  const currentStage = currentOpportunity.stage?.trim() || "";
+  const currentLabel =
+    pipelineStages.length > 0
+      ? resolveBitrixStageLabel(currentStage, pipelineStages)
+      : currentStage || "—";
 
   const { mutate: updateStage, isPending } = useMutation(
     trpc.dealOpportunities.updateOpportunityStage.mutationOptions({
@@ -91,23 +75,23 @@ export function DealPipelineSection({
           {compact ? "Listing stage" : "Change stage"}
         </Label>
         <Select
-          value={currentStage}
+          value={currentStage || undefined}
           onValueChange={(value) =>
             !isPending &&
             updateStage({
               id: dealId,
-              stage: value as (typeof STAGE_ORDER)[number],
+              stage: value,
             })
           }
-          disabled={isPending}
+          disabled={isPending || pipelineStages.length === 0}
         >
           <SelectTrigger className={inline ? "w-[180px]" : "w-[200px]"}>
-            <SelectValue />
+            <SelectValue placeholder={pipelineStages.length === 0 ? "No stages" : "Select stage"} />
           </SelectTrigger>
           <SelectContent>
-            {STAGE_ORDER.map((stage) => (
-              <SelectItem key={stage} value={stage}>
-                {STAGE_LABELS[stage] ?? stage}
+            {pipelineStages.map((s) => (
+              <SelectItem key={s.statusId} value={s.statusId}>
+                {s.name}
               </SelectItem>
             ))}
           </SelectContent>

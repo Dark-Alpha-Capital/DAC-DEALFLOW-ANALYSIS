@@ -251,3 +251,30 @@ body {
 .block-space-mini {
   padding-block: min(3vh, 6rem);
 }
+
+/* Deal kanban: horizontal scroll lives here only (not the page). */
+.deal-kanban-h-scroll {
+  scrollbar-gutter: stable;
+}
+.deal-kanban-h-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+.deal-kanban-h-scroll::-webkit-scrollbar-track {
+  margin-inline: 0.5rem;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--color-muted) 75%, transparent);
+}
+.deal-kanban-h-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--color-muted-foreground) 38%, transparent);
+}
+.deal-kanban-h-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--color-muted-foreground) 55%, transparent);
+}
+@supports (scrollbar-width: thin) {
+  .deal-kanban-h-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--color-muted-foreground) 45%, transparent)
+      color-mix(in oklch, var(--color-muted) 75%, transparent);
+  }
+}

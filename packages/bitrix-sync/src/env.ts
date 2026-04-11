@@ -47,6 +47,18 @@ export function getBitrixDealTeaserFieldCode(): string | undefined {
   return v || undefined;
 }
 
+/** Deal user field for EBITDA ($). Set when catalog auto-detect cannot find a single “EBITDA” UF. */
+export function getBitrixDealEbitdaFieldCode(): string | undefined {
+  const v = process.env.BITRIX_DEAL_EBITDA_UF?.trim();
+  return v || undefined;
+}
+
+/** Optional UF for EBITDA margin (%). */
+export function getBitrixDealEbitdaMarginFieldCode(): string | undefined {
+  const v = process.env.BITRIX_DEAL_EBITDA_MARGIN_UF?.trim();
+  return v || undefined;
+}
+
 export function buildBitrixDealDetailUrl(
   portalBaseUrl: string,
   bitrixDealId: string,

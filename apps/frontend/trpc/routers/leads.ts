@@ -1,25 +1,32 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, {
-  leads,
-  companies,
-  dealOpportunities,
-  leadScreenings,
-  eq,
-  and,
-  or,
-  isNull,
-  desc,
-  ilike,
-} from "@repo/db";
 import { convertLeadToCompanySchema, leadFormSchema } from "@/lib/schemas";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
+import { upsertLeadScreening } from "@repo/deal-screening";
 import {
-  upsertDealOpportunityScreening,
-  upsertLeadScreening,
-} from "@repo/deal-screening";
-import { createDealFinancialSnapshot } from "@repo/db/mutations";
+  createDealFinancialSnapshot,
+  insertLeadRow,
+  deleteLeadDeterministicScreening,
+  updateLeadById,
+  softDeleteLeadById,
+  updateLeadRowById,
+  rejectLeadById,
+  markLeadDuplicateTx,
+  convertLeadToDealOpportunityTx,
+} from "@repo/db/mutations";
+import {
+  searchLeadsForChat,
+  getLeadStatusRow,
+  getCompanyExistsForLead,
+  getLeadForDuplicateCandidates,
+  listCompaniesForLeadDuplicateSearch,
+  getLeadForClearDuplicate,
+} from "@repo/db/queries";
+import {
+  getBitrixDealStages,
+  getDefaultBitrixStageId,
+} from "@repo/bitrix-sync";
 
 const createLeadSchema = leadFormSchema;
 
@@ -109,33 +116,7 @@ export const leadsRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const query = input?.query?.trim();
       const limit = input?.limit ?? 20;
-      const predicates = [isNull(leads.deletedAt)];
-
-      if (query) {
-        const searchTerm = `%${query}%`;
-        predicates.push(
-          or(
-            ilike(leads.rawTitle, searchTerm),
-            ilike(leads.rawIndustry, searchTerm),
-            ilike(leads.sourceWebsite, searchTerm),
-            ilike(leads.normalizedCompanyName, searchTerm),
-          )!,
-        );
-      }
-
-      return db
-        .select({
-          id: leads.id,
-          rawTitle: leads.rawTitle,
-          rawIndustry: leads.rawIndustry,
-          sourceWebsite: leads.sourceWebsite,
-          companyLocation: leads.companyLocation,
-          status: leads.status,
-        })
-        .from(leads)
-        .where(and(...predicates))
-        .orderBy(desc(leads.createdAt), desc(leads.id))
-        .limit(limit);
+      return searchLeadsForChat({ query, limit });
     }),
 
   /**
@@ -144,26 +125,23 @@ export const leadsRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createLeadSchema)
     .mutation(async ({ input }) => {
-      const [added] = await db
-        .insert(leads)
-        .values({
-          sourceWebsite: input.sourceWebsite,
-          externalListingId: input.externalListingId,
-          rawTitle: input.rawTitle,
-          rawDescription: input.rawDescription,
-          rawIndustry: input.rawIndustry,
-          revenue: input.revenue,
-          ebitda: input.ebitda,
-          askingPrice: input.askingPrice,
-          brokerage: input.brokerage,
-          brokerFirstName: input.brokerFirstName,
-          brokerLastName: input.brokerLastName,
-          brokerEmail: input.brokerEmail || null,
-          brokerPhone: input.brokerPhone,
-          normalizedCompanyName: input.normalizedCompanyName,
-          companyLocation: input.companyLocation,
-        })
-        .returning();
+      const added = await insertLeadRow({
+        sourceWebsite: input.sourceWebsite,
+        externalListingId: input.externalListingId,
+        rawTitle: input.rawTitle,
+        rawDescription: input.rawDescription,
+        rawIndustry: input.rawIndustry,
+        revenue: input.revenue,
+        ebitda: input.ebitda,
+        askingPrice: input.askingPrice,
+        brokerage: input.brokerage,
+        brokerFirstName: input.brokerFirstName,
+        brokerLastName: input.brokerLastName,
+        brokerEmail: input.brokerEmail || null,
+        brokerPhone: input.brokerPhone,
+        normalizedCompanyName: input.normalizedCompanyName,
+        companyLocation: input.companyLocation,
+      });
 
       if (added?.id) {
         await upsertLeadScreening(added.id);
@@ -198,9 +176,7 @@ export const leadsRouter = createTRPCRouter({
   deleteLeadDeterministicScreening: protectedProcedure
     .input(z.object({ leadId: z.string() }))
     .mutation(async ({ input }) => {
-      await db
-        .delete(leadScreenings)
-        .where(eq(leadScreenings.leadId, input.leadId));
+      await deleteLeadDeterministicScreening(input.leadId);
 
       after(async () => {
         revalidatePath("/leads");
@@ -220,26 +196,23 @@ export const leadsRouter = createTRPCRouter({
       const { id, ...data } = input;
       console.log("input", input);
       console.log("data", data);
-      await db
-        .update(leads)
-        .set({
-          sourceWebsite: data.sourceWebsite,
-          externalListingId: data.externalListingId || null,
-          rawTitle: data.rawTitle,
-          rawDescription: data.rawDescription || null,
-          rawIndustry: data.rawIndustry || null,
-          revenue: data.revenue ?? null,
-          ebitda: data.ebitda ?? null,
-          askingPrice: data.askingPrice ?? null,
-          brokerage: data.brokerage || null,
-          brokerFirstName: data.brokerFirstName || null,
-          brokerLastName: data.brokerLastName || null,
-          brokerEmail: data.brokerEmail || null,
-          brokerPhone: data.brokerPhone || null,
-          normalizedCompanyName: data.normalizedCompanyName || null,
-          companyLocation: data.companyLocation || null,
-        })
-        .where(and(eq(leads.id, id), isNull(leads.deletedAt)));
+      await updateLeadById(id, {
+        sourceWebsite: data.sourceWebsite,
+        externalListingId: data.externalListingId || null,
+        rawTitle: data.rawTitle,
+        rawDescription: data.rawDescription || null,
+        rawIndustry: data.rawIndustry || null,
+        revenue: data.revenue ?? null,
+        ebitda: data.ebitda ?? null,
+        askingPrice: data.askingPrice ?? null,
+        brokerage: data.brokerage || null,
+        brokerFirstName: data.brokerFirstName || null,
+        brokerLastName: data.brokerLastName || null,
+        brokerEmail: data.brokerEmail || null,
+        brokerPhone: data.brokerPhone || null,
+        normalizedCompanyName: data.normalizedCompanyName || null,
+        companyLocation: data.companyLocation || null,
+      });
 
       await upsertLeadScreening(id);
 
@@ -259,10 +232,7 @@ export const leadsRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      await db
-        .update(leads)
-        .set({ deletedAt: new Date() })
-        .where(and(eq(leads.id, input.id), isNull(leads.deletedAt)));
+      await softDeleteLeadById(input.id);
       after(async () => {
         revalidatePath("/leads");
         revalidateTag("leads", "max");
@@ -283,17 +253,7 @@ export const leadsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const [lead] = await db
-        .select({
-          id: leads.id,
-          status: leads.status,
-          duplicateCompanyId: leads.duplicateCompanyId,
-          processedAt: leads.processedAt,
-          deletedAt: leads.deletedAt,
-        })
-        .from(leads)
-        .where(eq(leads.id, input.leadId))
-        .limit(1);
+      const lead = await getLeadStatusRow(input.leadId);
 
       if (!lead || lead.deletedAt) {
         throw new Error("Lead not found");
@@ -327,11 +287,7 @@ export const leadsRouter = createTRPCRouter({
         case "DUPLICATE":
           if (!input.companyId)
             throw new Error("Company required for DUPLICATE");
-          const [company] = await db
-            .select({ id: companies.id, deletedAt: companies.deletedAt })
-            .from(companies)
-            .where(eq(companies.id, input.companyId))
-            .limit(1);
+          const company = await getCompanyExistsForLead(input.companyId);
           if (!company || company.deletedAt) {
             throw new Error("Company not found");
           }
@@ -344,7 +300,7 @@ export const leadsRouter = createTRPCRouter({
           break;
       }
 
-      await db.update(leads).set(payload).where(eq(leads.id, lead.id));
+      await updateLeadRowById(lead.id, payload);
 
       after(async () => {
         revalidatePath("/leads");
@@ -365,14 +321,7 @@ export const leadsRouter = createTRPCRouter({
   reject: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      await db
-        .update(leads)
-        .set({
-          status: "REJECTED",
-          duplicateCompanyId: null,
-          processedAt: new Date(),
-        })
-        .where(and(eq(leads.id, input.id), isNull(leads.deletedAt)));
+      await rejectLeadById(input.id);
 
       after(async () => {
         revalidatePath("/leads");
@@ -395,40 +344,18 @@ export const leadsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ input }) => {
-      const [lead] = await db
-        .select({
-          id: leads.id,
-          normalizedCompanyName: leads.normalizedCompanyName,
-          rawTitle: leads.rawTitle,
-          companyLocation: leads.companyLocation,
-          deletedAt: leads.deletedAt,
-        })
-        .from(leads)
-        .where(eq(leads.id, input.leadId))
-        .limit(1);
+      const lead = await getLeadForDuplicateCandidates(input.leadId);
 
       if (!lead || lead.deletedAt) {
         throw new Error("Lead not found");
       }
 
       const searchTerm = input.query?.trim();
-      const predicates = [isNull(companies.deletedAt)];
-      if (searchTerm) {
-        predicates.push(ilike(companies.name, `%${searchTerm}%`));
-      }
-
-      const companyRows = await db
-        .select({
-          id: companies.id,
-          name: companies.name,
-          normalizedName: companies.normalizedName,
-          location: companies.location,
-          industry: companies.industry,
-        })
-        .from(companies)
-        .where(and(...predicates))
-        .orderBy(desc(companies.updatedAt))
-        .limit(searchTerm ? Math.max(input.limit, 20) : 100);
+      const companyRows = await listCompaniesForLeadDuplicateSearch({
+        searchTerm,
+        limit: input.limit,
+        wideLimit: Math.max(input.limit, 20),
+      });
 
       const scored = companyRows
         .map((company) => {
@@ -457,44 +384,9 @@ export const leadsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const result = await db.transaction(async (tx) => {
-        const [lead] = await tx
-          .select({
-            id: leads.id,
-            deletedAt: leads.deletedAt,
-            processedAt: leads.processedAt,
-          })
-          .from(leads)
-          .where(eq(leads.id, input.leadId))
-          .limit(1);
-
-        if (!lead || lead.deletedAt) {
-          throw new Error("Lead not found");
-        }
-
-        const [company] = await tx
-          .select({
-            id: companies.id,
-            deletedAt: companies.deletedAt,
-          })
-          .from(companies)
-          .where(eq(companies.id, input.companyId))
-          .limit(1);
-
-        if (!company || company.deletedAt) {
-          throw new Error("Company not found");
-        }
-
-        await tx
-          .update(leads)
-          .set({
-            status: "DUPLICATE",
-            duplicateCompanyId: company.id,
-            processedAt: lead.processedAt ?? new Date(),
-          })
-          .where(eq(leads.id, lead.id));
-
-        return { leadId: lead.id, companyId: company.id };
+      const result = await markLeadDuplicateTx({
+        leadId: input.leadId,
+        companyId: input.companyId,
       });
 
       after(async () => {
@@ -515,16 +407,7 @@ export const leadsRouter = createTRPCRouter({
   clearDuplicate: protectedProcedure
     .input(z.object({ leadId: z.string() }))
     .mutation(async ({ input }) => {
-      const [lead] = await db
-        .select({
-          id: leads.id,
-          status: leads.status,
-          duplicateCompanyId: leads.duplicateCompanyId,
-          deletedAt: leads.deletedAt,
-        })
-        .from(leads)
-        .where(eq(leads.id, input.leadId))
-        .limit(1);
+      const lead = await getLeadForClearDuplicate(input.leadId);
 
       if (!lead || lead.deletedAt) {
         throw new Error("Lead not found");
@@ -543,7 +426,7 @@ export const leadsRouter = createTRPCRouter({
         updatePayload.processedAt = null;
       }
 
-      await db.update(leads).set(updatePayload).where(eq(leads.id, lead.id));
+      await updateLeadRowById(lead.id, updatePayload);
 
       after(async () => {
         revalidatePath("/leads");
@@ -562,72 +445,10 @@ export const leadsRouter = createTRPCRouter({
     .input(convertLeadToCompanySchema)
     .mutation(async ({ input }) => {
       const leadId = input.id;
-      const result = await db.transaction(async (tx) => {
-        const [lead] = await tx
-          .select()
-          .from(leads)
-          .where(and(eq(leads.id, leadId), isNull(leads.deletedAt)))
-          .limit(1);
-
-        if (!lead) {
-          throw new Error("Lead not found");
-        }
-
-        if (lead.status === "DUPLICATE" && lead.duplicateCompanyId) {
-          throw new Error(
-            "Lead is marked as duplicate. Clear duplicate status before converting.",
-          );
-        }
-
-        const [existingOpp] = await tx
-          .select({ id: dealOpportunities.id })
-          .from(dealOpportunities)
-          .where(eq(dealOpportunities.leadId, lead.id))
-          .orderBy(
-            desc(dealOpportunities.createdAt),
-            desc(dealOpportunities.id),
-          )
-          .limit(1);
-
-        const [createdOpp] = existingOpp
-          ? [null]
-          : await tx
-            .insert(dealOpportunities)
-            .values({
-              companyId: null,
-              leadId: lead.id,
-              sourceWebsite: lead.sourceWebsite,
-              brokerage: lead.brokerage,
-              revenue: null,
-              ebitda: null,
-              askingPrice: null,
-              dealTeaser: lead.rawTitle,
-              description: lead.rawDescription,
-              dealType: "MANUAL",
-            })
-            .returning();
-
-        if (lead.status !== "PROCESSED" || !lead.processedAt) {
-          await tx
-            .update(leads)
-            .set({
-              status: "PROCESSED",
-              processedAt: lead.processedAt ?? new Date(),
-              duplicateCompanyId: null,
-            })
-            .where(eq(leads.id, lead.id));
-        }
-
-        return {
-          leadId: lead.id,
-          companyId: null,
-          dealOpportunityId: existingOpp?.id ?? createdOpp?.id ?? null,
-          alreadyConverted: false,
-          createdOpportunityFromLead: Boolean(createdOpp),
-          leadRevenue: lead.revenue ?? null,
-          leadEbitda: lead.ebitda ?? null,
-          leadAskingPrice: lead.askingPrice ?? null,
-        };
+      const defaultStage = getDefaultBitrixStageId(getBitrixDealStages());
+      const result = await convertLeadToDealOpportunityTx({
+        leadId,
+        defaultStage,
       });
 
       after(async () => {
@@ -657,7 +478,6 @@ export const leadsRouter = createTRPCRouter({
             source: "LISTING",
           });
         }
-        await upsertDealOpportunityScreening(result.dealOpportunityId);
       }
 
       return result;

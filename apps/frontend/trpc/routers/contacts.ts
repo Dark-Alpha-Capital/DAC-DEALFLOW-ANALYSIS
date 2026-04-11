@@ -1,7 +1,13 @@
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { contacts, eq, and } from "@repo/db";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
+import {
+  listContactsByEntity,
+  getContactById,
+  insertContact,
+  updateContactById,
+  deleteContactById,
+} from "@repo/db/mutations";
 import {
   baseContactSchema,
   contactByIdInputSchema,
@@ -13,41 +19,33 @@ export const contactsRouter = createTRPCRouter({
   listByEntity: protectedProcedure
     .input(listContactsByEntityInputSchema)
     .query(async ({ input }) => {
-      return db
-        .select()
-        .from(contacts)
-        .where(
-          and(
-            eq(contacts.entityType, input.entityType),
-            eq(contacts.entityId, input.entityId),
-          ),
-        );
+      return listContactsByEntity({
+        entityType: input.entityType,
+        entityId: input.entityId,
+      });
     }),
 
   create: protectedProcedure
     .input(baseContactSchema)
     .mutation(async ({ input }) => {
-      const [added] = await db
-        .insert(contacts)
-        .values({
-          entityType: input.entityType,
-          entityId: input.entityId,
-          companyId:
-            input.entityType === "COMPANY" ? input.entityId : undefined,
-          leadId:
-            input.entityType === "LEAD" ? input.entityId : undefined,
-          dealOpportunityId:
-            input.entityType === "DEAL_OPPORTUNITY"
-              ? input.entityId
-              : undefined,
-          name: input.name,
-          title: input.title || null,
-          email: input.email || null,
-          phone: input.phone || null,
-          linkedinUrl: input.linkedinUrl || null,
-          role: input.role || null,
-        })
-        .returning();
+      const added = await insertContact({
+        entityType: input.entityType,
+        entityId: input.entityId,
+        companyId:
+          input.entityType === "COMPANY" ? input.entityId : undefined,
+        leadId:
+          input.entityType === "LEAD" ? input.entityId : undefined,
+        dealOpportunityId:
+          input.entityType === "DEAL_OPPORTUNITY"
+            ? input.entityId
+            : undefined,
+        name: input.name,
+        title: input.title || null,
+        email: input.email || null,
+        phone: input.phone || null,
+        linkedinUrl: input.linkedinUrl || null,
+        role: input.role || null,
+      });
 
       scheduleRevalidateForEntity(input.entityType, input.entityId);
       return { contactId: added?.id };
@@ -58,25 +56,22 @@ export const contactsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
 
-      await db
-        .update(contacts)
-        .set({
-          entityType: data.entityType,
-          entityId: data.entityId,
-          companyId:
-            data.entityType === "COMPANY" ? data.entityId : null,
-          leadId:
-            data.entityType === "LEAD" ? data.entityId : null,
-          dealOpportunityId:
-            data.entityType === "DEAL_OPPORTUNITY" ? data.entityId : null,
-          name: data.name,
-          title: data.title || null,
-          email: data.email || null,
-          phone: data.phone || null,
-          linkedinUrl: data.linkedinUrl || null,
-          role: data.role || null,
-        })
-        .where(eq(contacts.id, id));
+      await updateContactById(id, {
+        entityType: data.entityType,
+        entityId: data.entityId,
+        companyId:
+          data.entityType === "COMPANY" ? data.entityId : null,
+        leadId:
+          data.entityType === "LEAD" ? data.entityId : null,
+        dealOpportunityId:
+          data.entityType === "DEAL_OPPORTUNITY" ? data.entityId : null,
+        name: data.name,
+        title: data.title || null,
+        email: data.email || null,
+        phone: data.phone || null,
+        linkedinUrl: data.linkedinUrl || null,
+        role: data.role || null,
+      });
 
       scheduleRevalidateForEntity(data.entityType, data.entityId);
       return { contactId: id };
@@ -85,12 +80,9 @@ export const contactsRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(contactByIdInputSchema)
     .mutation(async ({ input }) => {
-      const [existing] = await db
-        .select()
-        .from(contacts)
-        .where(eq(contacts.id, input.id));
+      const existing = await getContactById(input.id);
 
-      await db.delete(contacts).where(eq(contacts.id, input.id));
+      await deleteContactById(input.id);
 
       if (existing) {
         scheduleRevalidateForEntity(existing.entityType, existing.entityId);

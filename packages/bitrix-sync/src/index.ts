@@ -8,6 +8,8 @@ export {
   BITRIX_DEAL_PIPELINE_ID,
   getBitrixSyncEnv,
   getBitrixDealTeaserFieldCode,
+  getBitrixDealEbitdaFieldCode,
+  getBitrixDealEbitdaMarginFieldCode,
   requireBitrixWebhookBase,
   buildBitrixDealDetailUrl,
   inferPortalBaseFromWebhook,
@@ -26,7 +28,9 @@ export {
 } from "./deal-fields";
 export {
   getBitrixDealStages,
-  suggestBitrixStageIdForAppStage,
+  getDefaultBitrixStageId,
+  normalizeBitrixStageIdForPipeline,
+  resolveBitrixStageLabel,
   type BitrixDealStageRow,
 } from "./stages";
 export {
@@ -39,7 +43,26 @@ export {
   mergeBitrixDealFieldRows,
   normalizeBitrixDealFieldsResult,
   normalizeBitrixDealUserfieldListItem,
+  resolveBitrixDealTeaserFieldCode,
+  resolveBitrixDealEbitdaFieldCode,
+  resolveBitrixDealEbitdaMarginFieldCode,
   type BitrixDealFieldRow,
   type BitrixDealFieldsFile,
   type AiBitrixFormFieldKey,
 } from "./deal-fields-catalog";
+export {
+  buildDealListSelect,
+  buildDealListSelectForImportPipeline,
+  coerceBitrixNumeric,
+  extractBitrixDealCompanyId,
+  extractBitrixDealContactIds,
+  extractBitrixDealListStageIdRaw,
+  extractBitrixString,
+  fetchBitrixCompanyTitleMap,
+  fetchBitrixContactBrokerMap,
+  fetchDealsForSyncPipeline,
+  normalizeBitrixListRow,
+  parseFinancialLinesFromTeaser,
+  type BitrixContactBrokerFields,
+  type NormalizedBitrixDealImport,
+} from "./import-deal-from-bitrix-list";

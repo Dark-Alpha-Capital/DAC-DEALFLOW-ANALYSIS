@@ -106,16 +106,14 @@ const COVERAGE_STATUSES = [
   "PASSED",
 ] as const;
 
+/** Sample Bitrix-style `STAGE_ID` values (align with `BITRIX_DEAL_STAGES_JSON` in real env). */
 const DEAL_STAGES = [
-  "LISTED",
-  "INITIAL_REVIEW",
-  "SCREENED",
-  "MEETING_HELD",
-  "IOI_SUBMITTED",
-  "LOI_SUBMITTED",
-  "DILIGENCE",
-  "CLOSED",
-  "DEAD",
+  "UC_OX0IF8",
+  "UC_CJLBN8",
+  "NEW",
+  "UC_ONVM1G",
+  "WON",
+  "LOSE",
 ] as const;
 
 const DEAL_STATUSES = [

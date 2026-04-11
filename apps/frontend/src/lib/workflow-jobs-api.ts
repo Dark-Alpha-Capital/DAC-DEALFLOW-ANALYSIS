@@ -20,7 +20,7 @@ import type {
   FileUploadParams,
   RagIngestionParams,
   ScreenDealParams,
-  SimScreeningParams,
+  CimScreeningParams,
 } from "../workflows/workflow-env";
 import type { JobProgressData, JobStatus, JobWithMetadata } from "@repo/redis-queue/types";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
@@ -35,8 +35,8 @@ function getWorkflowByKind(kind: WorkflowKind): WorkflowBinding {
       return env.CIM_EXTRACTION_WORKFLOW as WorkflowBinding;
     case QUEUE_NAMES.RAG_INGESTION:
       return env.RAG_INGESTION_WORKFLOW as WorkflowBinding;
-    case QUEUE_NAMES.SIM_SCREENING:
-      return env.SIM_SCREENING_WORKFLOW as WorkflowBinding;
+    case QUEUE_NAMES.CIM_SCREENING:
+      return env.CIM_SCREENING_WORKFLOW as WorkflowBinding;
     default:
       throw new Error(`Unknown workflow kind: ${kind}`);
   }
@@ -248,11 +248,11 @@ export async function startRagIngestionWorkflow(
   await env.RAG_INGESTION_WORKFLOW.create({ id: jobId, params });
 }
 
-export async function startSimScreeningWorkflow(
+export async function startCimScreeningWorkflow(
   jobId: string,
-  params: SimScreeningParams,
+  params: CimScreeningParams,
 ) {
-  await env.SIM_SCREENING_WORKFLOW.create({ id: jobId, params });
+  await env.CIM_SCREENING_WORKFLOW.create({ id: jobId, params });
 }
 
 export { insertWorkflowJob };
