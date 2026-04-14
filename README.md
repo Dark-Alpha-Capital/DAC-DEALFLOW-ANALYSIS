@@ -1,5 +1,116 @@
 # Bitrix Monorepo
 
+Monorepo for the DAC dealflow app and shared packages.
+
+## Local Development Setup
+
+This repo uses `bun` workspaces + Turborepo. The main web app lives in `apps/frontend`.
+
+### 1) Prerequisites
+
+- [Bun](https://bun.sh/docs/installation) `>= 1.1.13`
+- Node.js `>= 18` (required by engines)
+- A running Postgres database (local or hosted)
+- Cloudflare account access (for remote bindings used in local dev)
+
+Optional (feature-dependent):
+- Redis instance (`REDIS_URL`)
+- Google OAuth credentials (`AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`)
+- Resend, Bitrix, AI provider keys
+
+### 2) Clone and install
+
+```bash
+git clone <your-repo-url>
+cd bitrix-monorepo
+bun install
+bunx wrangler login
+```
+
+### 3) Configure environment variables
+
+Use the frontend env template:
+
+```bash
+cp apps/frontend/.env.example apps/frontend/.env
+```
+
+At minimum, set:
+
+- `DATABASE_URL` (required; app fails to boot without it)
+
+Recommended for local auth/callback behavior:
+
+- `BETTER_AUTH_URL=http://localhost:3000`
+- `FRONTEND_URL=http://localhost:3000`
+- `VITE_PUBLIC_APP_URL=http://localhost:3000`
+- `NEXT_PUBLIC_APP_URL=http://localhost:3000`
+
+If you want Google sign-in locally, also set:
+
+- `AUTH_GOOGLE_ID`
+- `AUTH_GOOGLE_SECRET`
+
+### 4) Run database migrations
+
+From repo root:
+
+```bash
+bun run --cwd packages/db db:migrate
+```
+
+If you are doing local schema iteration (without creating migration files), you can use:
+
+```bash
+bun run --cwd packages/db db:push
+```
+
+### 5) Start the app
+
+Run the frontend directly:
+
+```bash
+bun run --cwd apps/frontend dev
+```
+
+Or run workspace dev tasks via turbo:
+
+```bash
+bun run dev
+```
+
+By default, open: [http://localhost:3000](http://localhost:3000)
+
+### 6) Common commands
+
+From repo root:
+
+```bash
+bun run dev           # turbo dev for workspaces
+bun run build         # turbo build
+bun run lint          # turbo lint
+bun run check-types   # turbo typecheck
+```
+
+DB package commands:
+
+```bash
+bun run --cwd packages/db db:generate
+bun run --cwd packages/db db:migrate
+bun run --cwd packages/db db:push
+bun run --cwd packages/db db:studio
+bun run --cwd packages/db db:seed:dummy-leads
+```
+
+### 7) Troubleshooting
+
+- `DATABASE_URL is required`: ensure `apps/frontend/.env` has a valid Postgres URL.
+- OAuth callback issues: ensure Google redirect URI matches:
+  - `http://localhost:3000/api/auth/callback/google`
+- Wrong host in local API/auth requests: verify `BETTER_AUTH_URL` and `FRONTEND_URL`.
+
+---
+
 ## API Documentation
 
 ### GTM Leads Ingest API

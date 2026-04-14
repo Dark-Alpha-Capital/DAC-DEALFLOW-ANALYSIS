@@ -5,6 +5,7 @@ import {
   BITRIX_AI_WIDGET_PAGE_PATH,
   BITRIX_SCREENING_WIDGET_PAGE_PATH,
   isAiBitrixExtractRequestAllowed,
+  isBitrixWidgetPageRequestAllowed,
   isBitrixAiWidgetGatePath,
   isLocalDevWidgetRequest,
   bitrixWidgetForbiddenHtml,
@@ -63,6 +64,9 @@ export const bitrixAiWidgetGateRequestMiddleware = createMiddleware().server(
       norm === BITRIX_SCREENING_WIDGET_PAGE_PATH
     ) {
       if (await hasValidAppSession(request)) {
+        return next();
+      }
+      if (isBitrixWidgetPageRequestAllowed(request)) {
         return next();
       }
       const { authId, domain } = await readBitrixWidgetAuthParams(request);

@@ -128,6 +128,12 @@ export function isAiBitrixExtractRequestAllowed(request: Request): boolean {
   return headerHintsBitrixOrApp(request);
 }
 
+/** Page-load fallback for Bitrix iframe embeds that do not send AUTH_ID/DOMAIN. */
+export function isBitrixWidgetPageRequestAllowed(request: Request): boolean {
+  if (isLocalDevWidgetRequest(request)) return true;
+  return headerHintsBitrixOrApp(request);
+}
+
 export function bitrixWidgetForbiddenHtml(): string {
   return `<!DOCTYPE html>
 <html lang="en">
