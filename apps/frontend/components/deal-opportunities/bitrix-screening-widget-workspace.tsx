@@ -82,9 +82,12 @@ export function BitrixScreeningWidgetWorkspace(props: Props) {
     <section className="mx-auto w-full max-w-3xl space-y-4 px-3 py-4 sm:px-4">
       <Card className="border-border/70 bg-card/80 backdrop-blur-sm">
         <CardHeader className="space-y-2 pb-2">
-          <CardTitle className="text-base sm:text-lg">Bitrix Deal Screening</CardTitle>
+          <CardTitle className="text-base sm:text-lg">
+            Bitrix Deal Screening
+          </CardTitle>
           <p className="text-muted-foreground text-sm">
-            Pick a screener, ingest files if needed, and launch screening from this deal.
+            Pick a screener, ingest files if needed, and launch screening from
+            this deal.
           </p>
         </CardHeader>
         <CardContent className="space-y-5">

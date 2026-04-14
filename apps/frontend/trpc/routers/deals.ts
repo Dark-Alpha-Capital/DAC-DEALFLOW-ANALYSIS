@@ -1647,12 +1647,12 @@ export const dealsRouter = createTRPCRouter({
         })),
         lastRun: latestRun
           ? {
-              runId: latestRun.runId,
-              status: latestRun.status,
-              screenerId: latestRun.screenerId,
-              screenerName: latestRun.screenerName,
-              createdAt: latestRun.runCreatedAt,
-            }
+            runId: latestRun.runId,
+            status: latestRun.status,
+            screenerId: latestRun.screenerId,
+            screenerName: latestRun.screenerName,
+            createdAt: latestRun.runCreatedAt,
+          }
           : null,
         activeJobs,
       };
