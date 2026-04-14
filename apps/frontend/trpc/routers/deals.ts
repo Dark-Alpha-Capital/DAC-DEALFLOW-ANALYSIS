@@ -1590,7 +1590,7 @@ export const dealsRouter = createTRPCRouter({
         input.dealId,
       );
 
-      const [screeners, indexedCount, latestRunRows, activeJobs] =
+      const [screeners, indexedCount, latestRunRows, activeJobs, appOpp] =
         await Promise.all([
           getAllScreeners(),
           countDocumentChunksByDealOpportunityId(dealOpportunityId),
@@ -1611,13 +1611,33 @@ export const dealsRouter = createTRPCRouter({
               ),
             )
             .orderBy(desc(workflowJobs.updatedAt)),
+          GetDealOpportunityById(dealOpportunityId),
         ]);
 
+      const bitrixStr = (v: unknown) => {
+        if (v == null) return null;
+        const s = String(v).trim();
+        return s || null;
+      };
+
       let bitrixFiles: Array<{ id: string; label: string; field: string }> = [];
+      let bitrixDeal: {
+        id: string;
+        title: string | null;
+        stageId: string | null;
+        amount: string | null;
+      } | null = null;
+
       try {
         const rawDeal = await callBitrix<Record<string, unknown>>("crm.deal.get", {
           id: input.dealId,
         });
+        bitrixDeal = {
+          id: input.dealId,
+          title: bitrixStr(rawDeal?.TITLE),
+          stageId: bitrixStr(rawDeal?.STAGE_ID),
+          amount: bitrixStr(rawDeal?.OPPORTUNITY),
+        };
         const entries = Object.entries(rawDeal ?? {});
         bitrixFiles = entries.flatMap(([field, value]) => {
           if (!field.startsWith("UF_CRM")) return [];
@@ -1631,7 +1651,7 @@ export const dealsRouter = createTRPCRouter({
             .filter((x): x is { id: string; label: string; field: string } => !!x);
         });
       } catch (error) {
-        console.warn("[bitrix-screen-widget] failed to fetch deal files", {
+        console.warn("[bitrix-screen-widget] failed to fetch Bitrix deal", {
           bitrixDealId: input.dealId,
           message: error instanceof Error ? error.message : String(error),
         });
@@ -1642,6 +1662,12 @@ export const dealsRouter = createTRPCRouter({
         dealOpportunityId,
         webhookConfigured: Boolean(env?.webhookBaseUrl),
         bitrixDealId: input.dealId,
+        bitrixDeal,
+        appDeal: {
+          id: dealOpportunityId,
+          title: appOpp?.title ?? null,
+          stage: appOpp?.stage ?? null,
+        },
         bitrixFiles,
         hasFiles: bitrixFiles.length > 0,
         indexedCount,
