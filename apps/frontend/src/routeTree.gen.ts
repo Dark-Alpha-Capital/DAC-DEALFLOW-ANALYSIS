@@ -44,6 +44,7 @@ import { Route as ApiHealthRedisRouteImport } from './routes/api/health/redis'
 import { Route as ApiDealOpportunitiesQuickAddRouteImport } from './routes/api/deal-opportunities/quick-add'
 import { Route as ApiDealOpportunitiesAiBitrixExtractRouteImport } from './routes/api/deal-opportunities/ai-bitrix-extract'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as PublicDealOpportunitiesScreenBitrixRouteImport } from './routes/_public/deal-opportunities/screen-bitrix'
 import { Route as PublicDealOpportunitiesAiBitrixRouteImport } from './routes/_public/deal-opportunities/ai-bitrix'
 import { Route as ProtectedScreeningNewRunRouteImport } from './routes/_protected/screening/new-run'
 import { Route as ProtectedScreenersUidRouteImport } from './routes/_protected/screeners/$uid'
@@ -269,6 +270,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PublicDealOpportunitiesScreenBitrixRoute =
+  PublicDealOpportunitiesScreenBitrixRouteImport.update({
+    id: '/deal-opportunities/screen-bitrix',
+    path: '/deal-opportunities/screen-bitrix',
+    getParentRoute: () => PublicRouteRoute,
+  } as any)
 const PublicDealOpportunitiesAiBitrixRoute =
   PublicDealOpportunitiesAiBitrixRouteImport.update({
     id: '/deal-opportunities/ai-bitrix',
@@ -593,6 +600,7 @@ export interface FileRoutesByFullPath {
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
+  '/deal-opportunities/screen-bitrix': typeof PublicDealOpportunitiesScreenBitrixRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/ai-bitrix-extract': typeof ApiDealOpportunitiesAiBitrixExtractRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
@@ -673,6 +681,7 @@ export interface FileRoutesByTo {
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
+  '/deal-opportunities/screen-bitrix': typeof PublicDealOpportunitiesScreenBitrixRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/ai-bitrix-extract': typeof ApiDealOpportunitiesAiBitrixExtractRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
@@ -760,6 +769,7 @@ export interface FileRoutesById {
   '/_protected/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/_protected/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/_public/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
+  '/_public/deal-opportunities/screen-bitrix': typeof PublicDealOpportunitiesScreenBitrixRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/ai-bitrix-extract': typeof ApiDealOpportunitiesAiBitrixExtractRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
@@ -843,6 +853,7 @@ export interface FileRouteTypes {
     | '/screeners/$uid'
     | '/screening/new-run'
     | '/deal-opportunities/ai-bitrix'
+    | '/deal-opportunities/screen-bitrix'
     | '/api/auth/$'
     | '/api/deal-opportunities/ai-bitrix-extract'
     | '/api/deal-opportunities/quick-add'
@@ -923,6 +934,7 @@ export interface FileRouteTypes {
     | '/screeners/$uid'
     | '/screening/new-run'
     | '/deal-opportunities/ai-bitrix'
+    | '/deal-opportunities/screen-bitrix'
     | '/api/auth/$'
     | '/api/deal-opportunities/ai-bitrix-extract'
     | '/api/deal-opportunities/quick-add'
@@ -1009,6 +1021,7 @@ export interface FileRouteTypes {
     | '/_protected/screeners/$uid'
     | '/_protected/screening/new-run'
     | '/_public/deal-opportunities/ai-bitrix'
+    | '/_public/deal-opportunities/screen-bitrix'
     | '/api/auth/$'
     | '/api/deal-opportunities/ai-bitrix-extract'
     | '/api/deal-opportunities/quick-add'
@@ -1306,6 +1319,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_public/deal-opportunities/screen-bitrix': {
+      id: '/_public/deal-opportunities/screen-bitrix'
+      path: '/deal-opportunities/screen-bitrix'
+      fullPath: '/deal-opportunities/screen-bitrix'
+      preLoaderRoute: typeof PublicDealOpportunitiesScreenBitrixRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
     '/_public/deal-opportunities/ai-bitrix': {
       id: '/_public/deal-opportunities/ai-bitrix'
@@ -1875,10 +1895,13 @@ const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(
 
 interface PublicRouteRouteChildren {
   PublicDealOpportunitiesAiBitrixRoute: typeof PublicDealOpportunitiesAiBitrixRoute
+  PublicDealOpportunitiesScreenBitrixRoute: typeof PublicDealOpportunitiesScreenBitrixRoute
 }
 
 const PublicRouteRouteChildren: PublicRouteRouteChildren = {
   PublicDealOpportunitiesAiBitrixRoute: PublicDealOpportunitiesAiBitrixRoute,
+  PublicDealOpportunitiesScreenBitrixRoute:
+    PublicDealOpportunitiesScreenBitrixRoute,
 }
 
 const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(

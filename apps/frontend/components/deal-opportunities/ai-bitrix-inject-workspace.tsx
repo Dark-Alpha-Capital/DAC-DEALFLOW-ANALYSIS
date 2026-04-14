@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "@/lib/navigation-shim";
 import { bitrixDealOpportunityExtractionSchema } from "@repo/bitrix-sync";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { useTRPC } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { formatNumberWithCommas, unformatNumber } from "@/lib/utils";
+import { cn, formatNumberWithCommas, unformatNumber } from "@/lib/utils";
+
+const TOP_NAV_LINKS = [
+  { to: "/" as const, label: "Home" },
+  { to: "/deal-opportunities" as const, label: "Deals" },
+  { to: "/screeners" as const, label: "Screeners" },
+  { to: "/companies" as const, label: "Companies" },
+] as const;
 
 /** Empty input for editing; formatted commas for display. */
 function commaInputValue(n: number | null | undefined): string {
@@ -123,7 +131,7 @@ function FieldLabel({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-xs font-semibold tracking-wide uppercase">
+      <span className="text-muted-foreground text-xs leading-snug font-medium">
         {children}
         {isRequired ? (
           <span className="text-destructive ml-0.5" aria-hidden>
@@ -132,7 +140,7 @@ function FieldLabel({
         ) : null}
       </span>
       {bitrixFieldId ? (
-        <span className="text-foreground/70 font-mono text-[10px] leading-tight tracking-tight">
+        <span className="text-muted-foreground/80 font-mono text-[10px] leading-tight">
           {bitrixFieldId}
         </span>
       ) : null}
@@ -268,101 +276,155 @@ export function AiBitrixInjectWorkspace() {
 
   const displayObject = draft ?? object;
 
+  const resultTitle =
+    isLoading || displayObject
+      ? isLoading
+        ? "Streaming"
+        : "Review"
+      : "Extraction";
+
+  const resultHint =
+    isLoading || displayObject
+      ? isLoading
+        ? "Fields fill in as the model responds."
+        : "Adjust fields, set stage, then sync."
+      : "Extract to map fields from the source panel.";
+
   return (
-    <div className="mx-auto max-w-7xl space-y-8 pb-16">
-      <header className="space-y-1">
-        <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight md:text-4xl">
-          <Sparkles className="h-8 w-8 shrink-0" aria-hidden />
+    <div className="mx-auto w-full max-w-5xl px-3 pb-20 sm:px-5">
+      <nav
+        className="border-border/50 -mx-3 mb-8 border-b pb-4 sm:-mx-5"
+        aria-label="App navigation"
+      >
+        <ul className="flex flex-wrap items-center gap-x-0.5 gap-y-1">
+          {TOP_NAV_LINKS.map(({ to, label }, i) => (
+            <li key={to} className="flex items-center">
+              {i > 0 ? (
+                <span
+                  className="text-border mx-1.5 hidden select-none sm:inline"
+                  aria-hidden
+                >
+                  ·
+                </span>
+              ) : null}
+              <Link
+                to={to}
+                className={cn(
+                  "text-muted-foreground hover:text-foreground rounded-md px-1.5 py-1.5 text-sm transition-colors",
+                  "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+                )}
+              >
+                {label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <header className="mb-6 space-y-2">
+        <h1 className="text-foreground flex items-center gap-2.5 text-xl font-semibold tracking-tight sm:text-2xl">
+          <Sparkles
+            className="text-primary size-6 shrink-0 sm:size-7"
+            aria-hidden
+          />
           AI → Bitrix24
         </h1>
-        <p className="text-foreground/80 max-w-2xl text-sm leading-relaxed">
-          Paste raw deal text. We stream fields that match your Bitrix sync,
-          then create a deal opportunity in the app and push to Bitrix in one
-          step.
+        <p className="text-muted-foreground max-w-lg text-sm leading-relaxed">
+          Paste deal text, review streamed fields, create the opportunity, and
+          push to Bitrix in one flow.
         </p>
       </header>
 
-      {!bx?.webhookConfigured && (
-        <Alert variant="destructive">
-          <AlertTitle>Not configured</AlertTitle>
-          <AlertDescription>
-            Set <code className="text-xs">BITRIX24_WEBHOOK</code> on the server
-            before syncing.
-          </AlertDescription>
-        </Alert>
-      )}
+      <div className="space-y-2.5">
+        {!bx?.webhookConfigured && (
+          <Alert variant="destructive" className="py-3">
+            <AlertTitle className="text-sm">Not configured</AlertTitle>
+            <AlertDescription className="text-xs sm:text-sm">
+              Set <code className="text-xs">BITRIX24_WEBHOOK</code> on the
+              server before syncing.
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {needsManualStageId && bx?.webhookConfigured && (
-        <Alert>
-          <AlertTitle>No stage list in the app</AlertTitle>
-          <AlertDescription className="text-sm">
-            Run <code className="text-xs">bun run fetch-stages</code> in{" "}
-            <code className="text-xs">packages/bitrix-sync</code> or set{" "}
-            <code className="text-xs">BITRIX_DEAL_STAGES_JSON</code>. You can
-            paste a raw <code className="text-xs">STAGE_ID</code> when editing.
-          </AlertDescription>
-        </Alert>
-      )}
+        {needsManualStageId && bx?.webhookConfigured && (
+          <Alert className="border-border/80 py-3">
+            <AlertTitle className="text-sm">No stage list</AlertTitle>
+            <AlertDescription className="text-xs sm:text-sm">
+              Run <code className="text-xs">bun run fetch-stages</code> in{" "}
+              <code className="text-xs">packages/bitrix-sync</code> or set{" "}
+              <code className="text-xs">BITRIX_DEAL_STAGES_JSON</code>. You can
+              paste a raw <code className="text-xs">STAGE_ID</code> when
+              editing.
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {dealFieldsCatalogEmpty && (
-        <Alert>
-          <AlertTitle>Deal field catalog</AlertTitle>
-          <AlertDescription className="text-sm">
-            No Bitrix field snapshot in the app yet. Run{" "}
-            <code className="text-xs">bun run fetch-deal-fields</code> in{" "}
-            <code className="text-xs">packages/bitrix-sync</code> (writes{" "}
-            <code className="text-xs">data/bitrix-deal-fields.json</code>) or
-            set <code className="text-xs">BITRIX_DEAL_FIELDS_JSON</code> so
-            labels match your portal. Codes under each field still show the
-            mapping we sync.
-          </AlertDescription>
-        </Alert>
-      )}
+        {dealFieldsCatalogEmpty && (
+          <Alert className="border-border/80 py-3">
+            <AlertTitle className="text-sm">Field catalog</AlertTitle>
+            <AlertDescription className="text-xs sm:text-sm">
+              No Bitrix field snapshot yet. Run{" "}
+              <code className="text-xs">bun run fetch-deal-fields</code> in{" "}
+              <code className="text-xs">packages/bitrix-sync</code> or set{" "}
+              <code className="text-xs">BITRIX_DEAL_FIELDS_JSON</code>. Field
+              codes still show under each label.
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
 
-      <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
-        <section className="flex min-h-[280px] flex-col gap-4 lg:min-h-[min(100vh-12rem,880px)]">
-          <div>
-            <h2 className="text-lg font-semibold">Source text</h2>
-            <p className="text-foreground/80 text-sm">
-              Teaser, email thread, notes — anything that describes the deal.
+      <div className="mt-6 grid gap-4 sm:gap-5 lg:grid-cols-2 lg:items-stretch">
+        <section className="bg-card/40 ring-border/60 flex min-h-0 flex-col rounded-xl ring-1">
+          <div className="border-border/50 space-y-0.5 border-b px-4 py-3 sm:px-5">
+            <h2 className="text-sm font-medium">Source</h2>
+            <p className="text-muted-foreground text-xs">
+              Teaser, email thread, or notes.
             </p>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-4">
+          <div className="flex min-h-[220px] flex-1 flex-col gap-3 p-4 sm:min-h-[260px] sm:p-5 lg:min-h-[min(72vh,760px)]">
             <Textarea
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              placeholder="Paste deal opportunity text here…"
-              className="min-h-[200px] flex-1 resize-y text-base leading-relaxed"
+              placeholder="Paste deal text…"
+              className="min-h-[180px] flex-1 resize-y text-sm leading-relaxed sm:min-h-[200px] sm:text-[15px]"
               disabled={isLoading}
               aria-label="Raw deal text"
             />
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
+                size="sm"
                 disabled={!canExtract}
                 onClick={() => submit({ rawText })}
                 className="gap-2"
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                     Extracting…
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4" />
-                    Extract with AI
+                    <Sparkles className="size-4" />
+                    Extract
                   </>
                 )}
               </Button>
               {isLoading ? (
-                <Button type="button" variant="outline" onClick={() => stop()}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => stop()}
+                >
                   Stop
                 </Button>
               ) : null}
               <Button
                 type="button"
+                size="sm"
                 variant="ghost"
+                className="text-muted-foreground"
                 onClick={() => {
                   clear();
                   setDraft(null);
@@ -380,46 +442,42 @@ export function AiBitrixInjectWorkspace() {
           </div>
         </section>
 
-        <section className="flex min-h-[280px] flex-col gap-4 lg:min-h-[min(100vh-12rem,880px)]">
-          <div>
-            <h2 className="text-lg font-semibold">
-              {isLoading || displayObject
-                ? isLoading
-                  ? "Streaming extraction"
-                  : "AI result — review"
-                : "AI extraction"}
-            </h2>
-            <p className="text-foreground/80 text-sm">
-              {isLoading || displayObject
-                ? isLoading
-                  ? "Fields appear as the model fills them in."
-                  : "Edit values as needed, pick a Bitrix stage, then create & sync."
-                : "Run extract to populate fields from the text on the left."}
-            </p>
+        <section className="bg-card/40 ring-border/60 flex min-h-0 flex-col rounded-xl ring-1">
+          <div className="border-border/50 space-y-0.5 border-b px-4 py-3 sm:px-5">
+            <h2 className="text-sm font-medium">{resultTitle}</h2>
+            <p className="text-muted-foreground text-xs">{resultHint}</p>
           </div>
           <div
-            className={
+            className={cn(
+              "flex min-h-[220px] flex-1 flex-col p-4 sm:min-h-[260px] sm:p-5 lg:min-h-[min(72vh,760px)]",
               isLoading || displayObject
-                ? "flex min-h-0 flex-1 flex-col space-y-6 overflow-y-auto"
-                : "text-foreground/80 flex flex-1 flex-col items-center justify-center gap-3 py-10 text-center text-sm"
-            }
+                ? "overflow-y-auto"
+                : "items-center justify-center",
+            )}
           >
             {!isLoading && !displayObject ? (
-              <>
-                <Sparkles className="h-10 w-10 opacity-50" aria-hidden />
-                <p>Paste deal text on the left, then use Extract with AI.</p>
-              </>
+              <div className="text-muted-foreground flex max-w-[240px] flex-col items-center gap-3 text-center text-sm">
+                <Sparkles
+                  className="size-8 opacity-[0.35]"
+                  aria-hidden
+                  strokeWidth={1.25}
+                />
+                <p className="leading-snug">
+                  Add source text, then run{" "}
+                  <span className="font-medium">Extract</span>.
+                </p>
+              </div>
             ) : null}
 
             {isLoading && !displayObject ? (
-              <div className="text-foreground/80 flex items-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
+              <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                <Loader2 className="size-4 animate-spin" />
                 Waiting for first tokens…
               </div>
             ) : null}
 
             {(isLoading || displayObject) && (
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div className="grid w-full gap-4 sm:grid-cols-2 sm:gap-x-5">
                 <div className="space-y-1.5 sm:col-span-2">
                   <FieldLabel bitrixFieldId={fm?.title.bitrixFieldId}>
                     {fm?.title.label ?? "Title"}
@@ -861,18 +919,17 @@ export function AiBitrixInjectWorkspace() {
             )}
 
             {draft && !isLoading ? (
-              <>
-                <Separator />
-                <div className="space-y-3">
+              <div className="border-border/50 mt-5 w-full min-w-0 space-y-4 border-t pt-5">
+                <div className="space-y-2">
                   <div className="space-y-0.5">
                     <Label
                       htmlFor="bitrix-stage-ai"
-                      className="text-sm font-medium"
+                      className="text-muted-foreground text-xs font-medium"
                     >
                       {fm?.stageId.label ?? "Bitrix stage"}
                     </Label>
                     {fm?.stageId.bitrixFieldId ? (
-                      <p className="text-foreground/70 font-mono text-[10px] tracking-tight">
+                      <p className="text-muted-foreground font-mono text-[10px] leading-tight">
                         {fm.stageId.bitrixFieldId}
                       </p>
                     ) : null}
@@ -884,7 +941,10 @@ export function AiBitrixInjectWorkspace() {
                         setDraft((d) => (d ? { ...d, stageId: v } : d))
                       }
                     >
-                      <SelectTrigger id="bitrix-stage-ai" className="max-w-md">
+                      <SelectTrigger
+                        id="bitrix-stage-ai"
+                        className="h-9 w-full max-w-md text-sm"
+                      >
                         <SelectValue placeholder="Select stage" />
                       </SelectTrigger>
                       <SelectContent>
@@ -898,7 +958,7 @@ export function AiBitrixInjectWorkspace() {
                   ) : (
                     <Input
                       id="bitrix-stage-ai"
-                      className="max-w-md font-mono text-sm"
+                      className="h-9 w-full max-w-md font-mono text-sm"
                       placeholder="e.g. C7:NEW or DT31_…:UC_…"
                       value={draft.stageId}
                       onChange={(e) =>
@@ -910,22 +970,21 @@ export function AiBitrixInjectWorkspace() {
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <Button
-                    type="button"
-                    disabled={busy || !draft}
-                    onClick={() => void onConfirm()}
-                    className="gap-2"
-                  >
-                    {busy ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Check className="h-4 w-4" />
-                    )}
-                    Create opportunity & sync to Bitrix
-                  </Button>
-                </div>
-              </>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={busy || !draft}
+                  onClick={() => void onConfirm()}
+                  className="gap-2"
+                >
+                  {busy ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Check className="size-4" />
+                  )}
+                  Create & sync to Bitrix
+                </Button>
+              </div>
             ) : null}
           </div>
         </section>

@@ -15,7 +15,9 @@ import type { RankedDealOpportunityRow } from "@repo/db/queries";
 import type { BitrixDealStageRow } from "@repo/bitrix-sync";
 import type { RowSelectionState } from "@tanstack/react-table";
 
-const dealOpportunitiesRouteApi = getRouteApi("/_protected/deal-opportunities/");
+const dealOpportunitiesRouteApi = getRouteApi(
+  "/_protected/deal-opportunities/",
+);
 
 type DealsViewMode = "table" | "kanban";
 
@@ -65,8 +67,7 @@ export function DealsWorkspace({
     return () => window.clearTimeout(id);
   }, [draftQ, q, navigate]);
 
-  const rangeStart =
-    totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeStart = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const rangeEnd = Math.min(currentPage * pageSize, totalCount);
 
   const statusMessage =
@@ -87,10 +88,13 @@ export function DealsWorkspace({
   }
 
   return (
-    <div className="w-full min-w-0 max-w-full space-y-5 overflow-x-hidden sm:space-y-6">
+    <div className="w-full max-w-full min-w-0 space-y-5 overflow-x-hidden sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0 flex-1 space-y-2">
-          <Label htmlFor="deal-opportunities-search" className="text-sm font-medium">
+          <Label
+            htmlFor="deal-opportunities-search"
+            className="text-sm font-medium"
+          >
             Search deals
           </Label>
           <Input
@@ -127,9 +131,9 @@ export function DealsWorkspace({
             id="deal-opportunities-search-hint"
             className="text-muted-foreground text-xs leading-snug"
           >
-            Matches listing title, teaser, description, location, and
-            brokerage. Updates shortly after you stop typing. Press Enter to
-            search immediately, Escape to clear.
+            Matches listing title, teaser, description, location, and brokerage.
+            Updates shortly after you stop typing. Press Enter to search
+            immediately, Escape to clear.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -144,7 +148,11 @@ export function DealsWorkspace({
               aria-label="Rows per page"
               onChange={(e) => {
                 const next = Number(e.target.value);
-                if (!PAGE_SIZE_OPTIONS.includes(next as (typeof PAGE_SIZE_OPTIONS)[number]))
+                if (
+                  !PAGE_SIZE_OPTIONS.includes(
+                    next as (typeof PAGE_SIZE_OPTIONS)[number],
+                  )
+                )
                   return;
                 navigate({
                   search: (prev) => ({ ...prev, limit: next, page: 1 }),

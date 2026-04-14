@@ -6,7 +6,7 @@ import {
 import { generateObject } from "ai";
 import { z } from "zod";
 import db, { count, eq, runDbWithWorkerNeonPool } from "@repo/db";
-import { documents, documentChunks } from "@repo/db/schema";
+import { documents, documentChunks, cimScreeningAnswers } from "@repo/db/schema";
 import { getScreenerQuestions } from "@repo/db/queries";
 import {
   updateCimScreeningRun,
@@ -19,6 +19,7 @@ import {
   buildCimScreeningQuestionPrompt,
   getOpenAIProvider,
 } from "@repo/ai-core";
+import { callBitrix, getBitrixSyncEnv } from "@repo/bitrix-sync";
 import {
   markWorkflowCompleted,
   markWorkflowFailed,
@@ -72,6 +73,8 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
       screenerId,
       sessionId,
       runId,
+      bitrixDealId,
+      postBitrixComment,
     } = event.payload;
 
     const dealOppId = payloadDealOppId?.trim();
@@ -443,7 +446,66 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
         }),
       );
 
-      const out = { success: true as const, sessionId, runId };
+      let commentSyncStatus: "not_requested" | "posted" | "failed" =
+        postBitrixComment && bitrixDealId ? "failed" : "not_requested";
+      if (postBitrixComment && bitrixDealId) {
+        commentSyncStatus = await step.do(
+          "post-bitrix-comment",
+          { timeout: "5 minutes" },
+          async () =>
+            runDbWithWorkerNeonPool(async () => {
+              try {
+                const env = getBitrixSyncEnv();
+                if (!env?.webhookBaseUrl) return "failed" as const;
+                const answers = await db
+                  .select({ score: cimScreeningAnswers.score })
+                  .from(cimScreeningAnswers)
+                  .where(eq(cimScreeningAnswers.runId, runId));
+                const avgScore =
+                  answers.length > 0
+                    ? answers.reduce((sum, a) => sum + (a.score ?? 0), 0) /
+                      answers.length
+                    : null;
+                const status =
+                  avgScore == null
+                    ? "INCOMPLETE"
+                    : avgScore >= 7
+                      ? "PASS"
+                      : avgScore >= 4
+                        ? "INCOMPLETE"
+                        : "FAIL";
+                const comment = [
+                  "AI screening completed",
+                  `Run ID: ${runId}`,
+                  `Screener ID: ${screenerId}`,
+                  avgScore == null
+                    ? null
+                    : `Score: ${avgScore.toFixed(1)}/10 (${status})`,
+                  `Session: /screening/${sessionId}`,
+                ]
+                  .filter(Boolean)
+                  .join("\n");
+                await callBitrix("crm.timeline.comment.add", {
+                  fields: {
+                    ENTITY_ID: Number(bitrixDealId),
+                    ENTITY_TYPE: "deal",
+                    COMMENT: comment,
+                  },
+                });
+                return "posted" as const;
+              } catch {
+                return "failed" as const;
+              }
+            }),
+        );
+      }
+
+      const out = {
+        success: true as const,
+        sessionId,
+        runId,
+        commentSyncStatus,
+      };
       logDetail("run.completed", { instanceId, sessionId, runId });
       await runDbWithWorkerNeonPool(async () =>
         markWorkflowCompleted(instanceId, out),

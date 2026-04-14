@@ -2,6 +2,10 @@ import { z } from "zod";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { TRPCError } from "@trpc/server";
+import {
+  screenerQuestionFieldsSchema,
+  screenerTemplateSchema,
+} from "@repo/schemas";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import {
   ScreenerResponseSource,
@@ -27,16 +31,8 @@ import {
   reorderScreenerQuestionsTx,
 } from "@repo/db/mutations";
 
-const screenerTemplateSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  category: z.string().min(1, "Category is required"),
-  description: z.string().optional(),
-});
-
-const screenerQuestionSchema = z.object({
+const screenerQuestionSchema = screenerQuestionFieldsSchema.extend({
   screenerId: z.string().min(1, "Screener ID is required"),
-  question: z.string().min(1, "Question is required"),
-  weight: z.coerce.number().int().min(0).max(100),
   responseType: z.literal(ScreenerResponseType.SCORE).default(
     ScreenerResponseType.SCORE,
   ),

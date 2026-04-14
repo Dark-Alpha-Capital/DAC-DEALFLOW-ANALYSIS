@@ -62,6 +62,10 @@ export type CimScreeningParams = {
   documentId?: string;
   /** Template screening across all ingested chunks for this deal */
   dealOpportunityId?: string;
+  /** Optional Bitrix deal id for timeline writeback on completion. */
+  bitrixDealId?: string;
+  /** When true and bitrixDealId is set, post completion summary comment to Bitrix. */
+  postBitrixComment?: boolean;
 };
 
 /** Cloudflare Worker env with workflow bindings (see wrangler.jsonc) */

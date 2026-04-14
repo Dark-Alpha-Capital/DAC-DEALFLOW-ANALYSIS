@@ -1,4 +1,3 @@
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -47,7 +46,9 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
   const router = useRouter();
   const trpc = useTRPC();
 
-  const { data: companies = [] } = useQuery(trpc.companies.listForSelect.queryOptions());
+  const { data: companies = [] } = useQuery(
+    trpc.companies.listForSelect.queryOptions(),
+  );
 
   const { mutate: updateDeal, isPending } = useMutation(
     trpc.dealOpportunities.updateOpportunity.mutationOptions({
@@ -128,7 +129,11 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem>
                   <FormLabel>Source Website</FormLabel>
                   <FormControl>
-                    <Input type="url" placeholder="https://example.com" {...field} />
+                    <Input
+                      type="url"
+                      placeholder="https://example.com"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -154,7 +159,10 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem className="md:col-span-2">
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="Deal headline (Bitrix TITLE)" {...field} />
+                    <Input
+                      placeholder="Deal headline (Bitrix TITLE)"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -180,7 +188,11 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem className="md:col-span-2">
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Deal description..." className="min-h-[100px]" {...field} />
+                    <Textarea
+                      placeholder="Deal description..."
+                      className="min-h-[100px]"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -352,7 +364,11 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="broker@example.com" {...field} />
+                    <Input
+                      type="email"
+                      placeholder="broker@example.com"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -378,7 +394,11 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem>
                   <FormLabel>LinkedIn URL</FormLabel>
                   <FormControl>
-                    <Input type="url" placeholder="https://linkedin.com/in/..." {...field} />
+                    <Input
+                      type="url"
+                      placeholder="https://linkedin.com/in/..."
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -387,7 +407,12 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
           </FieldGroup>
 
           <div className="mt-6 flex gap-3">
-            <Button type="button" variant="outline" size="sm" onClick={() => router.back()}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => router.back()}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>

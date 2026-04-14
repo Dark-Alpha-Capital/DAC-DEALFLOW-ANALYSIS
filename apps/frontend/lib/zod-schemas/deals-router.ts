@@ -210,6 +210,39 @@ export const bitrixSyncScreeningRunToDealSchema =
     screeningComment: z.string().min(1),
   });
 
+export const bitrixWidgetContextAuthSchema = z.object({
+  dealId: z.string().min(1),
+  memberId: z.string().min(1),
+  expiresAt: z.coerce.number().int().positive(),
+  authSig: z.string().min(1),
+});
+
+export const bitrixScreeningWidgetBootstrapSchema =
+  bitrixWidgetContextAuthSchema.extend({
+    domain: z.string().optional(),
+  });
+
+export const bitrixScreeningWidgetUploadSchema =
+  bitrixWidgetContextAuthSchema.extend({
+    fileName: z.string().min(1),
+    fileType: z.string().min(1),
+    fileData: z.string().min(1),
+    title: z.string().min(1),
+    description: z.string().optional(),
+    category: z.nativeEnum(DealDocumentCategory).default("OTHER"),
+  });
+
+export const bitrixScreeningWidgetStartRunSchema =
+  bitrixWidgetContextAuthSchema.extend({
+    screenerId: z.string().min(1),
+  });
+
+export const bitrixScreeningWidgetRetryCommentSchema =
+  bitrixWidgetContextAuthSchema.extend({
+    dealOpportunityId: z.string().min(1),
+    runId: z.string().min(1),
+  });
+
 export const searchForChatInputSchema = z
   .object({
     query: z.string().trim().optional(),

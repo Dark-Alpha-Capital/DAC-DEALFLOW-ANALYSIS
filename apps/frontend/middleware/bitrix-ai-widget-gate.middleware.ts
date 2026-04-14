@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import {
   BITRIX_AI_EXTRACT_API_PATH,
   BITRIX_AI_WIDGET_PAGE_PATH,
+  BITRIX_SCREENING_WIDGET_PAGE_PATH,
   isAiBitrixExtractRequestAllowed,
   isBitrixAiWidgetGatePath,
   isLocalDevWidgetRequest,
@@ -57,7 +58,10 @@ export const bitrixAiWidgetGateRequestMiddleware = createMiddleware().server(
       return next();
     }
 
-    if (norm === BITRIX_AI_WIDGET_PAGE_PATH) {
+    if (
+      norm === BITRIX_AI_WIDGET_PAGE_PATH ||
+      norm === BITRIX_SCREENING_WIDGET_PAGE_PATH
+    ) {
       if (await hasValidAppSession(request)) {
         return next();
       }

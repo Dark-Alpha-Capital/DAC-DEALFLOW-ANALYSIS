@@ -10,6 +10,10 @@ import {
   addRiskFlagSchema,
   adminDeleteDealInputSchema,
   bitrixSyncDealOpportunitySchema,
+  bitrixScreeningWidgetBootstrapSchema,
+  bitrixScreeningWidgetUploadSchema,
+  bitrixScreeningWidgetStartRunSchema,
+  bitrixScreeningWidgetRetryCommentSchema,
   bitrixSyncScreeningRunToDealSchema,
   bulkDeleteDealsInputSchema,
   createDealOpportunitySchema,
@@ -88,6 +92,7 @@ import {
   GetDealFinancialSnapshotsByDealOpportunityId,
   GetDealRiskFlagsByDealOpportunityId,
   countDocumentChunksByDealOpportunityId,
+  getAllScreeners,
   getScreenerById,
   getCimScreeningRunByIdForUser,
   getCimScreeningSessionByIdForUser,
@@ -107,6 +112,7 @@ import {
   getCompanyRowByIdForAiScreening,
   getLeadRowById,
   selectDealOpportunityBitrixIds,
+  listCimScreeningRunsForDealOpportunity,
 } from "@repo/db/queries";
 import { buildNextcloudFileUrl, uploadBuffer } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
@@ -137,6 +143,9 @@ import {
   resolveBitrixDealTeaserFieldCode,
 } from "@repo/bitrix-sync";
 import { getBitrixSyncPreviewData } from "@/lib/server/bitrix-sync-preview-data";
+import { verifyBitrixWidgetSignature } from "@/lib/server/bitrix-widget-signature";
+import db, { workflowJobs, desc, and as drizzleAnd, inArray, eq } from "@repo/db";
+import { dealOpportunities } from "@repo/db/schema";
 
 function defaultDealOpportunityStage(): string {
   return getDefaultBitrixStageId(getBitrixDealStages());
@@ -158,6 +167,63 @@ function isUniqueViolationError(error: unknown): boolean {
     "code" in error &&
     (error as { code?: string }).code === "23505"
   );
+}
+
+function assertValidBitrixWidgetContext(input: {
+  dealId: string;
+  memberId: string;
+  expiresAt: number;
+  authSig: string;
+}) {
+  const verified = verifyBitrixWidgetSignature(input);
+  if (!verified.ok) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: verified.reason,
+    });
+  }
+}
+
+async function resolveDealOpportunityForBitrixDeal(bitrixDealId: string) {
+  const [existing] = await db
+    .select({ id: dealOpportunities.id })
+    .from(dealOpportunities)
+    .where(eq(dealOpportunities.bitrixId, bitrixDealId))
+    .limit(1);
+  if (existing?.id) return existing.id;
+
+  const created = await insertDealOpportunityRow({
+    companyId: null,
+    leadId: null,
+    sourceWebsite: null,
+    brokerage: "Bitrix24",
+    revenue: null,
+    ebitda: null,
+    ebitdaMargin: null,
+    askingPrice: null,
+    title: `Bitrix deal ${bitrixDealId}`,
+    dealTeaser: `Imported from Bitrix deal ${bitrixDealId}`,
+    description: null,
+    brokerFirstName: null,
+    brokerLastName: null,
+    brokerEmail: null,
+    brokerPhone: null,
+    brokerLinkedIn: null,
+    userId: null,
+    stage: defaultDealOpportunityStage(),
+  });
+  if (!created?.id) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Failed to create deal mapping for Bitrix widget",
+    });
+  }
+  await updateDealOpportunityBitrixFields(created.id, {
+    bitrixId: bitrixDealId,
+    bitrixLink: null,
+    bitrixCreatedAt: new Date(),
+  });
+  return created.id;
 }
 
 export const dealsRouter = createTRPCRouter({
@@ -1486,6 +1552,290 @@ export const dealsRouter = createTRPCRouter({
       aiBitrixFieldMeta: getAiBitrixFormFieldMeta(),
     };
   }),
+
+  getBitrixScreeningWidgetContext: publicProcedure
+    .input(bitrixScreeningWidgetBootstrapSchema)
+    .query(async ({ input }) => {
+      assertValidBitrixWidgetContext(input);
+      const env = getBitrixSyncEnv();
+      const dealOpportunityId = await resolveDealOpportunityForBitrixDeal(
+        input.dealId,
+      );
+
+      const [screeners, indexedCount, latestRunRows, activeJobs] =
+        await Promise.all([
+          getAllScreeners(),
+          countDocumentChunksByDealOpportunityId(dealOpportunityId),
+          listCimScreeningRunsForDealOpportunity(dealOpportunityId),
+          db
+            .select({
+              instanceId: workflowJobs.instanceId,
+              state: workflowJobs.state,
+              screenerId: workflowJobs.screenerId,
+              updatedAt: workflowJobs.updatedAt,
+            })
+            .from(workflowJobs)
+            .where(
+              drizzleAnd(
+                eq(workflowJobs.workflowKind, "cim-screening"),
+                eq(workflowJobs.dealId, dealOpportunityId),
+                inArray(workflowJobs.state, ["waiting", "active", "delayed"]),
+              ),
+            )
+            .orderBy(desc(workflowJobs.updatedAt)),
+        ]);
+
+      let bitrixFiles: Array<{ id: string; label: string; field: string }> = [];
+      try {
+        const rawDeal = await callBitrix<Record<string, unknown>>("crm.deal.get", {
+          id: input.dealId,
+        });
+        const entries = Object.entries(rawDeal ?? {});
+        bitrixFiles = entries.flatMap(([field, value]) => {
+          if (!field.startsWith("UF_CRM")) return [];
+          if (!Array.isArray(value)) return [];
+          return value
+            .map((v) => {
+              const id = String(v ?? "").trim();
+              if (!id) return null;
+              return { id, label: `Bitrix file ${id}`, field };
+            })
+            .filter((x): x is { id: string; label: string; field: string } => !!x);
+        });
+      } catch (error) {
+        console.warn("[bitrix-screen-widget] failed to fetch deal files", {
+          bitrixDealId: input.dealId,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      const latestRun = latestRunRows[0] ?? null;
+      return {
+        dealOpportunityId,
+        webhookConfigured: Boolean(env?.webhookBaseUrl),
+        bitrixDealId: input.dealId,
+        bitrixFiles,
+        hasFiles: bitrixFiles.length > 0,
+        indexedCount,
+        screeners: (screeners ?? []).map((s) => ({
+          id: s.id,
+          name: s.name,
+          category: s.category,
+          questionCount: s.questionCount,
+        })),
+        lastRun: latestRun
+          ? {
+              runId: latestRun.runId,
+              status: latestRun.status,
+              screenerId: latestRun.screenerId,
+              screenerName: latestRun.screenerName,
+              createdAt: latestRun.runCreatedAt,
+            }
+          : null,
+        activeJobs,
+      };
+    }),
+
+  uploadBitrixScreeningWidgetDocument: publicProcedure
+    .input(bitrixScreeningWidgetUploadSchema)
+    .mutation(async ({ input }) => {
+      assertValidBitrixWidgetContext(input);
+      const dealOpportunityId = await resolveDealOpportunityForBitrixDeal(
+        input.dealId,
+      );
+      const opp = await GetDealOpportunityById(dealOpportunityId);
+      const actorUserId = opp?.userId?.trim();
+      if (!actorUserId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Deal has no owner user to run ingestion workflow.",
+        });
+      }
+
+      const base64Data = input.fileData.split(",")[1] || input.fileData;
+      const buffer = Buffer.from(base64Data, "base64");
+      const contentHash = createHash("sha256").update(buffer).digest("hex");
+      const existing = await findDealOpportunityDocumentByContentHash(
+        dealOpportunityId,
+        contentHash,
+      );
+      if (existing) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This document was already uploaded for this deal.",
+        });
+      }
+
+      const finalDir = `dealflow/deal_opportunity/${dealOpportunityId}/widget`;
+      const finalPath = `${finalDir}/${input.fileName}`;
+      await uploadBuffer(buffer, finalPath);
+
+      const entityMetadata: EntityMetadata = {
+        name:
+          opp?.title?.trim() || opp?.dealTeaser?.trim() || `Bitrix deal ${input.dealId}`,
+        sector: null,
+        stage: opp?.stage ?? null,
+        headquarters: opp?.companyLocation ?? null,
+        revenue: opp?.revenue != null ? Number(opp.revenue) : null,
+        ebitda: opp?.ebitda != null ? Number(opp.ebitda) : null,
+      };
+
+      const jobId = randomUUID();
+      const jobData: FileUploadJobData = {
+        jobId,
+        fileName: input.fileName,
+        filePath: finalPath,
+        fileSize: buffer.length,
+        mimeType: input.fileType || "application/octet-stream",
+        userId: actorUserId,
+        entityType: "DEAL_OPPORTUNITY",
+        entityId: dealOpportunityId,
+        entityMetadata,
+        fileCategory: input.category,
+        fileDescription: input.description,
+        contentHash,
+      };
+
+      await insertWorkflowJob({
+        instanceId: jobId,
+        workflowKind: "file-upload",
+        userId: actorUserId,
+        dealId: dealOpportunityId,
+        fileName: input.fileName,
+      });
+      await startFileUploadWorkflow(jobId, jobData);
+      return { success: true, jobId, dealOpportunityId };
+    }),
+
+  startBitrixScreeningWidgetRun: publicProcedure
+    .input(bitrixScreeningWidgetStartRunSchema)
+    .mutation(async ({ input }) => {
+      assertValidBitrixWidgetContext(input);
+      const dealOpportunityId = await resolveDealOpportunityForBitrixDeal(
+        input.dealId,
+      );
+      const opp = await GetDealOpportunityById(dealOpportunityId);
+      const actorUserId = opp?.userId?.trim();
+      if (!actorUserId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Deal has no owner user to run screening workflow.",
+        });
+      }
+
+      const active = await db
+        .select({ instanceId: workflowJobs.instanceId })
+        .from(workflowJobs)
+        .where(
+          drizzleAnd(
+            eq(workflowJobs.workflowKind, "cim-screening"),
+            eq(workflowJobs.dealId, dealOpportunityId),
+            eq(workflowJobs.screenerId, input.screenerId),
+            inArray(workflowJobs.state, ["waiting", "active", "delayed"]),
+          ),
+        )
+        .limit(1);
+      if (active.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "A screening run is already active for this deal and screener.",
+        });
+      }
+
+      const session = await insertCimScreeningSession({
+        userId: actorUserId,
+        dealOpportunityId,
+      });
+      if (!session) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create screening session",
+        });
+      }
+
+      const jobId = randomUUID();
+      const run = await insertCimScreeningRun({
+        sessionId: session.id,
+        screenerId: input.screenerId,
+        workflowInstanceId: jobId,
+      });
+      if (!run) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create screening run",
+        });
+      }
+
+      await insertWorkflowJob({
+        instanceId: jobId,
+        workflowKind: "cim-screening",
+        userId: actorUserId,
+        dealId: dealOpportunityId,
+        fileName: opp?.title ?? opp?.dealTeaser ?? `Bitrix deal ${input.dealId}`,
+        screenerId: input.screenerId,
+      });
+
+      await startCimScreeningWorkflow(jobId, {
+        jobId,
+        userId: actorUserId,
+        dealOpportunityId,
+        screenerId: input.screenerId,
+        sessionId: session.id,
+        runId: run.id,
+        bitrixDealId: input.dealId,
+        postBitrixComment: true,
+      });
+
+      return {
+        success: true,
+        dealOpportunityId,
+        sessionId: session.id,
+        runId: run.id,
+        jobId,
+        queueName: QUEUE_NAMES.CIM_SCREENING,
+      };
+    }),
+
+  retryBitrixScreeningWidgetComment: publicProcedure
+    .input(bitrixScreeningWidgetRetryCommentSchema)
+    .mutation(async ({ input }) => {
+      assertValidBitrixWidgetContext(input);
+      const env = getBitrixSyncEnv();
+      if (!env?.webhookBaseUrl) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Bitrix is not configured.",
+        });
+      }
+      const run = await db
+        .select({
+          id: workflowJobs.instanceId,
+          returnValue: workflowJobs.returnValue,
+        })
+        .from(workflowJobs)
+        .where(eq(workflowJobs.instanceId, input.runId))
+        .limit(1);
+      const payload = run[0]?.returnValue as
+        | { score?: number; status?: string; screenerName?: string }
+        | undefined;
+      const summary = [
+        `Screening run ${input.runId}`,
+        payload?.screenerName ? `Screener: ${payload.screenerName}` : null,
+        payload?.status ? `Status: ${payload.status}` : null,
+        typeof payload?.score === "number" ? `Score: ${payload.score}/10` : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      await callBitrix("crm.timeline.comment.add", {
+        fields: {
+          ENTITY_ID: Number(input.dealId),
+          ENTITY_TYPE: "deal",
+          COMMENT: summary || "Screening run completed.",
+        },
+      });
+      return { success: true };
+    }),
 
   /** Public for the Bitrix-embedded AI widget (same middleware story as createOpportunity). */
   syncDealOpportunityToBitrix: publicProcedure

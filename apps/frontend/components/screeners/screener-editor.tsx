@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "@/lib/navigation-shim";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  screenerQuestionFieldsSchema,
+  screenerTemplateSchema,
+  type ScreenerQuestionFieldsValues,
+  type ScreenerTemplateFormValues,
+} from "@repo/schemas";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
@@ -24,10 +29,9 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   ArrowLeft,
   GripVertical,
-  ListOrdered,
+  Loader2,
   Plus,
   Save,
-  Settings,
   Trash2,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -45,21 +49,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const templateSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  category: z.string().min(1, "Category is required"),
-  description: z.string().optional(),
-});
-
-const questionSchema = z.object({
-  question: z.string().min(1, "Question is required"),
-  weight: z.coerce.number().int().min(0).max(100),
-});
-
-type TemplateValues = z.infer<typeof templateSchema>;
-type QuestionValues = z.infer<typeof questionSchema>;
 
 type ScreenerWithQuestions = NonNullable<
   Awaited<
@@ -87,8 +76,8 @@ export default function ScreenerEditor({
     initialData: initialScreener ?? undefined,
   });
 
-  const templateForm = useForm<TemplateValues>({
-    resolver: zodResolver(templateSchema),
+  const templateForm = useForm<ScreenerTemplateFormValues>({
+    resolver: zodResolver(screenerTemplateSchema),
     defaultValues: {
       name: "",
       category: "",
@@ -96,8 +85,8 @@ export default function ScreenerEditor({
     },
   });
 
-  const questionForm = useForm<QuestionValues>({
-    resolver: zodResolver(questionSchema),
+  const questionForm = useForm<ScreenerQuestionFieldsValues>({
+    resolver: zodResolver(screenerQuestionFieldsSchema),
     defaultValues: {
       question: "",
       weight: 10,
@@ -303,213 +292,200 @@ export default function ScreenerEditor({
         <Badge variant="secondary">{screener.category}</Badge>
       </header>
 
-      <Tabs defaultValue="settings" className="w-full space-y-6">
-        <TabsList className="h-9">
-          <TabsTrigger value="settings" className="gap-2">
-            <Settings className="h-4 w-4" />
-            Settings
-          </TabsTrigger>
-          <TabsTrigger value="questions" className="gap-2">
-            <ListOrdered className="h-4 w-4" />
-            Questions
+      <div className="w-full space-y-10">
+        <section className="space-y-6 border-b pb-6">
+          <h2 className="text-muted-foreground text-sm font-medium">
+            Template details
+          </h2>
+          <Form {...templateForm}>
+            <form
+              onSubmit={templateForm.handleSubmit((values) =>
+                updateTemplate.mutate({ screenerId, ...values }),
+              )}
+              className="grid gap-4 md:grid-cols-2"
+            >
+              <FormField
+                control={templateForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={templateForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="md:col-span-2">
+                <FormField
+                  control={templateForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Button type="submit" disabled={updateTemplate.isPending}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {updateTemplate.isPending ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </section>
+
+        <section className="space-y-4 border-b pb-6">
+          <h2 className="text-muted-foreground text-sm font-medium">
+            Add question
+          </h2>
+          <Form {...questionForm}>
+            <form
+              onSubmit={questionForm.handleSubmit((values) =>
+                createQuestion.mutate({
+                  screenerId,
+                  ...values,
+                  responseType: "SCORE",
+                }),
+              )}
+              className="grid gap-4 md:grid-cols-[1fr_120px_auto]"
+            >
+              <FormField
+                control={questionForm.control}
+                name="question"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Question</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="How predictable is revenue?"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={questionForm.control}
+                name="weight"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Weight</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex items-end">
+                <Button type="submit" disabled={createQuestion.isPending}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </section>
+
+        <section className="space-y-0">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <h2 className="text-muted-foreground text-sm font-medium">
+              Question list
+            </h2>
             {screener.questions.length > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
                 {screener.questions.length}
               </Badge>
             )}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="settings" className="mt-0 space-y-6">
-          <div className="space-y-6 border-b pb-6">
-            <h2 className="text-muted-foreground text-sm font-medium">
-              Template details
-            </h2>
-            <Form {...templateForm}>
-              <form
-                onSubmit={templateForm.handleSubmit((values) =>
-                  updateTemplate.mutate({ screenerId, ...values }),
-                )}
-                className="grid gap-4 md:grid-cols-2"
-              >
-                <FormField
-                  control={templateForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={templateForm.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="md:col-span-2">
-                  <FormField
-                    control={templateForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <Button type="submit" disabled={updateTemplate.isPending}>
-                    <Save className="mr-2 h-4 w-4" />
-                    {updateTemplate.isPending ? "Saving..." : "Save"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
           </div>
-        </TabsContent>
-
-        <TabsContent value="questions" className="mt-0 space-y-6">
-          <div className="space-y-4 border-b pb-6">
-            <h2 className="text-muted-foreground text-sm font-medium">
-              Add question
-            </h2>
-            <Form {...questionForm}>
-              <form
-                onSubmit={questionForm.handleSubmit((values) =>
-                  createQuestion.mutate({
-                    screenerId,
-                    ...values,
-                    responseType: "SCORE",
-                  }),
-                )}
-                className="grid gap-4 md:grid-cols-[1fr_120px_auto]"
+          {screener.questions.length === 0 ? (
+            <p className="text-muted-foreground py-8 text-center text-sm">
+              No questions yet. Add weighted score-based questions to use this
+              template in deal screening.
+            </p>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={({ active }) => setActiveId(active.id as string)}
+              onDragEnd={(event) => {
+                handleDragEnd(event);
+                setActiveId(null);
+              }}
+              onDragCancel={() => setActiveId(null)}
+            >
+              <SortableContext
+                items={questionIds}
+                strategy={verticalListSortingStrategy}
               >
-                <FormField
-                  control={questionForm.control}
-                  name="question"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Question</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="How predictable is revenue?"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={questionForm.control}
-                  name="weight"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Weight</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="flex items-end">
-                  <Button type="submit" disabled={createQuestion.isPending}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </div>
-
-          <div className="space-y-0">
-            <h2 className="text-muted-foreground mb-4 text-sm font-medium">
-              Question list
-            </h2>
-            {screener.questions.length === 0 ? (
-              <p className="text-muted-foreground py-8 text-center text-sm">
-                No questions yet. Add weighted score-based questions to use this
-                template in deal screening.
-              </p>
-            ) : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={({ active }) => setActiveId(active.id as string)}
-                onDragEnd={(event) => {
-                  handleDragEnd(event);
-                  setActiveId(null);
-                }}
-                onDragCancel={() => setActiveId(null)}
-              >
-                <SortableContext
-                  items={questionIds}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="divide-y">
-                    {screener.questions.map((question) => (
-                      <SortableQuestionRow
-                        key={question.id}
-                        question={question}
-                        isEditing={editingQuestionId === question.id}
-                        onEdit={() => setEditingQuestionId(question.id)}
-                        onCancel={() => setEditingQuestionId(null)}
-                        onDelete={() =>
-                          deleteQuestion.mutate({
-                            screenerId,
-                            questionId: question.id,
-                          })
-                        }
-                        onSave={(values) =>
-                          updateQuestion.mutate({
-                            screenerId,
-                            id: question.id,
-                            question: values.question,
-                            weight: values.weight,
-                            responseType: "SCORE",
-                          })
-                        }
-                        isSaving={updateQuestion.isPending}
-                        isDeleting={
-                          deleteQuestion.isPending &&
-                          deleteQuestion.variables?.questionId === question.id
-                        }
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-
-                <DragOverlay>
-                  {activeId ? (
-                    <QuestionDragOverlay
-                      question={
-                        screener.questions.find((q) => q.id === activeId)!
+                <div className="divide-y">
+                  {screener.questions.map((question) => (
+                    <SortableQuestionRow
+                      key={question.id}
+                      question={question}
+                      isEditing={editingQuestionId === question.id}
+                      onEdit={() => setEditingQuestionId(question.id)}
+                      onCancel={() => setEditingQuestionId(null)}
+                      onDelete={() =>
+                        deleteQuestion.mutate({
+                          screenerId,
+                          questionId: question.id,
+                        })
+                      }
+                      onSave={(values) =>
+                        updateQuestion.mutate({
+                          screenerId,
+                          id: question.id,
+                          question: values.question,
+                          weight: values.weight,
+                          responseType: "SCORE",
+                        })
+                      }
+                      isSaving={updateQuestion.isPending}
+                      isDeleting={
+                        deleteQuestion.isPending &&
+                        deleteQuestion.variables?.questionId === question.id
                       }
                     />
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+                  ))}
+                </div>
+              </SortableContext>
+
+              <DragOverlay>
+                {activeId ? (
+                  <QuestionDragOverlay
+                    question={
+                      screener.questions.find((q) => q.id === activeId)!
+                    }
+                  />
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
@@ -537,7 +513,7 @@ function SortableQuestionRow({
   onEdit: () => void;
   onCancel: () => void;
   onDelete: () => void;
-  onSave: (values: QuestionValues) => void;
+  onSave: (values: ScreenerQuestionFieldsValues) => void;
   isSaving: boolean;
   isDeleting: boolean;
 }) {
@@ -602,8 +578,12 @@ function SortableQuestionRow({
               }}
               disabled={isDeleting}
             >
-              <Trash2 className="mr-1.5 h-4 w-4" />
-              {isDeleting ? "Deleting…" : "Delete"}
+              {isDeleting ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-1.5 h-4 w-4" />
+              )}
+              Delete
             </Button>
           </div>
         </div>
@@ -619,12 +599,12 @@ function QuestionForm({
   isSaving,
 }: {
   question: Question;
-  onSave: (values: QuestionValues) => void;
+  onSave: (values: ScreenerQuestionFieldsValues) => void;
   onCancel: () => void;
   isSaving: boolean;
 }) {
-  const form = useForm<QuestionValues>({
-    resolver: zodResolver(questionSchema),
+  const form = useForm<ScreenerQuestionFieldsValues>({
+    resolver: zodResolver(screenerQuestionFieldsSchema),
     defaultValues: {
       question: question.question,
       weight: question.weight,

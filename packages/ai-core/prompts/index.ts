@@ -15,3 +15,4 @@ export {
 } from "./cim-extraction";
 export { AI_DEAL_SCREENING_INSTRUCTIONS } from "./ai-deal-screening";
 export { buildCimScreeningQuestionPrompt } from "./cim-screening";
+export { BITRIX_DEAL_OPPORTUNITY_EXTRACTION_SYSTEM } from "./bitrix-deal-extraction";

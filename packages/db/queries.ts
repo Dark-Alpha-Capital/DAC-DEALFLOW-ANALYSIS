@@ -2664,6 +2664,11 @@ export async function listCimScreeningSessionsForUserWithMeta(
 
 /** TRPC / app helpers live in `queries/deal-trpc.ts`; re-exported here because `@repo/db/queries` resolves to this file. */
 export * from "./queries/deal-trpc";
+export * from "./queries/companies-trpc";
+export * from "./queries/themes-trpc";
+export * from "./queries/leads-trpc";
+export * from "./queries/analytics-trpc";
+export * from "./queries/cim-screening-trpc";
 
 export {
   normalizeStoredDealStageForPipeline,
