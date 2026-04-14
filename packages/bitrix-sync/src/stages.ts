@@ -1,6 +1,28 @@
 import defaultStages from "../data/bitrix-deal-stages.json";
+import { BITRIX_DEAL_PIPELINE_ID } from "./env";
 
 export type BitrixDealStageRow = { statusId: string; name: string };
+
+/**
+ * `crm.deal.list` often returns `STAGE_ID` as `C{categoryId}:{STATUS_ID}` while
+ * `crm.dealcategory.stage.list` / `BITRIX_DEAL_STAGES_JSON` use bare `STATUS_ID`
+ * (e.g. `UC_*`, `NEW`). Strip the prefix when it matches the configured pipeline.
+ */
+export function normalizeBitrixStageIdForPipeline(
+  stageId: string,
+  pipelineCategoryId: string,
+): string {
+  const t = stageId.trim();
+  const cat = String(pipelineCategoryId ?? "").trim();
+  if (!t || !cat) return t;
+  const m = /^C(\d+):(.+)$/i.exec(t);
+  const rest = m?.[2]?.trim();
+  const prefixCat = m?.[1];
+  if (prefixCat != null && rest && prefixCat === cat) {
+    return rest;
+  }
+  return t;
+}
 
 function parseStagesJson(raw: string): BitrixDealStageRow[] {
   const parsed = JSON.parse(raw) as unknown;
@@ -27,7 +49,7 @@ function parseStagesJson(raw: string): BitrixDealStageRow[] {
     .filter((x): x is BitrixDealStageRow => x != null);
 }
 
-/** Stages for the deal pipeline UI. Populate via `bun run fetch-stages` in @repo/bitrix-sync or BITRIX_DEAL_STAGES_JSON. */
+/** Stages for the deal pipeline UI. Populate via `bun run fetch-stages` in @repo/bitrix-sync or `BITRIX_DEAL_STAGES_JSON`. */
 export function getBitrixDealStages(): BitrixDealStageRow[] {
   const fromEnv = process.env.BITRIX_DEAL_STAGES_JSON?.trim();
   if (fromEnv) {
@@ -42,34 +64,22 @@ export function getBitrixDealStages(): BitrixDealStageRow[] {
   return parseStagesJson(JSON.stringify(fallback));
 }
 
-const STAGE_HINTS: Record<string, string[]> = {
-  LISTED: ["new deal", "duplicate", "quick deal", "teaser screening"],
-  INITIAL_REVIEW: ["pre-screening", "under review"],
-  SCREENED: ["screening complete", "screening review", "approval"],
-  MEETING_HELD: ["management meeting", "intro call", "broker meeting"],
-  IOI_SUBMITTED: ["ioi"],
-  LOI_SUBMITTED: ["loi", "letter of intent"],
-  DILIGENCE: ["due diligence", "dd ", "definitive"],
-  CLOSED: ["closing", "deal won", "execute"],
-  DEAD: ["lost", "hold", "termination", "declined", "reject"],
-};
+/** First column in the configured pipeline, or Bitrix default `NEW`. */
+export function getDefaultBitrixStageId(stages: BitrixDealStageRow[]): string {
+  const id = stages[0]?.statusId?.trim();
+  if (id) return id;
+  return "NEW";
+}
 
-/** Pick a reasonable default Bitrix stage for the app pipeline stage (best-effort). */
-export function suggestBitrixStageIdForAppStage(
-  appStage: string,
+/** Human label for a `STAGE_ID` using the configured pipeline snapshot. */
+export function resolveBitrixStageLabel(
+  statusId: string,
   stages: BitrixDealStageRow[],
-  explicitDefault?: string,
 ): string {
-  if (explicitDefault && explicitDefault.trim()) return explicitDefault.trim();
-  const hints = STAGE_HINTS[appStage] ?? [];
-  const lower = stages.map((s) => ({
-    ...s,
-    n: s.name.toLowerCase(),
-  }));
-  for (const h of hints) {
-    const hit = lower.find((s) => s.n.includes(h));
-    if (hit) return hit.statusId;
-  }
-  if (stages[0]?.statusId) return stages[0].statusId;
-  return "";
+  const t = statusId.trim();
+  const canonical = normalizeBitrixStageIdForPipeline(t, BITRIX_DEAL_PIPELINE_ID);
+  const row =
+    stages.find((s) => s.statusId === t) ??
+    stages.find((s) => s.statusId === canonical);
+  return row?.name?.trim() || canonical || t;
 }

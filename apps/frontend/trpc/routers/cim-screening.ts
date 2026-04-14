@@ -2,58 +2,68 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { documents, dealOpportunities, eq } from "@repo/db";
 import {
-  startSimScreeningInputSchema,
-  simSessionRouteInputSchema,
-  startSimScreeningRunInputSchema,
-  retrySimScreeningRunInputSchema,
-  listSimScreeningSessionsInputSchema,
-} from "@/lib/zod-schemas/sim-screening-router";
+  startCimScreeningInputSchema,
+  cimSessionRouteInputSchema,
+  startCimScreeningRunInputSchema,
+  retryCimScreeningRunInputSchema,
+  listCimScreeningSessionsInputSchema,
+} from "@/lib/zod-schemas/cim-screening-router";
 import {
-  deleteSimScreeningAnswersForRun,
-  insertSimScreeningSession,
-  insertSimScreeningRun,
-  updateSimScreeningRun,
+  deleteCimScreeningAnswersForRun,
+  insertCimScreeningSession,
+  insertCimScreeningRun,
+  updateCimScreeningRun,
 } from "@repo/db/mutations";
 import { deleteWorkflowJobRow } from "@repo/db/workflow-jobs";
 import {
-  getSimScreeningSessionByIdForUser,
-  listSimScreeningSessionsForUserWithMeta,
+  getCimScreeningSessionByIdForUser,
+  listCimScreeningSessionsForUserWithMeta,
   getScreenerQuestions,
-  getSimScreeningAnswersByRunId,
+  getCimScreeningAnswersByRunId,
   getScreenerById,
-  getSimScreeningRunsBySessionId,
-  getSimScreeningRunByIdForUser,
-  simScreeningSessionHasActiveRun,
+  getCimScreeningRunsBySessionId,
+  getCimScreeningRunByIdForUser,
+  cimScreeningSessionHasActiveRun,
   countDocumentChunksByDealOpportunityId,
   countDocumentChunksByDocumentId,
-  listSimScreeningLibraryDocumentsForUser,
+  listCimScreeningLibraryDocumentsForUser,
   getDocumentChunksByIds,
+  getLibraryDocumentByIdForCim,
+  getDealOpportunityBriefForCim,
 } from "@repo/db/queries";
-import { mapEvidenceChunkIdsToCitations } from "@/lib/map-sim-screening-evidence";
+import { mapEvidenceChunkIdsToCitations } from "@/lib/map-cim-screening-evidence";
 import {
   insertWorkflowJob,
-  startSimScreeningWorkflow,
+  startCimScreeningWorkflow,
   getJobByIdForUser,
   terminateWorkflowInstance,
 } from "@/src/lib/workflow-jobs-api";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 
-const SCREENING_LIBRARY_CATEGORIES = ["CIM", "SIM_SCREENING"] as const;
+const SCREENING_LIBRARY_CATEGORIES = ["CIM", "CIM_SCREENING"] as const;
+
+function dealOpportunityHeadline(opp: {
+  title: string | null;
+  dealTeaser: string | null;
+}): string {
+  const t = opp.title?.trim() || opp.dealTeaser?.trim();
+  if (!t) return "Deal opportunity";
+  return t.length > 120 ? `${t.slice(0, 120)}…` : t;
+}
 
 /** Shared session + runs + selected run + parallel promises for document/deal/job. */
-async function loadSimScreeningSessionBase(
-  input: z.infer<typeof simSessionRouteInputSchema>,
+async function loadCimScreeningSessionBase(
+  input: z.infer<typeof cimSessionRouteInputSchema>,
   userId: string,
 ) {
-  const session = await getSimScreeningSessionByIdForUser(
+  const session = await getCimScreeningSessionByIdForUser(
     input.sessionId,
     userId,
   );
   if (!session) return null;
 
-  const runs = await getSimScreeningRunsBySessionId(session.id);
+  const runs = await getCimScreeningRunsBySessionId(session.id);
 
   let selectedRun = input.runId
     ? runs.find((r) => r.id === input.runId) ?? null
@@ -66,32 +76,18 @@ async function loadSimScreeningSessionBase(
   }
 
   const documentPromise = session.documentId
-    ? db
-      .select()
-      .from(documents)
-      .where(eq(documents.id, session.documentId))
-      .limit(1)
-      .then((r) => r[0] ?? null)
+    ? getLibraryDocumentByIdForCim(session.documentId)
     : Promise.resolve(null);
   const dealPromise = session.dealOpportunityId
-    ? db
-      .select({
-        id: dealOpportunities.id,
-        dealTeaser: dealOpportunities.dealTeaser,
-        description: dealOpportunities.description,
-      })
-      .from(dealOpportunities)
-      .where(eq(dealOpportunities.id, session.dealOpportunityId))
-      .limit(1)
-      .then((r) => r[0] ?? null)
+    ? getDealOpportunityBriefForCim(session.dealOpportunityId)
     : Promise.resolve(null);
   const jobPromise =
     selectedRun?.workflowInstanceId
       ? getJobByIdForUser(
-        userId,
-        QUEUE_NAMES.SIM_SCREENING,
-        selectedRun.workflowInstanceId,
-      )
+          userId,
+          QUEUE_NAMES.CIM_SCREENING,
+          selectedRun.workflowInstanceId,
+        )
       : Promise.resolve(null);
 
   const mappedRuns = runs.map((r) => ({
@@ -108,19 +104,19 @@ async function loadSimScreeningSessionBase(
 
   const run = selectedRun
     ? {
-      id: selectedRun.id,
-      status: selectedRun.status,
-      errorMessage: selectedRun.errorMessage,
-      workflowInstanceId: selectedRun.workflowInstanceId,
-    }
+        id: selectedRun.id,
+        status: selectedRun.status,
+        errorMessage: selectedRun.errorMessage,
+        workflowInstanceId: selectedRun.workflowInstanceId,
+      }
     : null;
 
   const screener = selectedRun
     ? {
-      id: selectedRun.screenerId,
-      name: selectedRun.screenerName,
-      category: selectedRun.screenerCategory,
-    }
+        id: selectedRun.screenerId,
+        name: selectedRun.screenerName,
+        category: selectedRun.screenerCategory,
+      }
     : null;
 
   return {
@@ -136,155 +132,152 @@ async function loadSimScreeningSessionBase(
   };
 }
 
-export const simScreeningRouter = createTRPCRouter({
+export const cimScreeningRouter = createTRPCRouter({
   listLibraryDocuments: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.user.id;
     if (!userId?.trim()) {
       throw new TRPCError({ code: "UNAUTHORIZED", message: "User ID required" });
     }
-    return listSimScreeningLibraryDocumentsForUser(userId);
+    return listCimScreeningLibraryDocumentsForUser(userId);
   }),
 
   start: protectedProcedure
-    .input(startSimScreeningInputSchema)
-    .mutation(async ({ input, ctx }) => {
-    const userId = ctx.user.id;
-    if (!userId?.trim()) {
-      throw new TRPCError({ code: "UNAUTHORIZED", message: "User ID required" });
-    }
-
-    const screener = await getScreenerById(input.screenerId);
-    if (!screener) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Screener template not found",
-      });
-    }
-
-    const [docRow] = await db
-      .select()
-      .from(documents)
-      .where(eq(documents.id, input.documentId))
-      .limit(1);
-
-    if (!docRow) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" });
-    }
-
-    if (docRow.entityType !== "GLOBAL") {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Only firm library documents can be used for CIM screening",
-      });
-    }
-
-    if (docRow.uploadedById !== userId) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "You can only screen documents you uploaded",
-      });
-    }
-
-    if (
-      !(SCREENING_LIBRARY_CATEGORIES as readonly string[]).includes(
-        docRow.category,
-      )
-    ) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Document must be a CIM library upload or legacy SIM screening file",
-      });
-    }
-
-    if (docRow.ingestionStatus !== "PROCESSED") {
-      const hint =
-        docRow.ingestionStatus === "PENDING" ||
-          docRow.ingestionStatus === "PROCESSING"
-          ? "Wait for ingestion to finish (Firm documents), then try again."
-          : docRow.ingestionStatus === "FAILED"
-            ? docRow.ingestionError
-              ? `Ingestion failed: ${docRow.ingestionError}`
-              : "Ingestion failed; re-upload or retry from documents."
-            : "This document was skipped during ingestion and cannot be screened.";
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: `Document is not ready for screening. ${hint}`,
-      });
-    }
-
-    const chunkCount = await countDocumentChunksByDocumentId(docRow.id);
-    if (chunkCount === 0) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message:
-          "No ingested chunks for this document. Re-ingest from firm documents or contact support.",
-      });
-    }
-
-    const session = await insertSimScreeningSession({
-      userId,
-      documentId: docRow.id,
-    });
-
-    if (!session) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create screening session",
-      });
-    }
-
-    const jobId = randomUUID();
-    const run = await insertSimScreeningRun({
-      sessionId: session.id,
-      screenerId: input.screenerId,
-      workflowInstanceId: jobId,
-    });
-
-    if (!run) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to create screening run",
-      });
-    }
-
-    const fileLabel = docRow.fileName ?? docRow.title ?? "CIM.pdf";
-
-    await insertWorkflowJob({
-      instanceId: jobId,
-      workflowKind: "sim-screening",
-      userId,
-      fileName: fileLabel,
-      screenerId: input.screenerId,
-    });
-
-    await startSimScreeningWorkflow(jobId, {
-      jobId,
-      userId,
-      documentId: docRow.id,
-      screenerId: input.screenerId,
-      sessionId: session.id,
-      runId: run.id,
-    });
-
-    return {
-      sessionId: session.id,
-      runId: run.id,
-      documentId: docRow.id,
-      jobLabel: fileLabel,
-      jobId,
-      queueName: QUEUE_NAMES.SIM_SCREENING,
-    };
-  }),
-
-  startRun: protectedProcedure
-    .input(startSimScreeningRunInputSchema)
+    .input(startCimScreeningInputSchema)
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.user.id;
       if (!userId?.trim()) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "User ID required" });
       }
 
-      const session = await getSimScreeningSessionByIdForUser(
+      const screener = await getScreenerById(input.screenerId);
+      if (!screener) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Screener template not found",
+        });
+      }
+
+      const docRow = await getLibraryDocumentByIdForCim(input.documentId);
+
+      if (!docRow) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" });
+      }
+
+      if (docRow.entityType !== "GLOBAL") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only firm library documents can be used for CIM screening",
+        });
+      }
+
+      if (docRow.uploadedById !== userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only screen documents you uploaded",
+        });
+      }
+
+      if (
+        !(SCREENING_LIBRARY_CATEGORIES as readonly string[]).includes(
+          docRow.category,
+        )
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Document must be a CIM library upload or CIM template screening file",
+        });
+      }
+
+      if (docRow.ingestionStatus !== "PROCESSED") {
+        const hint =
+          docRow.ingestionStatus === "PENDING" ||
+          docRow.ingestionStatus === "PROCESSING"
+            ? "Wait for ingestion to finish (Firm documents), then try again."
+            : docRow.ingestionStatus === "FAILED"
+              ? docRow.ingestionError
+                ? `Ingestion failed: ${docRow.ingestionError}`
+                : "Ingestion failed; re-upload or retry from documents."
+              : "This document was skipped during ingestion and cannot be screened.";
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Document is not ready for screening. ${hint}`,
+        });
+      }
+
+      const chunkCount = await countDocumentChunksByDocumentId(docRow.id);
+      if (chunkCount === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "No ingested chunks for this document. Re-ingest from firm documents or contact support.",
+        });
+      }
+
+      const session = await insertCimScreeningSession({
+        userId,
+        documentId: docRow.id,
+      });
+
+      if (!session) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create screening session",
+        });
+      }
+
+      const jobId = randomUUID();
+      const run = await insertCimScreeningRun({
+        sessionId: session.id,
+        screenerId: input.screenerId,
+        workflowInstanceId: jobId,
+      });
+
+      if (!run) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create screening run",
+        });
+      }
+
+      const fileLabel = docRow.fileName ?? docRow.title ?? "CIM.pdf";
+
+      await insertWorkflowJob({
+        instanceId: jobId,
+        workflowKind: "cim-screening",
+        userId,
+        fileName: fileLabel,
+        screenerId: input.screenerId,
+      });
+
+      await startCimScreeningWorkflow(jobId, {
+        jobId,
+        userId,
+        documentId: docRow.id,
+        screenerId: input.screenerId,
+        sessionId: session.id,
+        runId: run.id,
+      });
+
+      return {
+        sessionId: session.id,
+        runId: run.id,
+        documentId: docRow.id,
+        jobLabel: fileLabel,
+        jobId,
+        queueName: QUEUE_NAMES.CIM_SCREENING,
+      };
+    }),
+
+  startRun: protectedProcedure
+    .input(startCimScreeningRunInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+      if (!userId?.trim()) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "User ID required" });
+      }
+
+      const session = await getCimScreeningSessionByIdForUser(
         input.sessionId,
         userId,
       );
@@ -293,7 +286,7 @@ export const simScreeningRouter = createTRPCRouter({
       }
 
       const dealOppId = session.dealOpportunityId?.trim();
-      const simDocId = session.documentId?.trim();
+      const libraryDocId = session.documentId?.trim();
 
       if (dealOppId) {
         const chunkCount =
@@ -305,12 +298,8 @@ export const simScreeningRouter = createTRPCRouter({
               "No ingested document chunks for this deal. Upload files and wait for processing, then try again.",
           });
         }
-      } else if (simDocId) {
-        const [docRow] = await db
-          .select()
-          .from(documents)
-          .where(eq(documents.id, simDocId))
-          .limit(1);
+      } else if (libraryDocId) {
+        const docRow = await getLibraryDocumentByIdForCim(libraryDocId);
 
         if (!docRow || docRow.ingestionStatus !== "PROCESSED") {
           throw new TRPCError({
@@ -319,7 +308,7 @@ export const simScreeningRouter = createTRPCRouter({
               "Document must be fully ingested before screening with another template. Wait for the first run to finish or retry a failed run.",
           });
         }
-        const docChunks = await countDocumentChunksByDocumentId(simDocId);
+        const docChunks = await countDocumentChunksByDocumentId(libraryDocId);
         if (docChunks === 0) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -342,15 +331,16 @@ export const simScreeningRouter = createTRPCRouter({
         });
       }
 
-      if (await simScreeningSessionHasActiveRun(input.sessionId)) {
+      if (await cimScreeningSessionHasActiveRun(input.sessionId)) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "Another screening run is already in progress for this session.",
+          message:
+            "Another screening run is already in progress for this session.",
         });
       }
 
       const jobId = randomUUID();
-      const run = await insertSimScreeningRun({
+      const run = await insertCimScreeningRun({
         sessionId: session.id,
         screenerId: input.screenerId,
         workflowInstanceId: jobId,
@@ -363,44 +353,34 @@ export const simScreeningRouter = createTRPCRouter({
         });
       }
 
-      let fileLabel = "SIM.pdf";
+      let fileLabel = "CIM.pdf";
       let workflowDealId: string | undefined;
       if (dealOppId) {
-        const [oppRow] = await db
-          .select({
-            dealTeaser: dealOpportunities.dealTeaser,
-          })
-          .from(dealOpportunities)
-          .where(eq(dealOpportunities.id, dealOppId))
-          .limit(1);
-        const teaser = oppRow?.dealTeaser?.trim();
-        fileLabel =
-          teaser && teaser.length > 120 ? `${teaser.slice(0, 120)}…` : teaser ?? "Deal opportunity";
+        const oppRow = await getDealOpportunityBriefForCim(dealOppId);
+        fileLabel = oppRow
+          ? dealOpportunityHeadline(oppRow)
+          : "Deal opportunity";
         workflowDealId = dealOppId;
       } else {
-        const [docRow] = await db
-          .select()
-          .from(documents)
-          .where(eq(documents.id, simDocId!))
-          .limit(1);
-        fileLabel = docRow?.fileName ?? docRow?.title ?? "SIM.pdf";
+        const docRow = await getLibraryDocumentByIdForCim(libraryDocId!);
+        fileLabel = docRow?.fileName ?? docRow?.title ?? "CIM.pdf";
       }
 
       await insertWorkflowJob({
         instanceId: jobId,
-        workflowKind: "sim-screening",
+        workflowKind: "cim-screening",
         userId,
         fileName: fileLabel,
         screenerId: input.screenerId,
         dealId: workflowDealId ?? null,
       });
 
-      await startSimScreeningWorkflow(jobId, {
+      await startCimScreeningWorkflow(jobId, {
         jobId,
         userId,
         ...(dealOppId
           ? { dealOpportunityId: dealOppId }
-          : { documentId: simDocId! }),
+          : { documentId: libraryDocId! }),
         screenerId: input.screenerId,
         sessionId: session.id,
         runId: run.id,
@@ -410,16 +390,15 @@ export const simScreeningRouter = createTRPCRouter({
         sessionId: session.id,
         runId: run.id,
         jobId,
-        queueName: QUEUE_NAMES.SIM_SCREENING,
+        queueName: QUEUE_NAMES.CIM_SCREENING,
       };
     }),
 
-  /** Cheap polling: session meta, runs, selected run, job — no questions/answers/chunks. */
   getSessionStatus: protectedProcedure
-    .input(simSessionRouteInputSchema)
+    .input(cimSessionRouteInputSchema)
     .query(async ({ input, ctx }) => {
       const userId = ctx.user.id;
-      const base = await loadSimScreeningSessionBase(input, userId);
+      const base = await loadCimScreeningSessionBase(input, userId);
       if (!base) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
       }
@@ -433,23 +412,24 @@ export const simScreeningRouter = createTRPCRouter({
         session: base.session,
         document: documentRow
           ? {
-            id: documentRow.id,
-            title: documentRow.title,
-            fileName: documentRow.fileName,
-            fileSize: documentRow.fileSize,
-            mimeType: documentRow.mimeType,
-            ingestionStatus: documentRow.ingestionStatus,
-            ingestionError: documentRow.ingestionError,
-            ingestionCompletedAt: documentRow.ingestionCompletedAt,
-            createdAt: documentRow.createdAt,
-          }
+              id: documentRow.id,
+              title: documentRow.title,
+              fileName: documentRow.fileName,
+              fileSize: documentRow.fileSize,
+              mimeType: documentRow.mimeType,
+              ingestionStatus: documentRow.ingestionStatus,
+              ingestionError: documentRow.ingestionError,
+              ingestionCompletedAt: documentRow.ingestionCompletedAt,
+              createdAt: documentRow.createdAt,
+            }
           : null,
         dealOpportunity: dealRow
           ? {
-            id: dealRow.id,
-            dealTeaser: dealRow.dealTeaser,
-            description: dealRow.description,
-          }
+              id: dealRow.id,
+              title: dealRow.title,
+              dealTeaser: dealRow.dealTeaser,
+              description: dealRow.description,
+            }
           : null,
         runs: base.mappedRuns,
         selectedRunId: base.selectedRunId,
@@ -459,12 +439,11 @@ export const simScreeningRouter = createTRPCRouter({
       };
     }),
 
-  /** Full session including per-question scores and evidence citations. */
   getSession: protectedProcedure
-    .input(simSessionRouteInputSchema)
+    .input(cimSessionRouteInputSchema)
     .query(async ({ input, ctx }) => {
       const userId = ctx.user.id;
-      const base = await loadSimScreeningSessionBase(input, userId);
+      const base = await loadCimScreeningSessionBase(input, userId);
       if (!base) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
       }
@@ -476,7 +455,7 @@ export const simScreeningRouter = createTRPCRouter({
           ? getScreenerQuestions(base.selectedRun.screenerId)
           : Promise.resolve([]),
         base.selectedRun
-          ? getSimScreeningAnswersByRunId(base.selectedRun.id)
+          ? getCimScreeningAnswersByRunId(base.selectedRun.id)
           : Promise.resolve([]),
         base.jobPromise,
       ]);
@@ -518,33 +497,34 @@ export const simScreeningRouter = createTRPCRouter({
         session: base.session,
         document: documentRow
           ? {
-            id: documentRow.id,
-            title: documentRow.title,
-            fileName: documentRow.fileName,
-            fileSize: documentRow.fileSize,
-            mimeType: documentRow.mimeType,
-            ingestionStatus: documentRow.ingestionStatus,
-            ingestionError: documentRow.ingestionError,
-            ingestionCompletedAt: documentRow.ingestionCompletedAt,
-            createdAt: documentRow.createdAt,
-          }
+              id: documentRow.id,
+              title: documentRow.title,
+              fileName: documentRow.fileName,
+              fileSize: documentRow.fileSize,
+              mimeType: documentRow.mimeType,
+              ingestionStatus: documentRow.ingestionStatus,
+              ingestionError: documentRow.ingestionError,
+              ingestionCompletedAt: documentRow.ingestionCompletedAt,
+              createdAt: documentRow.createdAt,
+            }
           : null,
         dealOpportunity: dealRow
           ? {
-            id: dealRow.id,
-            dealTeaser: dealRow.dealTeaser,
-            description: dealRow.description,
-          }
+              id: dealRow.id,
+              title: dealRow.title,
+              dealTeaser: dealRow.dealTeaser,
+              description: dealRow.description,
+            }
           : null,
         runs: base.mappedRuns,
         selectedRunId: base.selectedRunId,
         run: base.run,
         screener: screenerRow
           ? {
-            id: screenerRow.id,
-            name: screenerRow.name,
-            category: screenerRow.category,
-          }
+              id: screenerRow.id,
+              name: screenerRow.name,
+              category: screenerRow.category,
+            }
           : null,
         rows,
         job,
@@ -552,14 +532,14 @@ export const simScreeningRouter = createTRPCRouter({
     }),
 
   retry: protectedProcedure
-    .input(retrySimScreeningRunInputSchema)
+    .input(retryCimScreeningRunInputSchema)
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.user.id;
       if (!userId?.trim()) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "User ID required" });
       }
 
-      const run = await getSimScreeningRunByIdForUser(input.runId, userId);
+      const run = await getCimScreeningRunByIdForUser(input.runId, userId);
       if (!run) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Run not found" });
       }
@@ -582,7 +562,7 @@ export const simScreeningRouter = createTRPCRouter({
         });
       }
 
-      const session = await getSimScreeningSessionByIdForUser(
+      const session = await getCimScreeningSessionByIdForUser(
         run.sessionId,
         userId,
       );
@@ -591,9 +571,9 @@ export const simScreeningRouter = createTRPCRouter({
       }
 
       const dealOppId = session.dealOpportunityId?.trim();
-      const simDocId = session.documentId?.trim();
+      const libraryDocId = session.documentId?.trim();
 
-      let fileLabel = "SIM.pdf";
+      let fileLabel = "CIM.pdf";
       let workflowPayload:
         | { dealOpportunityId: string }
         | { documentId: string };
@@ -608,21 +588,13 @@ export const simScreeningRouter = createTRPCRouter({
               "No ingested document chunks for this deal. Upload files and wait for processing, then try again.",
           });
         }
-        const [oppRow] = await db
-          .select({ dealTeaser: dealOpportunities.dealTeaser })
-          .from(dealOpportunities)
-          .where(eq(dealOpportunities.id, dealOppId))
-          .limit(1);
-        const teaser = oppRow?.dealTeaser?.trim();
-        fileLabel =
-          teaser && teaser.length > 120 ? `${teaser.slice(0, 120)}…` : teaser ?? "Deal opportunity";
+        const oppRow = await getDealOpportunityBriefForCim(dealOppId);
+        fileLabel = oppRow
+          ? dealOpportunityHeadline(oppRow)
+          : "Deal opportunity";
         workflowPayload = { dealOpportunityId: dealOppId };
-      } else if (simDocId) {
-        const [docRow] = await db
-          .select()
-          .from(documents)
-          .where(eq(documents.id, simDocId))
-          .limit(1);
+      } else if (libraryDocId) {
+        const docRow = await getLibraryDocumentByIdForCim(libraryDocId);
         if (!docRow || docRow.ingestionStatus !== "PROCESSED") {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -630,7 +602,7 @@ export const simScreeningRouter = createTRPCRouter({
               "Document must be fully ingested before retry. Fix ingestion from Firm documents, then retry.",
           });
         }
-        const chunks = await countDocumentChunksByDocumentId(simDocId);
+        const chunks = await countDocumentChunksByDocumentId(libraryDocId);
         if (chunks === 0) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -638,8 +610,8 @@ export const simScreeningRouter = createTRPCRouter({
               "No chunks for this document. Re-ingest from Firm documents, then retry.",
           });
         }
-        fileLabel = docRow.fileName ?? docRow.title ?? "SIM.pdf";
-        workflowPayload = { documentId: simDocId };
+        fileLabel = docRow.fileName ?? docRow.title ?? "CIM.pdf";
+        workflowPayload = { documentId: libraryDocId };
       } else {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -650,18 +622,18 @@ export const simScreeningRouter = createTRPCRouter({
       const oldJobId = run.workflowInstanceId;
       if (oldJobId) {
         try {
-          await terminateWorkflowInstance("sim-screening", oldJobId);
+          await terminateWorkflowInstance("cim-screening", oldJobId);
         } catch {
           // Instance may already be gone
         }
         await deleteWorkflowJobRow(oldJobId);
       }
 
-      await deleteSimScreeningAnswersForRun(input.runId);
+      await deleteCimScreeningAnswersForRun(input.runId);
 
       const newJobId = randomUUID();
 
-      await updateSimScreeningRun(input.runId, {
+      await updateCimScreeningRun(input.runId, {
         status: "PENDING",
         errorMessage: null,
         workflowInstanceId: newJobId,
@@ -669,14 +641,14 @@ export const simScreeningRouter = createTRPCRouter({
 
       await insertWorkflowJob({
         instanceId: newJobId,
-        workflowKind: "sim-screening",
+        workflowKind: "cim-screening",
         userId,
         fileName: fileLabel,
         screenerId: run.screenerId,
         dealId: dealOppId ?? null,
       });
 
-      await startSimScreeningWorkflow(newJobId, {
+      await startCimScreeningWorkflow(newJobId, {
         jobId: newJobId,
         userId,
         screenerId: run.screenerId,
@@ -689,15 +661,15 @@ export const simScreeningRouter = createTRPCRouter({
         sessionId: session.id,
         runId: run.id,
         jobId: newJobId,
-        queueName: QUEUE_NAMES.SIM_SCREENING,
+        queueName: QUEUE_NAMES.CIM_SCREENING,
       };
     }),
 
   listSessions: protectedProcedure
-    .input(listSimScreeningSessionsInputSchema)
+    .input(listCimScreeningSessionsInputSchema)
     .query(async ({ ctx, input }) => {
       const userId = ctx.user.id;
       const limit = input?.limit ?? 50;
-      return listSimScreeningSessionsForUserWithMeta(userId, limit);
+      return listCimScreeningSessionsForUserWithMeta(userId, limit);
     }),
 });

@@ -6,6 +6,10 @@ import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { dealQuickAddApiSchema } from "@/lib/zod-schemas/deal-quick-add-api";
 import { getServerEnv } from "@/lib/env.server";
+import {
+  getBitrixDealStages,
+  getDefaultBitrixStageId,
+} from "@repo/bitrix-sync";
 
 function normalizeCompanyNameKey(value?: string | null): string {
   return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -73,9 +77,9 @@ async function postDealOpportunitiesQuickAdd(request: Request) {
     const input = parsed.data;
 
     const result = await db.transaction(async (tx) => {
-      const name = (
-        input.companyName?.trim() || input.dealTeaser
-      ).trim().slice(0, 255);
+      const headline =
+        input.title?.trim() || input.dealTeaser?.trim() || "";
+      const name = (input.companyName?.trim() || headline).trim().slice(0, 255);
       const normalizedName = buildNormalizedNameForQuickAdd(
         name,
         input.location?.trim() || null,
@@ -107,7 +111,11 @@ async function postDealOpportunitiesQuickAdd(request: Request) {
           ebitda: null,
           ebitdaMargin: null,
           askingPrice: null,
-          dealTeaser: input.dealTeaser || null,
+          title: headline || null,
+          dealTeaser:
+            input.title?.trim() && input.dealTeaser?.trim()
+              ? input.dealTeaser.trim()
+              : null,
           description: input.description || null,
           brokerFirstName: input.brokerFirstName || null,
           brokerLastName: input.brokerLastName || null,
@@ -115,6 +123,7 @@ async function postDealOpportunitiesQuickAdd(request: Request) {
           brokerPhone: input.brokerPhone || null,
           brokerLinkedIn: input.brokerLinkedIn || null,
           userId: null,
+          stage: getDefaultBitrixStageId(getBitrixDealStages()),
         })
         .returning();
 

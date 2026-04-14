@@ -22,7 +22,7 @@ import {
   theses,
   themeCompanyCoverage,
   cimExtractions,
-  dealSims,
+  dealCims,
   dealFinancialSnapshots,
   companyFinancialSnapshots,
   dealRiskFlags,
@@ -31,9 +31,9 @@ import {
   investorLeads,
   investorInteractions,
   investorCompanyLinks,
-  simScreeningSessions,
-  simScreeningRuns,
-  simScreeningAnswers,
+  cimScreeningSessions,
+  cimScreeningRuns,
+  cimScreeningAnswers,
   documentChunks,
   type Deal,
   type Lead,
@@ -415,10 +415,10 @@ export const GetDealWithAllRelations = async (uid: string) => {
     if (!deal) return null;
     const [legacyCreator] = deal.userId
       ? await db
-          .select({ name: users.name })
-          .from(users)
-          .where(eq(users.id, deal.userId))
-          .limit(1)
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, deal.userId))
+        .limit(1)
       : [];
     return {
       deal: deal as Deal & { id: string },
@@ -428,8 +428,8 @@ export const GetDealWithAllRelations = async (uid: string) => {
         ReturnType<typeof getAllDealReasoningsWithScreenerName>
       >,
       cimExtraction: null,
-      simScreeningRunsForDeal: [] as Awaited<
-        ReturnType<typeof listSimScreeningRunsForDealOpportunity>
+      cimScreeningRunsForDeal: [] as Awaited<
+        ReturnType<typeof listCimScreeningRunsForDealOpportunity>
       >,
     };
   }
@@ -438,65 +438,65 @@ export const GetDealWithAllRelations = async (uid: string) => {
 
   const companyRows = companyId
     ? await db
-        .select()
-        .from(companies)
-        .where(and(eq(companies.id, companyId), isNull(companies.deletedAt)))
+      .select()
+      .from(companies)
+      .where(and(eq(companies.id, companyId), isNull(companies.deletedAt)))
     : [];
   const company = companyRows[0];
 
   const [creatorRow] = opp.userId
     ? await db
-        .select({ name: users.name })
-        .from(users)
-        .where(eq(users.id, opp.userId))
-        .limit(1)
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, opp.userId))
+      .limit(1)
     : [];
 
   const companyDocsPromise = companyId
     ? db
-        .select()
-        .from(documents)
-        .where(
-          and(
-            eq(documents.entityType, "COMPANY"),
-            eq(documents.entityId, companyId),
-          ),
-        )
+      .select()
+      .from(documents)
+      .where(
+        and(
+          eq(documents.entityType, "COMPANY"),
+          eq(documents.entityId, companyId),
+        ),
+      )
     : Promise.resolve([] as (typeof documents.$inferSelect)[]);
 
   const dealOppsByCompanyPromise = companyId
     ? db
-        .select()
-        .from(dealOpportunities)
-        .where(eq(dealOpportunities.companyId, companyId))
-        .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id))
+      .select()
+      .from(dealOpportunities)
+      .where(eq(dealOpportunities.companyId, companyId))
+      .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id))
     : Promise.resolve([] as (typeof dealOpportunities.$inferSelect)[]);
 
   const companyContactsPromise = companyId
     ? db
-        .select()
-        .from(contacts)
-        .where(
-          and(
-            eq(contacts.entityType, "COMPANY"),
-            eq(contacts.entityId, companyId),
-          ),
-        )
+      .select()
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.entityType, "COMPANY"),
+          eq(contacts.entityId, companyId),
+        ),
+      )
     : Promise.resolve([] as (typeof contacts.$inferSelect)[]);
 
   const outreachWhere = companyId
     ? or(
-        eq(outreach.companyId, companyId),
-        eq(outreach.dealOpportunityId, opp.id),
-      )
+      eq(outreach.companyId, companyId),
+      eq(outreach.dealOpportunityId, opp.id),
+    )
     : eq(outreach.dealOpportunityId, opp.id);
 
   const companyNotesPromise = companyId
     ? db
-        .select()
-        .from(companyNotes)
-        .where(eq(companyNotes.companyId, companyId))
-        .orderBy(desc(companyNotes.createdAt))
+      .select()
+      .from(companyNotes)
+      .where(eq(companyNotes.companyId, companyId))
+      .orderBy(desc(companyNotes.createdAt))
     : Promise.resolve([] as (typeof companyNotes.$inferSelect)[]);
 
   const [
@@ -513,7 +513,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
     latestSnapshot,
     financialSnapshots,
     riskFlags,
-    simScreeningRunsForDeal,
+    cimScreeningRunsForDeal,
   ] = await Promise.all([
     getDealDocuments(opp.id),
     companyDocsPromise,
@@ -555,7 +555,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
     GetLatestDealFinancialSnapshotByDealOpportunityId(opp.id),
     GetDealFinancialSnapshotsByDealOpportunityId(opp.id),
     GetDealRiskFlagsByDealOpportunityId(opp.id),
-    listSimScreeningRunsForDealOpportunity(opp.id),
+    listCimScreeningRunsForDealOpportunity(opp.id),
   ]);
 
   const resolvedRevenue =
@@ -571,13 +571,18 @@ export const GetDealWithAllRelations = async (uid: string) => {
 
   const dealView: Deal & { id: string } = {
     id: opp.id,
-    dealCaption: company?.name ?? opp.dealTeaser?.trim() ?? "",
+    dealCaption:
+      company?.name ??
+      opp.title?.trim() ??
+      opp.dealTeaser?.trim() ??
+      "",
     revenue: resolvedRevenue,
     ebitda: resolvedEbitda,
     ebitdaMargin: resolvedEbitdaMargin,
     brokerage: opp.brokerage ?? "",
     industry: company?.industry ?? "",
-    companyLocation: company?.location ?? null,
+    companyLocation:
+      opp.companyLocation?.trim() || company?.location || null,
     sourceWebsite: opp.sourceWebsite ?? "",
     dealType: opp.dealType,
     status: opp.status,
@@ -621,7 +626,7 @@ export const GetDealWithAllRelations = async (uid: string) => {
     latestFinancialSnapshot: latestSnapshot ?? null,
     financialSnapshots: financialSnapshots ?? [],
     riskFlags: riskFlags ?? [],
-    simScreeningRunsForDeal: simScreeningRunsForDeal ?? [],
+    cimScreeningRunsForDeal: cimScreeningRunsForDeal ?? [],
   };
 };
 
@@ -638,16 +643,16 @@ async function getDealDocuments(dealOpportunityId: string) {
 }
 
 /**
- * Get active SIM for a deal opportunity.
+ * Get active CIM upload for a deal opportunity.
  */
-export const getActiveSimForDeal = async (dealOpportunityId: string) => {
+export const getActiveCimForDeal = async (dealOpportunityId: string) => {
   const [row] = await db
     .select()
-    .from(dealSims)
+    .from(dealCims)
     .where(
       and(
-        eq(dealSims.dealOpportunityId, dealOpportunityId),
-        eq(dealSims.status, "ACTIVE"),
+        eq(dealCims.dealOpportunityId, dealOpportunityId),
+        eq(dealCims.status, "ACTIVE"),
       ),
     )
     .limit(1);
@@ -655,15 +660,15 @@ export const getActiveSimForDeal = async (dealOpportunityId: string) => {
 };
 
 /**
- * Get CIM extraction for the active SIM of a deal opportunity.
- * Falls back to legacy extraction by dealOpportunityId if no active sim.
+ * Get CIM extraction for the active DealCim of a deal opportunity.
+ * Falls back to legacy extraction by dealOpportunityId if no active CIM row.
  */
 export const GetCIMExtractionByDealOpportunityId = async (
   dealOpportunityId: string,
 ) => {
   try {
-    const activeSim = await getActiveSimForDeal(dealOpportunityId);
-    if (activeSim) {
+    const activeCim = await getActiveCimForDeal(dealOpportunityId);
+    if (activeCim) {
       const [row] = await db
         .select({
           extraction: cimExtractions,
@@ -671,9 +676,9 @@ export const GetCIMExtractionByDealOpportunityId = async (
           documentCreatedAt: documents.createdAt,
         })
         .from(cimExtractions)
-        .innerJoin(dealSims, eq(cimExtractions.simId, dealSims.id))
-        .leftJoin(documents, eq(dealSims.documentId, documents.id))
-        .where(eq(cimExtractions.simId, activeSim.id))
+        .innerJoin(dealCims, eq(cimExtractions.dealCimId, dealCims.id))
+        .leftJoin(documents, eq(dealCims.documentId, documents.id))
+        .where(eq(cimExtractions.dealCimId, activeCim.id))
         .limit(1);
       return row?.extraction
         ? {
@@ -1219,14 +1224,30 @@ interface GetDealOpportunitiesResult {
   totalPages: number;
 }
 
+export type DealOpportunityListOpp = Pick<
+  typeof dealOpportunities.$inferSelect,
+  | "id"
+  | "companyId"
+  | "title"
+  | "dealTeaser"
+  | "description"
+  | "companyLocation"
+  | "brokerage"
+  | "stage"
+  | "status"
+  | "revenue"
+  | "ebitda"
+  | "askingPrice"
+  | "dealType"
+  | "reviewState"
+  | "createdAt"
+  | "updatedAt"
+  | "bitrixId"
+  | "bitrixLink"
+>;
+
 export interface RankedDealOpportunityRow {
-  opp: typeof dealOpportunities.$inferSelect;
-  company: {
-    id: string | null;
-    name: string | null;
-    industry: string | null;
-    location: string | null;
-  } | null;
+  opp: DealOpportunityListOpp;
   screening: typeof dealOpportunityScreenings.$inferSelect | null;
 }
 
@@ -1304,42 +1325,140 @@ export const GetDealOpportunitiesByStages = async () => {
   }
 };
 
+const dealOpportunityListOpp = {
+  id: dealOpportunities.id,
+  companyId: dealOpportunities.companyId,
+  title: dealOpportunities.title,
+  dealTeaser: dealOpportunities.dealTeaser,
+  description: dealOpportunities.description,
+  companyLocation: dealOpportunities.companyLocation,
+  brokerage: dealOpportunities.brokerage,
+  stage: dealOpportunities.stage,
+  status: dealOpportunities.status,
+  revenue: dealOpportunities.revenue,
+  ebitda: dealOpportunities.ebitda,
+  askingPrice: dealOpportunities.askingPrice,
+  dealType: dealOpportunities.dealType,
+  reviewState: dealOpportunities.reviewState,
+  createdAt: dealOpportunities.createdAt,
+  updatedAt: dealOpportunities.updatedAt,
+  bitrixId: dealOpportunities.bitrixId,
+  bitrixLink: dealOpportunities.bitrixLink,
+} as const;
+
+const rankedDealOpportunitiesOrderBy = [
+  sql`case
+    when ${dealOpportunityScreenings.status} = 'PASS' then 0
+    when ${dealOpportunityScreenings.status} = 'INCOMPLETE' then 1
+    when ${dealOpportunityScreenings.status} = 'FAIL' then 2
+    else 3
+  end`,
+  desc(dealOpportunityScreenings.score),
+  desc(dealOpportunityScreenings.screenedAt),
+  desc(dealOpportunities.createdAt),
+  desc(dealOpportunities.id),
+] as const;
+
+function escapeIlikePattern(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/%/g, "\\%")
+    .replace(/_/g, "\\_");
+}
+
 export const GetRankedDealOpportunities = async (): Promise<
   RankedDealOpportunityRow[]
 > => {
   try {
     return await db
       .select({
-        opp: dealOpportunities,
-        company: {
-          id: companies.id,
-          name: companies.name,
-          industry: companies.industry,
-          location: companies.location,
-        },
+        opp: dealOpportunityListOpp,
         screening: dealOpportunityScreenings,
       })
       .from(dealOpportunities)
-      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
       .leftJoin(
         dealOpportunityScreenings,
         eq(dealOpportunityScreenings.dealOpportunityId, dealOpportunities.id),
       )
-      .where(isNull(companies.deletedAt))
-      .orderBy(
-        sql`case
-          when ${dealOpportunityScreenings.status} = 'PASS' then 0
-          when ${dealOpportunityScreenings.status} = 'INCOMPLETE' then 1
-          when ${dealOpportunityScreenings.status} = 'FAIL' then 2
-          else 3
-        end`,
-        desc(dealOpportunityScreenings.score),
-        desc(dealOpportunityScreenings.screenedAt),
-        desc(dealOpportunities.createdAt),
-        desc(dealOpportunities.id),
-      );
+      .orderBy(...rankedDealOpportunitiesOrderBy);
   } catch (error) {
     console.error("Failed query: ranked deal opportunities", error);
+    throw error;
+  }
+};
+
+export type GetRankedDealOpportunitiesPaginatedResult = {
+  data: RankedDealOpportunityRow[];
+  totalCount: number;
+  totalPages: number;
+};
+
+/** Ranked deal opportunities with optional text search on listing fields (no `Company` join). */
+export const GetRankedDealOpportunitiesPaginated = async ({
+  offset = 0,
+  limit = 25,
+  query = "",
+}: {
+  offset?: number;
+  limit?: number;
+  query?: string;
+}): Promise<GetRankedDealOpportunitiesPaginatedResult> => {
+  const trimmed = query.trim().slice(0, 500);
+  const pattern = `%${escapeIlikePattern(trimmed)}%`;
+  const searchFilter =
+    trimmed.length > 0
+      ? or(
+        ilike(dealOpportunities.title, pattern),
+        ilike(dealOpportunities.dealTeaser, pattern),
+        ilike(dealOpportunities.description, pattern),
+        ilike(dealOpportunities.companyLocation, pattern),
+        ilike(dealOpportunities.brokerage, pattern),
+      )
+      : undefined;
+
+  const whereClause = searchFilter ?? sql`true`;
+
+  try {
+    const baseFrom = () =>
+      db
+        .select({
+          opp: dealOpportunityListOpp,
+          screening: dealOpportunityScreenings,
+        })
+        .from(dealOpportunities)
+        .leftJoin(
+          dealOpportunityScreenings,
+          eq(
+            dealOpportunityScreenings.dealOpportunityId,
+            dealOpportunities.id,
+          ),
+        )
+        .where(whereClause);
+
+    const [rows, countResult] = await Promise.all([
+      baseFrom()
+        .orderBy(...rankedDealOpportunitiesOrderBy)
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ count: count() })
+        .from(dealOpportunities)
+        .leftJoin(
+          dealOpportunityScreenings,
+          eq(
+            dealOpportunityScreenings.dealOpportunityId,
+            dealOpportunities.id,
+          ),
+        )
+        .where(whereClause),
+    ]);
+
+    const totalCount = Number(countResult[0]?.count ?? 0);
+    const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+
+    return { data: rows, totalCount, totalPages };
+  } catch (error) {
+    console.error("Failed query: ranked deal opportunities (paginated)", error);
     throw error;
   }
 };
@@ -2276,40 +2395,40 @@ export const GetThemeWorkspaceById = async (id: string) => {
   }
 };
 
-export async function getSimScreeningSessionByIdForUser(
+export async function getCimScreeningSessionByIdForUser(
   sessionId: string,
   userId: string,
 ) {
   const [row] = await db
     .select()
-    .from(simScreeningSessions)
+    .from(cimScreeningSessions)
     .where(
       and(
-        eq(simScreeningSessions.id, sessionId),
-        eq(simScreeningSessions.userId, userId),
+        eq(cimScreeningSessions.id, sessionId),
+        eq(cimScreeningSessions.userId, userId),
       ),
     )
     .limit(1);
   return row ?? null;
 }
 
-export async function listSimScreeningSessionsForUser(
+export async function listCimScreeningSessionsForUser(
   userId: string,
   limit = 50,
 ) {
   return db
     .select()
-    .from(simScreeningSessions)
-    .where(eq(simScreeningSessions.userId, userId))
-    .orderBy(desc(simScreeningSessions.createdAt))
+    .from(cimScreeningSessions)
+    .where(eq(cimScreeningSessions.userId, userId))
+    .orderBy(desc(cimScreeningSessions.createdAt))
     .limit(limit);
 }
 
-export async function getSimScreeningAnswersByRunId(runId: string) {
+export async function getCimScreeningAnswersByRunId(runId: string) {
   return db
     .select()
-    .from(simScreeningAnswers)
-    .where(eq(simScreeningAnswers.runId, runId));
+    .from(cimScreeningAnswers)
+    .where(eq(cimScreeningAnswers.runId, runId));
 }
 
 /** Load chunk excerpts for SIM screening evidence IDs (RAG retrieval citations). */
@@ -2326,69 +2445,72 @@ export async function getDocumentChunksByIds(ids: string[]) {
     .where(inArray(documentChunks.id, unique));
 }
 
-export async function getSimScreeningRunsBySessionId(sessionId: string) {
+export async function getCimScreeningRunsBySessionId(sessionId: string) {
   return db
     .select({
-      id: simScreeningRuns.id,
-      sessionId: simScreeningRuns.sessionId,
-      screenerId: simScreeningRuns.screenerId,
-      workflowInstanceId: simScreeningRuns.workflowInstanceId,
-      status: simScreeningRuns.status,
-      errorMessage: simScreeningRuns.errorMessage,
-      createdAt: simScreeningRuns.createdAt,
-      updatedAt: simScreeningRuns.updatedAt,
+      id: cimScreeningRuns.id,
+      sessionId: cimScreeningRuns.sessionId,
+      screenerId: cimScreeningRuns.screenerId,
+      workflowInstanceId: cimScreeningRuns.workflowInstanceId,
+      status: cimScreeningRuns.status,
+      errorMessage: cimScreeningRuns.errorMessage,
+      createdAt: cimScreeningRuns.createdAt,
+      updatedAt: cimScreeningRuns.updatedAt,
       screenerName: screeners.name,
       screenerCategory: screeners.category,
     })
-    .from(simScreeningRuns)
-    .innerJoin(screeners, eq(simScreeningRuns.screenerId, screeners.id))
-    .where(eq(simScreeningRuns.sessionId, sessionId))
-    .orderBy(desc(simScreeningRuns.createdAt));
+    .from(cimScreeningRuns)
+    .innerJoin(screeners, eq(cimScreeningRuns.screenerId, screeners.id))
+    .where(eq(cimScreeningRuns.sessionId, sessionId))
+    .orderBy(desc(cimScreeningRuns.createdAt));
 }
 
 /** All SIM / CIM template screening runs for sessions scoped to this deal opportunity. */
-export async function listSimScreeningRunsForDealOpportunity(
+export async function listCimScreeningRunsForDealOpportunity(
   dealOpportunityId: string,
 ) {
   return db
     .select({
-      runId: simScreeningRuns.id,
-      sessionId: simScreeningSessions.id,
-      status: simScreeningRuns.status,
-      errorMessage: simScreeningRuns.errorMessage,
-      workflowInstanceId: simScreeningRuns.workflowInstanceId,
-      screenerId: simScreeningRuns.screenerId,
+      runId: cimScreeningRuns.id,
+      sessionId: cimScreeningSessions.id,
+      status: cimScreeningRuns.status,
+      errorMessage: cimScreeningRuns.errorMessage,
+      workflowInstanceId: cimScreeningRuns.workflowInstanceId,
+      screenerId: cimScreeningRuns.screenerId,
       screenerName: screeners.name,
       screenerCategory: screeners.category,
-      runCreatedAt: simScreeningRuns.createdAt,
-      sessionCreatedAt: simScreeningSessions.createdAt,
+      runCreatedAt: cimScreeningRuns.createdAt,
+      sessionCreatedAt: cimScreeningSessions.createdAt,
     })
-    .from(simScreeningRuns)
+    .from(cimScreeningRuns)
     .innerJoin(
-      simScreeningSessions,
-      eq(simScreeningRuns.sessionId, simScreeningSessions.id),
+      cimScreeningSessions,
+      eq(cimScreeningRuns.sessionId, cimScreeningSessions.id),
     )
-    .innerJoin(screeners, eq(simScreeningRuns.screenerId, screeners.id))
-    .where(eq(simScreeningSessions.dealOpportunityId, dealOpportunityId))
-    .orderBy(desc(simScreeningRuns.createdAt));
+    .innerJoin(screeners, eq(cimScreeningRuns.screenerId, screeners.id))
+    .where(eq(cimScreeningSessions.dealOpportunityId, dealOpportunityId))
+    .orderBy(desc(cimScreeningRuns.createdAt));
 }
 
-export type SimScreeningRunForDealRow = Awaited<
-  ReturnType<typeof listSimScreeningRunsForDealOpportunity>
+export type CimScreeningRunForDealRow = Awaited<
+  ReturnType<typeof listCimScreeningRunsForDealOpportunity>
 >[number];
 
-export async function getSimScreeningRunByIdForUser(runId: string, userId: string) {
+export async function getCimScreeningRunByIdForUser(
+  runId: string,
+  userId: string,
+) {
   const [row] = await db
-    .select({ run: simScreeningRuns })
-    .from(simScreeningRuns)
+    .select({ run: cimScreeningRuns })
+    .from(cimScreeningRuns)
     .innerJoin(
-      simScreeningSessions,
-      eq(simScreeningRuns.sessionId, simScreeningSessions.id),
+      cimScreeningSessions,
+      eq(cimScreeningRuns.sessionId, cimScreeningSessions.id),
     )
     .where(
       and(
-        eq(simScreeningRuns.id, runId),
-        eq(simScreeningSessions.userId, userId),
+        eq(cimScreeningRuns.id, runId),
+        eq(cimScreeningSessions.userId, userId),
       ),
     )
     .limit(1);
@@ -2415,7 +2537,7 @@ export async function countDocumentChunksByDocumentId(documentId: string) {
 }
 
 /** Global CIM / legacy SIM screening uploads owned by the user (for picker + screening). */
-export async function listSimScreeningLibraryDocumentsForUser(userId: string) {
+export async function listCimScreeningLibraryDocumentsForUser(userId: string) {
   return db
     .select({
       id: documents.id,
@@ -2431,20 +2553,20 @@ export async function listSimScreeningLibraryDocumentsForUser(userId: string) {
       and(
         eq(documents.entityType, "GLOBAL"),
         eq(documents.uploadedById, userId),
-        inArray(documents.category, ["CIM", "SIM_SCREENING"]),
+        inArray(documents.category, ["CIM", "CIM_SCREENING"]),
       ),
     )
     .orderBy(desc(documents.createdAt));
 }
 
-export async function simScreeningSessionHasActiveRun(sessionId: string) {
+export async function cimScreeningSessionHasActiveRun(sessionId: string) {
   const row = await db
-    .select({ id: simScreeningRuns.id })
-    .from(simScreeningRuns)
+    .select({ id: cimScreeningRuns.id })
+    .from(cimScreeningRuns)
     .where(
       and(
-        eq(simScreeningRuns.sessionId, sessionId),
-        inArray(simScreeningRuns.status, [
+        eq(cimScreeningRuns.sessionId, sessionId),
+        inArray(cimScreeningRuns.status, [
           "PENDING",
           "INGESTING",
           "SCREENING",
@@ -2455,39 +2577,40 @@ export async function simScreeningSessionHasActiveRun(sessionId: string) {
   return row.length > 0;
 }
 
-export async function listSimScreeningSessionsForUserWithMeta(
+export async function listCimScreeningSessionsForUserWithMeta(
   userId: string,
   limit = 50,
 ) {
   const rows = await db
     .select({
-      id: simScreeningSessions.id,
-      createdAt: simScreeningSessions.createdAt,
-      documentId: simScreeningSessions.documentId,
-      dealOpportunityId: simScreeningSessions.dealOpportunityId,
+      id: cimScreeningSessions.id,
+      createdAt: cimScreeningSessions.createdAt,
+      documentId: cimScreeningSessions.documentId,
+      dealOpportunityId: cimScreeningSessions.dealOpportunityId,
       docFileName: documents.fileName,
       docTitle: documents.title,
+      dealTitle: dealOpportunities.title,
       dealTeaser: dealOpportunities.dealTeaser,
       dealDescription: dealOpportunities.description,
     })
-    .from(simScreeningSessions)
-    .leftJoin(documents, eq(simScreeningSessions.documentId, documents.id))
+    .from(cimScreeningSessions)
+    .leftJoin(documents, eq(cimScreeningSessions.documentId, documents.id))
     .leftJoin(
       dealOpportunities,
-      eq(simScreeningSessions.dealOpportunityId, dealOpportunities.id),
+      eq(cimScreeningSessions.dealOpportunityId, dealOpportunities.id),
     )
-    .where(eq(simScreeningSessions.userId, userId))
-    .orderBy(desc(simScreeningSessions.createdAt))
+    .where(eq(cimScreeningSessions.userId, userId))
+    .orderBy(desc(cimScreeningSessions.createdAt))
     .limit(limit);
 
   const base = rows.map((s) => {
-    const teaser = s.dealTeaser?.trim();
+    const headline = s.dealTitle?.trim() || s.dealTeaser?.trim() || null;
     const fileName =
       s.docFileName ??
-      (teaser
-        ? teaser.length > 120
-          ? `${teaser.slice(0, 120)}…`
-          : teaser
+      (headline
+        ? headline.length > 120
+          ? `${headline.slice(0, 120)}…`
+          : headline
         : "Deal opportunity");
     const title = s.docTitle ?? s.dealDescription ?? "";
     return {
@@ -2505,21 +2628,18 @@ export async function listSimScreeningSessionsForUserWithMeta(
   const sessionIds = base.map((b) => b.id);
   const allRuns = await db
     .select({
-      sessionId: simScreeningRuns.sessionId,
-      status: simScreeningRuns.status,
+      sessionId: cimScreeningRuns.sessionId,
+      status: cimScreeningRuns.status,
       screenerName: screeners.name,
-      createdAt: simScreeningRuns.createdAt,
+      createdAt: cimScreeningRuns.createdAt,
     })
-    .from(simScreeningRuns)
-    .innerJoin(screeners, eq(simScreeningRuns.screenerId, screeners.id))
-    .where(inArray(simScreeningRuns.sessionId, sessionIds))
-    .orderBy(desc(simScreeningRuns.createdAt));
+    .from(cimScreeningRuns)
+    .innerJoin(screeners, eq(cimScreeningRuns.screenerId, screeners.id))
+    .where(inArray(cimScreeningRuns.sessionId, sessionIds))
+    .orderBy(desc(cimScreeningRuns.createdAt));
 
   const runCountBySession = new Map<string, number>();
-  const latestBySession = new Map<
-    string,
-    (typeof allRuns)[number]
-  >();
+  const latestBySession = new Map<string, (typeof allRuns)[number]>();
   for (const r of allRuns) {
     runCountBySession.set(
       r.sessionId,
@@ -2541,3 +2661,18 @@ export async function listSimScreeningSessionsForUserWithMeta(
     };
   });
 }
+
+/** TRPC / app helpers live in `queries/deal-trpc.ts`; re-exported here because `@repo/db/queries` resolves to this file. */
+export * from "./queries/deal-trpc";
+export * from "./queries/companies-trpc";
+export * from "./queries/themes-trpc";
+export * from "./queries/leads-trpc";
+export * from "./queries/analytics-trpc";
+export * from "./queries/cim-screening-trpc";
+
+export {
+  normalizeStoredDealStageForPipeline,
+  GetRankedDealOpportunityKanbanSummary,
+  GetRankedDealOpportunitiesForKanbanColumnPaginated,
+} from "./queries/deal-opportunity";
+export type { GetRankedDealOpportunityKanbanSummaryResult } from "./queries/deal-opportunity";

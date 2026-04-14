@@ -18,6 +18,8 @@ export const bitrixSyncFormSchema = z.object({
   askingPrice: z.coerce.number().optional().nullable(),
   ebitda: z.coerce.number().optional().nullable(),
   ebitdaMargin: z.coerce.number().optional().nullable(),
+  teaser: z.string().optional().nullable(),
+  revenue: z.coerce.number().optional().nullable(),
 });
 
 export type BitrixSyncFormValues = z.infer<typeof bitrixSyncFormSchema>;

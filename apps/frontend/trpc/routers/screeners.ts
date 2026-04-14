@@ -2,15 +2,14 @@ import { z } from "zod";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { TRPCError } from "@trpc/server";
+import {
+  screenerQuestionFieldsSchema,
+  screenerTemplateSchema,
+} from "@repo/schemas";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, {
-  screeners,
-  screenerQuestions,
+import {
   ScreenerResponseSource,
   ScreenerResponseType,
-  eq,
-  and,
-  asc,
 } from "@repo/db";
 import {
   getAllScreeners,
@@ -23,18 +22,17 @@ import {
   DeleteScreenerById,
   DeleteScreenerQuestionById,
   UpsertScreenerResponse,
+  insertScreenerTemplate,
+  updateScreenerTemplateById,
+  insertScreenerQuestion,
+  updateScreenerQuestionById,
+  listScreenerQuestionIdsOrdered,
+  resequenceScreenerQuestionPositionsTx,
+  reorderScreenerQuestionsTx,
 } from "@repo/db/mutations";
 
-const screenerTemplateSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  category: z.string().min(1, "Category is required"),
-  description: z.string().optional(),
-});
-
-const screenerQuestionSchema = z.object({
+const screenerQuestionSchema = screenerQuestionFieldsSchema.extend({
   screenerId: z.string().min(1, "Screener ID is required"),
-  question: z.string().min(1, "Question is required"),
-  weight: z.coerce.number().int().min(0).max(100),
   responseType: z.literal(ScreenerResponseType.SCORE).default(
     ScreenerResponseType.SCORE,
   ),
@@ -77,14 +75,11 @@ export const screenersRouter = createTRPCRouter({
     .input(screenerTemplateSchema)
     .mutation(async ({ input }) => {
       console.log("createTemplate", input);
-      const [created] = await db
-        .insert(screeners)
-        .values({
-          name: input.name,
-          category: input.category,
-          description: input.description || null,
-        })
-        .returning();
+      const created = await insertScreenerTemplate({
+        name: input.name,
+        category: input.category,
+        description: input.description || null,
+      });
 
       scheduleRevalidateScreenerPaths(created?.id);
       return { screenerId: created?.id };
@@ -97,15 +92,11 @@ export const screenersRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      await db
-        .update(screeners)
-        .set({
-          name: input.name,
-          category: input.category,
-          description: input.description || null,
-          updatedAt: new Date(),
-        })
-        .where(eq(screeners.id, input.screenerId));
+      await updateScreenerTemplateById(input.screenerId, {
+        name: input.name,
+        category: input.category,
+        description: input.description || null,
+      });
 
       scheduleRevalidateScreenerPaths(input.screenerId);
       return { screenerId: input.screenerId };
@@ -129,16 +120,13 @@ export const screenersRouter = createTRPCRouter({
           1
           : 0;
 
-      const [created] = await db
-        .insert(screenerQuestions)
-        .values({
-          screenerId: input.screenerId,
-          question: input.question,
-          weight: input.weight,
-          responseType: input.responseType,
-          position: nextPosition,
-        })
-        .returning();
+      const created = await insertScreenerQuestion({
+        screenerId: input.screenerId,
+        question: input.question,
+        weight: input.weight,
+        responseType: input.responseType,
+        position: nextPosition,
+      });
 
       scheduleRevalidateScreenerPaths(input.screenerId);
       return { questionId: created?.id };
@@ -147,20 +135,13 @@ export const screenersRouter = createTRPCRouter({
   updateQuestion: protectedProcedure
     .input(screenerQuestionUpdateSchema)
     .mutation(async ({ input }) => {
-      await db
-        .update(screenerQuestions)
-        .set({
-          question: input.question,
-          weight: input.weight,
-          responseType: input.responseType,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(screenerQuestions.id, input.id),
-            eq(screenerQuestions.screenerId, input.screenerId),
-          ),
-        );
+      await updateScreenerQuestionById({
+        id: input.id,
+        screenerId: input.screenerId,
+        question: input.question,
+        weight: input.weight,
+        responseType: input.responseType,
+      });
 
       scheduleRevalidateScreenerPaths(input.screenerId);
       return { questionId: input.id };
@@ -186,34 +167,10 @@ export const screenersRouter = createTRPCRouter({
         });
       }
 
-      const remaining = await db
-        .select({ id: screenerQuestions.id })
-        .from(screenerQuestions)
-        .where(eq(screenerQuestions.screenerId, input.screenerId))
-        .orderBy(asc(screenerQuestions.position), asc(screenerQuestions.createdAt));
+      const remaining = await listScreenerQuestionIdsOrdered(input.screenerId);
 
       if (remaining.length > 0) {
-        const OFFSET = 100000;
-        const now = new Date();
-
-        await db.transaction(async (tx) => {
-          await Promise.all(
-            remaining.map((question, index) =>
-              tx
-                .update(screenerQuestions)
-                .set({ position: OFFSET + index, updatedAt: now })
-                .where(eq(screenerQuestions.id, question.id)),
-            ),
-          );
-          await Promise.all(
-            remaining.map((question, index) =>
-              tx
-                .update(screenerQuestions)
-                .set({ position: index, updatedAt: now })
-                .where(eq(screenerQuestions.id, question.id)),
-            ),
-          );
-        });
+        await resequenceScreenerQuestionPositionsTx(input.screenerId, remaining);
       }
 
       scheduleRevalidateScreenerPaths(input.screenerId);
@@ -241,36 +198,9 @@ export const screenersRouter = createTRPCRouter({
         });
       }
 
-      const OFFSET = 100000;
-      const now = new Date();
-
-      await db.transaction(async (tx) => {
-        await Promise.all(
-          input.questionIds.map((questionId, index) =>
-            tx
-              .update(screenerQuestions)
-              .set({ position: OFFSET + index, updatedAt: now })
-              .where(
-                and(
-                  eq(screenerQuestions.id, questionId),
-                  eq(screenerQuestions.screenerId, input.screenerId),
-                ),
-              ),
-          ),
-        );
-        await Promise.all(
-          input.questionIds.map((questionId, index) =>
-            tx
-              .update(screenerQuestions)
-              .set({ position: index, updatedAt: now })
-              .where(
-                and(
-                  eq(screenerQuestions.id, questionId),
-                  eq(screenerQuestions.screenerId, input.screenerId),
-                ),
-              ),
-          ),
-        );
+      await reorderScreenerQuestionsTx({
+        screenerId: input.screenerId,
+        questionIds: input.questionIds,
       });
 
       scheduleRevalidateScreenerPaths(input.screenerId);

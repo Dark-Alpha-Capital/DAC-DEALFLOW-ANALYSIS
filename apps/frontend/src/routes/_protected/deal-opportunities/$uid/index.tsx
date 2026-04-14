@@ -8,6 +8,7 @@ import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
 } from "@/lib/route-loader-cache";
+import { DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
 
 export const Route = createFileRoute("/_protected/deal-opportunities/$uid/")({
   staleTime: ROUTE_DATA_STALE_TIME_MS,
@@ -60,7 +61,12 @@ function DealOpportunityDetailView(props: {
             <p className="text-muted-foreground text-xs">{error}</p>
           )}
           <Button asChild>
-            <Link to="/deal-opportunities">Back to Deal opportunities</Link>
+            <Link
+              to="/deal-opportunities"
+              search={DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH}
+            >
+              Back to Deal opportunities
+            </Link>
           </Button>
         </div>
       </section>
@@ -79,7 +85,12 @@ function DealOpportunityDetailView(props: {
             removed.
           </p>
           <Button asChild>
-            <Link to="/deal-opportunities">Back to Deal opportunities</Link>
+            <Link
+              to="/deal-opportunities"
+              search={DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH}
+            >
+              Back to Deal opportunities
+            </Link>
           </Button>
         </div>
       </section>
@@ -108,7 +119,7 @@ function DealOpportunityDetailView(props: {
         companyNotes={dealData.companyNotes ?? []}
         financialSnapshots={dealData.financialSnapshots ?? []}
         creatorName={dealData.creatorName ?? null}
-        simScreeningRunsForDeal={dealData.simScreeningRunsForDeal ?? []}
+        cimScreeningRunsForDeal={dealData.cimScreeningRunsForDeal ?? []}
         cimAnalysis={cimAnalysis}
       />
     </section>

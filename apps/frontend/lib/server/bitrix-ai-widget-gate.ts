@@ -6,6 +6,8 @@
  */
 
 export const BITRIX_AI_WIDGET_PAGE_PATH = "/deal-opportunities/ai-bitrix";
+export const BITRIX_SCREENING_WIDGET_PAGE_PATH =
+  "/deal-opportunities/screen-bitrix";
 export const BITRIX_AI_EXTRACT_API_PATH =
   "/api/deal-opportunities/ai-bitrix-extract";
 
@@ -16,6 +18,7 @@ export function isBitrixAiWidgetGatePath(pathname: string): boolean {
   const p = pathname.replace(/\/+$/, "") || "/";
   return (
     p === BITRIX_AI_WIDGET_PAGE_PATH ||
+    p === BITRIX_SCREENING_WIDGET_PAGE_PATH ||
     p === BITRIX_AI_EXTRACT_API_PATH ||
     pathname.startsWith(`${BITRIX_AI_EXTRACT_API_PATH}/`)
   );

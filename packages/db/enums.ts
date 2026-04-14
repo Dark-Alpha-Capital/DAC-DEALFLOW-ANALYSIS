@@ -17,19 +17,6 @@ export const DealStatus = {
 } as const;
 export type DealStatus = (typeof DealStatus)[keyof typeof DealStatus];
 
-export const DealStage = {
-  LISTED: "LISTED",
-  INITIAL_REVIEW: "INITIAL_REVIEW",
-  SCREENED: "SCREENED",
-  MEETING_HELD: "MEETING_HELD",
-  IOI_SUBMITTED: "IOI_SUBMITTED",
-  LOI_SUBMITTED: "LOI_SUBMITTED",
-  DILIGENCE: "DILIGENCE",
-  CLOSED: "CLOSED",
-  DEAD: "DEAD",
-} as const;
-export type DealStage = (typeof DealStage)[keyof typeof DealStage];
-
 export const DealDocumentCategory = {
   LEGAL: "LEGAL",
   DOCUMENTATION: "DOCUMENTATION",
@@ -163,7 +150,7 @@ export const DocumentCategory = {
   VALUE_CREATION_PLAYBOOK: "VALUE_CREATION_PLAYBOOK",
   PAST_DEAL_ANALYSIS: "PAST_DEAL_ANALYSIS",
   DUE_DILIGENCE_CHECKLIST: "DUE_DILIGENCE_CHECKLIST",
-  SIM_SCREENING: "SIM_SCREENING",
+  CIM_SCREENING: "CIM_SCREENING",
   CIM: "CIM",
 } as const;
 export type DocumentCategory =

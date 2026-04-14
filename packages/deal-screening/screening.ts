@@ -397,8 +397,6 @@ export async function upsertDealOpportunityScreening(
 
   const values = toScreeningRecord(dealOpportunityId, result);
 
-  console.log("screening result", values);
-
   const [saved] = await db
     .insert(dealOpportunityScreenings)
     .values(values)

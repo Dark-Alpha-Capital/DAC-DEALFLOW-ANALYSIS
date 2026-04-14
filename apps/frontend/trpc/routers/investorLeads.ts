@@ -1,15 +1,18 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, {
-  investorInteractions,
-  investorLeads,
-  investors,
-  desc,
-  eq,
-} from "@repo/db";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { convertInvestorLeadToInvestorSchema } from "@/lib/schemas";
+import {
+  insertInvestorLeadRow,
+  listInvestorLeadInteractions,
+  insertInvestorLeadInteraction,
+  updateInvestorLeadInteractionById,
+  deleteInvestorLeadInteractionById,
+  updateInvestorLeadById,
+  deleteInvestorLeadById,
+  convertInvestorLeadToInvestorTx,
+} from "@repo/db/mutations";
 
 const investorLeadStatusEnum = z.enum([
   "RAW",
@@ -42,19 +45,16 @@ export const investorLeadsRouter = createTRPCRouter({
   create: protectedProcedure
     .input(investorLeadSchema)
     .mutation(async ({ input, ctx }) => {
-      const [added] = await db
-        .insert(investorLeads)
-        .values({
-          name: input.name || null,
-          source: input.source || null,
-          email: input.email || null,
-          phone: input.phone || null,
-          inferredType: input.inferredType || null,
-          notes: input.notes || null,
-          status: input.status ?? "RAW",
-          ownerUserId: input.ownerUserId || ctx.session?.user?.id || null,
-        })
-        .returning();
+      const added = await insertInvestorLeadRow({
+        name: input.name || null,
+        source: input.source || null,
+        email: input.email || null,
+        phone: input.phone || null,
+        inferredType: input.inferredType || null,
+        notes: input.notes || null,
+        status: input.status ?? "RAW",
+        ownerUserId: input.ownerUserId || ctx.session?.user?.id || null,
+      });
 
       after(async () => {
         revalidatePath("/investor-leads");
@@ -66,11 +66,7 @@ export const investorLeadsRouter = createTRPCRouter({
   listInteractions: protectedProcedure
     .input(z.object({ investorLeadId: z.string() }))
     .query(async ({ input }) => {
-      return db
-        .select()
-        .from(investorInteractions)
-        .where(eq(investorInteractions.investorLeadId, input.investorLeadId))
-        .orderBy(desc(investorInteractions.createdAt));
+      return listInvestorLeadInteractions(input.investorLeadId);
     }),
 
   createInteraction: protectedProcedure
@@ -83,16 +79,13 @@ export const investorLeadsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const [added] = await db
-        .insert(investorInteractions)
-        .values({
-          investorLeadId: input.investorLeadId,
-          investorId: null,
-          type: input.type,
-          notes: input.notes || null,
-          outcome: input.outcome || null,
-        })
-        .returning();
+      const added = await insertInvestorLeadInteraction({
+        investorLeadId: input.investorLeadId,
+        investorId: null,
+        type: input.type,
+        notes: input.notes || null,
+        outcome: input.outcome || null,
+      });
 
       after(async () => {
         revalidatePath(`/investor-leads/${input.investorLeadId}`);
@@ -127,10 +120,7 @@ export const investorLeadsRouter = createTRPCRouter({
 
       if (Object.keys(updates).length === 0) return { investorInteractionId: id };
 
-      await db
-        .update(investorInteractions)
-        .set(updates)
-        .where(eq(investorInteractions.id, id));
+      await updateInvestorLeadInteractionById(id, updates);
 
       after(async () => {
         revalidatePath(`/investor-leads/${investorLeadId}`);
@@ -143,9 +133,7 @@ export const investorLeadsRouter = createTRPCRouter({
   deleteInteraction: protectedProcedure
     .input(z.object({ investorLeadId: z.string(), id: z.string() }))
     .mutation(async ({ input }) => {
-      await db
-        .delete(investorInteractions)
-        .where(eq(investorInteractions.id, input.id));
+      await deleteInvestorLeadInteractionById(input.id);
 
       after(async () => {
         revalidatePath(`/investor-leads/${input.investorLeadId}`);
@@ -181,7 +169,7 @@ export const investorLeadsRouter = createTRPCRouter({
         updates.ownerUserId =
           data.ownerUserId || ctx.session?.user?.id || null;
       if (Object.keys(updates).length === 0) return { investorLeadId: id };
-      await db.update(investorLeads).set(updates).where(eq(investorLeads.id, id));
+      await updateInvestorLeadById(id, updates);
 
       after(async () => {
         revalidatePath("/investor-leads");
@@ -196,7 +184,7 @@ export const investorLeadsRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      await db.delete(investorLeads).where(eq(investorLeads.id, input.id));
+      await deleteInvestorLeadById(input.id);
       after(async () => {
         revalidatePath("/investor-leads");
         revalidateTag("investor-leads", "max");
@@ -210,69 +198,33 @@ export const investorLeadsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const { investorLeadId, ...investorData } = input;
 
-      const result = await db.transaction(async (tx) => {
-        const [lead] = await tx
-          .select()
-          .from(investorLeads)
-          .where(eq(investorLeads.id, investorLeadId))
-          .limit(1);
-
-        if (!lead) {
-          throw new Error("Investor lead not found");
-        }
-
-        const [existingInvestor] = await tx
-          .select()
-          .from(investors)
-          .where(eq(investors.firstSeenFromInvestorLeadId, investorLeadId))
-          .limit(1);
-
-        if (existingInvestor) {
-          return { investorId: existingInvestor.id, alreadyConverted: true };
-        }
-
-        const [inserted] = await tx
-          .insert(investors)
-          .values({
-            name: investorData.name,
-            type: investorData.type,
-            primaryContactName: investorData.primaryContactName || null,
-            email: investorData.email || null,
-            phone: investorData.phone || null,
-            geography: investorData.geography || null,
-            minCheckSize: investorData.minCheckSize || null,
-            maxCheckSize: investorData.maxCheckSize || null,
-            sectorFocus: investorData.sectorFocus
-              ? investorData.sectorFocus
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-              : null,
-            stagePreference: investorData.stagePreference
-              ? investorData.stagePreference
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-              : null,
-            riskProfile: investorData.riskProfile || null,
-            status: investorData.status ?? "PROSPECT",
-            firstSeenFromInvestorLeadId: lead.id,
-          })
-          .returning();
-
-        if (!inserted) {
-          throw new Error("Failed to create investor");
-        }
-
-        await tx
-          .update(investorInteractions)
-          .set({
-            investorId: inserted.id,
-            investorLeadId: null,
-          })
-          .where(eq(investorInteractions.investorLeadId, investorLeadId));
-
-        return { investorId: inserted.id, alreadyConverted: false };
+      const result = await convertInvestorLeadToInvestorTx({
+        investorLeadId,
+        investorValues: {
+          name: investorData.name,
+          type: investorData.type,
+          primaryContactName: investorData.primaryContactName || null,
+          email: investorData.email || null,
+          phone: investorData.phone || null,
+          geography: investorData.geography || null,
+          minCheckSize: investorData.minCheckSize || null,
+          maxCheckSize: investorData.maxCheckSize || null,
+          sectorFocus: investorData.sectorFocus
+            ? investorData.sectorFocus
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : null,
+          stagePreference: investorData.stagePreference
+            ? investorData.stagePreference
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : null,
+          riskProfile: investorData.riskProfile || null,
+          status: investorData.status ?? "PROSPECT",
+          firstSeenFromInvestorLeadId: investorLeadId,
+        },
       });
 
       after(async () => {

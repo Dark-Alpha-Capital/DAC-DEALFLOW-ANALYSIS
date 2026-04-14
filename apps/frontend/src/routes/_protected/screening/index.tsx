@@ -25,10 +25,10 @@ export const Route = createFileRoute("/_protected/screening/")({
   }),
   loader: async () => loadCimScreeningIndexData(),
   pendingComponent: CimScreeningIndexSkeleton,
-  component: SimScreeningPage,
+  component: CimScreeningPage,
 });
 
-function SimScreeningPage() {
+function CimScreeningPage() {
   const { recentSessions } = Route.useLoaderData();
 
   return (

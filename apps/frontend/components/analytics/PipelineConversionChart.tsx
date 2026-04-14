@@ -17,6 +17,7 @@ import {
 export type PipelineConversionDatum = {
   stage: string;
   count: number;
+  stageLabel?: string;
 };
 
 const chartConfig = {
@@ -25,32 +26,6 @@ const chartConfig = {
     color: "var(--chart-2)",
   },
 } satisfies ChartConfig;
-
-const STAGE_LABELS: Record<string, string> = {
-  LISTED: "Listed",
-  INITIAL_REVIEW: "Initial review",
-  SCREENED: "Screened",
-  MEETING_HELD: "Meeting held",
-  IOI_SUBMITTED: "IOI submitted",
-  LOI_SUBMITTED: "LOI submitted",
-  DILIGENCE: "Diligence",
-  CLOSED: "Closed",
-  DEAD: "Dead",
-  UNKNOWN: "Unknown",
-};
-
-const STAGE_ORDER = [
-  "LISTED",
-  "INITIAL_REVIEW",
-  "SCREENED",
-  "MEETING_HELD",
-  "IOI_SUBMITTED",
-  "LOI_SUBMITTED",
-  "DILIGENCE",
-  "CLOSED",
-  "DEAD",
-  "UNKNOWN",
-] as const;
 
 interface PipelineConversionChartProps {
   data: PipelineConversionDatum[];
@@ -70,18 +45,10 @@ export function PipelineConversionChart({
     );
   }
 
-  const stageMap = new Map<string, number>();
-  for (const row of data) {
-    stageMap.set(row.stage, (stageMap.get(row.stage) ?? 0) + row.count);
-  }
-
-  const chartData = STAGE_ORDER.filter((id) => stageMap.get(id) ?? 0).map(
-    (id) => ({
-      stage: STAGE_LABELS[id] ?? id,
-      rawStage: id,
-      deals: stageMap.get(id) ?? 0,
-    }),
-  );
+  const chartData = data.map((row) => ({
+    stage: row.stageLabel ?? row.stage,
+    deals: row.count,
+  }));
 
   return (
     <Card>

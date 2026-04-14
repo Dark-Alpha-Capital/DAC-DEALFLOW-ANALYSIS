@@ -1,37 +1,24 @@
 import { z } from "zod";
 import { createTRPCRouter, adminProcedure } from "../init";
-import { db } from "@repo/db";
 import { UserRole } from "@repo/db/enums";
-import { users } from "@repo/db/schema";
-import { eq } from "drizzle-orm";
+import {
+  listAllUsersForAdmin,
+  getUserRoleById,
+  setUserBlocked,
+} from "@repo/db/mutations";
 import { after } from "@/lib/after";
 import { revalidatePath } from "@/lib/cache-invalidation";
 import { TRPCError } from "@trpc/server";
 
 export const usersRouter = createTRPCRouter({
   getAll: adminProcedure.query(async () => {
-    const allUsers = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        role: users.role,
-        isBlocked: users.isBlocked,
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .orderBy(users.createdAt);
-
-    return allUsers;
+    return listAllUsersForAdmin();
   }),
 
   block: adminProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ input }) => {
-      const [targetUser] = await db
-        .select({ role: users.role })
-        .from(users)
-        .where(eq(users.id, input.userId));
+      const targetUser = await getUserRoleById(input.userId);
 
       if (!targetUser) {
         throw new TRPCError({
@@ -47,10 +34,7 @@ export const usersRouter = createTRPCRouter({
         });
       }
 
-      await db
-        .update(users)
-        .set({ isBlocked: true })
-        .where(eq(users.id, input.userId));
+      await setUserBlocked(input.userId, true);
 
       after(async () => {
         revalidatePath("/admin");
@@ -61,10 +45,7 @@ export const usersRouter = createTRPCRouter({
   unblock: adminProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ input }) => {
-      await db
-        .update(users)
-        .set({ isBlocked: false })
-        .where(eq(users.id, input.userId));
+      await setUserBlocked(input.userId, false);
 
       after(async () => {
         revalidatePath("/admin");

@@ -67,7 +67,7 @@ export const documentCategoryEnum = pgEnum("DocumentCategory", [
   "VALUE_CREATION_PLAYBOOK",
   "PAST_DEAL_ANALYSIS",
   "DUE_DILIGENCE_CHECKLIST",
-  "SIM_SCREENING",
+  "CIM_SCREENING",
   "CIM",
 ]);
 
@@ -109,13 +109,13 @@ export const screenerResponseSourceEnum = pgEnum("ScreenerResponseSource", [
   "HUMAN",
 ]);
 
-export const dealSimStatusEnum = pgEnum("DealSimStatus", [
+export const dealCimStatusEnum = pgEnum("DealCimStatus", [
   "ACTIVE",
   "ARCHIVED",
 ]);
 
-export const simScreeningSessionStatusEnum = pgEnum(
-  "SimScreeningSessionStatus",
+export const cimScreeningSessionStatusEnum = pgEnum(
+  "CimScreeningSessionStatus",
   ["PENDING", "INGESTING", "SCREENING", "COMPLETED", "FAILED"],
 );
 
@@ -628,18 +628,6 @@ export const deals = pgTable("Deal", {
   description: text("description"),
 });
 
-export const dealStageEnum = pgEnum("DealStage", [
-  "LISTED",
-  "INITIAL_REVIEW",
-  "SCREENED",
-  "MEETING_HELD",
-  "IOI_SUBMITTED",
-  "LOI_SUBMITTED",
-  "DILIGENCE",
-  "CLOSED",
-  "DEAD",
-]);
-
 export const dealOpportunities = pgTable(
   "DealOpportunity",
   {
@@ -660,6 +648,10 @@ export const dealOpportunities = pgTable(
 
     // Deal-specific metadata
     sourceWebsite: text("sourceWebsite"),
+    /** Listing / target location (e.g. Bitrix State + Company Address). */
+    companyLocation: text("companyLocation"),
+    cimLink: text("cimLink"),
+    dataRoomLink: text("dataRoomLink"),
     brokerage: text("brokerage"),
 
     // Financial snapshot at listing time
@@ -670,11 +662,14 @@ export const dealOpportunities = pgTable(
     askingPrice: doublePrecision("askingPrice"),
     impliedMultiple: doublePrecision("impliedMultiple"),
 
+    /** Bitrix deal TITLE / listing headline */
+    title: text("title"),
     dealTeaser: text("dealTeaser"),
     description: text("description"),
 
     dealType: dealTypeEnum("dealType").default("MANUAL").notNull(),
-    stage: dealStageEnum("stage").default("LISTED").notNull(),
+    /** Bitrix24 CRM deal kanban `STAGE_ID` for the configured pipeline (`BITRIX_DEAL_STAGES_JSON` / `getBitrixDealStages`). */
+    stage: text("stage").notNull().default("NEW"),
     status: dealStatusEnum("status").default("AVAILABLE").notNull(),
 
     tags: text("tags").array().default([]),
@@ -702,6 +697,9 @@ export const dealOpportunities = pgTable(
     dealOppCompanyIdx: index("deal_opp_company_idx").on(table.companyId),
     dealOppStageIdx: index("deal_opp_stage_idx").on(table.stage),
     dealOppStatusIdx: index("deal_opp_status_idx").on(table.status),
+    dealOppBitrixIdUniqueIdx: uniqueIndex("deal_opp_bitrix_id_unique_idx")
+      .on(table.bitrixId)
+      .where(sql`${table.bitrixId} is not null`),
   }),
 );
 
@@ -1331,9 +1329,9 @@ export const workflowJobs = pgTable(
   }),
 );
 
-/** SIM screening workspace: one uploaded SIM PDF per session, or a deal opportunity (multi-doc RAG); runs hold per-template executions */
-export const simScreeningSessions = pgTable(
-  "SimScreeningSession",
+/** CIM template screening: one uploaded CIM PDF per session, or a deal opportunity (multi-doc RAG); runs hold per-template executions */
+export const cimScreeningSessions = pgTable(
+  "CimScreeningSession",
   {
     id: text("id")
       .primaryKey()
@@ -1355,37 +1353,39 @@ export const simScreeningSessions = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => ({
-    simScreeningSessionUserIdx: index("sim_screening_session_user_idx").on(
+    cimScreeningSessionUserIdx: index("cim_screening_session_user_idx").on(
       table.userId,
     ),
-    simScreeningSessionDocumentIdx: index(
-      "sim_screening_session_document_idx",
+    cimScreeningSessionDocumentIdx: index(
+      "cim_screening_session_document_idx",
     ).on(table.documentId),
-    simScreeningSessionDealOppIdx: index(
-      "sim_screening_session_deal_opp_idx",
+    cimScreeningSessionDealOppIdx: index(
+      "cim_screening_session_deal_opp_idx",
     ).on(table.dealOpportunityId),
-    simScreeningSessionScopeCheck: check(
-      "sim_screening_session_scope_check",
+    cimScreeningSessionScopeCheck: check(
+      "cim_screening_session_scope_check",
       sql`(${table.documentId} IS NOT NULL AND ${table.dealOpportunityId} IS NULL) OR (${table.documentId} IS NULL AND ${table.dealOpportunityId} IS NOT NULL)`,
     ),
   }),
 );
 
 /** One screening execution: screener template + workflow job + answers */
-export const simScreeningRuns = pgTable(
-  "SimScreeningRun",
+export const cimScreeningRuns = pgTable(
+  "CimScreeningRun",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
     sessionId: text("sessionId")
       .notNull()
-      .references(() => simScreeningSessions.id, { onDelete: "cascade" }),
+      .references(() => cimScreeningSessions.id, { onDelete: "cascade" }),
     screenerId: text("screenerId")
       .notNull()
       .references(() => screenerTemplates.id, { onDelete: "cascade" }),
     workflowInstanceId: text("workflowInstanceId"),
-    status: simScreeningSessionStatusEnum("status").default("PENDING").notNull(),
+    status: cimScreeningSessionStatusEnum("status")
+      .default("PENDING")
+      .notNull(),
     errorMessage: text("errorMessage"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
@@ -1394,21 +1394,21 @@ export const simScreeningRuns = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => ({
-    simScreeningRunSessionIdx: index("sim_screening_run_session_idx").on(
+    cimScreeningRunSessionIdx: index("cim_screening_run_session_idx").on(
       table.sessionId,
     ),
   }),
 );
 
-export const simScreeningAnswers = pgTable(
-  "SimScreeningAnswer",
+export const cimScreeningAnswers = pgTable(
+  "CimScreeningAnswer",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
     runId: text("runId")
       .notNull()
-      .references(() => simScreeningRuns.id, { onDelete: "cascade" }),
+      .references(() => cimScreeningRuns.id, { onDelete: "cascade" }),
     questionId: text("questionId")
       .notNull()
       .references(() => screenerQuestions.id, { onDelete: "cascade" }),
@@ -1422,21 +1422,21 @@ export const simScreeningAnswers = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => ({
-    simScreeningAnswerRunQuestionUnique: uniqueIndex(
-      "sim_screening_answer_run_question_unique",
+    cimScreeningAnswerRunQuestionUnique: uniqueIndex(
+      "cim_screening_answer_run_question_unique",
     ).on(table.runId, table.questionId),
-    simScreeningAnswerRunIdx: index("sim_screening_answer_run_idx").on(
+    cimScreeningAnswerRunIdx: index("cim_screening_answer_run_idx").on(
       table.runId,
     ),
   }),
 );
 
 /**
- * Deal SIMs (CIMs) - one active per deal opportunity.
+ * Deal CIM uploads — one active per deal opportunity.
  * Latest upload becomes active; previous is archived.
  */
-export const dealSims = pgTable(
-  "DealSim",
+export const dealCims = pgTable(
+  "DealCim",
   {
     id: text("id")
       .primaryKey()
@@ -1448,17 +1448,17 @@ export const dealSims = pgTable(
       .notNull()
       .references(() => documents.id, { onDelete: "cascade" }),
     storageKey: text("storageKey").notNull(), // Path in object storage for worker
-    status: dealSimStatusEnum("status").default("ACTIVE").notNull(),
+    status: dealCimStatusEnum("status").default("ACTIVE").notNull(),
     uploadedById: text("uploadedById").references(() => users.id, {
       onDelete: "set null",
     }),
     uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
   },
   (table) => ({
-    dealSimDealOppIdx: index("deal_sim_deal_opp_idx").on(
+    dealCimDealOppIdx: index("deal_cim_deal_opp_idx").on(
       table.dealOpportunityId,
     ),
-    dealSimActiveUniqueIdx: uniqueIndex("deal_sim_active_unique_idx")
+    dealCimActiveUniqueIdx: uniqueIndex("deal_cim_active_unique_idx")
       .on(table.dealOpportunityId)
       .where(sql`${table.status} = 'ACTIVE'`),
   }),
@@ -1470,10 +1470,12 @@ export const cimExtractions = pgTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
-    simId: text("simId").references(() => dealSims.id, { onDelete: "cascade" }),
+    dealCimId: text("dealCimId").references(() => dealCims.id, {
+      onDelete: "cascade",
+    }),
     documentId: text("documentId").references(() => documents.id, {
       onDelete: "cascade",
-    }), // Denormalized; primary link is simId
+    }), // Denormalized; primary link is dealCimId
     dealOpportunityId: text("dealOpportunityId").references(
       () => dealOpportunities.id,
       { onDelete: "cascade" },
@@ -1505,10 +1507,12 @@ export const cimExtractions = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => ({
-    cimExtractionSimIdx: index("cim_extraction_sim_idx").on(table.simId),
-    cimExtractionSimUniqueIdx: uniqueIndex("cim_extraction_sim_unique_idx").on(
-      table.simId,
+    cimExtractionDealCimIdx: index("cim_extraction_deal_cim_idx").on(
+      table.dealCimId,
     ),
+    cimExtractionDealCimUniqueIdx: uniqueIndex(
+      "cim_extraction_deal_cim_unique_idx",
+    ).on(table.dealCimId),
     cimExtractionDealOppIdx: index("cim_extraction_deal_opp_idx").on(
       table.dealOpportunityId,
     ),
@@ -1744,7 +1748,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   outreach: many(outreach),
   chatSessions: many(chatSessions),
   investorLeads: many(investorLeads),
-  simScreeningSessions: many(simScreeningSessions),
+  cimScreeningSessions: many(cimScreeningSessions),
 }));
 
 export const themesRelations = relations(themes, ({ one, many }) => ({
@@ -1880,8 +1884,8 @@ export const dealOpportunitiesRelations = relations(
       fields: [dealOpportunities.id],
       references: [cimExtractions.dealOpportunityId],
     }),
-    dealSims: many(dealSims),
-    simScreeningSessions: many(simScreeningSessions),
+    dealCims: many(dealCims),
+    cimScreeningSessions: many(cimScreeningSessions),
     companyLinks: many(dealOpportunityCompanyLinks),
     themes: many(dealOpportunityThemes),
     investorLinks: many(investorDealOpportunityLinks),
@@ -1989,7 +1993,7 @@ export const companyNotesRelations = relations(companyNotes, ({ one }) => ({
 export const screenersRelations = relations(screeners, ({ many }) => ({
   questions: many(screenerQuestions),
   aiScreenings: many(aiScreenings),
-  simScreeningRuns: many(simScreeningRuns),
+  cimScreeningRuns: many(cimScreeningRuns),
 }));
 
 export const screenerQuestionsRelations = relations(
@@ -2000,53 +2004,53 @@ export const screenerQuestionsRelations = relations(
       references: [screeners.id],
     }),
     responses: many(screenerResponses),
-    simScreeningAnswers: many(simScreeningAnswers),
+    cimScreeningAnswers: many(cimScreeningAnswers),
   }),
 );
 
-export const simScreeningSessionsRelations = relations(
-  simScreeningSessions,
+export const cimScreeningSessionsRelations = relations(
+  cimScreeningSessions,
   ({ one, many }) => ({
     user: one(users, {
-      fields: [simScreeningSessions.userId],
+      fields: [cimScreeningSessions.userId],
       references: [users.id],
     }),
     document: one(documents, {
-      fields: [simScreeningSessions.documentId],
+      fields: [cimScreeningSessions.documentId],
       references: [documents.id],
     }),
     dealOpportunity: one(dealOpportunities, {
-      fields: [simScreeningSessions.dealOpportunityId],
+      fields: [cimScreeningSessions.dealOpportunityId],
       references: [dealOpportunities.id],
     }),
-    runs: many(simScreeningRuns),
+    runs: many(cimScreeningRuns),
   }),
 );
 
-export const simScreeningRunsRelations = relations(
-  simScreeningRuns,
+export const cimScreeningRunsRelations = relations(
+  cimScreeningRuns,
   ({ one, many }) => ({
-    session: one(simScreeningSessions, {
-      fields: [simScreeningRuns.sessionId],
-      references: [simScreeningSessions.id],
+    session: one(cimScreeningSessions, {
+      fields: [cimScreeningRuns.sessionId],
+      references: [cimScreeningSessions.id],
     }),
     screener: one(screeners, {
-      fields: [simScreeningRuns.screenerId],
+      fields: [cimScreeningRuns.screenerId],
       references: [screeners.id],
     }),
-    answers: many(simScreeningAnswers),
+    answers: many(cimScreeningAnswers),
   }),
 );
 
-export const simScreeningAnswersRelations = relations(
-  simScreeningAnswers,
+export const cimScreeningAnswersRelations = relations(
+  cimScreeningAnswers,
   ({ one }) => ({
-    run: one(simScreeningRuns, {
-      fields: [simScreeningAnswers.runId],
-      references: [simScreeningRuns.id],
+    run: one(cimScreeningRuns, {
+      fields: [cimScreeningAnswers.runId],
+      references: [cimScreeningRuns.id],
     }),
     question: one(screenerQuestions, {
-      fields: [simScreeningAnswers.questionId],
+      fields: [cimScreeningAnswers.questionId],
       references: [screenerQuestions.id],
     }),
   }),
@@ -2104,7 +2108,7 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
     references: [themes.id],
   }),
   chunks: many(documentChunks),
-  simScreeningSessions: many(simScreeningSessions),
+  cimScreeningSessions: many(cimScreeningSessions),
 }));
 
 export const documentChunksRelations = relations(documentChunks, ({ one }) => ({
@@ -2114,26 +2118,26 @@ export const documentChunksRelations = relations(documentChunks, ({ one }) => ({
   }),
 }));
 
-export const dealSimsRelations = relations(dealSims, ({ one, many }) => ({
+export const dealCimsRelations = relations(dealCims, ({ one, many }) => ({
   dealOpportunity: one(dealOpportunities, {
-    fields: [dealSims.dealOpportunityId],
+    fields: [dealCims.dealOpportunityId],
     references: [dealOpportunities.id],
   }),
   document: one(documents, {
-    fields: [dealSims.documentId],
+    fields: [dealCims.documentId],
     references: [documents.id],
   }),
   uploadedBy: one(users, {
-    fields: [dealSims.uploadedById],
+    fields: [dealCims.uploadedById],
     references: [users.id],
   }),
   cimExtractions: many(cimExtractions),
 }));
 
 export const cimExtractionsRelations = relations(cimExtractions, ({ one }) => ({
-  sim: one(dealSims, {
-    fields: [cimExtractions.simId],
-    references: [dealSims.id],
+  dealCim: one(dealCims, {
+    fields: [cimExtractions.dealCimId],
+    references: [dealCims.id],
   }),
   document: one(documents, {
     fields: [cimExtractions.documentId],
@@ -2342,18 +2346,18 @@ export type NewDocument = typeof documents.$inferInsert;
 export type DocumentChunk = typeof documentChunks.$inferSelect;
 export type NewDocumentChunk = typeof documentChunks.$inferInsert;
 
-export type DealSim = typeof dealSims.$inferSelect;
-export type NewDealSim = typeof dealSims.$inferInsert;
+export type DealCim = typeof dealCims.$inferSelect;
+export type NewDealCim = typeof dealCims.$inferInsert;
 
 export type CIMExtraction = typeof cimExtractions.$inferSelect;
 export type NewCIMExtraction = typeof cimExtractions.$inferInsert;
 
-export type SimScreeningSession = typeof simScreeningSessions.$inferSelect;
-export type NewSimScreeningSession = typeof simScreeningSessions.$inferInsert;
-export type SimScreeningRun = typeof simScreeningRuns.$inferSelect;
-export type NewSimScreeningRun = typeof simScreeningRuns.$inferInsert;
-export type SimScreeningAnswer = typeof simScreeningAnswers.$inferSelect;
-export type NewSimScreeningAnswer = typeof simScreeningAnswers.$inferInsert;
+export type CimScreeningSession = typeof cimScreeningSessions.$inferSelect;
+export type NewCimScreeningSession = typeof cimScreeningSessions.$inferInsert;
+export type CimScreeningRun = typeof cimScreeningRuns.$inferSelect;
+export type NewCimScreeningRun = typeof cimScreeningRuns.$inferInsert;
+export type CimScreeningAnswer = typeof cimScreeningAnswers.$inferSelect;
+export type NewCimScreeningAnswer = typeof cimScreeningAnswers.$inferInsert;
 
 export type Outreach = typeof outreach.$inferSelect;
 export type NewOutreach = typeof outreach.$inferInsert;

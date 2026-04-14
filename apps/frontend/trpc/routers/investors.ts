@@ -1,19 +1,23 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, {
-  investors,
-  investorInteractions,
-  investorCompanyLinks,
-  eq,
-  and,
-  or,
-  asc,
-  desc,
-  ilike,
-} from "@repo/db";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
+import {
+  listInvestorsForSelect,
+  searchInvestorsForLink,
+  insertInvestor,
+  updateInvestorById,
+  deleteInvestorById,
+  findInvestorCompanyLinkDup,
+  insertInvestorCompanyLink,
+  updateInvestorCompanyLinkById,
+  deleteInvestorCompanyLinkById,
+  listInvestorInteractions,
+  insertInvestorInteraction,
+  updateInvestorInteractionById,
+  deleteInvestorInteractionById,
+} from "@repo/db/mutations";
 
 const investorInteractionTypeEnum = z.enum([
   "EMAIL",
@@ -55,10 +59,7 @@ const investorSchema = z.object({
 
 export const investorsRouter = createTRPCRouter({
   listForSelect: protectedProcedure.query(async () => {
-    return db
-      .select({ id: investors.id, name: investors.name })
-      .from(investors)
-      .orderBy(asc(investors.name));
+    return listInvestorsForSelect();
   }),
 
   searchForLink: protectedProcedure
@@ -70,40 +71,26 @@ export const investorsRouter = createTRPCRouter({
     )
     .query(async ({ input }) => {
       const pattern = `%${input.query}%`;
-      return db
-        .select({
-          id: investors.id,
-          name: investors.name,
-          email: investors.email,
-        })
-        .from(investors)
-        .where(
-          or(ilike(investors.name, pattern), ilike(investors.email, pattern)),
-        )
-        .orderBy(asc(investors.name))
-        .limit(input.limit);
+      return searchInvestorsForLink({ pattern, limit: input.limit });
     }),
 
   create: protectedProcedure
     .input(investorSchema)
     .mutation(async ({ input }) => {
-      const [added] = await db
-        .insert(investors)
-        .values({
-          name: input.name,
-          type: input.type,
-          primaryContactName: input.primaryContactName || null,
-          email: input.email || null,
-          phone: input.phone || null,
-          geography: input.geography || null,
-          minCheckSize: input.minCheckSize || null,
-          maxCheckSize: input.maxCheckSize || null,
-          sectorFocus: input.sectorFocus || null,
-          stagePreference: input.stagePreference || null,
-          riskProfile: input.riskProfile || null,
-          status: input.status ?? "PROSPECT",
-        })
-        .returning();
+      const added = await insertInvestor({
+        name: input.name,
+        type: input.type,
+        primaryContactName: input.primaryContactName || null,
+        email: input.email || null,
+        phone: input.phone || null,
+        geography: input.geography || null,
+        minCheckSize: input.minCheckSize || null,
+        maxCheckSize: input.maxCheckSize || null,
+        sectorFocus: input.sectorFocus || null,
+        stagePreference: input.stagePreference || null,
+        riskProfile: input.riskProfile || null,
+        status: input.status ?? "PROSPECT",
+      });
 
       after(async () => {
         revalidatePath("/investors");
@@ -116,23 +103,20 @@ export const investorsRouter = createTRPCRouter({
     .input(investorSchema.extend({ id: z.string() }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
-      await db
-        .update(investors)
-        .set({
-          name: data.name,
-          type: data.type,
-          primaryContactName: data.primaryContactName || null,
-          email: data.email || null,
-          phone: data.phone || null,
-          geography: data.geography || null,
-          minCheckSize: data.minCheckSize || null,
-          maxCheckSize: data.maxCheckSize || null,
-          sectorFocus: data.sectorFocus || null,
-          stagePreference: data.stagePreference || null,
-          riskProfile: data.riskProfile || null,
-          status: data.status ?? "PROSPECT",
-        })
-        .where(eq(investors.id, id));
+      await updateInvestorById(id, {
+        name: data.name,
+        type: data.type,
+        primaryContactName: data.primaryContactName || null,
+        email: data.email || null,
+        phone: data.phone || null,
+        geography: data.geography || null,
+        minCheckSize: data.minCheckSize || null,
+        maxCheckSize: data.maxCheckSize || null,
+        sectorFocus: data.sectorFocus || null,
+        stagePreference: data.stagePreference || null,
+        riskProfile: data.riskProfile || null,
+        status: data.status ?? "PROSPECT",
+      });
 
       after(async () => {
         revalidatePath("/investors");
@@ -147,7 +131,7 @@ export const investorsRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      await db.delete(investors).where(eq(investors.id, input.id));
+      await deleteInvestorById(input.id);
       after(async () => {
         revalidatePath("/investors");
         revalidateTag("investors", "max");
@@ -166,16 +150,10 @@ export const investorsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const [dup] = await db
-        .select({ id: investorCompanyLinks.id })
-        .from(investorCompanyLinks)
-        .where(
-          and(
-            eq(investorCompanyLinks.investorId, input.investorId),
-            eq(investorCompanyLinks.companyId, input.companyId),
-          ),
-        )
-        .limit(1);
+      const dup = await findInvestorCompanyLinkDup(
+        input.investorId,
+        input.companyId,
+      );
 
       if (dup) {
         throw new TRPCError({
@@ -184,7 +162,7 @@ export const investorsRouter = createTRPCRouter({
         });
       }
 
-      await db.insert(investorCompanyLinks).values({
+      await insertInvestorCompanyLink({
         investorId: input.investorId,
         companyId: input.companyId,
         notes: input.notes?.trim() ? input.notes.trim() : null,
@@ -225,11 +203,7 @@ export const investorsRouter = createTRPCRouter({
         return { success: true as const };
       }
 
-      const [row] = await db
-        .update(investorCompanyLinks)
-        .set(updates)
-        .where(eq(investorCompanyLinks.id, input.linkId))
-        .returning();
+      const row = await updateInvestorCompanyLinkById(input.linkId, updates);
 
       if (!row) {
         throw new TRPCError({
@@ -253,10 +227,7 @@ export const investorsRouter = createTRPCRouter({
   removeInvestorCompanyLink: protectedProcedure
     .input(z.object({ linkId: z.string() }))
     .mutation(async ({ input }) => {
-      const [row] = await db
-        .delete(investorCompanyLinks)
-        .where(eq(investorCompanyLinks.id, input.linkId))
-        .returning();
+      const row = await deleteInvestorCompanyLinkById(input.linkId);
 
       if (!row) {
         throw new TRPCError({
@@ -280,11 +251,7 @@ export const investorsRouter = createTRPCRouter({
   listInteractions: protectedProcedure
     .input(z.object({ investorId: z.string() }))
     .query(async ({ input }) => {
-      return db
-        .select()
-        .from(investorInteractions)
-        .where(eq(investorInteractions.investorId, input.investorId))
-        .orderBy(desc(investorInteractions.createdAt));
+      return listInvestorInteractions(input.investorId);
     }),
 
   createInteraction: protectedProcedure
@@ -297,16 +264,13 @@ export const investorsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const [added] = await db
-        .insert(investorInteractions)
-        .values({
-          investorId: input.investorId,
-          investorLeadId: null,
-          type: input.type,
-          notes: input.notes || null,
-          outcome: input.outcome || null,
-        })
-        .returning();
+      const added = await insertInvestorInteraction({
+        investorId: input.investorId,
+        investorLeadId: null,
+        type: input.type,
+        notes: input.notes || null,
+        outcome: input.outcome || null,
+      });
 
       after(async () => {
         revalidatePath(`/investors/${input.investorId}`);
@@ -341,10 +305,7 @@ export const investorsRouter = createTRPCRouter({
 
       if (Object.keys(updates).length === 0) return { investorInteractionId: id };
 
-      await db
-        .update(investorInteractions)
-        .set(updates)
-        .where(eq(investorInteractions.id, id));
+      await updateInvestorInteractionById(id, updates);
 
       after(async () => {
         revalidatePath(`/investors/${investorId}`);
@@ -357,9 +318,7 @@ export const investorsRouter = createTRPCRouter({
   deleteInteraction: protectedProcedure
     .input(z.object({ investorId: z.string(), id: z.string() }))
     .mutation(async ({ input }) => {
-      await db
-        .delete(investorInteractions)
-        .where(eq(investorInteractions.id, input.id));
+      await deleteInvestorInteractionById(input.id);
 
       after(async () => {
         revalidatePath(`/investors/${input.investorId}`);

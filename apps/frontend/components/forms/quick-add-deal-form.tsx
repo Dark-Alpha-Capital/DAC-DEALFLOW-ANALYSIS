@@ -97,6 +97,7 @@ export type QuickAddDealFormProps = {
 };
 
 const defaultFormValues: QuickAddDealFormValues = {
+  title: "",
   dealTeaser: "",
   themeId: "",
   sourceWebsite: "",
@@ -156,7 +157,8 @@ export function QuickAddDealForm({
 
   function onSubmit(values: QuickAddDealFormValues) {
     createQuick({
-      dealTeaser: values.dealTeaser,
+      title: values.title,
+      dealTeaser: values.dealTeaser || undefined,
       themeId: values.themeId || undefined,
       sourceWebsite: values.sourceWebsite || undefined,
       brokerage: values.brokerage || undefined,
@@ -184,13 +186,30 @@ export function QuickAddDealForm({
           <FieldGroup className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             <FormField
               control={form.control}
-              name="dealTeaser"
+              name="title"
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
                   <FormLabel>Deal title *</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="e.g. Manufacturing Co — $5M revenue"
+                      placeholder="e.g. Acme Manufacturing — platform sale"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="dealTeaser"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Teaser (optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Short teaser or one-liner for listings"
+                      rows={2}
                       {...field}
                     />
                   </FormControl>

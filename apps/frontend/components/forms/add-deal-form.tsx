@@ -68,6 +68,7 @@ export default function AddDealForm() {
       ebitda: undefined,
       ebitdaMargin: undefined,
       askingPrice: undefined,
+      title: "",
       dealTeaser: "",
       description: "",
       brokerFirstName: "",
@@ -148,12 +149,25 @@ export default function AddDealForm() {
             />
             <FormField
               control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Deal headline (Bitrix TITLE)" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="dealTeaser"
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
-                  <FormLabel>Deal Teaser</FormLabel>
+                  <FormLabel>Teaser</FormLabel>
                   <FormControl>
-                    <Input placeholder="Brief teaser..." {...field} />
+                    <Input placeholder="Short teaser (optional)" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

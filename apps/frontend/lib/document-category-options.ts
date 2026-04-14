@@ -26,6 +26,6 @@ export const DOCUMENT_CATEGORY_OPTIONS: {
   { value: "VALUE_CREATION_PLAYBOOK", label: "Value creation playbook" },
   { value: "PAST_DEAL_ANALYSIS", label: "Past deal analysis" },
   { value: "DUE_DILIGENCE_CHECKLIST", label: "Due diligence checklist" },
-  { value: "SIM_SCREENING", label: "SIM screening" },
+  { value: "CIM_SCREENING", label: "CIM screening" },
   { value: "CIM", label: "CIM" },
 ];

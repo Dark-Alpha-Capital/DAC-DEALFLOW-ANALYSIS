@@ -2,17 +2,28 @@ import { createServerFn } from "@tanstack/react-start";
 import {
   GetDealOpportunityById,
   GetDealWithAllRelations,
-  GetRankedDealOpportunities,
-  getActiveSimForDeal,
+  GetRankedDealOpportunitiesPaginated,
+  GetRankedDealOpportunityKanbanSummary,
+  GetRankedDealOpportunitiesForKanbanColumnPaginated,
+  getActiveCimForDeal,
   GetCIMExtractionByDealOpportunityId,
+  type RankedDealOpportunityRow,
 } from "@repo/db/queries";
 import db, { themes, asc, isNull } from "@repo/db";
 import { assertAuthenticated } from "@/lib/server/assert-session";
 import {
   dealOpportunityIdSchema,
+  dealOpportunitiesKanbanInitialInputSchema,
+  dealOpportunitiesKanbanStagePageInputSchema,
+  rankedDealOpportunitiesPageInputSchema,
   uidParamSchema,
 } from "@/lib/server/server-fn-input-schemas";
 import { getBitrixSyncPreviewData } from "./bitrix-sync-preview-data";
+import {
+  BITRIX_DEAL_PIPELINE_ID,
+  getBitrixDealStages,
+  getDefaultBitrixStageId,
+} from "@repo/bitrix-sync";
 
 /** Same rows as `trpc.themes.listForSelect` — for quick-add theme picker + route loader. */
 export const loadThemesForSelectData = createServerFn({ method: "GET" }).handler(
@@ -33,34 +44,130 @@ export const loadThemesForSelectData = createServerFn({ method: "GET" }).handler
 
 export const loadRankedDealOpportunitiesPageData = createServerFn({
   method: "GET",
-}).handler(async () => {
-  await assertAuthenticated();
-  const rows = await GetRankedDealOpportunities();
-  const seen = new Set<string>();
-  const deals = rows.filter((r) => {
-    if (seen.has(r.opp.id)) return false;
-    seen.add(r.opp.id);
-    return true;
+})
+  .inputValidator((raw: unknown) =>
+    rankedDealOpportunitiesPageInputSchema.parse(raw),
+  )
+  .handler(async ({ data }) => {
+    await assertAuthenticated();
+    const { data: rows, totalCount, totalPages } =
+      await GetRankedDealOpportunitiesPaginated({
+        offset: data.offset,
+        limit: data.limit,
+        query: data.query ?? "",
+      });
+    return {
+      deals: rows,
+      totalCount,
+      totalPages,
+      pipelineStages: getBitrixDealStages(),
+    };
   });
-  return { deals };
-});
+
+export const loadDealOpportunitiesKanbanInitialData = createServerFn({
+  method: "GET",
+})
+  .inputValidator((raw: unknown) =>
+    dealOpportunitiesKanbanInitialInputSchema.parse(raw),
+  )
+  .handler(async ({ data }) => {
+    await assertAuthenticated();
+    const pipelineStages = getBitrixDealStages();
+    const pipelineCategoryId =
+      data.pipelineCategoryId?.trim() || BITRIX_DEAL_PIPELINE_ID;
+    const limitPerStage = data.limitPerStage ?? 40;
+    const query = data.query ?? "";
+    const fallbackStageId = getDefaultBitrixStageId(pipelineStages);
+    const allIds = pipelineStages.map((s) => s.statusId);
+
+    if (pipelineStages.length === 0) {
+      return {
+        pipelineStages,
+        totalCount: 0,
+        countsByStage: {} as Record<string, number>,
+        initialRowsByStage: {} as Record<string, RankedDealOpportunityRow[]>,
+        limitPerStage,
+        pipelineCategoryId,
+        fallbackStageId,
+        allPipelineStageIds: allIds,
+      };
+    }
+
+    const { totalCount, countsByStage } =
+      await GetRankedDealOpportunityKanbanSummary({
+        query,
+        pipelineCategoryId,
+        pipelineStageIds: allIds,
+        fallbackStageId,
+      });
+
+    const pages = await Promise.all(
+      pipelineStages.map((col) =>
+        GetRankedDealOpportunitiesForKanbanColumnPaginated({
+          columnStageId: col.statusId,
+          fallbackStageId,
+          allPipelineStageIds: allIds,
+          query,
+          offset: 0,
+          limit: limitPerStage,
+          pipelineCategoryId,
+        }),
+      ),
+    );
+
+    const initialRowsByStage: Record<string, RankedDealOpportunityRow[]> = {};
+    pipelineStages.forEach((col, i) => {
+      initialRowsByStage[col.statusId] = pages[i] ?? [];
+    });
+
+    return {
+      pipelineStages,
+      totalCount,
+      countsByStage,
+      initialRowsByStage,
+      limitPerStage,
+      pipelineCategoryId,
+      fallbackStageId,
+      allPipelineStageIds: allIds,
+    };
+  });
+
+export const loadRankedDealOpportunitiesKanbanStagePage = createServerFn({
+  method: "POST",
+})
+  .inputValidator((raw: unknown) =>
+    dealOpportunitiesKanbanStagePageInputSchema.parse(raw),
+  )
+  .handler(async ({ data }) => {
+    await assertAuthenticated();
+    const rows = await GetRankedDealOpportunitiesForKanbanColumnPaginated({
+      columnStageId: data.columnStageId,
+      fallbackStageId: data.fallbackStageId,
+      allPipelineStageIds: data.allPipelineStageIds,
+      query: data.query ?? "",
+      offset: data.offset,
+      limit: data.limit,
+      pipelineCategoryId: data.pipelineCategoryId,
+    });
+    return { rows };
+  });
 
 export const loadDealOpportunityDetailData = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {
-      const [dealData, activeSim, extraction] = await Promise.all([
+      const [dealData, activeCim, extraction] = await Promise.all([
         GetDealWithAllRelations(data.uid),
-        getActiveSimForDeal(data.uid),
+        getActiveCimForDeal(data.uid),
         GetCIMExtractionByDealOpportunityId(data.uid),
       ]);
 
       const hasFinancials = !!extraction;
       const cimAnalysis = {
-        activeSim: activeSim
+        activeCim: activeCim
           ? {
-            id: activeSim.id,
+            id: activeCim.id,
             status: hasFinancials
               ? ("ready" as const)
               : ("processing" as const),

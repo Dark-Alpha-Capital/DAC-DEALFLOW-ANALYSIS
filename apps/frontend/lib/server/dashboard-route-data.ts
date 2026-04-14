@@ -10,6 +10,10 @@ import db, {
   isNull,
 } from "@repo/db";
 import { GetTopRankedDeals } from "@repo/db/queries";
+import {
+  getBitrixDealStages,
+  resolveBitrixStageLabel,
+} from "@repo/bitrix-sync";
 
 async function getPipelineData() {
   const [stageRows, leadRows] = await Promise.all([
@@ -28,18 +32,8 @@ async function getPipelineData() {
       .where(isNull(leads.deletedAt)),
   ]);
 
-  const stageOrder = [
-    "LISTED",
-    "INITIAL_REVIEW",
-    "SCREENED",
-    "MEETING_HELD",
-    "IOI_SUBMITTED",
-    "LOI_SUBMITTED",
-    "DILIGENCE",
-    "CLOSED",
-    "DEAD",
-    "UNKNOWN",
-  ] as const;
+  const bitrixStages = getBitrixDealStages();
+  const orderedStageIds = bitrixStages.map((s) => s.statusId);
 
   const leadStatusOrder = [
     "NEW",
@@ -61,10 +55,32 @@ async function getPipelineData() {
     leadCounts.set(key, (leadCounts.get(key) ?? 0) + 1);
   }
 
-  const dealsByStage = stageOrder.map((stage) => ({
-    stage,
-    count: stageCounts.get(stage) ?? 0,
-  }));
+  const seenStages = new Set<string>();
+  const dealsByStage: {
+    stage: string;
+    stageLabel: string;
+    count: number;
+  }[] = [];
+
+  for (const stageId of orderedStageIds) {
+    const count = stageCounts.get(stageId) ?? 0;
+    seenStages.add(stageId);
+    dealsByStage.push({
+      stage: stageId,
+      stageLabel: resolveBitrixStageLabel(stageId, bitrixStages),
+      count,
+    });
+  }
+
+  for (const [stageId, count] of stageCounts) {
+    if (!seenStages.has(stageId)) {
+      dealsByStage.push({
+        stage: stageId,
+        stageLabel: resolveBitrixStageLabel(stageId, bitrixStages),
+        count,
+      });
+    }
+  }
 
   const leadFlow = leadStatusOrder.map((status) => ({
     status,
@@ -175,6 +191,7 @@ async function getThemesData() {
 }
 
 async function getTopDealsData(limit = 10) {
+  const bitrixStages = getBitrixDealStages();
   const [rows, companyThemeRows] = await Promise.all([
     GetTopRankedDeals(limit),
     db
@@ -205,6 +222,7 @@ async function getTopDealsData(limit = 10) {
     latestScore: row.score,
     latestScreenedAt: row.screenedAt.toISOString(),
     stage: row.stage,
+    stageLabel: resolveBitrixStageLabel(row.stage, bitrixStages),
     companyName: row.companyName,
     themeName: themeByCompany.get(row.companyName) ?? null,
   }));

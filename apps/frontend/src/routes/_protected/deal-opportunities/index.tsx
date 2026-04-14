@@ -4,29 +4,79 @@ import { loadRankedDealOpportunitiesPageData } from "@/lib/server/deal-opportuni
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { DealsWorkspace } from "@/components/deal-opportunities/deals-workspace";
+import { PullNewDealsFromBitrixButton } from "@/components/deal-opportunities/sync-bitrix-deals-button";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
 } from "@/lib/route-loader-cache";
+import {
+  dealOpportunitiesListLoaderDeps,
+  looseValidateSearch,
+} from "@/lib/route-search";
 
 export const Route = createFileRoute("/_protected/deal-opportunities/")({
+  validateSearch: (input: Record<string, unknown>) =>
+    dealOpportunitiesListLoaderDeps(looseValidateSearch(input)),
   staleTime: ROUTE_DATA_STALE_TIME_MS,
   gcTime: ROUTE_DATA_GC_TIME_MS,
+  loaderDeps: ({ search }) => search,
   head: () => ({
     meta: [{ title: "Deal opportunities — Dark Alpha Capital" }],
   }),
-  loader: async () => loadRankedDealOpportunitiesPageData(),
+  loader: async ({ deps }) => {
+    const { page, limit, q } = deps;
+    const offset = (page - 1) * limit;
+    const result = await loadRankedDealOpportunitiesPageData({
+      data: { offset, limit, query: q },
+    });
+    return {
+      ...result,
+      currentPage: page,
+      pageSize: limit,
+    };
+  },
   pendingComponent: DealsAuthedSkeleton,
   component: DealOpportunitiesRoute,
 });
 
 function DealOpportunitiesRoute() {
-  const { deals } = Route.useLoaderData();
+  const { q } = Route.useSearch();
+  const loaderData = Route.useLoaderData();
+  const {
+    deals,
+    pipelineStages,
+    totalCount,
+    totalPages,
+    currentPage,
+    pageSize,
+  } = loaderData;
+  const hasSearch = q.trim().length > 0;
+  const dealsSummary =
+    totalCount === 0
+      ? hasSearch
+        ? "No deals match your search."
+        : "No deals yet."
+      : totalCount === 1
+        ? hasSearch
+          ? "1 deal matches your search."
+          : "1 deal total."
+        : hasSearch
+          ? `${totalCount} deals match your search.`
+          : `${totalCount} deals total.`;
   return (
-    <section className="block-space-mini group container">
-      <div className="mb-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
-        <h1 className="text-4xl font-bold md:text-5xl">Deal opportunities</h1>
+    <section className="block-space-mini group container min-w-0 max-w-full overflow-x-hidden">
+      <div className="mb-8 flex min-w-0 flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="min-w-0 shrink space-y-1">
+          <h1 className="text-4xl font-bold md:text-5xl">Deal opportunities</h1>
+          <p
+            className="text-muted-foreground text-sm tabular-nums"
+            aria-live="polite"
+          >
+            {dealsSummary}
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
+          <PullNewDealsFromBitrixButton />
           <Button asChild size="sm" variant="outline">
             <Link to="/deal-opportunities/quick-add" className="gap-2">
               Quick add
@@ -41,7 +91,14 @@ function DealOpportunitiesRoute() {
         </div>
       </div>
 
-      <DealsWorkspace deals={deals} />
+      <DealsWorkspace
+        deals={deals}
+        pipelineStages={pipelineStages}
+        totalCount={totalCount}
+        totalPages={totalPages}
+        currentPage={currentPage}
+        pageSize={pageSize}
+      />
     </section>
   );
 }

@@ -27,6 +27,7 @@ import { DealStatusControls } from "./DealStatusControls";
 import { DealPipelineSection } from "./DealPipelineSection";
 import { useTRPC } from "@/trpc/client";
 import { useRouter } from "@/lib/navigation-shim";
+import { DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
 import { toast } from "sonner";
 import { exportDealToBitrix } from "@/lib/actions/upload-bitrix";
 import DeleteEntityDialog from "@/components/DeleteEntityDialog";
@@ -243,6 +244,7 @@ export function DealHeader({
     basePath === "deal-opportunities" ? (
       <Link
         to="/deal-opportunities"
+        search={DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH}
         className="text-foreground hover:bg-accent inline-flex items-center gap-2 rounded-md px-0 py-2 text-sm font-medium transition-all hover:pl-2"
       >
         <ArrowLeft className="h-4 w-4" />

@@ -65,6 +65,8 @@ export function BitrixSyncForm({
       askingPrice: null,
       ebitda: null,
       ebitdaMargin: null,
+      teaser: "",
+      revenue: null,
     },
   });
 
@@ -88,6 +90,8 @@ export function BitrixSyncForm({
       askingPrice: d.askingPrice ?? null,
       ebitda: d.ebitda ?? null,
       ebitdaMargin: d.ebitdaMargin ?? null,
+      teaser: d.teaser ?? "",
+      revenue: d.opportunity,
     });
   }, [preview, form]);
 
@@ -215,6 +219,8 @@ export function BitrixSyncForm({
               askingPrice: values.askingPrice ?? null,
               ebitda: values.ebitda ?? null,
               ebitdaMargin: values.ebitdaMargin ?? null,
+              teaser: values.teaser?.trim() || null,
+              revenue: values.revenue ?? null,
             }),
           )}
         >
@@ -226,6 +232,24 @@ export function BitrixSyncForm({
                 <FormLabel>Title</FormLabel>
                 <FormControl>
                   <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="teaser"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Teaser</FormLabel>
+                <FormControl>
+                  <Textarea
+                    rows={3}
+                    {...field}
+                    value={field.value ?? ""}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

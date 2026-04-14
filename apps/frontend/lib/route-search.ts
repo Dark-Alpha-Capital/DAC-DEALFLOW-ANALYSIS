@@ -15,8 +15,12 @@ export function asStringArray(value: string | string[] | undefined) {
   return typeof value === "string" ? [value] : (value ?? []);
 }
 
-export function asNumber(value: string | string[] | undefined, fallback: number) {
-  const parsed = Number(asString(value));
+export function asNumber(
+  value: string | string[] | number | undefined,
+  fallback: number,
+) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const parsed = Number(asString(value as string | string[] | undefined));
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
@@ -26,6 +30,23 @@ export function paginatedListLoaderDeps(search: Record<string, unknown>) {
   return {
     page: Math.max(1, asNumber(s.page, 1)),
     limit: Math.max(1, asNumber(s.limit, 25)),
+  };
+}
+
+/** Default URL search for `/_protected/deal-opportunities/` (pagination + query). */
+export const DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH = {
+  page: 1,
+  limit: 25,
+  q: "",
+} as const;
+
+/** Deal opportunities index: page, page size, and server-side search query. */
+export function dealOpportunitiesListLoaderDeps(search: Record<string, unknown>) {
+  const s = search as LooseSearch;
+  return {
+    page: Math.max(1, asNumber(s.page, 1)),
+    limit: Math.max(1, Math.min(100, asNumber(s.limit, 25))),
+    q: (asString(s.q) ?? "").trim().slice(0, 500),
   };
 }
 

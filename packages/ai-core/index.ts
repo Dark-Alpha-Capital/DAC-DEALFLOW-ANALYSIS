@@ -27,5 +27,6 @@ export {
   CIM_EXTRACTION_SYSTEM,
   CIM_EXTRACTION_USER,
   AI_DEAL_SCREENING_INSTRUCTIONS,
-  buildSimScreeningQuestionPrompt,
+  buildCimScreeningQuestionPrompt,
+  BITRIX_DEAL_OPPORTUNITY_EXTRACTION_SYSTEM,
 } from "./prompts";

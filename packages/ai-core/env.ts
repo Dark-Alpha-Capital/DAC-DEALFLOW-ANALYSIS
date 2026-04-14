@@ -1,6 +1,6 @@
 export function resolveOpenAIApiKey(): string | undefined {
   return (
-    process.env.OPENAI_API_KEY ?? process.env.AI_API_KEY ?? undefined
+    process.env.OPENAI_API_KEY || process.env.AI_API_KEY || undefined
   );
 }
 

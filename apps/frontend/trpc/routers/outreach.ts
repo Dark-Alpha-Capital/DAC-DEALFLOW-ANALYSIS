@@ -1,7 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { outreach, dealOpportunities, eq } from "@repo/db";
+import {
+  getDealOpportunityIdAndCompanyId,
+  insertOutreachRow,
+} from "@repo/db/mutations";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 
@@ -32,14 +35,7 @@ export const outreachRouter = createTRPCRouter({
       const dealOpportunityId = input.dealOpportunityId?.trim() || null;
 
       if (dealOpportunityId) {
-        const [dealRow] = await db
-          .select({
-            id: dealOpportunities.id,
-            companyId: dealOpportunities.companyId,
-          })
-          .from(dealOpportunities)
-          .where(eq(dealOpportunities.id, dealOpportunityId))
-          .limit(1);
+        const dealRow = await getDealOpportunityIdAndCompanyId(dealOpportunityId);
 
         if (!dealRow) {
           throw new TRPCError({
@@ -62,17 +58,14 @@ export const outreachRouter = createTRPCRouter({
         }
       }
 
-      const [added] = await db
-        .insert(outreach)
-        .values({
-          companyId,
-          dealOpportunityId,
-          type: input.type,
-          outcome: input.outcome?.trim() || null,
-          notes: input.notes?.trim() || null,
-          createdById: ctx.user.id,
-        })
-        .returning();
+      const added = await insertOutreachRow({
+        companyId,
+        dealOpportunityId,
+        type: input.type,
+        outcome: input.outcome?.trim() || null,
+        notes: input.notes?.trim() || null,
+        createdById: ctx.user.id,
+      });
 
       after(async () => {
         if (companyId) {

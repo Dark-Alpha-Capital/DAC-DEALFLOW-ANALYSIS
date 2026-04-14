@@ -1,31 +1,26 @@
 import { createTRPCRouter, protectedProcedure } from "../init";
 import { z } from "zod";
-import db, {
-  aiScreenings,
-  companies,
-  dealOpportunities,
-  dealOpportunityScreenings,
-  leads,
-  themes,
-  eq,
-  desc,
-} from "@repo/db";
-import { isNotNull, isNull } from "drizzle-orm";
+import {
+  selectDealOpportunityThemeRowsForDealsByTheme,
+  selectDealOpportunityStagesForPipeline,
+  selectLeadSourcesForAnalytics,
+  selectDealOpportunitySourcesForAnalytics,
+  selectAiScreeningScores,
+  selectLeadStatusesForPipelineOverview,
+  selectThemesOverviewRows,
+  selectTopDealsByLatestScreeningRows,
+} from "@repo/db/queries";
+import {
+  getBitrixDealStages,
+  resolveBitrixStageLabel,
+} from "@repo/bitrix-sync";
 
 export const analyticsRouter = createTRPCRouter({
   /**
    * Deals by theme (number of deal opportunities per theme).
    */
   dealsByTheme: protectedProcedure.query(async () => {
-    const rows = await db
-      .select({
-        themeId: themes.id,
-        themeName: themes.name,
-      })
-      .from(dealOpportunities)
-      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-      .leftJoin(themes, eq(companies.themeId, themes.id))
-      .where(isNull(companies.deletedAt));
+    const rows = await selectDealOpportunityThemeRowsForDealsByTheme();
 
     const counts = new Map<
       string,
@@ -54,13 +49,7 @@ export const analyticsRouter = createTRPCRouter({
    * Pipeline conversion: count of deal opportunities by stage.
    */
   pipelineConversion: protectedProcedure.query(async () => {
-    const rows = await db
-      .select({
-        stage: dealOpportunities.stage,
-      })
-      .from(dealOpportunities)
-      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-      .where(isNull(companies.deletedAt));
+    const rows = await selectDealOpportunityStagesForPipeline();
 
     const counts = new Map<string, number>();
     for (const row of rows) {
@@ -68,25 +57,32 @@ export const analyticsRouter = createTRPCRouter({
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
 
-    const stageOrder = [
-      "LISTED",
-      "INITIAL_REVIEW",
-      "SCREENED",
-      "MEETING_HELD",
-      "IOI_SUBMITTED",
-      "LOI_SUBMITTED",
-      "DILIGENCE",
-      "CLOSED",
-      "DEAD",
-      "UNKNOWN",
-    ] as const;
+    const stages = getBitrixDealStages();
+    const orderedIds = stages.map((s) => s.statusId);
+    const seen = new Set<string>();
 
-    const result = stageOrder
-      .map((stage) => ({
-        stage,
-        count: counts.get(stage) ?? 0,
-      }))
-      .filter((row) => row.count > 0);
+    const result: { stage: string; stageLabel: string; count: number }[] = [];
+    for (const stageId of orderedIds) {
+      const count = counts.get(stageId) ?? 0;
+      if (count > 0) {
+        seen.add(stageId);
+        result.push({
+          stage: stageId,
+          stageLabel: resolveBitrixStageLabel(stageId, stages),
+          count,
+        });
+      }
+    }
+
+    for (const [stageId, count] of counts) {
+      if (count > 0 && !seen.has(stageId)) {
+        result.push({
+          stage: stageId,
+          stageLabel: resolveBitrixStageLabel(stageId, stages),
+          count,
+        });
+      }
+    }
 
     return result;
   }),
@@ -96,19 +92,8 @@ export const analyticsRouter = createTRPCRouter({
    */
   sourcePerformance: protectedProcedure.query(async () => {
     const [leadRows, oppRows] = await Promise.all([
-      db
-        .select({
-          source: leads.sourceWebsite,
-        })
-        .from(leads)
-        .where(isNull(leads.deletedAt)),
-      db
-        .select({
-          source: dealOpportunities.sourceWebsite,
-        })
-        .from(dealOpportunities)
-        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-        .where(isNull(companies.deletedAt)),
+      selectLeadSourcesForAnalytics(),
+      selectDealOpportunitySourcesForAnalytics(),
     ]);
 
     type SourceRow = { source: string; leads: number; deals: number };
@@ -153,12 +138,7 @@ export const analyticsRouter = createTRPCRouter({
    * Screening scores: distribution of AI screening scores into buckets.
    */
   screeningScores: protectedProcedure.query(async () => {
-    const rows = await db
-      .select({
-        score: aiScreenings.score,
-      })
-      .from(aiScreenings)
-      .where(isNotNull(aiScreenings.score));
+    const rows = await selectAiScreeningScores();
 
     const buckets = [
       { id: "0-24", label: "0–24", min: 0, max: 24 },
@@ -197,33 +177,9 @@ export const analyticsRouter = createTRPCRouter({
    */
   pipelineOverview: protectedProcedure.query(async () => {
     const [stageRows, leadRows] = await Promise.all([
-      db
-        .select({
-          stage: dealOpportunities.stage,
-        })
-        .from(dealOpportunities)
-        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-        .where(isNull(companies.deletedAt)),
-      db
-        .select({
-          status: leads.status,
-        })
-        .from(leads)
-        .where(isNull(leads.deletedAt)),
+      selectDealOpportunityStagesForPipeline(),
+      selectLeadStatusesForPipelineOverview(),
     ]);
-
-    const stageOrder = [
-      "LISTED",
-      "INITIAL_REVIEW",
-      "SCREENED",
-      "MEETING_HELD",
-      "IOI_SUBMITTED",
-      "LOI_SUBMITTED",
-      "DILIGENCE",
-      "CLOSED",
-      "DEAD",
-      "UNKNOWN",
-    ] as const;
 
     const leadStatusOrder = [
       "NEW",
@@ -245,10 +201,31 @@ export const analyticsRouter = createTRPCRouter({
       leadCounts.set(key, (leadCounts.get(key) ?? 0) + 1);
     }
 
-    const dealsByStage = stageOrder.map((stage) => ({
-      stage,
-      count: stageCounts.get(stage) ?? 0,
-    }));
+    const bxStages = getBitrixDealStages();
+    const orderedIds = bxStages.map((s) => s.statusId);
+    const seen = new Set<string>();
+    const dealsByStage: {
+      stage: string;
+      stageLabel: string;
+      count: number;
+    }[] = [];
+    for (const stageId of orderedIds) {
+      seen.add(stageId);
+      dealsByStage.push({
+        stage: stageId,
+        stageLabel: resolveBitrixStageLabel(stageId, bxStages),
+        count: stageCounts.get(stageId) ?? 0,
+      });
+    }
+    for (const [stageId, count] of stageCounts) {
+      if (!seen.has(stageId)) {
+        dealsByStage.push({
+          stage: stageId,
+          stageLabel: resolveBitrixStageLabel(stageId, bxStages),
+          count,
+        });
+      }
+    }
 
     const leadFlow = leadStatusOrder.map((status) => ({
       status,
@@ -271,34 +248,7 @@ export const analyticsRouter = createTRPCRouter({
    * Includes active themes plus company/deal concentration by theme.
    */
   themeOverview: protectedProcedure.query(async () => {
-    const [themeRows, companyRows, dealRows] = await Promise.all([
-      db
-        .select({
-          id: themes.id,
-          status: themes.status,
-          deletedAt: themes.deletedAt,
-        })
-        .from(themes),
-      db
-        .select({
-          themeId: themes.id,
-          themeName: themes.name,
-          themeDeletedAt: themes.deletedAt,
-        })
-        .from(companies)
-        .leftJoin(themes, eq(companies.themeId, themes.id))
-        .where(isNull(companies.deletedAt)),
-      db
-        .select({
-          themeId: themes.id,
-          themeName: themes.name,
-          themeDeletedAt: themes.deletedAt,
-        })
-        .from(dealOpportunities)
-        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-        .leftJoin(themes, eq(companies.themeId, themes.id))
-        .where(isNull(companies.deletedAt)),
-    ]);
+    const { themeRows, companyRows, dealRows } = await selectThemesOverviewRows();
 
     const activeThemes = themeRows.filter((theme) =>
       theme.status === "ACTIVE" && theme.deletedAt == null
@@ -362,30 +312,7 @@ export const analyticsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ input }) => {
-      const rows = await db
-        .select({
-          dealOpportunityId: dealOpportunities.id,
-          score: dealOpportunityScreenings.score,
-          screenedAt: dealOpportunityScreenings.screenedAt,
-          status: dealOpportunityScreenings.status,
-          stage: dealOpportunities.stage,
-          companyName: companies.name,
-          companyDeletedAt: companies.deletedAt,
-          themeName: themes.name,
-          themeDeletedAt: themes.deletedAt,
-        })
-        .from(dealOpportunityScreenings)
-        .innerJoin(
-          dealOpportunities,
-          eq(dealOpportunityScreenings.dealOpportunityId, dealOpportunities.id),
-        )
-        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-        .leftJoin(themes, eq(companies.themeId, themes.id))
-        .where(eq(dealOpportunityScreenings.status, "PASS"))
-        .orderBy(
-          desc(dealOpportunityScreenings.score),
-          desc(dealOpportunityScreenings.screenedAt),
-        );
+      const rows = await selectTopDealsByLatestScreeningRows();
 
       const latestByDeal = new Map<
         string,

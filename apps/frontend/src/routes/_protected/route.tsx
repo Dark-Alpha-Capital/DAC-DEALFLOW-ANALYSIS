@@ -23,14 +23,14 @@ function ProtectedLayout() {
     <Providers>
       <SidebarProvider>
         <AppSidebar session={session} />
-        <SidebarInset className="min-h-0">
+        <SidebarInset className="min-h-0 min-w-0">
           {/* SidebarInset is already <main>; nested <main> was invalid and breaks layout/a11y.
               min-h-0 + overflow chain prevents flex children from painting over the rest of the page. */}
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
               <SidebarTrigger />
             </header>
-            <div className="min-h-0 flex-1 overflow-auto p-4">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
               <Outlet />
             </div>
           </div>

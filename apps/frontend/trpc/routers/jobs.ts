@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import {
@@ -12,8 +11,7 @@ import {
   restartWorkflowInstance,
 } from "@/src/lib/workflow-jobs-api";
 import { getWorkflowJobRow } from "@repo/db/workflow-jobs";
-import db from "@repo/db";
-import { workflowJobs } from "@repo/db/schema";
+import { resetWorkflowJobRowAfterRestart } from "@repo/db/mutations";
 import type { WorkflowKind } from "@repo/db/workflow-jobs";
 import { after } from "@/lib/after";
 import { revalidatePath } from "@/lib/cache-invalidation";
@@ -23,7 +21,7 @@ const queueNameSchema = z.enum([
   QUEUE_NAMES.FILE_UPLOAD,
   QUEUE_NAMES.CIM_EXTRACTION,
   QUEUE_NAMES.RAG_INGESTION,
-  QUEUE_NAMES.SIM_SCREENING,
+  QUEUE_NAMES.CIM_SCREENING,
 ]);
 
 async function assertJobOwnedAndFailed(
@@ -166,17 +164,7 @@ export const jobsRouter = createTRPCRouter({
             e instanceof Error ? e.message : "Failed to restart workflow",
         });
       }
-      await db
-        .update(workflowJobs)
-        .set({
-          state: "waiting",
-          failedReason: null,
-          returnValue: null,
-          progressPercent: 0,
-          progressStep: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(workflowJobs.instanceId, input.jobId));
+      await resetWorkflowJobRowAfterRestart(input.jobId);
       after(async () => {
         revalidatePath("/jobs");
       });
@@ -212,17 +200,7 @@ export const jobsRouter = createTRPCRouter({
                 : "Failed to restart workflow",
           });
         }
-        await db
-          .update(workflowJobs)
-          .set({
-            state: "waiting",
-            failedReason: null,
-            returnValue: null,
-            progressPercent: 0,
-            progressStep: null,
-            updatedAt: new Date(),
-          })
-          .where(eq(workflowJobs.instanceId, job.jobId));
+        await resetWorkflowJobRowAfterRestart(job.jobId);
       }
       after(async () => {
         revalidatePath("/jobs");

@@ -10,19 +10,29 @@ import {
   themeIdMinInputSchema,
   updateThemeSchema,
 } from "@/lib/zod-schemas/themes-router";
-import db, {
-  themes,
-  theses,
-  industryIntelligence,
-  themePerformance,
-  themeCompanyCoverage,
-  companies,
-  eq,
-  and,
-  isNull,
-  asc,
-  desc,
-} from "@repo/db";
+import {
+  listThemesForSelect,
+  getActiveThesisForTheme,
+  listThesisVersionsForTheme,
+  getActiveIndustryIntelligenceForTheme,
+  listIndustryIntelligenceVersionsForTheme,
+  listThemePerformanceSnapshots,
+  listThemeCoverageRows,
+} from "@repo/db/queries";
+import {
+  insertThemeRow,
+  updateThemeById,
+  softDeleteThemeById,
+  thesisCreateVersionTx,
+  intelligenceCreateVersionTx,
+  insertThemePerformanceSnapshot,
+  deleteThemePerformanceSnapshot,
+  getCompanyThemeForCoverage,
+  findThemeCoverageRow,
+  updateThemeCoverageById,
+  insertThemeCoverageRow,
+  deleteThemeCoverageRow,
+} from "@repo/db/mutations";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { TRPCError } from "@trpc/server";
@@ -39,32 +49,21 @@ function scheduleRevalidateThemePaths(themeId: string) {
 
 export const themesRouter = createTRPCRouter({
   listForSelect: protectedProcedure.query(async () => {
-    return db
-      .select({
-        id: themes.id,
-        name: themes.name,
-        status: themes.status,
-      })
-      .from(themes)
-      .where(isNull(themes.deletedAt))
-      .orderBy(asc(themes.name));
+    return listThemesForSelect();
   }),
 
   create: protectedProcedure
     .input(createThemeSchema)
     .mutation(async ({ input, ctx }) => {
-      const [added] = await db
-        .insert(themes)
-        .values({
-          name: input.name,
-          description: input.description,
-          sector: input.sector,
-          status: input.status ?? "ACTIVE",
-          capitalPriorityScore: input.capitalPriorityScore ?? null,
-          confidenceScore: input.confidenceScore ?? null,
-          createdById: ctx.user.id,
-        })
-        .returning();
+      const added = await insertThemeRow({
+        name: input.name,
+        description: input.description,
+        sector: input.sector,
+        status: input.status ?? "ACTIVE",
+        capitalPriorityScore: input.capitalPriorityScore ?? null,
+        confidenceScore: input.confidenceScore ?? null,
+        createdById: ctx.user.id,
+      });
 
       if (added?.id) scheduleRevalidateThemePaths(added.id);
       return { themeId: added?.id };
@@ -74,17 +73,14 @@ export const themesRouter = createTRPCRouter({
     .input(updateThemeSchema)
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
-      await db
-        .update(themes)
-        .set({
-          name: data.name,
-          description: data.description,
-          sector: data.sector,
-          status: data.status ?? "ACTIVE",
-          capitalPriorityScore: data.capitalPriorityScore ?? null,
-          confidenceScore: data.confidenceScore ?? null,
-        })
-        .where(and(eq(themes.id, id), isNull(themes.deletedAt)));
+      await updateThemeById(id, {
+        name: data.name,
+        description: data.description,
+        sector: data.sector,
+        status: data.status ?? "ACTIVE",
+        capitalPriorityScore: data.capitalPriorityScore ?? null,
+        confidenceScore: data.confidenceScore ?? null,
+      });
 
       scheduleRevalidateThemePaths(id);
       return { themeId: id };
@@ -93,10 +89,7 @@ export const themesRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(themeByIdInputSchema)
     .mutation(async ({ input }) => {
-      await db
-        .update(themes)
-        .set({ deletedAt: new Date() })
-        .where(and(eq(themes.id, input.id), isNull(themes.deletedAt)));
+      await softDeleteThemeById(input.id);
 
       scheduleRevalidateThemePaths(input.id);
       return { success: true };
@@ -105,51 +98,29 @@ export const themesRouter = createTRPCRouter({
   thesisGetActive: protectedProcedure
     .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
-      const [active] = await db
-        .select()
-        .from(theses)
-        .where(
-          and(eq(theses.themeId, input.themeId), eq(theses.isActive, true)),
-        )
-        .orderBy(desc(theses.createdAt))
-        .limit(1);
-      return active ?? null;
+      return getActiveThesisForTheme(input.themeId);
     }),
 
   thesisListVersions: protectedProcedure
     .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
-      return db
-        .select()
-        .from(theses)
-        .where(eq(theses.themeId, input.themeId))
-        .orderBy(desc(theses.createdAt));
+      return listThesisVersionsForTheme(input.themeId);
     }),
 
   thesisCreateVersion: protectedProcedure
     .input(thesisSchema)
     .mutation(async ({ input }) => {
-      await db.transaction(async (tx) => {
-        await tx
-          .update(theses)
-          .set({ isActive: false })
-          .where(
-            and(eq(theses.themeId, input.themeId), eq(theses.isActive, true)),
-          );
-
-        await tx.insert(theses).values({
-          themeId: input.themeId,
-          summary: input.summary,
-          macroDrivers: input.macroDrivers.length ? input.macroDrivers : null,
-          mispricingHypothesis: input.mispricingHypothesis || null,
-          valueCreationLevers: input.valueCreationLevers.length
-            ? input.valueCreationLevers
-            : null,
-          exitLogic: input.exitLogic || null,
-          riskFactors: input.riskFactors.length ? input.riskFactors : null,
-          version: input.version,
-          isActive: true,
-        });
+      await thesisCreateVersionTx({
+        themeId: input.themeId,
+        summary: input.summary,
+        macroDrivers: input.macroDrivers.length ? input.macroDrivers : null,
+        mispricingHypothesis: input.mispricingHypothesis || null,
+        valueCreationLevers: input.valueCreationLevers.length
+          ? input.valueCreationLevers
+          : null,
+        exitLogic: input.exitLogic || null,
+        riskFactors: input.riskFactors.length ? input.riskFactors : null,
+        version: input.version,
       });
 
       scheduleRevalidateThemePaths(input.themeId);
@@ -159,59 +130,32 @@ export const themesRouter = createTRPCRouter({
   intelligenceGetActive: protectedProcedure
     .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
-      const [active] = await db
-        .select()
-        .from(industryIntelligence)
-        .where(
-          and(
-            eq(industryIntelligence.themeId, input.themeId),
-            eq(industryIntelligence.isActive, true),
-          ),
-        )
-        .orderBy(desc(industryIntelligence.createdAt))
-        .limit(1);
-      return active ?? null;
+      return getActiveIndustryIntelligenceForTheme(input.themeId);
     }),
 
   intelligenceListVersions: protectedProcedure
     .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
-      return db
-        .select()
-        .from(industryIntelligence)
-        .where(eq(industryIntelligence.themeId, input.themeId))
-        .orderBy(desc(industryIntelligence.createdAt));
+      return listIndustryIntelligenceVersionsForTheme(input.themeId);
     }),
 
   intelligenceCreateVersion: protectedProcedure
     .input(industryIntelligenceSchema)
     .mutation(async ({ input }) => {
-      await db.transaction(async (tx) => {
-        await tx
-          .update(industryIntelligence)
-          .set({ isActive: false })
-          .where(
-            and(
-              eq(industryIntelligence.themeId, input.themeId),
-              eq(industryIntelligence.isActive, true),
-            ),
-          );
-
-        await tx.insert(industryIntelligence).values({
-          themeId: input.themeId,
-          version: input.version,
-          tam: input.tam ?? null,
-          growthRate: input.growthRate ?? null,
-          avgEbitdaMargin: input.avgEbitdaMargin ?? null,
-          avgEntryMultiple: input.avgEntryMultiple ?? null,
-          avgExitMultiple: input.avgExitMultiple ?? null,
-          fragmentationScore: input.fragmentationScore ?? null,
-          sponsorPenetration: input.sponsorPenetration ?? null,
-          cyclicalityScore: input.cyclicalityScore ?? null,
-          disruptionRiskScore: input.disruptionRiskScore ?? null,
-          notes: input.notes || null,
-          isActive: true,
-        });
+      await intelligenceCreateVersionTx({
+        themeId: input.themeId,
+        version: input.version,
+        tam: input.tam ?? null,
+        growthRate: input.growthRate ?? null,
+        avgEbitdaMargin: input.avgEbitdaMargin ?? null,
+        avgEntryMultiple: input.avgEntryMultiple ?? null,
+        avgExitMultiple: input.avgExitMultiple ?? null,
+        fragmentationScore: input.fragmentationScore ?? null,
+        sponsorPenetration: input.sponsorPenetration ?? null,
+        cyclicalityScore: input.cyclicalityScore ?? null,
+        disruptionRiskScore: input.disruptionRiskScore ?? null,
+        notes: input.notes || null,
+        isActive: true,
       });
 
       scheduleRevalidateThemePaths(input.themeId);
@@ -221,20 +165,13 @@ export const themesRouter = createTRPCRouter({
   performanceListSnapshots: protectedProcedure
     .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
-      return db
-        .select()
-        .from(themePerformance)
-        .where(eq(themePerformance.themeId, input.themeId))
-        .orderBy(
-          desc(themePerformance.observedAt),
-          desc(themePerformance.createdAt),
-        );
+      return listThemePerformanceSnapshots(input.themeId);
     }),
 
   performanceCreateSnapshot: protectedProcedure
     .input(performanceSnapshotSchema)
     .mutation(async ({ input }) => {
-      await db.insert(themePerformance).values({
+      await insertThemePerformanceSnapshot({
         themeId: input.themeId,
         observedAt: input.observedAt ? new Date(input.observedAt) : new Date(),
         dealsSourced: input.dealsSourced ?? null,
@@ -252,14 +189,7 @@ export const themesRouter = createTRPCRouter({
   performanceDeleteSnapshot: protectedProcedure
     .input(thesisByIdAndThemeInputSchema)
     .mutation(async ({ input }) => {
-      await db
-        .delete(themePerformance)
-        .where(
-          and(
-            eq(themePerformance.id, input.id),
-            eq(themePerformance.themeId, input.themeId),
-          ),
-        );
+      await deleteThemePerformanceSnapshot(input.themeId, input.id);
 
       scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };
@@ -268,41 +198,16 @@ export const themesRouter = createTRPCRouter({
   coverageList: protectedProcedure
     .input(themeIdMinInputSchema)
     .query(async ({ input }) => {
-      return db
-        .select({
-          id: themeCompanyCoverage.id,
-          themeId: themeCompanyCoverage.themeId,
-          companyId: themeCompanyCoverage.companyId,
-          coverageStatus: themeCompanyCoverage.coverageStatus,
-          lastOutreachAt: themeCompanyCoverage.lastOutreachAt,
-          notes: themeCompanyCoverage.notes,
-          createdAt: themeCompanyCoverage.createdAt,
-          updatedAt: themeCompanyCoverage.updatedAt,
-          companyName: companies.name,
-          companyIndustry: companies.industry,
-          companyLocation: companies.location,
-        })
-        .from(themeCompanyCoverage)
-        .innerJoin(companies, eq(themeCompanyCoverage.companyId, companies.id))
-        .where(
-          and(
-            eq(themeCompanyCoverage.themeId, input.themeId),
-            isNull(companies.deletedAt),
-          ),
-        )
-        .orderBy(desc(themeCompanyCoverage.updatedAt));
+      return listThemeCoverageRows(input.themeId);
     }),
 
   coverageUpsert: protectedProcedure
     .input(coverageUpsertSchema)
     .mutation(async ({ input }) => {
-      const [company] = await db
-        .select({ id: companies.id, themeId: companies.themeId })
-        .from(companies)
-        .where(
-          and(eq(companies.id, input.companyId), isNull(companies.deletedAt)),
-        )
-        .limit(1);
+      const company = await getCompanyThemeForCoverage(
+        input.companyId,
+        input.themeId,
+      );
 
       if (!company) {
         throw new TRPCError({
@@ -318,30 +223,18 @@ export const themesRouter = createTRPCRouter({
         });
       }
 
-      const [existing] = await db
-        .select({ id: themeCompanyCoverage.id })
-        .from(themeCompanyCoverage)
-        .where(
-          and(
-            eq(themeCompanyCoverage.themeId, input.themeId),
-            eq(themeCompanyCoverage.companyId, input.companyId),
-          ),
-        )
-        .limit(1);
+      const existing = await findThemeCoverageRow(input.themeId, input.companyId);
 
       if (existing) {
-        await db
-          .update(themeCompanyCoverage)
-          .set({
-            coverageStatus: input.coverageStatus,
-            lastOutreachAt: input.lastOutreachAt
-              ? new Date(input.lastOutreachAt)
-              : null,
-            notes: input.notes || null,
-          })
-          .where(eq(themeCompanyCoverage.id, existing.id));
+        await updateThemeCoverageById(existing.id, {
+          coverageStatus: input.coverageStatus,
+          lastOutreachAt: input.lastOutreachAt
+            ? new Date(input.lastOutreachAt)
+            : null,
+          notes: input.notes || null,
+        });
       } else {
-        await db.insert(themeCompanyCoverage).values({
+        await insertThemeCoverageRow({
           themeId: input.themeId,
           companyId: input.companyId,
           coverageStatus: input.coverageStatus,
@@ -359,14 +252,7 @@ export const themesRouter = createTRPCRouter({
   coverageRemove: protectedProcedure
     .input(thesisByIdAndThemeInputSchema)
     .mutation(async ({ input }) => {
-      await db
-        .delete(themeCompanyCoverage)
-        .where(
-          and(
-            eq(themeCompanyCoverage.id, input.id),
-            eq(themeCompanyCoverage.themeId, input.themeId),
-          ),
-        );
+      await deleteThemeCoverageRow(input.themeId, input.id);
 
       scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };

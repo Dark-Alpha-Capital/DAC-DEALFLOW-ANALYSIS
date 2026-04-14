@@ -7,7 +7,8 @@
   },
   "scripts": {
     "fetch-stages": "bun run ./scripts/fetch-bitrix-stages.ts",
-    "fetch-deal-fields": "bun run ./scripts/fetch-bitrix-deal-fields.ts"
+    "fetch-deal-fields": "bun run ./scripts/fetch-bitrix-deal-fields.ts",
+    "list-deal-userfields-ebitda": "bun run ./scripts/list-deal-userfields-ebitda.ts"
   },
   "dependencies": {
     "axios": "^1.8.4",

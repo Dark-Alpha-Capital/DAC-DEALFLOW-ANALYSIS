@@ -3,8 +3,13 @@ import { z } from "zod";
 import { after } from "@/lib/after";
 import { revalidatePath } from "@/lib/cache-invalidation";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db, { aiScreenings, eq, DealType, Sentiment } from "@repo/db";
-import { DeleteReasoningById, UpsertScreenerResponse } from "@repo/db/mutations";
+import { DealType, Sentiment } from "@repo/db";
+import {
+  DeleteReasoningById,
+  UpsertScreenerResponse,
+  insertAiScreeningRow,
+  updateAiScreeningById,
+} from "@repo/db/mutations";
 import { GetDealOpportunityById, GetDealOpportunityByLegacyDealId } from "@repo/db/queries";
 import {
   insertWorkflowJob,
@@ -113,15 +118,12 @@ export const screeningsRouter = createTRPCRouter({
         throw new Error("Deal opportunity not found");
       }
 
-      const [addedScreenResult] = await db
-        .insert(aiScreenings)
-        .values({
-          dealOpportunityId,
-          title: input.title,
-          explanation: input.explanation,
-          sentiment: toSentiment(input.sentiment),
-        })
-        .returning();
+      const addedScreenResult = await insertAiScreeningRow({
+        dealOpportunityId,
+        title: input.title,
+        explanation: input.explanation,
+        sentiment: toSentiment(input.sentiment),
+      });
 
       after(async () => {
         revalidatePath(`/raw-deals/${input.dealId}`);
@@ -140,15 +142,12 @@ export const screeningsRouter = createTRPCRouter({
         throw new Error("Deal opportunity not found");
       }
 
-      const [addedScreenResult] = await db
-        .insert(aiScreenings)
-        .values({
-          dealOpportunityId,
-          title: "AI Screening Result",
-          explanation: input.result,
-          sentiment: Sentiment.NEUTRAL,
-        })
-        .returning();
+      const addedScreenResult = await insertAiScreeningRow({
+        dealOpportunityId,
+        title: "AI Screening Result",
+        explanation: input.result,
+        sentiment: Sentiment.NEUTRAL,
+      });
 
       after(async () => {
         revalidatePath(`/raw-deals/${input.dealId}`);
@@ -159,14 +158,11 @@ export const screeningsRouter = createTRPCRouter({
   update: protectedProcedure
     .input(updateScreeningSchema)
     .mutation(async ({ input }) => {
-      await db
-        .update(aiScreenings)
-        .set({
-          title: input.title,
-          explanation: input.explanation,
-          sentiment: toSentiment(input.sentiment),
-        })
-        .where(eq(aiScreenings.id, input.screeningId));
+      await updateAiScreeningById(input.screeningId, {
+        title: input.title,
+        explanation: input.explanation,
+        sentiment: toSentiment(input.sentiment),
+      });
 
       after(async () => {
         revalidatePath(`/raw-deals/${input.dealId}`);
@@ -196,21 +192,18 @@ export const screeningsRouter = createTRPCRouter({
         throw new Error("Deal opportunity not found");
       }
 
-      const [savedEvaluation] = await db
-        .insert(aiScreenings)
-        .values({
-          dealOpportunityId,
-          title: input.title,
-          explanation: input.explanation,
-          score: input.score != null ? Math.round(input.score) : null,
-          content:
-            input.responses.length > 0
-              ? JSON.stringify(input.responses)
-              : null,
-          sentiment: toSentiment(input.sentiment),
-          screenerId: input.screenerId,
-        })
-        .returning();
+      const savedEvaluation = await insertAiScreeningRow({
+        dealOpportunityId,
+        title: input.title,
+        explanation: input.explanation,
+        score: input.score != null ? Math.round(input.score) : null,
+        content:
+          input.responses.length > 0
+            ? JSON.stringify(input.responses)
+            : null,
+        sentiment: toSentiment(input.sentiment),
+        screenerId: input.screenerId,
+      });
 
       await Promise.all(
         input.responses.map((response) =>

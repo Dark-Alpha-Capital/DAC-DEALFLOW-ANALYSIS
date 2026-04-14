@@ -8,7 +8,7 @@ import type {
   DealOpportunityScreening,
   DealFinancialSnapshot,
 } from "@repo/db/schema";
-import type { SimScreeningRunForDealRow } from "@repo/db/queries";
+import type { CimScreeningRunForDealRow } from "@repo/db/queries";
 import type { CIMAnalysisData } from "./CIMAnalysisSection";
 import { ClientOnly } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,8 +55,8 @@ interface DealDetailTabsProps {
   financialSnapshots?: DealFinancialSnapshot[];
   /** Resolved from opportunity creator (or legacy deal owner). */
   creatorName?: string | null;
-  /** SIM / CIM template runs for sessions scoped to this deal opportunity. */
-  simScreeningRunsForDeal?: SimScreeningRunForDealRow[];
+  /** CIM template screening runs for sessions scoped to this deal opportunity. */
+  cimScreeningRunsForDeal?: CimScreeningRunForDealRow[];
   cimAnalysis?: CIMAnalysisData | null;
 }
 
@@ -77,7 +77,7 @@ export function DealDetailTabs({
   companyNotes,
   financialSnapshots = [],
   creatorName = null,
-  simScreeningRunsForDeal = [],
+  cimScreeningRunsForDeal = [],
   cimAnalysis = null,
 }: DealDetailTabsProps) {
   const dealOutreach = outreach.filter((row) => row.dealOpportunityId === uid);
@@ -86,7 +86,7 @@ export function DealDetailTabs({
   const outreachDealPickerRows = (() => {
     const mapped = dealOpportunities.map((o) => ({
       id: o.id,
-      stage: o.stage ?? "LISTED",
+      stage: o.stage ?? "NEW",
       createdAt: o.createdAt ?? new Date(),
     }));
     if (
@@ -96,7 +96,7 @@ export function DealDetailTabs({
       return [
         {
           id: currentOpportunity.id,
-          stage: currentOpportunity.stage ?? "LISTED",
+          stage: currentOpportunity.stage ?? "NEW",
           createdAt: currentOpportunity.createdAt ?? new Date(),
         },
         ...mapped,
@@ -117,22 +117,25 @@ export function DealDetailTabs({
       maximumFractionDigits: 0,
     }).format(n);
 
+  const normalizedDefaultTab =
+    defaultTab === "sim-analysis" ? "cim-analysis" : defaultTab;
+
   const initialTab =
-    defaultTab === "screenings" ||
-    defaultTab === "ai-screening" ||
-    defaultTab === "financials" ||
-    defaultTab === "sim-analysis" ||
-    defaultTab === "linked-entities" ||
-    defaultTab === "relationships" ||
-    defaultTab === "outreach" ||
-    defaultTab === "documents" ||
-    defaultTab === "contacts" ||
-    defaultTab === "notes"
-      ? defaultTab === "ai-screening"
+    normalizedDefaultTab === "screenings" ||
+    normalizedDefaultTab === "ai-screening" ||
+    normalizedDefaultTab === "financials" ||
+    normalizedDefaultTab === "cim-analysis" ||
+    normalizedDefaultTab === "linked-entities" ||
+    normalizedDefaultTab === "relationships" ||
+    normalizedDefaultTab === "outreach" ||
+    normalizedDefaultTab === "documents" ||
+    normalizedDefaultTab === "contacts" ||
+    normalizedDefaultTab === "notes"
+      ? normalizedDefaultTab === "ai-screening"
         ? "screenings"
-        : defaultTab === "relationships"
+        : normalizedDefaultTab === "relationships"
           ? "linked-entities"
-          : defaultTab
+          : normalizedDefaultTab
       : "overview";
 
   return (
@@ -149,7 +152,7 @@ export function DealDetailTabs({
           <TabsTrigger value="screenings">Screenings</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
           {hasPipeline && (
-            <TabsTrigger value="sim-analysis">SIM Analysis</TabsTrigger>
+            <TabsTrigger value="cim-analysis">CIM Analysis</TabsTrigger>
           )}
           <TabsTrigger value="linked-entities">Linked entities</TabsTrigger>
           <TabsTrigger value="outreach">Outreach</TabsTrigger>
@@ -359,7 +362,7 @@ export function DealDetailTabs({
               dealId={uid}
               dealType={deal.dealType}
               aiScreenings={aiScreenings}
-              simScreeningRunsForDeal={simScreeningRunsForDeal}
+              cimScreeningRunsForDeal={cimScreeningRunsForDeal}
             />
           </section>
         </TabsContent>
@@ -373,16 +376,22 @@ export function DealDetailTabs({
         </TabsContent>
 
         {hasPipeline && (
-          <TabsContent value="sim-analysis" className="space-y-4">
+          <TabsContent value="cim-analysis" className="space-y-4">
             <div className="space-y-1">
-              <h2 className="text-base font-semibold">SIM Analysis</h2>
+              <h2 className="text-base font-semibold">CIM Analysis</h2>
               <p className="text-muted-foreground text-sm">
-                Review extracted CIM/SIM insights in a dedicated workspace.
+                Review extracted CIM insights in a dedicated workspace.
               </p>
             </div>
             <CIMAnalysisSection
               dealOpportunityId={uid}
-              entityName={company?.name ?? deal.dealTeaser ?? "Deal"}
+              entityName={
+                company?.name ??
+                currentOpportunity?.title?.trim() ??
+                currentOpportunity?.dealTeaser ??
+                deal.dealTeaser ??
+                "Deal"
+              }
               initialData={cimAnalysis}
             />
           </TabsContent>
@@ -410,7 +419,12 @@ export function DealDetailTabs({
             emptyMessage="No deal documents. Upload CIM, Teaser, or Financials."
             cimUploadProps={{
               dealOpportunityId: uid,
-              entityName: company?.name ?? deal.dealTeaser ?? "Deal",
+              entityName:
+                company?.name ??
+                currentOpportunity?.title?.trim() ??
+                currentOpportunity?.dealTeaser ??
+                deal.dealTeaser ??
+                "Deal",
             }}
           />
           {company ? (

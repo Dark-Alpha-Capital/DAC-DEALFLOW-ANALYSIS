@@ -71,7 +71,7 @@ export const updateDocumentInputSchema = z.object({
       "VALUE_CREATION_PLAYBOOK",
       "PAST_DEAL_ANALYSIS",
       "DUE_DILIGENCE_CHECKLIST",
-      "SIM_SCREENING",
+      "CIM_SCREENING",
     ])
     .optional(),
 });

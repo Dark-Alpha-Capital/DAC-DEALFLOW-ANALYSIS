@@ -1,25 +1,25 @@
 import { z } from "zod";
 
-export const startSimScreeningInputSchema = z.object({
+export const startCimScreeningInputSchema = z.object({
   documentId: z.string().min(1),
   screenerId: z.string().min(1),
 });
 
-export const simSessionRouteInputSchema = z.object({
+export const cimSessionRouteInputSchema = z.object({
   sessionId: z.string().min(1),
   runId: z.string().min(1).optional(),
 });
 
-export const startSimScreeningRunInputSchema = z.object({
+export const startCimScreeningRunInputSchema = z.object({
   sessionId: z.string().min(1),
   screenerId: z.string().min(1),
 });
 
-export const retrySimScreeningRunInputSchema = z.object({
+export const retryCimScreeningRunInputSchema = z.object({
   runId: z.string().min(1),
 });
 
-export const listSimScreeningSessionsInputSchema = z
+export const listCimScreeningSessionsInputSchema = z
   .object({
     limit: z.number().min(1).max(100).optional(),
   })

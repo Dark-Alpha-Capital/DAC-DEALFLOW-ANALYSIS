@@ -91,7 +91,7 @@ function ScreeningNewRunPage() {
     initialData: initialOpportunities,
   });
   const { data: libraryDocs = [], isLoading: libraryDocsLoading } = useQuery({
-    ...trpc.simScreening.listLibraryDocuments.queryOptions(),
+    ...trpc.cimScreening.listLibraryDocuments.queryOptions(),
     initialData: initialLibraryDocs,
   });
 
@@ -105,7 +105,7 @@ function ScreeningNewRunPage() {
                 jobId: data.jobId,
                 fileName: "Deal opportunity",
                 userId: user?.id ?? "",
-                queueName: QUEUE_NAMES.SIM_SCREENING,
+                queueName: QUEUE_NAMES.CIM_SCREENING,
               },
             ],
           }),
@@ -124,7 +124,7 @@ function ScreeningNewRunPage() {
   );
 
   const startDocumentRun = useMutation(
-    trpc.simScreening.start.mutationOptions({
+    trpc.cimScreening.start.mutationOptions({
       onSuccess: (data) => {
         window.dispatchEvent(
           new CustomEvent("newJobs", {
@@ -133,7 +133,7 @@ function ScreeningNewRunPage() {
                 jobId: data.jobId,
                 fileName: data.jobLabel,
                 userId: user?.id ?? "",
-                queueName: QUEUE_NAMES.SIM_SCREENING,
+                queueName: QUEUE_NAMES.CIM_SCREENING,
               },
             ],
           }),
@@ -210,7 +210,7 @@ function ScreeningNewRunPage() {
       for (let i = 0; i < 45; i += 1) {
         await wait(2000);
         const docs = await queryClient.fetchQuery(
-          trpc.simScreening.listLibraryDocuments.queryOptions(),
+          trpc.cimScreening.listLibraryDocuments.queryOptions(),
         );
         const uploadedDoc = docs.find((doc) => doc.id === uploadRes.documentId);
         if (uploadedDoc?.ingestionStatus === "PROCESSED") {
@@ -292,7 +292,11 @@ function ScreeningNewRunPage() {
                     {opportunities.map((opp) => (
                       <SelectItem key={opp.id} value={opp.id}>
                         {(opp.companyName || "Unknown company").trim()} -{" "}
-                        {(opp.dealTeaser || "Untitled opportunity").trim()}
+                        {(
+                          opp.title?.trim() ||
+                          opp.dealTeaser ||
+                          "Untitled opportunity"
+                        ).trim()}
                       </SelectItem>
                     ))}
                   </SelectContent>

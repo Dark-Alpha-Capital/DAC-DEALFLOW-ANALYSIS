@@ -1,4 +1,3 @@
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -26,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRouter } from "@/lib/navigation-shim";
+import { formatNumberWithCommas, unformatNumber } from "@/lib/utils";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
@@ -37,11 +37,18 @@ import {
 
 export type { EditDealFormSchemaType };
 
+function commaDisplay(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(n)) return "";
+  return formatNumberWithCommas(String(n));
+}
+
 export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
   const router = useRouter();
   const trpc = useTRPC();
 
-  const { data: companies = [] } = useQuery(trpc.companies.listForSelect.queryOptions());
+  const { data: companies = [] } = useQuery(
+    trpc.companies.listForSelect.queryOptions(),
+  );
 
   const { mutate: updateDeal, isPending } = useMutation(
     trpc.dealOpportunities.updateOpportunity.mutationOptions({
@@ -66,6 +73,7 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
       ebitda: opp.ebitda ?? undefined,
       ebitdaMargin: opp.ebitdaMargin ?? undefined,
       askingPrice: opp.askingPrice ?? undefined,
+      title: opp.title ?? "",
       dealTeaser: opp.dealTeaser ?? "",
       description: opp.description ?? "",
       brokerFirstName: opp.brokerFirstName ?? "",
@@ -121,7 +129,11 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem>
                   <FormLabel>Source Website</FormLabel>
                   <FormControl>
-                    <Input type="url" placeholder="https://example.com" {...field} />
+                    <Input
+                      type="url"
+                      placeholder="https://example.com"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -142,12 +154,28 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
             />
             <FormField
               control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Deal headline (Bitrix TITLE)"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="dealTeaser"
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
-                  <FormLabel>Deal Teaser</FormLabel>
+                  <FormLabel>Teaser</FormLabel>
                   <FormControl>
-                    <Input placeholder="Brief teaser..." {...field} />
+                    <Input placeholder="Short teaser (optional)" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -160,7 +188,11 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem className="md:col-span-2">
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Deal description..." className="min-h-[100px]" {...field} />
+                    <Textarea
+                      placeholder="Deal description..."
+                      className="min-h-[100px]"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -173,7 +205,26 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem>
                   <FormLabel>Revenue</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 1500000" {...field} />
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      placeholder="e.g., 1,500,000"
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      value={commaDisplay(field.value)}
+                      onChange={(e) => {
+                        const f = formatNumberWithCommas(e.target.value);
+                        const raw = unformatNumber(f).trim();
+                        if (raw === "" || raw === ".") {
+                          field.onChange(undefined);
+                          return;
+                        }
+                        const n = Number(raw);
+                        field.onChange(Number.isFinite(n) ? n : field.value);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -186,7 +237,26 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem>
                   <FormLabel>EBITDA</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 300000" {...field} />
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      placeholder="e.g., 300,000"
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      value={commaDisplay(field.value)}
+                      onChange={(e) => {
+                        const f = formatNumberWithCommas(e.target.value);
+                        const raw = unformatNumber(f).trim();
+                        if (raw === "" || raw === ".") {
+                          field.onChange(undefined);
+                          return;
+                        }
+                        const n = Number(raw);
+                        field.onChange(Number.isFinite(n) ? n : field.value);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -199,7 +269,26 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem>
                   <FormLabel>EBITDA Margin (0–1)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="e.g., 0.2 for 20%" {...field} />
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      placeholder="e.g., 0.2 for 20%"
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      value={commaDisplay(field.value)}
+                      onChange={(e) => {
+                        const f = formatNumberWithCommas(e.target.value);
+                        const raw = unformatNumber(f).trim();
+                        if (raw === "" || raw === ".") {
+                          field.onChange(undefined);
+                          return;
+                        }
+                        const n = Number(raw);
+                        field.onChange(Number.isFinite(n) ? n : field.value);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -212,7 +301,26 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem>
                   <FormLabel>Asking Price</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 5000000" {...field} />
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      placeholder="e.g., 5,000,000"
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      value={commaDisplay(field.value)}
+                      onChange={(e) => {
+                        const f = formatNumberWithCommas(e.target.value);
+                        const raw = unformatNumber(f).trim();
+                        if (raw === "" || raw === ".") {
+                          field.onChange(undefined);
+                          return;
+                        }
+                        const n = Number(raw);
+                        field.onChange(Number.isFinite(n) ? n : field.value);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -256,7 +364,11 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="broker@example.com" {...field} />
+                    <Input
+                      type="email"
+                      placeholder="broker@example.com"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -282,7 +394,11 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
                 <FormItem>
                   <FormLabel>LinkedIn URL</FormLabel>
                   <FormControl>
-                    <Input type="url" placeholder="https://linkedin.com/in/..." {...field} />
+                    <Input
+                      type="url"
+                      placeholder="https://linkedin.com/in/..."
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -291,10 +407,15 @@ export default function EditDealForm({ opp }: { opp: DealOpportunity }) {
           </FieldGroup>
 
           <div className="mt-6 flex gap-3">
-            <Button type="button" variant="outline" size="sm" onClick={() => router.back()}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => router.back()}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending || companies.length === 0}>
+            <Button type="submit" disabled={isPending}>
               {isPending ? "Saving..." : "Update Deal"}
             </Button>
           </div>

@@ -9,6 +9,10 @@ import { DealActionsCell } from "./deal-actions-cell";
 
 export type DealOppRow = RankedDealOpportunityRow;
 
+function listDealTitle(row: RankedDealOpportunityRow): string {
+  return row.opp.title?.trim() || row.opp.dealTeaser?.trim() || "";
+}
+
 const COMPANY_PREVIEW_WORDS = 2;
 
 function previewCompanyLabel(text: string, maxWords: number): string {
@@ -63,21 +67,20 @@ export const columns: ColumnDef<DealOppRow>[] = [
   },
   {
     id: "title",
-    accessorFn: (row) => row.company?.name ?? row.opp.dealTeaser ?? "Deal",
+    accessorFn: (row) => listDealTitle(row) || "Deal",
     header: ({ column }) => (
       <Button
         variant="ghost"
         className="justify-start"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
       >
-        Company
+        Deal
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
     cell: ({ row }) => {
-      const full =
-        row.original.company?.name ?? row.original.opp.dealTeaser ?? "";
-      const display = previewCompanyLabel(full, COMPANY_PREVIEW_WORDS);
+      const full = listDealTitle(row.original);
+      const display = previewCompanyLabel(full || "—", COMPANY_PREVIEW_WORDS);
       return (
         <span className="block max-w-[14rem] font-medium" title={full || undefined}>
           {display}
@@ -86,8 +89,7 @@ export const columns: ColumnDef<DealOppRow>[] = [
     },
     meta: { className: "text-left" },
     filterFn: (row, id, value) => {
-      const val =
-        row.original.company?.name ?? row.original.opp.dealTeaser ?? "";
+      const val = listDealTitle(row.original);
       return !value || val?.toLowerCase().includes(String(value).toLowerCase());
     },
   },

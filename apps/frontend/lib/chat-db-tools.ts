@@ -21,8 +21,8 @@ import db, {
   investors,
   leads,
   or,
-  simScreeningRuns,
-  simScreeningSessions,
+  cimScreeningRuns,
+  cimScreeningSessions,
   screenerQuestions,
   screeners,
   themes,
@@ -38,16 +38,16 @@ import {
   GetInvestorWithRelations,
   GetThemeDocuments,
   GetThemeWorkspaceById,
-  getActiveSimForDeal,
+  getActiveCimForDeal,
   getAllScreeners,
   getDocumentChunksByIds,
   getScreenerById,
   getScreenerQuestions,
-  getSimScreeningAnswersByRunId,
-  getSimScreeningRunsBySessionId,
-  getSimScreeningSessionByIdForUser,
-  listSimScreeningRunsForDealOpportunity,
-  listSimScreeningSessionsForUserWithMeta,
+  getCimScreeningAnswersByRunId,
+  getCimScreeningRunsBySessionId,
+  getCimScreeningSessionByIdForUser,
+  listCimScreeningRunsForDealOpportunity,
+  listCimScreeningSessionsForUserWithMeta,
 } from "@repo/db/queries";
 
 const DEFAULT_LIMIT = 20;
@@ -175,12 +175,12 @@ export type ChatDbToolContext = {
   userId?: string | null;
 };
 
-export const listSimScreeningSessionsInputSchema = z.object({
+export const listCimScreeningSessionsInputSchema = z.object({
   dealOpportunityId: z.string().trim().nullable().optional(),
   limit: z.number().int().min(1).max(100).default(20),
 });
 
-export const listSimScreeningRunsInputSchema = z
+export const listCimScreeningRunsInputSchema = z
   .object({
     sessionId: z.string().trim().nullable().optional(),
     dealOpportunityId: z.string().trim().nullable().optional(),
@@ -190,12 +190,12 @@ export const listScreenedDealOpportunitiesInputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(50),
 });
 
-export const getSimScreeningRunAnswersInputSchema = z.object({
+export const getCimScreeningRunAnswersInputSchema = z.object({
   runId: z.string().trim().min(1),
   includeEvidence: z.boolean().default(false),
 });
 
-export const getSimScreeningSessionDetailInputSchema = z.object({
+export const getCimScreeningSessionDetailInputSchema = z.object({
   sessionId: z.string().trim().min(1),
   includeLatestRunAnswers: z.boolean().default(true),
   includeEvidence: z.boolean().default(false),
@@ -225,7 +225,7 @@ export const getDealScreeningTemplateQuestionsInputSchema = z
     path: ["templateId"],
   });
 
-export const getDealSimAnalysisInputSchema = z.object({
+export const getDealCimAnalysisInputSchema = z.object({
   dealOpportunityId: z.string().trim().nullable().optional(),
   includeHistory: z.boolean().default(false),
   includeRiskFlags: z.boolean().default(true),
@@ -252,8 +252,8 @@ function resolveDealOpportunityIdFromContext(
   return inputDealOpportunityId ?? context.dealOpportunityId ?? null;
 }
 
-export async function listSimScreeningSessions(
-  input: z.infer<typeof listSimScreeningSessionsInputSchema>,
+export async function listCimScreeningSessions(
+  input: z.infer<typeof listCimScreeningSessionsInputSchema>,
   context: ChatDbToolContext,
 ) {
   if (!context.userId) {
@@ -264,7 +264,7 @@ export async function listSimScreeningSessions(
     };
   }
 
-  const allSessions = await listSimScreeningSessionsForUserWithMeta(
+  const allSessions = await listCimScreeningSessionsForUserWithMeta(
     context.userId,
     input.limit,
   );
@@ -277,7 +277,7 @@ export async function listSimScreeningSessions(
     : allSessions;
 
   return {
-    summary: `Found ${sessions.length} SIM screening session${sessions.length === 1 ? "" : "s"}.`,
+    summary: `Found ${sessions.length} CIM screening session${sessions.length === 1 ? "" : "s"}.`,
     data: sessions,
     meta: {
       totalCount: sessions.length,
@@ -287,8 +287,8 @@ export async function listSimScreeningSessions(
   };
 }
 
-export async function listSimScreeningRuns(
-  input: z.infer<typeof listSimScreeningRunsInputSchema>,
+export async function listCimScreeningRuns(
+  input: z.infer<typeof listCimScreeningRunsInputSchema>,
   context: ChatDbToolContext,
 ) {
   const dealOpportunityId = resolveDealOpportunityIdFromContext(
@@ -298,7 +298,7 @@ export async function listSimScreeningRuns(
   const sessionId = input.sessionId ?? null;
 
   if (sessionId) {
-    const runs = await getSimScreeningRunsBySessionId(sessionId);
+    const runs = await getCimScreeningRunsBySessionId(sessionId);
     return {
       summary: `Found ${runs.length} screening run${runs.length === 1 ? "" : "s"} for session.`,
       data: runs,
@@ -315,7 +315,7 @@ export async function listSimScreeningRuns(
       };
     }
 
-    const sessions = await listSimScreeningSessionsForUserWithMeta(
+    const sessions = await listCimScreeningSessionsForUserWithMeta(
       context.userId,
       500,
     );
@@ -331,19 +331,19 @@ export async function listSimScreeningRuns(
 
     const runs = await db
       .select({
-        runId: simScreeningRuns.id,
-        sessionId: simScreeningRuns.sessionId,
-        status: simScreeningRuns.status,
-        errorMessage: simScreeningRuns.errorMessage,
-        workflowInstanceId: simScreeningRuns.workflowInstanceId,
-        screenerId: simScreeningRuns.screenerId,
+        runId: cimScreeningRuns.id,
+        sessionId: cimScreeningRuns.sessionId,
+        status: cimScreeningRuns.status,
+        errorMessage: cimScreeningRuns.errorMessage,
+        workflowInstanceId: cimScreeningRuns.workflowInstanceId,
+        screenerId: cimScreeningRuns.screenerId,
         screenerName: screeners.name,
-        runCreatedAt: simScreeningRuns.createdAt,
+        runCreatedAt: cimScreeningRuns.createdAt,
       })
-      .from(simScreeningRuns)
-      .innerJoin(screeners, eq(simScreeningRuns.screenerId, screeners.id))
-      .where(inArray(simScreeningRuns.sessionId, sessionIds))
-      .orderBy(desc(simScreeningRuns.createdAt));
+      .from(cimScreeningRuns)
+      .innerJoin(screeners, eq(cimScreeningRuns.screenerId, screeners.id))
+      .where(inArray(cimScreeningRuns.sessionId, sessionIds))
+      .orderBy(desc(cimScreeningRuns.createdAt));
 
     const sessionById = new Map(sessions.map((session) => [session.id, session]));
     const enrichedRuns = runs.map((run) => ({
@@ -363,7 +363,7 @@ export async function listSimScreeningRuns(
     };
   }
 
-  const runs = await listSimScreeningRunsForDealOpportunity(dealOpportunityId);
+  const runs = await listCimScreeningRunsForDealOpportunity(dealOpportunityId);
   return {
     summary: `Found ${runs.length} screening run${runs.length === 1 ? "" : "s"} for deal opportunity.`,
     data: runs,
@@ -383,7 +383,7 @@ export async function listScreenedDealOpportunities(
     };
   }
 
-  const sessions = await listSimScreeningSessionsForUserWithMeta(
+  const sessions = await listCimScreeningSessionsForUserWithMeta(
     context.userId,
     500,
   );
@@ -399,10 +399,10 @@ export async function listScreenedDealOpportunities(
   const sessionIds = sessionsWithDeal.map((session) => session.id);
   const allRuns = await db
     .select({
-      sessionId: simScreeningRuns.sessionId,
+      sessionId: cimScreeningRuns.sessionId,
     })
-    .from(simScreeningRuns)
-    .where(inArray(simScreeningRuns.sessionId, sessionIds));
+    .from(cimScreeningRuns)
+    .where(inArray(cimScreeningRuns.sessionId, sessionIds));
   const runCountBySession = new Map<string, number>();
   for (const run of allRuns) {
     runCountBySession.set(run.sessionId, (runCountBySession.get(run.sessionId) ?? 0) + 1);
@@ -463,20 +463,20 @@ export async function listScreenedDealOpportunities(
   };
 }
 
-export async function getSimScreeningRunAnswers(
-  input: z.infer<typeof getSimScreeningRunAnswersInputSchema>,
+export async function getCimScreeningRunAnswers(
+  input: z.infer<typeof getCimScreeningRunAnswersInputSchema>,
 ) {
   const [answers, run] = await Promise.all([
-    getSimScreeningAnswersByRunId(input.runId),
+    getCimScreeningAnswersByRunId(input.runId),
     db
       .select({
-        id: simScreeningRuns.id,
-        sessionId: simScreeningRuns.sessionId,
-        screenerId: simScreeningRuns.screenerId,
-        status: simScreeningRuns.status,
+        id: cimScreeningRuns.id,
+        sessionId: cimScreeningRuns.sessionId,
+        screenerId: cimScreeningRuns.screenerId,
+        status: cimScreeningRuns.status,
       })
-      .from(simScreeningRuns)
-      .where(eq(simScreeningRuns.id, input.runId))
+      .from(cimScreeningRuns)
+      .where(eq(cimScreeningRuns.id, input.runId))
       .limit(1),
   ]);
 
@@ -539,8 +539,8 @@ export async function getSimScreeningRunAnswers(
   };
 }
 
-export async function getSimScreeningSessionDetail(
-  input: z.infer<typeof getSimScreeningSessionDetailInputSchema>,
+export async function getCimScreeningSessionDetail(
+  input: z.infer<typeof getCimScreeningSessionDetailInputSchema>,
   context: ChatDbToolContext,
 ) {
   if (!context.userId) {
@@ -551,20 +551,20 @@ export async function getSimScreeningSessionDetail(
     };
   }
 
-  const session = await getSimScreeningSessionByIdForUser(input.sessionId, context.userId);
+  const session = await getCimScreeningSessionByIdForUser(input.sessionId, context.userId);
   if (!session) {
     return {
-      summary: "SIM screening session not found.",
+      summary: "CIM screening session not found.",
       data: null,
       meta: { notFound: true },
     };
   }
 
-  const runs = await getSimScreeningRunsBySessionId(input.sessionId);
+  const runs = await getCimScreeningRunsBySessionId(input.sessionId);
   const latestRun = runs[0] ?? null;
   const latestRunAnswers =
     input.includeLatestRunAnswers && latestRun
-      ? await getSimScreeningRunAnswers({
+      ? await getCimScreeningRunAnswers({
         runId: latestRun.id,
         includeEvidence: input.includeEvidence,
       })
@@ -714,8 +714,8 @@ export async function getDealScreeningTemplateQuestions(
   };
 }
 
-export async function getDealSimAnalysis(
-  input: z.infer<typeof getDealSimAnalysisInputSchema>,
+export async function getDealCimAnalysis(
+  input: z.infer<typeof getDealCimAnalysisInputSchema>,
   context: ChatDbToolContext,
 ) {
   const dealOpportunityId = resolveDealOpportunityIdFromContext(
@@ -724,14 +724,14 @@ export async function getDealSimAnalysis(
   );
   if (!dealOpportunityId) {
     return {
-      summary: "dealOpportunityId is required for SIM analysis.",
+      summary: "dealOpportunityId is required for CIM analysis.",
       data: null,
       meta: { invalidRequest: true },
     };
   }
 
-  const [activeSim, extraction, latestSnapshot, allSnapshots, riskFlags] = await Promise.all([
-    getActiveSimForDeal(dealOpportunityId),
+  const [activeCim, extraction, latestSnapshot, allSnapshots, riskFlags] = await Promise.all([
+    getActiveCimForDeal(dealOpportunityId),
     GetCIMExtractionByDealOpportunityId(dealOpportunityId),
     GetLatestDealFinancialSnapshotByDealOpportunityId(dealOpportunityId),
     input.includeHistory
@@ -743,10 +743,10 @@ export async function getDealSimAnalysis(
   ]);
 
   return {
-    summary: "Loaded SIM analysis package for deal opportunity.",
+    summary: "Loaded CIM analysis package for deal opportunity.",
     data: {
       dealOpportunityId,
-      activeSim,
+      activeCim,
       growthNarrative: {
         growthDrivers: extraction?.growthDrivers ?? null,
         industryOverview: extraction?.industryOverview ?? null,
@@ -892,13 +892,13 @@ export async function getDealRelationshipCounts(
       .where(eq(investorDealOpportunityLinks.dealOpportunityId, dealOpportunityId)),
     db
       .select({ value: count() })
-      .from(simScreeningRuns)
+      .from(cimScreeningRuns)
       .innerJoin(
-        simScreeningSessions,
-        eq(simScreeningRuns.sessionId, simScreeningSessions.id),
+        cimScreeningSessions,
+        eq(cimScreeningRuns.sessionId, cimScreeningSessions.id),
       )
       .where(
-        eq(simScreeningSessions.dealOpportunityId, dealOpportunityId),
+        eq(cimScreeningSessions.dealOpportunityId, dealOpportunityId),
       ),
   ]);
 
@@ -1176,7 +1176,7 @@ export async function getEntityCounts(
     }
     if (filters?.stage) {
       conditions.push(
-        eq(dealOpportunities.stage, filters.stage as typeof dealOpportunities.stage._.data),
+        eq(dealOpportunities.stage, String(filters.stage)),
       );
     }
     if (filters?.companyId) conditions.push(eq(dealOpportunities.companyId, filters.companyId));
@@ -1430,7 +1430,7 @@ export async function listEntities(
       }
       if (filters.stage) {
         conditions.push(
-          eq(dealOpportunities.stage, filters.stage as typeof dealOpportunities.stage._.data),
+          eq(dealOpportunities.stage, String(filters.stage)),
         );
       }
       if (filters.companyId) conditions.push(eq(dealOpportunities.companyId, filters.companyId));
@@ -2346,7 +2346,7 @@ async function aggregateBusinessData(
         );
       if (filters.stage)
         conditions.push(
-          eq(dealOpportunities.stage, filters.stage as typeof dealOpportunities.stage._.data),
+          eq(dealOpportunities.stage, String(filters.stage)),
         );
 
       if (groupBy === "status") {
