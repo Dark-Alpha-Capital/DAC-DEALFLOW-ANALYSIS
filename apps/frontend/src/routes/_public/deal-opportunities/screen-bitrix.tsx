@@ -78,6 +78,24 @@ function BitrixScreeningWidgetPage() {
     Record<string, unknown>
   >({});
 
+  const extractDealIdFromReferrer = (): string | undefined => {
+    if (typeof document === "undefined") return undefined;
+    const ref = document.referrer || "";
+    if (!ref) return undefined;
+    const direct = ref.match(/\/crm\/deal\/details\/(\d+)\//i);
+    if (direct?.[1]) return direct[1];
+    try {
+      const u = new URL(ref);
+      const any = u.searchParams.get("any") || "";
+      const decoded = decodeURIComponent(any);
+      const fromAny = decoded.match(/details\/(\d+)\//i);
+      if (fromAny?.[1]) return fromAny[1];
+    } catch {
+      // ignore parse issues
+    }
+    return undefined;
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const bx = (window as Window & { BX24?: any }).BX24;
@@ -113,7 +131,8 @@ function BitrixScreeningWidgetPage() {
     } catch (error) {
       nextDebug = {
         ...nextDebug,
-        bx24GetAuthError: error instanceof Error ? error.message : String(error),
+        bx24GetAuthError:
+          error instanceof Error ? error.message : String(error),
       };
     }
 
@@ -136,7 +155,8 @@ function BitrixScreeningWidgetPage() {
     } catch (error) {
       nextDebug = {
         ...nextDebug,
-        bx24GetLangError: error instanceof Error ? error.message : String(error),
+        bx24GetLangError:
+          error instanceof Error ? error.message : String(error),
       };
     }
 
@@ -152,6 +172,11 @@ function BitrixScreeningWidgetPage() {
             info?.placementOptions?.ENTITY_ID;
           if (!search.dealId && rawId != null && String(rawId).trim()) {
             setPlacementDealId(String(rawId).trim());
+          } else if (!search.dealId) {
+            const fromReferrer = extractDealIdFromReferrer();
+            if (fromReferrer) {
+              setPlacementDealId(fromReferrer);
+            }
           }
           setBitrixFrontendDebug((prev) => ({
             ...prev,
@@ -162,10 +187,17 @@ function BitrixScreeningWidgetPage() {
       } catch (error) {
         setBitrixFrontendDebug({
           ...nextDebug,
-          bx24PlacementInfoError: error instanceof Error ? error.message : String(error),
+          bx24PlacementInfoError:
+            error instanceof Error ? error.message : String(error),
         });
       }
     } else {
+      if (!search.dealId) {
+        const fromReferrer = extractDealIdFromReferrer();
+        if (fromReferrer) {
+          setPlacementDealId(fromReferrer);
+        }
+      }
       setBitrixFrontendDebug(nextDebug);
     }
 
@@ -177,7 +209,9 @@ function BitrixScreeningWidgetPage() {
   const href = typeof window !== "undefined" ? window.location.href : "";
   const rawParams =
     typeof window !== "undefined"
-      ? Object.fromEntries(new URLSearchParams(window.location.search).entries())
+      ? Object.fromEntries(
+          new URLSearchParams(window.location.search).entries(),
+        )
       : {};
   const hasSignedAuth = Boolean(
     search.memberId && search.expiresAt && search.authSig,
@@ -196,19 +230,20 @@ function BitrixScreeningWidgetPage() {
 
   const debugPayload = useMemo(
     () => ({
-    href,
-    rawQueryParams: rawParams,
-    normalizedParams: search,
-    effectiveDealId,
-    bitrixFrontend: bitrixFrontendDebug,
-    authMode: authHint,
-    missingCore,
-    checks: {
-      hasDealId: Boolean(effectiveDealId),
-      hasSignedAuth,
-      hasBitrixAuth,
-      hasAppSidAuth,
-    },
+      href,
+      rawQueryParams: rawParams,
+      normalizedParams: search,
+      effectiveDealId,
+      dealIdFromReferrer: extractDealIdFromReferrer(),
+      bitrixFrontend: bitrixFrontendDebug,
+      authMode: authHint,
+      missingCore,
+      checks: {
+        hasDealId: Boolean(effectiveDealId),
+        hasSignedAuth,
+        hasBitrixAuth,
+        hasAppSidAuth,
+      },
     }),
     [
       href,
