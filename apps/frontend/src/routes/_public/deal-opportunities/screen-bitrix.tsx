@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { BitrixScreeningWidgetWorkspace } from "@/components/deal-opportunities/bitrix-screening-widget-workspace";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { loadBitrixScreenWidgetPostContext } from "@/lib/server/bitrix-screen-widget-post";
 
 const searchSchema = z.object({
   dealId: z.string().min(1).optional(),
@@ -66,13 +67,15 @@ export const Route = createFileRoute(
   head: () => ({
     meta: [{ title: "Bitrix screening widget — Dark Alpha Capital" }],
   }),
+  loader: async () => loadBitrixScreenWidgetPostContext(),
   component: BitrixScreeningWidgetPage,
 });
 
 function BitrixScreeningWidgetPage() {
   const search = Route.useSearch();
+  const { initialDealId, bitrixPlacement, postKeys } = Route.useLoaderData();
   const [placementDealId, setPlacementDealId] = useState<string | undefined>(
-    search.dealId,
+    () => search.dealId ?? initialDealId ?? undefined,
   );
   const [bitrixFrontendDebug, setBitrixFrontendDebug] = useState<
     Record<string, unknown>
@@ -98,7 +101,7 @@ function BitrixScreeningWidgetPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const bx = (window as Window & { BX24?: any }).BX24;
+    const bx = window.BX24;
 
     const baseDebug: Record<string, unknown> = {
       hasBX24: Boolean(bx),
@@ -110,80 +113,113 @@ function BitrixScreeningWidgetPage() {
       locationHash: window.location.hash,
     };
 
-    if (!bx) {
-      setBitrixFrontendDebug(baseDebug);
-      return;
-    }
-
-    let nextDebug: Record<string, unknown> = {
-      ...baseDebug,
-      bx24Keys: Object.keys(bx),
-      hasPlacementInfo: Boolean(bx?.placement?.info),
-      hasGetAuth: typeof bx?.getAuth === "function",
-      hasGetPlacement: typeof bx?.getPlacement === "function",
-      hasGetLang: typeof bx?.getLang === "function",
+    const resolveDealIdFromPlacementPayload = (info: unknown) => {
+      const rec = info as Record<string, unknown> | null | undefined;
+      const opts =
+        (rec?.options as Record<string, unknown> | undefined) ??
+        (rec?.placementOptions as Record<string, unknown> | undefined);
+      const rawId =
+        opts?.ID ??
+        opts?.id ??
+        opts?.ENTITY_ID ??
+        opts?.entityId ??
+        rec?.ID ??
+        rec?.id;
+      return rawId != null && String(rawId).trim()
+        ? String(rawId).trim()
+        : undefined;
     };
 
-    try {
-      if (typeof bx?.getAuth === "function") {
-        nextDebug = { ...nextDebug, bx24GetAuth: bx.getAuth() };
+    const runPlacement = () => {
+      if (!bx) {
+        setBitrixFrontendDebug(baseDebug);
+        return;
       }
-    } catch (error) {
-      nextDebug = {
-        ...nextDebug,
-        bx24GetAuthError:
-          error instanceof Error ? error.message : String(error),
-      };
-    }
 
-    try {
-      if (typeof bx?.getPlacement === "function") {
-        nextDebug = { ...nextDebug, bx24GetPlacement: bx.getPlacement() };
-      }
-    } catch (error) {
-      nextDebug = {
-        ...nextDebug,
-        bx24GetPlacementError:
-          error instanceof Error ? error.message : String(error),
+      let nextDebug: Record<string, unknown> = {
+        ...baseDebug,
+        bx24Keys: Object.keys(bx),
+        hasPlacementInfo: typeof bx.placement?.info === "function",
+        hasPlacementGetOptions: typeof bx.placement?.getOptions === "function",
+        hasGetAuth: typeof bx.getAuth === "function",
+        hasGetPlacement: typeof bx.getPlacement === "function",
+        hasGetLang: typeof bx.getLang === "function",
       };
-    }
 
-    try {
-      if (typeof bx?.getLang === "function") {
-        nextDebug = { ...nextDebug, bx24GetLang: bx.getLang() };
-      }
-    } catch (error) {
-      nextDebug = {
-        ...nextDebug,
-        bx24GetLangError:
-          error instanceof Error ? error.message : String(error),
-      };
-    }
-
-    if (typeof bx?.placement?.info === "function") {
       try {
-        bx.placement.info((info: any) => {
-          const rawId =
-            info?.options?.ID ??
-            info?.options?.id ??
-            info?.options?.ENTITY_ID ??
-            info?.placementOptions?.ID ??
-            info?.placementOptions?.id ??
-            info?.placementOptions?.ENTITY_ID;
-          if (!search.dealId && rawId != null && String(rawId).trim()) {
-            setPlacementDealId(String(rawId).trim());
-          } else if (!search.dealId) {
-            const fromReferrer = extractDealIdFromReferrer();
-            if (fromReferrer) {
-              setPlacementDealId(fromReferrer);
-            }
+        if (typeof bx.getAuth === "function") {
+          nextDebug = { ...nextDebug, bx24GetAuth: bx.getAuth() };
+        }
+      } catch (error) {
+        nextDebug = {
+          ...nextDebug,
+          bx24GetAuthError:
+            error instanceof Error ? error.message : String(error),
+        };
+      }
+
+      try {
+        if (typeof bx.getPlacement === "function") {
+          nextDebug = { ...nextDebug, bx24GetPlacement: bx.getPlacement() };
+        }
+      } catch (error) {
+        nextDebug = {
+          ...nextDebug,
+          bx24GetPlacementError:
+            error instanceof Error ? error.message : String(error),
+        };
+      }
+
+      try {
+        if (typeof bx.getLang === "function") {
+          nextDebug = { ...nextDebug, bx24GetLang: bx.getLang() };
+        }
+      } catch (error) {
+        nextDebug = {
+          ...nextDebug,
+          bx24GetLangError:
+            error instanceof Error ? error.message : String(error),
+        };
+      }
+
+      const applyPlacementInfo = (info: unknown) => {
+        const fromBx = resolveDealIdFromPlacementPayload(info);
+        const hasExplicit = Boolean(search.dealId) || Boolean(initialDealId);
+        if (!hasExplicit && fromBx) {
+          setPlacementDealId(fromBx);
+        } else if (!hasExplicit) {
+          const fromReferrer = extractDealIdFromReferrer();
+          if (fromReferrer) {
+            setPlacementDealId(fromReferrer);
           }
-          setBitrixFrontendDebug((prev) => ({
-            ...prev,
-            ...nextDebug,
-            bx24PlacementInfo: info ?? null,
-          }));
-        });
+        }
+        setBitrixFrontendDebug((prev) => ({
+          ...prev,
+          ...nextDebug,
+          bx24PlacementInfo: info ?? null,
+        }));
+      };
+
+      try {
+        if (typeof bx.placement?.getOptions === "function") {
+          applyPlacementInfo({ options: bx.placement.getOptions() });
+          return;
+        }
+
+        if (typeof bx.placement?.info === "function") {
+          bx.placement.info((info: unknown) => {
+            applyPlacementInfo(info);
+          });
+          return;
+        }
+
+        if (!search.dealId && !initialDealId) {
+          const fromReferrer = extractDealIdFromReferrer();
+          if (fromReferrer) {
+            setPlacementDealId(fromReferrer);
+          }
+        }
+        setBitrixFrontendDebug(nextDebug);
       } catch (error) {
         setBitrixFrontendDebug({
           ...nextDebug,
@@ -191,20 +227,20 @@ function BitrixScreeningWidgetPage() {
             error instanceof Error ? error.message : String(error),
         });
       }
+    };
+
+    if (bx && typeof bx.init === "function") {
+      bx.init(() => runPlacement());
     } else {
-      if (!search.dealId) {
-        const fromReferrer = extractDealIdFromReferrer();
-        if (fromReferrer) {
-          setPlacementDealId(fromReferrer);
-        }
-      }
-      setBitrixFrontendDebug(nextDebug);
+      runPlacement();
     }
 
     if (search.dealId) {
       setPlacementDealId(search.dealId);
+    } else if (initialDealId) {
+      setPlacementDealId(initialDealId);
     }
-  }, [search.dealId]);
+  }, [search.dealId, initialDealId]);
 
   const href = typeof window !== "undefined" ? window.location.href : "";
   const rawParams =
@@ -218,7 +254,8 @@ function BitrixScreeningWidgetPage() {
   );
   const hasBitrixAuth = Boolean(search.authId && search.domain);
   const hasAppSidAuth = Boolean(search.appSid && search.domain);
-  const effectiveDealId = placementDealId ?? search.dealId;
+  const effectiveDealId =
+    placementDealId ?? search.dealId ?? initialDealId ?? undefined;
   const missingCore = effectiveDealId ? [] : ["dealId"];
   const authHint = hasSignedAuth
     ? "signed-auth"
@@ -233,6 +270,9 @@ function BitrixScreeningWidgetPage() {
       href,
       rawQueryParams: rawParams,
       normalizedParams: search,
+      serverPostKeys: postKeys,
+      serverPlacement: bitrixPlacement,
+      serverInitialDealId: initialDealId,
       effectiveDealId,
       dealIdFromReferrer: extractDealIdFromReferrer(),
       bitrixFrontend: bitrixFrontendDebug,
@@ -249,6 +289,9 @@ function BitrixScreeningWidgetPage() {
       href,
       rawParams,
       search,
+      postKeys,
+      bitrixPlacement,
+      initialDealId,
       effectiveDealId,
       bitrixFrontendDebug,
       authHint,
