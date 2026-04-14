@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, Play, Upload } from "lucide-react";
+import { Loader2, Play, Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useTRPC } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -16,9 +17,10 @@ import {
 
 type Props = {
   dealId: string;
-  memberId: string;
-  expiresAt: number;
-  authSig: string;
+  memberId?: string;
+  expiresAt?: number;
+  authSig?: string;
+  authId?: string;
   domain?: string;
 };
 
@@ -77,20 +79,50 @@ export function BitrixScreeningWidgetWorkspace(props: Props) {
   }, [bootstrap.data?.indexedCount, hasBitrixFiles, hasIndexedDocs]);
 
   return (
-    <section className="mx-auto w-full max-w-3xl space-y-4 p-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Bitrix Deal Screening</CardTitle>
+    <section className="mx-auto w-full max-w-3xl space-y-4 px-3 py-4 sm:px-4">
+      <Card className="border-border/70 bg-card/80 backdrop-blur-sm">
+        <CardHeader className="space-y-2 pb-2">
+          <CardTitle className="text-base sm:text-lg">Bitrix Deal Screening</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Pick a screener, ingest files if needed, and launch screening from this deal.
+          </p>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           {bootstrap.isLoading ? (
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <Loader2 className="size-4 animate-spin" />
               Loading widget context...
             </div>
+          ) : bootstrap.error ? (
+            <Alert variant="destructive">
+              <AlertDescription>
+                {bootstrap.error.message || "Failed to load widget context"}
+              </AlertDescription>
+            </Alert>
           ) : (
             <>
-              <p className="text-muted-foreground text-sm">{helper}</p>
+              <Alert>
+                <AlertDescription>{helper}</AlertDescription>
+              </Alert>
+
+              {bootstrap.data?.bitrixFiles?.length ? (
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium tracking-wide uppercase">
+                    Files detected in Bitrix
+                  </Label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {bootstrap.data.bitrixFiles.slice(0, 6).map((f) => (
+                      <div
+                        key={`${f.field}-${f.id}`}
+                        className="bg-muted/40 border-border/60 flex items-center gap-2 rounded-md border px-3 py-2 text-xs"
+                      >
+                        <FileText className="text-muted-foreground size-3.5" />
+                        <span className="truncate">{f.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="space-y-2">
                 <Label>Screener</Label>
@@ -112,7 +144,7 @@ export function BitrixScreeningWidgetWorkspace(props: Props) {
               </div>
 
               {!hasIndexedDocs ? (
-                <div className="space-y-2">
+                <div className="space-y-3 rounded-md border p-3">
                   <Label>Upload file fallback</Label>
                   <input
                     type="file"
@@ -150,23 +182,30 @@ export function BitrixScreeningWidgetWorkspace(props: Props) {
                 </div>
               ) : null}
 
-              <Button
-                type="button"
-                disabled={!canRun}
-                onClick={() =>
-                  runMutation.mutate({
-                    ...props,
-                    screenerId,
-                  })
-                }
-              >
-                {runMutation.isPending ? (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                ) : (
-                  <Play className="mr-2 size-4" />
-                )}
-                Start screening
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  disabled={!canRun}
+                  onClick={() =>
+                    runMutation.mutate({
+                      ...props,
+                      screenerId,
+                    })
+                  }
+                >
+                  {runMutation.isPending ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  ) : (
+                    <Play className="mr-2 size-4" />
+                  )}
+                  Start screening
+                </Button>
+                {bootstrap.data?.lastRun ? (
+                  <p className="text-muted-foreground text-xs">
+                    Last run: {bootstrap.data.lastRun.status}
+                  </p>
+                ) : null}
+              </div>
             </>
           )}
         </CardContent>

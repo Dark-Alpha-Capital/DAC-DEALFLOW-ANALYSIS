@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import DealsAuthedSkeleton from "@/components/skeletons/DealsAuthedSkeleton";
 import { loadRankedDealOpportunitiesPageData } from "@/lib/server/deal-opportunities-route-data";
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ClipboardCheck } from "lucide-react";
 import { DealsWorkspace } from "@/components/deal-opportunities/deals-workspace";
 import { PullNewDealsFromBitrixButton } from "@/components/deal-opportunities/sync-bitrix-deals-button";
 import {
@@ -86,6 +86,12 @@ function DealOpportunitiesRoute() {
             <Link to="/deal-opportunities/ai-bitrix" className="gap-2">
               <Sparkles className="h-3.5 w-3.5" />
               AI → Bitrix
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/deal-opportunities/screen-bitrix" className="gap-2">
+              <ClipboardCheck className="h-3.5 w-3.5" />
+              Screening widget
             </Link>
           </Button>
         </div>

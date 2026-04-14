@@ -144,6 +144,7 @@ import {
 } from "@repo/bitrix-sync";
 import { getBitrixSyncPreviewData } from "@/lib/server/bitrix-sync-preview-data";
 import { verifyBitrixWidgetSignature } from "@/lib/server/bitrix-widget-signature";
+import { verifyBitrixAuthId } from "@/lib/server/bitrix-ai-widget-gate";
 import db, { workflowJobs, desc, and as drizzleAnd, inArray, eq } from "@repo/db";
 import { dealOpportunities } from "@repo/db/schema";
 
@@ -169,19 +170,40 @@ function isUniqueViolationError(error: unknown): boolean {
   );
 }
 
-function assertValidBitrixWidgetContext(input: {
+async function assertValidBitrixWidgetContext(input: {
   dealId: string;
-  memberId: string;
-  expiresAt: number;
-  authSig: string;
+  memberId?: string;
+  expiresAt?: number;
+  authSig?: string;
+  authId?: string;
+  domain?: string;
 }) {
-  const verified = verifyBitrixWidgetSignature(input);
-  if (!verified.ok) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: verified.reason,
+  if (input.memberId && input.expiresAt && input.authSig) {
+    const verified = verifyBitrixWidgetSignature({
+      dealId: input.dealId,
+      memberId: input.memberId,
+      expiresAt: input.expiresAt,
+      authSig: input.authSig,
     });
+    if (!verified.ok) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: verified.reason,
+      });
+    }
+    return;
   }
+
+  if (input.authId && input.domain) {
+    const ok = await verifyBitrixAuthId(input.authId, input.domain);
+    if (ok) return;
+  }
+
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message:
+      "Missing widget auth. Provide signed params (memberId/expiresAt/authSig) or Bitrix AUTH_ID + DOMAIN.",
+  });
 }
 
 async function resolveDealOpportunityForBitrixDeal(bitrixDealId: string) {
@@ -1556,7 +1578,7 @@ export const dealsRouter = createTRPCRouter({
   getBitrixScreeningWidgetContext: publicProcedure
     .input(bitrixScreeningWidgetBootstrapSchema)
     .query(async ({ input }) => {
-      assertValidBitrixWidgetContext(input);
+      await assertValidBitrixWidgetContext(input);
       const env = getBitrixSyncEnv();
       const dealOpportunityId = await resolveDealOpportunityForBitrixDeal(
         input.dealId,
@@ -1639,7 +1661,7 @@ export const dealsRouter = createTRPCRouter({
   uploadBitrixScreeningWidgetDocument: publicProcedure
     .input(bitrixScreeningWidgetUploadSchema)
     .mutation(async ({ input }) => {
-      assertValidBitrixWidgetContext(input);
+      await assertValidBitrixWidgetContext(input);
       const dealOpportunityId = await resolveDealOpportunityForBitrixDeal(
         input.dealId,
       );
@@ -1710,7 +1732,7 @@ export const dealsRouter = createTRPCRouter({
   startBitrixScreeningWidgetRun: publicProcedure
     .input(bitrixScreeningWidgetStartRunSchema)
     .mutation(async ({ input }) => {
-      assertValidBitrixWidgetContext(input);
+      await assertValidBitrixWidgetContext(input);
       const dealOpportunityId = await resolveDealOpportunityForBitrixDeal(
         input.dealId,
       );
@@ -1799,7 +1821,7 @@ export const dealsRouter = createTRPCRouter({
   retryBitrixScreeningWidgetComment: publicProcedure
     .input(bitrixScreeningWidgetRetryCommentSchema)
     .mutation(async ({ input }) => {
-      assertValidBitrixWidgetContext(input);
+      await assertValidBitrixWidgetContext(input);
       const env = getBitrixSyncEnv();
       if (!env?.webhookBaseUrl) {
         throw new TRPCError({

@@ -212,15 +212,15 @@ export const bitrixSyncScreeningRunToDealSchema =
 
 export const bitrixWidgetContextAuthSchema = z.object({
   dealId: z.string().min(1),
-  memberId: z.string().min(1),
-  expiresAt: z.coerce.number().int().positive(),
-  authSig: z.string().min(1),
+  memberId: z.string().optional(),
+  expiresAt: z.coerce.number().int().positive().optional(),
+  authSig: z.string().optional(),
+  authId: z.string().optional(),
+  domain: z.string().optional(),
 });
 
 export const bitrixScreeningWidgetBootstrapSchema =
-  bitrixWidgetContextAuthSchema.extend({
-    domain: z.string().optional(),
-  });
+  bitrixWidgetContextAuthSchema;
 
 export const bitrixScreeningWidgetUploadSchema =
   bitrixWidgetContextAuthSchema.extend({
