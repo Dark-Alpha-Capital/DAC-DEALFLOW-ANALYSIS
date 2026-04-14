@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { BitrixScreeningWidgetWorkspace } from "@/components/deal-opportunities/bitrix-screening-widget-workspace";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -9,6 +10,7 @@ const searchSchema = z.object({
   expiresAt: z.coerce.number().int().positive().optional(),
   authSig: z.string().optional(),
   authId: z.string().optional(),
+  appSid: z.string().optional(),
   domain: z.string().optional(),
 });
 
@@ -46,6 +48,12 @@ export const Route = createFileRoute(
           : typeof search.AUTH_ID === "string"
             ? search.AUTH_ID
             : undefined,
+      appSid:
+        typeof search.appSid === "string"
+          ? search.appSid
+          : typeof search.APP_SID === "string"
+            ? search.APP_SID
+            : undefined,
       domain:
         typeof search.domain === "string"
           ? search.domain
@@ -63,6 +71,36 @@ export const Route = createFileRoute(
 
 function BitrixScreeningWidgetPage() {
   const search = Route.useSearch();
+  const [placementDealId, setPlacementDealId] = useState<string | undefined>(
+    search.dealId,
+  );
+
+  useEffect(() => {
+    if (search.dealId) {
+      setPlacementDealId(search.dealId);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const bx = (window as Window & { BX24?: any }).BX24;
+    if (!bx?.placement?.info) return;
+    try {
+      bx.placement.info((info: any) => {
+        const rawId =
+          info?.options?.ID ??
+          info?.options?.id ??
+          info?.options?.ENTITY_ID ??
+          info?.placementOptions?.ID ??
+          info?.placementOptions?.id ??
+          info?.placementOptions?.ENTITY_ID;
+        if (rawId != null && String(rawId).trim()) {
+          setPlacementDealId(String(rawId).trim());
+        }
+      });
+    } catch {
+      // no-op; debug panel below will show missing context
+    }
+  }, [search.dealId]);
+
   const href = typeof window !== "undefined" ? window.location.href : "";
   const rawParams =
     typeof window !== "undefined"
@@ -72,27 +110,46 @@ function BitrixScreeningWidgetPage() {
     search.memberId && search.expiresAt && search.authSig,
   );
   const hasBitrixAuth = Boolean(search.authId && search.domain);
-  const missingCore = search.dealId ? [] : ["dealId"];
+  const hasAppSidAuth = Boolean(search.appSid && search.domain);
+  const effectiveDealId = placementDealId ?? search.dealId;
+  const missingCore = effectiveDealId ? [] : ["dealId"];
   const authHint = hasSignedAuth
     ? "signed-auth"
     : hasBitrixAuth
       ? "bitrix-auth"
-      : "missing-auth";
+      : hasAppSidAuth
+        ? "appsid-auth"
+        : "missing-auth";
 
-  const debugPayload = {
+  const debugPayload = useMemo(
+    () => ({
     href,
     rawQueryParams: rawParams,
     normalizedParams: search,
+    effectiveDealId,
     authMode: authHint,
     missingCore,
     checks: {
-      hasDealId: Boolean(search.dealId),
+      hasDealId: Boolean(effectiveDealId),
       hasSignedAuth,
       hasBitrixAuth,
+      hasAppSidAuth,
     },
-  };
+    }),
+    [
+      href,
+      rawParams,
+      search,
+      effectiveDealId,
+      authHint,
+      missingCore,
+      hasSignedAuth,
+      hasBitrixAuth,
+      hasAppSidAuth,
+    ],
+  );
 
-  if (!search.dealId) {
+  if (!effectiveDealId) {
     return (
       <section className="mx-auto w-full max-w-2xl p-4">
         <Alert>
@@ -116,11 +173,12 @@ function BitrixScreeningWidgetPage() {
   return (
     <section className="mx-auto w-full max-w-4xl space-y-3 p-2">
       <BitrixScreeningWidgetWorkspace
-        dealId={search.dealId}
+        dealId={effectiveDealId}
         memberId={search.memberId}
         expiresAt={search.expiresAt}
         authSig={search.authSig}
         authId={search.authId}
+        appSid={search.appSid}
         domain={search.domain}
       />
       <details className="bg-card rounded-md border p-3">

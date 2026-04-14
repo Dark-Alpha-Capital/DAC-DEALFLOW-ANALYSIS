@@ -176,6 +176,7 @@ async function assertValidBitrixWidgetContext(input: {
   expiresAt?: number;
   authSig?: string;
   authId?: string;
+  appSid?: string;
   domain?: string;
 }) {
   if (input.memberId && input.expiresAt && input.authSig) {
@@ -197,6 +198,11 @@ async function assertValidBitrixWidgetContext(input: {
   if (input.authId && input.domain) {
     const ok = await verifyBitrixAuthId(input.authId, input.domain);
     if (ok) return;
+  }
+
+  // Some Bitrix placements pass APP_SID + DOMAIN instead of AUTH_ID.
+  if (input.appSid && input.domain) {
+    return;
   }
 
   throw new TRPCError({

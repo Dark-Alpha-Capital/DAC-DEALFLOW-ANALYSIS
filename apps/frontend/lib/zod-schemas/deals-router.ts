@@ -216,6 +216,7 @@ export const bitrixWidgetContextAuthSchema = z.object({
   expiresAt: z.coerce.number().int().positive().optional(),
   authSig: z.string().optional(),
   authId: z.string().optional(),
+  appSid: z.string().optional(),
   domain: z.string().optional(),
 });
 

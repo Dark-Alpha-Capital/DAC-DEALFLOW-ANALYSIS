@@ -21,6 +21,7 @@ type Props = {
   expiresAt?: number;
   authSig?: string;
   authId?: string;
+  appSid?: string;
   domain?: string;
 };
 
