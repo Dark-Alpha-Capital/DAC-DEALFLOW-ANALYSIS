@@ -74,30 +74,103 @@ function BitrixScreeningWidgetPage() {
   const [placementDealId, setPlacementDealId] = useState<string | undefined>(
     search.dealId,
   );
+  const [bitrixFrontendDebug, setBitrixFrontendDebug] = useState<
+    Record<string, unknown>
+  >({});
 
   useEffect(() => {
-    if (search.dealId) {
-      setPlacementDealId(search.dealId);
-      return;
-    }
     if (typeof window === "undefined") return;
     const bx = (window as Window & { BX24?: any }).BX24;
-    if (!bx?.placement?.info) return;
+
+    const baseDebug: Record<string, unknown> = {
+      hasBX24: Boolean(bx),
+      topLevelWindowEqualsSelf:
+        typeof window !== "undefined" ? window.top === window.self : null,
+      documentReferrer:
+        typeof document !== "undefined" ? document.referrer || null : null,
+      locationSearch: window.location.search,
+      locationHash: window.location.hash,
+    };
+
+    if (!bx) {
+      setBitrixFrontendDebug(baseDebug);
+      return;
+    }
+
+    let nextDebug: Record<string, unknown> = {
+      ...baseDebug,
+      bx24Keys: Object.keys(bx),
+      hasPlacementInfo: Boolean(bx?.placement?.info),
+      hasGetAuth: typeof bx?.getAuth === "function",
+      hasGetPlacement: typeof bx?.getPlacement === "function",
+      hasGetLang: typeof bx?.getLang === "function",
+    };
+
     try {
-      bx.placement.info((info: any) => {
-        const rawId =
-          info?.options?.ID ??
-          info?.options?.id ??
-          info?.options?.ENTITY_ID ??
-          info?.placementOptions?.ID ??
-          info?.placementOptions?.id ??
-          info?.placementOptions?.ENTITY_ID;
-        if (rawId != null && String(rawId).trim()) {
-          setPlacementDealId(String(rawId).trim());
-        }
-      });
-    } catch {
-      // no-op; debug panel below will show missing context
+      if (typeof bx?.getAuth === "function") {
+        nextDebug = { ...nextDebug, bx24GetAuth: bx.getAuth() };
+      }
+    } catch (error) {
+      nextDebug = {
+        ...nextDebug,
+        bx24GetAuthError: error instanceof Error ? error.message : String(error),
+      };
+    }
+
+    try {
+      if (typeof bx?.getPlacement === "function") {
+        nextDebug = { ...nextDebug, bx24GetPlacement: bx.getPlacement() };
+      }
+    } catch (error) {
+      nextDebug = {
+        ...nextDebug,
+        bx24GetPlacementError:
+          error instanceof Error ? error.message : String(error),
+      };
+    }
+
+    try {
+      if (typeof bx?.getLang === "function") {
+        nextDebug = { ...nextDebug, bx24GetLang: bx.getLang() };
+      }
+    } catch (error) {
+      nextDebug = {
+        ...nextDebug,
+        bx24GetLangError: error instanceof Error ? error.message : String(error),
+      };
+    }
+
+    if (typeof bx?.placement?.info === "function") {
+      try {
+        bx.placement.info((info: any) => {
+          const rawId =
+            info?.options?.ID ??
+            info?.options?.id ??
+            info?.options?.ENTITY_ID ??
+            info?.placementOptions?.ID ??
+            info?.placementOptions?.id ??
+            info?.placementOptions?.ENTITY_ID;
+          if (!search.dealId && rawId != null && String(rawId).trim()) {
+            setPlacementDealId(String(rawId).trim());
+          }
+          setBitrixFrontendDebug((prev) => ({
+            ...prev,
+            ...nextDebug,
+            bx24PlacementInfo: info ?? null,
+          }));
+        });
+      } catch (error) {
+        setBitrixFrontendDebug({
+          ...nextDebug,
+          bx24PlacementInfoError: error instanceof Error ? error.message : String(error),
+        });
+      }
+    } else {
+      setBitrixFrontendDebug(nextDebug);
+    }
+
+    if (search.dealId) {
+      setPlacementDealId(search.dealId);
     }
   }, [search.dealId]);
 
@@ -127,6 +200,7 @@ function BitrixScreeningWidgetPage() {
     rawQueryParams: rawParams,
     normalizedParams: search,
     effectiveDealId,
+    bitrixFrontend: bitrixFrontendDebug,
     authMode: authHint,
     missingCore,
     checks: {
@@ -141,6 +215,7 @@ function BitrixScreeningWidgetPage() {
       rawParams,
       search,
       effectiveDealId,
+      bitrixFrontendDebug,
       authHint,
       missingCore,
       hasSignedAuth,
