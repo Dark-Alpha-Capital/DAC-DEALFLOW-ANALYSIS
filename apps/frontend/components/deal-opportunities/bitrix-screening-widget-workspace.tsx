@@ -10,8 +10,10 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
+  BookMarked,
   Building2,
   CheckCircle2,
+  ChevronDown,
   ExternalLink,
   FileStack,
   History,
@@ -46,7 +48,100 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { EvidenceCitation } from "@/lib/map-cim-screening-evidence";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+
+function formatChunkIdForUi(chunkId: string) {
+  return chunkId.length > 18 ? `${chunkId.slice(0, 16)}…` : chunkId;
+}
+
+function EvidenceChunksCollapsible({
+  citations,
+  chunkIds,
+}: {
+  citations: EvidenceCitation[];
+  chunkIds: string[];
+}) {
+  const hitCount = citations.length > 0 ? citations.length : chunkIds.length;
+  if (hitCount === 0) return null;
+
+  return (
+    <Collapsible defaultOpen={false} className="w-full">
+      <CollapsibleTrigger
+        type="button"
+        className={cn(
+          "group border-border/70 bg-muted/30 flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-200",
+          "hover:bg-muted/45 focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+          "motion-reduce:transition-none",
+        )}
+      >
+        <span className="flex min-w-0 flex-1 items-center gap-2.5">
+          <BookMarked className="text-primary/80 size-4 shrink-0" aria-hidden />
+          <span className="min-w-0">
+            <span className="text-foreground text-sm font-semibold tracking-tight">
+              Evidence
+            </span>
+            <span className="text-muted-foreground text-sm font-normal">
+              {" · "}
+              {hitCount} chunk hit{hitCount === 1 ? "" : "s"}
+            </span>
+          </span>
+        </span>
+        <ChevronDown
+          className="text-muted-foreground size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180 motion-reduce:transition-none"
+          aria-hidden
+        />
+      </CollapsibleTrigger>
+      <CollapsibleContent
+        className={cn(
+          "data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-1 data-[state=open]:slide-in-from-top-1 outline-none",
+        )}
+      >
+        <div className="border-border/60 bg-background/70 mt-2 max-h-72 overflow-y-auto rounded-lg border p-3 shadow-inner">
+          {citations.length > 0 ? (
+            <ol className="marker:text-muted-foreground list-decimal space-y-4 pl-4 text-xs leading-relaxed wrap-anywhere">
+              {citations.map((c, idx) => (
+                <li key={`${c.chunkId}-${idx}`} className="pl-1">
+                  <div className="text-muted-foreground mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-medium tracking-wide uppercase">
+                    <span>
+                      {c.pageNumber != null
+                        ? `Page ${c.pageNumber}`
+                        : "Excerpt"}
+                    </span>
+                    <code className="bg-muted/90 text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[0.65rem] font-normal tracking-normal normal-case">
+                      {formatChunkIdForUi(c.chunkId)}
+                    </code>
+                  </div>
+                  {c.excerpt ? (
+                    <p className="text-foreground max-w-prose text-[0.8125rem] leading-relaxed whitespace-pre-wrap">
+                      {c.excerpt}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground text-[0.8125rem] italic">
+                      No stored text for chunk{" "}
+                      <code className="bg-muted rounded px-1 font-mono text-[0.65rem] not-italic">
+                        {formatChunkIdForUi(c.chunkId)}
+                      </code>
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-muted-foreground font-mono text-[11px] leading-relaxed">
+              Chunk IDs: {chunkIds.map(formatChunkIdForUi).join(", ")}
+            </p>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 type Props = {
   dealId: string;
@@ -104,6 +199,86 @@ function ingestionStatusLabel(status: string) {
   }
 }
 
+type WidgetBootstrap =
+  inferRouterOutputs<AppRouter>["dealOpportunities"]["getBitrixScreeningWidgetContext"];
+
+type DealDocumentRow = WidgetBootstrap["dealDocuments"][number];
+
+type LastRunAnswer = NonNullable<WidgetBootstrap["lastRun"]>["answers"][number];
+
+const ScreeningResultQuestionItem = memo(function ScreeningResultQuestionItem({
+  answer,
+  displayIndex,
+  totalQuestions,
+}: {
+  answer: LastRunAnswer;
+  displayIndex: number;
+  totalQuestions: number;
+}) {
+  return (
+    <li className="border-border/60 border-b pb-6 last:border-b-0 last:pb-0">
+      <article className="flex gap-3 sm:gap-4">
+        <div
+          className="flex w-10 shrink-0 flex-col items-center sm:w-11"
+          aria-hidden
+        >
+          <span
+            className={cn(
+              "border-border/80 bg-muted/60 text-foreground flex size-9 shrink-0 items-center justify-center rounded-lg border text-xs font-bold tabular-nums shadow-xs",
+              "sm:size-10 sm:text-sm",
+            )}
+          >
+            {displayIndex}
+          </span>
+          <span className="text-muted-foreground mt-1.5 hidden text-[10px] font-medium sm:block">
+            / {totalQuestions}
+          </span>
+        </div>
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="border-border/40 flex flex-wrap items-start justify-between gap-3 border-b pb-3">
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-muted-foreground font-mono text-[10px] font-semibold tracking-widest uppercase">
+                Question {displayIndex} of {totalQuestions}
+              </p>
+              <h3 className="text-foreground max-w-prose text-[0.9375rem] leading-snug font-semibold tracking-tight text-pretty sm:text-base">
+                {answer.question}
+              </h3>
+            </div>
+            <div
+              className={cn(
+                "border-primary/20 bg-primary/8 flex shrink-0 flex-col items-end gap-0.5 rounded-lg border px-3 py-2 text-right",
+                "min-w-[4.5rem]",
+              )}
+              aria-label={`Score ${answer.score ?? "—"} out of 10`}
+            >
+              <span className="text-muted-foreground text-[0.65rem] font-semibold tracking-wide uppercase">
+                Score
+              </span>
+              <span className="text-foreground font-mono text-xl leading-none font-bold tabular-nums sm:text-2xl">
+                {answer.score ?? "—"}
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-muted/25 border-border/60 rounded-lg border px-3.5 py-3 sm:px-4 sm:py-3.5">
+            <p className="text-muted-foreground mb-2 text-[0.65rem] font-semibold tracking-wide uppercase">
+              Rationale
+            </p>
+            <p className="text-foreground max-w-prose text-sm leading-relaxed whitespace-pre-wrap">
+              {answer.rationale?.trim() ? answer.rationale : "—"}
+            </p>
+          </div>
+
+          <EvidenceChunksCollapsible
+            citations={answer.evidenceCitations ?? []}
+            chunkIds={answer.evidenceChunkIds ?? []}
+          />
+        </div>
+      </article>
+    </li>
+  );
+});
+
 function summarizeIngestion(docs: DealDocumentRow[]) {
   const total = docs.length;
   let pending = 0;
@@ -148,11 +323,6 @@ function summarizeIngestion(docs: DealDocumentRow[]) {
     pct,
   };
 }
-
-type WidgetBootstrap =
-  inferRouterOutputs<AppRouter>["dealOpportunities"]["getBitrixScreeningWidgetContext"];
-
-type DealDocumentRow = WidgetBootstrap["dealDocuments"][number];
 
 function hasBitrixFieldValue(value: string): boolean {
   const t = value.trim();
@@ -266,7 +436,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[88px_1fr] gap-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="min-w-0 wrap-break-word font-medium">{value}</span>
+      <span className="min-w-0 font-medium wrap-break-word">{value}</span>
     </div>
   );
 }
@@ -417,6 +587,17 @@ export function BitrixScreeningWidgetWorkspace({
     [d?.bitrixDealFields],
   );
 
+  const orderedScreeningAnswers = useMemo(() => {
+    const list = d?.lastRun?.answers;
+    if (!list?.length) return [];
+    return [...list].sort((a, b) => {
+      const pa = a.position ?? 0;
+      const pb = b.position ?? 0;
+      if (pa !== pb) return pa - pb;
+      return a.questionId.localeCompare(b.questionId);
+    });
+  }, [d?.lastRun?.answers]);
+
   useEffect(() => {
     if (!d) return;
     if (import.meta.env.DEV) {
@@ -432,7 +613,7 @@ export function BitrixScreeningWidgetWorkspace({
   if (q.isLoading) {
     return (
       <div
-        className="text-muted-foreground flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed bg-muted/20 p-12 text-sm"
+        className="text-muted-foreground bg-muted/20 flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed p-12 text-sm"
         role="status"
         aria-live="polite"
       >
@@ -458,9 +639,9 @@ export function BitrixScreeningWidgetWorkspace({
   const vectorWaitSec = Math.round(d.vectorSettleMsAfterIngest / 1000);
 
   return (
-    <div className="relative isolate mx-auto max-w-[1400px] overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-b from-muted/25 via-background to-background shadow-sm">
+    <div className="border-border/70 from-muted/25 via-background to-background relative isolate mx-auto max-w-[1400px] overflow-hidden rounded-2xl border bg-gradient-to-b shadow-sm">
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.45] motion-reduce:opacity-25 [background-image:radial-gradient(900px_circle_at_0%_-20%,oklch(0.6231_0.188_259.8_/_0.12),transparent_55%),radial-gradient(700px_circle_at_100%_0%,oklch(0.55_0.06_250_/_0.08),transparent_50%)]"
+        className="pointer-events-none absolute inset-0 [background-image:radial-gradient(900px_circle_at_0%_-20%,oklch(0.6231_0.188_259.8_/_0.12),transparent_55%),radial-gradient(700px_circle_at_100%_0%,oklch(0.55_0.06_250_/_0.08),transparent_50%)] opacity-[0.45] motion-reduce:opacity-25"
         aria-hidden
       />
       <div className="relative grid gap-5 p-4 md:grid-cols-2 md:gap-6 md:p-6">
@@ -471,7 +652,7 @@ export function BitrixScreeningWidgetWorkspace({
                 <p className="text-muted-foreground font-mono text-[11px] font-medium tracking-widest uppercase">
                   Opportunity screening
                 </p>
-                <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                <h1 className="text-foreground font-serif text-2xl font-semibold tracking-tight md:text-3xl">
                   Deal screening
                 </h1>
               </div>
@@ -486,10 +667,16 @@ export function BitrixScreeningWidgetWorkspace({
               ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="gap-1.5 font-mono text-[11px]">
+              <Badge
+                variant="outline"
+                className="gap-1.5 font-mono text-[11px]"
+              >
                 Bitrix #{d.bitrixDealId}
               </Badge>
-              <Badge variant="outline" className="gap-1.5 font-mono text-[11px]">
+              <Badge
+                variant="outline"
+                className="gap-1.5 font-mono text-[11px]"
+              >
                 App {d.appDeal.id}
               </Badge>
               <Badge
@@ -523,7 +710,7 @@ export function BitrixScreeningWidgetWorkspace({
                   {(d.ingestionPipelineJobs ?? []).map((job) => (
                     <li
                       key={job.instanceId}
-                      className="bg-card/90 space-y-2 rounded-lg border border-border/60 px-3 py-2.5 text-xs shadow-xs"
+                      className="bg-card/90 border-border/60 space-y-2 rounded-lg border px-3 py-2.5 text-xs shadow-xs"
                     >
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <span className="min-w-0 font-medium wrap-break-word">
@@ -540,9 +727,7 @@ export function BitrixScreeningWidgetWorkspace({
                         />
                         <span>
                           {job.progressStep?.trim() ||
-                            (job.state === "waiting"
-                              ? "Starting…"
-                              : job.state)}
+                            (job.state === "waiting" ? "Starting…" : job.state)}
                         </span>
                         <span className="text-muted-foreground/90 font-mono text-[10px]">
                           {job.progressPercent}%
@@ -607,7 +792,8 @@ export function BitrixScreeningWidgetWorkspace({
                       {d.indexedCount === 1 ? "" : "s"}). Go to{" "}
                       <strong className="font-semibold">Run screening</strong>{" "}
                       and press{" "}
-                      <strong className="font-semibold">Start screening</strong>.
+                      <strong className="font-semibold">Start screening</strong>
+                      .
                     </AlertDescription>
                   </Alert>
                 ) : null}
@@ -644,7 +830,7 @@ export function BitrixScreeningWidgetWorkspace({
                   <li
                     key={doc.id}
                     className={cn(
-                      "border-border/70 flex flex-wrap items-start justify-between gap-2 rounded-lg border bg-muted/15 px-3 py-2 text-xs transition-colors",
+                      "border-border/70 bg-muted/15 flex flex-wrap items-start justify-between gap-2 rounded-lg border px-3 py-2 text-xs transition-colors",
                       doc.ingestionStatus === "PROCESSED" &&
                         "border-emerald-500/25 bg-emerald-500/[0.04]",
                       doc.ingestionStatus === "FAILED" &&
@@ -681,7 +867,7 @@ export function BitrixScreeningWidgetWorkspace({
               </ul>
             )}
 
-            <div className="space-y-3 rounded-xl border border-dashed border-border/90 bg-muted/20 p-4 transition-colors hover:border-primary/30 hover:bg-muted/30">
+            <div className="border-border/90 bg-muted/20 hover:border-primary/30 hover:bg-muted/30 space-y-3 rounded-xl border border-dashed p-4 transition-colors">
               <Label htmlFor="bitrix-widget-upload" className="text-sm">
                 Upload files
               </Label>
@@ -692,7 +878,7 @@ export function BitrixScreeningWidgetWorkspace({
                 onChange={(e) =>
                   setUploadFiles(Array.from(e.target.files ?? []))
                 }
-                className="block w-full cursor-pointer text-sm file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
+                className="file:bg-secondary file:text-secondary-foreground hover:file:bg-secondary/80 block w-full cursor-pointer text-sm file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:px-3 file:py-1.5 file:text-xs file:font-medium"
               />
               <Button
                 type="button"
@@ -720,7 +906,7 @@ export function BitrixScreeningWidgetWorkspace({
                 {d.recentScreeningRuns.map((r) => (
                   <li
                     key={r.runId}
-                    className="border-border/70 space-y-2 rounded-lg border bg-muted/10 px-3 py-2.5 text-xs"
+                    className="border-border/70 bg-muted/10 space-y-2 rounded-lg border px-3 py-2.5 text-xs"
                   >
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                       <span className="font-semibold">{r.status}</span>
@@ -759,9 +945,11 @@ export function BitrixScreeningWidgetWorkspace({
               description="From CONTACT_ID / COMPANY_ID via REST."
             >
               {d.bitrixLinkedCompany ? (
-                <div className="border-border/80 mb-4 space-y-2 rounded-lg border bg-muted/10 px-3 py-3 text-sm">
+                <div className="border-border/80 bg-muted/10 mb-4 space-y-2 rounded-lg border px-3 py-3 text-sm">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="font-semibold">{d.bitrixLinkedCompany.title}</div>
+                    <div className="font-semibold">
+                      {d.bitrixLinkedCompany.title}
+                    </div>
                     <Building2
                       className="text-muted-foreground size-4 shrink-0"
                       aria-hidden
@@ -804,7 +992,7 @@ export function BitrixScreeningWidgetWorkspace({
                 </div>
               ) : null}
               {d.bitrixLinkedContact ? (
-                <div className="border-border/80 space-y-2 rounded-lg border bg-muted/10 px-3 py-3 text-sm">
+                <div className="border-border/80 bg-muted/10 space-y-2 rounded-lg border px-3 py-3 text-sm">
                   <div className="flex items-start justify-between gap-2">
                     <div className="font-semibold">
                       {d.bitrixLinkedContact.displayName}
@@ -861,14 +1049,14 @@ export function BitrixScreeningWidgetWorkspace({
             title="Bitrix deal fields"
             description="Only fields with a value from crm.deal.get. File attachment fields are omitted."
           >
-            <div className="max-h-[40vh] overflow-auto rounded-lg border border-border/70">
+            <div className="border-border/70 max-h-[40vh] overflow-auto rounded-lg border">
               <table className="w-full text-left text-xs">
                 <thead className="bg-muted/60 sticky top-0 backdrop-blur-sm">
                   <tr>
-                    <th className="border-b border-border/80 px-3 py-2 font-semibold">
+                    <th className="border-border/80 border-b px-3 py-2 font-semibold">
                       Label
                     </th>
-                    <th className="border-b border-border/80 px-3 py-2 font-semibold">
+                    <th className="border-border/80 border-b px-3 py-2 font-semibold">
                       Value
                     </th>
                   </tr>
@@ -970,7 +1158,7 @@ export function BitrixScreeningWidgetWorkspace({
         <div className="flex min-h-0 min-w-0 flex-col gap-4 md:sticky md:top-4 md:self-start">
           <WorkspaceCard
             title="Screening result"
-            className="min-h-[200px] border-primary/15 bg-card/90 shadow-md backdrop-blur-md md:min-h-[280px]"
+            className="border-primary/15 bg-card/90 min-h-[200px] shadow-md backdrop-blur-md md:min-h-[280px]"
           >
             {d.activeJobs.length > 0 ? (
               <div className="text-muted-foreground mb-4 flex items-center gap-2 text-sm">
@@ -985,26 +1173,44 @@ export function BitrixScreeningWidgetWorkspace({
                 No screening run yet for this opportunity.
               </p>
             ) : (
-              <div className="space-y-4">
-                <div className="text-sm">
-                  <p>
-                    <span className="text-muted-foreground">Status:</span>{" "}
-                    <span className="font-semibold">{d.lastRun.status}</span>
-                  </p>
-                  {d.lastRun.screenerName ? (
-                    <p className="mt-1">
-                      <span className="text-muted-foreground">Screener:</span>{" "}
-                      {d.lastRun.screenerName}
-                    </p>
-                  ) : null}
-                  {d.lastRun.errorMessage ? (
-                    <p className="text-destructive mt-3 text-xs whitespace-pre-wrap">
-                      {d.lastRun.errorMessage}
-                    </p>
+              <div className="space-y-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="text-sm leading-relaxed">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge variant="secondary" className="font-medium">
+                        {d.lastRun.status}
+                      </Badge>
+                    </div>
+                    {d.lastRun.screenerName ? (
+                      <p className="text-muted-foreground mt-2 text-sm">
+                        <span className="text-foreground font-medium">
+                          Screener:
+                        </span>{" "}
+                        {d.lastRun.screenerName}
+                      </p>
+                    ) : null}
+                    {d.lastRun.errorMessage ? (
+                      <p className="text-destructive mt-3 text-xs whitespace-pre-wrap">
+                        {d.lastRun.errorMessage}
+                      </p>
+                    ) : null}
+                  </div>
+                  {orderedScreeningAnswers.length > 0 ? (
+                    <Badge
+                      variant="outline"
+                      className="h-fit shrink-0 gap-1.5 self-start py-1.5 font-mono text-[11px]"
+                    >
+                      {orderedScreeningAnswers.length} question
+                      {orderedScreeningAnswers.length === 1 ? "" : "s"}
+                      <span className="text-muted-foreground font-sans font-normal">
+                        · screener order
+                      </span>
+                    </Badge>
                   ) : null}
                 </div>
 
-                {d.lastRun.answers.length === 0 ? (
+                {orderedScreeningAnswers.length === 0 ? (
                   <p className="text-muted-foreground text-sm leading-relaxed">
                     {screeningStillRunning(d.lastRun.status)
                       ? "Answers appear when screening completes."
@@ -1012,33 +1218,14 @@ export function BitrixScreeningWidgetWorkspace({
                   </p>
                 ) : (
                   <ScrollArea className="h-[min(70vh,800px)] pr-3">
-                    <ol className="space-y-3 pb-1">
-                      {d.lastRun.answers.map((a, i) => (
-                        <li
+                    <ol className="m-0 list-none p-0 pb-1">
+                      {orderedScreeningAnswers.map((a, idx) => (
+                        <ScreeningResultQuestionItem
                           key={a.questionId}
-                          className="border-border/80 rounded-xl border bg-muted/20 p-4 text-sm shadow-xs transition-shadow hover:shadow-sm motion-reduce:transition-none"
-                        >
-                          <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
-                            Question {i + 1}
-                          </p>
-                          <p className="mt-2 font-semibold leading-snug">
-                            {a.question}
-                          </p>
-                          <p className="text-muted-foreground mt-2 text-xs">
-                            Score:{" "}
-                            <span className="text-foreground font-medium">
-                              {a.score}
-                            </span>
-                          </p>
-                          <p className="mt-3 leading-relaxed whitespace-pre-wrap">
-                            {a.rationale}
-                          </p>
-                          {a.evidenceChunkIds.length > 0 ? (
-                            <p className="text-muted-foreground mt-3 font-mono text-[11px] leading-relaxed">
-                              Evidence: {a.evidenceChunkIds.join(", ")}
-                            </p>
-                          ) : null}
-                        </li>
+                          answer={a}
+                          displayIndex={idx + 1}
+                          totalQuestions={orderedScreeningAnswers.length}
+                        />
                       ))}
                     </ol>
                   </ScrollArea>

@@ -116,6 +116,7 @@ import {
   listDealOpportunityDocumentsSummary,
   listActiveIngestionPipelineJobsForDeal,
   getCimScreeningAnswersWithQuestionsByRunId,
+  getDocumentChunksByIds,
 } from "@repo/db/queries";
 import { buildNextcloudFileUrl, uploadBuffer } from "@repo/nextcloud";
 import { TRPCError } from "@trpc/server";
@@ -152,6 +153,7 @@ import {
   resolveBitrixDealTeaserFieldCode,
 } from "@repo/bitrix-sync";
 import { getBitrixSyncPreviewData } from "@/lib/server/bitrix-sync-preview-data";
+import { mapEvidenceChunkIdsToCitations } from "@/lib/map-cim-screening-evidence";
 import { fetchBitrixWidgetScreeningListingContext } from "@/lib/server/bitrix-widget-screening-listing-context";
 import { verifyBitrixWidgetSignature } from "@/lib/server/bitrix-widget-signature";
 import { verifyBitrixAuthId } from "@/lib/server/bitrix-ai-widget-gate";
@@ -1994,6 +1996,14 @@ export const dealsRouter = createTRPCRouter({
         ? await getCimScreeningAnswersWithQuestionsByRunId(latestRun.runId)
         : [];
 
+      const evidenceChunkIdsForRun = lastRunAnswers.flatMap(
+        (a) => a.evidenceChunkIds ?? [],
+      );
+      const evidenceChunkRows =
+        evidenceChunkIdsForRun.length > 0
+          ? await getDocumentChunksByIds(evidenceChunkIdsForRun)
+          : [];
+
       return {
         dealOpportunityId,
         webhookConfigured: Boolean(env?.webhookBaseUrl),
@@ -2038,10 +2048,15 @@ export const dealsRouter = createTRPCRouter({
             createdAt: latestRun.runCreatedAt,
             answers: lastRunAnswers.map((a) => ({
               questionId: a.questionId,
+              position: a.position,
               question: a.questionText,
               score: a.score,
               rationale: a.rationale,
               evidenceChunkIds: a.evidenceChunkIds ?? [],
+              evidenceCitations: mapEvidenceChunkIdsToCitations(
+                a.evidenceChunkIds ?? null,
+                evidenceChunkRows,
+              ),
             })),
           }
           : null,

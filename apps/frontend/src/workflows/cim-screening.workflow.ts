@@ -3,7 +3,7 @@ import {
   type WorkflowEvent,
   type WorkflowStep,
 } from "cloudflare:workers";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { z } from "zod";
 import type { AppDb } from "@repo/db";
 import db, { count, eq, runDbWithWorkerNeonPool } from "@repo/db";
@@ -43,6 +43,19 @@ import type {
 const openai = getOpenAIProvider();
 const CIM_SCREENING_MODEL =
   process.env.CIM_SCREENING_MODEL?.trim() || "gpt-5.1";
+
+/** Parallel LLM/embed/RAG per question; bounded to limit OpenAI/Vectorize spikes (1–12). */
+function cimScreeningQuestionConcurrency(): number {
+  const raw = process.env.CIM_SCREENING_QUESTION_CONCURRENCY?.trim();
+  if (!raw) return 4;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) return 4;
+  return Math.min(12, Math.max(1, n));
+}
+
+type ScreenerQuestionRow = Awaited<
+  ReturnType<typeof getScreenerQuestions>
+>[number];
 
 const RETRIEVAL_TOP_K = 8;
 const RETRIEVAL_TOP_K_DEAL = 14;
@@ -164,10 +177,10 @@ function buildBitrixTimelineCommentText(input: {
 type DealListingLoadResult =
   | { kind: "bitrix_live_snapshot"; text: string | null }
   | {
-      kind: "deal_opportunity_db";
-      text: string | null;
-      bitrixId: string | null;
-    };
+    kind: "deal_opportunity_db";
+    text: string | null;
+    bitrixId: string | null;
+  };
 
 async function loadDealListingForScreeningPrompt(input: {
   dealOppId: string;
@@ -264,6 +277,9 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
       payloadListingSource ??
       (isDealScope ? ("deal_opportunity_db" as const) : undefined);
 
+    const bitrixWidgetDealScreening =
+      isDealScope && effectiveListingSource === "bitrix_live_snapshot";
+
     logDetail("run.start", {
       instanceId,
       sessionId,
@@ -275,6 +291,14 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
       scope: isDealScope ? "deal_opportunity" : "library_document",
       dealListingContextSource: effectiveListingSource ?? null,
       bitrixLiveContextChars: bitrixLiveDealListingContext?.length ?? 0,
+      bitrixWidgetDealScreening,
+      /** RAG excerpts still come from ingested deal documents (Vectorize); this flag is only about listing/deal metadata in the LLM prompt. */
+      promptDealListingSource:
+        !isDealScope
+          ? "n/a_library_document_screening"
+          : bitrixWidgetDealScreening
+            ? "bitrix_live_rest_snapshot_not_deal_opportunity_db"
+            : "deal_opportunity_postgres_row",
     });
 
     try {
@@ -460,17 +484,17 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             retrievalTopK: isDealScope ? RETRIEVAL_TOP_K_DEAL : RETRIEVAL_TOP_K,
             vectorMetadataScope: isDealScope
               ? {
-                  entityType: "DEAL_OPPORTUNITY" as const,
-                  dealOpportunityId: dealOppId,
-                }
+                entityType: "DEAL_OPPORTUNITY" as const,
+                dealOpportunityId: dealOppId,
+              }
               : screeningDoc
                 ? {
-                    entityType: screeningDoc.entityType,
-                    entityId: screeningDoc.entityId,
-                    dealOpportunityId: screeningDoc.dealOpportunityId,
-                    companyId: screeningDoc.companyId,
-                    themeId: screeningDoc.themeId,
-                  }
+                  entityType: screeningDoc.entityType,
+                  entityId: screeningDoc.entityId,
+                  dealOpportunityId: screeningDoc.dealOpportunityId,
+                  companyId: screeningDoc.companyId,
+                  themeId: screeningDoc.themeId,
+                }
                 : null,
           });
           if (chunkRowsInDb === 0) {
@@ -497,6 +521,11 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
                 dealOpportunityId: dealOppId,
                 hasListingContext: Boolean(listing.text),
                 charLength: listing.text?.length ?? 0,
+              });
+              logDetail("screen.deal_listing.bitrix_widget_confirm", {
+                message:
+                  "Prompt listing fields: live Bitrix REST snapshot (crm.deal-style text). Not using DealOpportunity row from Postgres for this text. Document excerpts still come from ingested uploads (RAG/Vectorize).",
+                dealOpportunityId: dealOppId,
               });
             } else if (listing.text) {
               logDetail("screen.deal_listing_context", {
@@ -530,18 +559,22 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
           }
 
           const total = questions.length;
-          for (let i = 0; i < total; i++) {
-            const q = questions[i]!;
+          const concurrency = cimScreeningQuestionConcurrency();
+          logDetail("screen.questions.parallel_plan", {
+            questionCount: total,
+            concurrency,
+            envCIM_SCREENING_QUESTION_CONCURRENCY:
+              process.env.CIM_SCREENING_QUESTION_CONCURRENCY ?? null,
+          });
+
+          const processQuestionAtIndex = async (
+            i: number,
+            q: ScreenerQuestionRow,
+          ): Promise<void> => {
             const qPreview =
               q.question.length > QUESTION_PREVIEW_MAX
                 ? `${q.question.slice(0, QUESTION_PREVIEW_MAX)}…`
                 : q.question;
-            const pct = 45 + Math.round(((i + 1) / total) * 50);
-            await updateWorkflowJobProgress(instanceId, {
-              step: `Question ${i + 1} of ${total}`,
-              percentage: Math.min(pct, 95),
-            });
-
             const qT0 = Date.now();
             logDetail("screen.question.start", {
               index: i + 1,
@@ -599,26 +632,31 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             });
 
             const llmT0 = Date.now();
-            const { object } = await generateObject({
+            const { output } = await generateText({
               model: openai(CIM_SCREENING_MODEL),
-              schema: SCREENING_ANSWER_SCHEMA,
               prompt,
+              output: Output.object({
+                schema: SCREENING_ANSWER_SCHEMA,
+              }),
             });
+            if (!output) {
+              throw new Error("CIM screening produced no structured output");
+            }
             logDetail("screen.question.llm_done", {
               questionId: q.id,
               model: CIM_SCREENING_MODEL,
-              rawScore: object.score,
-              rationaleLength: object.rationale?.length ?? 0,
+              rawScore: output.score,
+              rationaleLength: output.rationale?.length ?? 0,
               elapsedMs: Date.now() - llmT0,
             });
 
-            const score = Math.round(Math.min(10, Math.max(0, object.score)));
+            const score = Math.round(Math.min(10, Math.max(0, output.score)));
 
             await upsertCimScreeningAnswer({
               runId,
               questionId: q.id,
               score,
-              rationale: object.rationale,
+              rationale: output.rationale,
               evidenceChunkIds: textHits.map((h) => h.id),
             });
             logDetail("screen.question.saved", {
@@ -626,6 +664,20 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
               score,
               evidenceChunkCount: textHits.length,
               questionElapsedMs: Date.now() - qT0,
+            });
+          };
+
+          for (let batchStart = 0; batchStart < total; batchStart += concurrency) {
+            const batch = questions.slice(batchStart, batchStart + concurrency);
+            await Promise.all(
+              batch.map((q, offset) =>
+                processQuestionAtIndex(batchStart + offset, q),
+              ),
+            );
+            const batchEnd = batchStart + batch.length;
+            await updateWorkflowJobProgress(instanceId, {
+              step: `Questions ${batchEnd} of ${total}`,
+              percentage: Math.min(45 + Math.round((batchEnd / total) * 50), 95),
             });
           }
 
@@ -638,6 +690,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             runId,
             questionsAnswered: total,
             totalScreenElapsedMs: Date.now() - screenT0,
+            questionConcurrency: concurrency,
           });
         }),
       );
