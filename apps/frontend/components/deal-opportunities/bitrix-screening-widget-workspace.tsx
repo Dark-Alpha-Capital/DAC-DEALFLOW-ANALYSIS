@@ -20,6 +20,7 @@ import {
   Layers,
   Loader2,
   Play,
+  RefreshCw,
   Upload,
   User,
 } from "lucide-react";
@@ -169,6 +170,10 @@ function screeningStillRunning(status: string | undefined) {
   );
 }
 
+function screeningFailed(status: string | undefined) {
+  return status === "FAILED";
+}
+
 const INGEST_IN_FLIGHT = new Set(["PENDING", "PROCESSING"]);
 
 function pipelineKindLabel(kind: string) {
@@ -205,6 +210,10 @@ type WidgetBootstrap =
 type DealDocumentRow = WidgetBootstrap["dealDocuments"][number];
 
 type LastRunAnswer = NonNullable<WidgetBootstrap["lastRun"]>["answers"][number];
+
+type ScreeningRunDetail = NonNullable<
+  inferRouterOutputs<AppRouter>["dealOpportunities"]["getBitrixScreeningWidgetRunDetail"]["run"]
+>;
 
 const ScreeningResultQuestionItem = memo(function ScreeningResultQuestionItem({
   answer,
@@ -466,6 +475,8 @@ export function BitrixScreeningWidgetWorkspace({
 
   const [screenerId, setScreenerId] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  /** `null` = show the latest run from bootstrap (refetches with polling). Set to a past `runId` to load that run’s answers. */
+  const [viewRunId, setViewRunId] = useState<string | null>(null);
 
   const q = useQuery({
     ...trpc.dealOpportunities.getBitrixScreeningWidgetContext.queryOptions(
@@ -510,8 +521,9 @@ export function BitrixScreeningWidgetWorkspace({
   const run = useMutation(
     trpc.dealOpportunities.startBitrixScreeningWidgetRun.mutationOptions({
       onSuccess: () => {
+        setViewRunId(null);
         toast.success(
-          `Screening started (waited ${Math.round((q.data?.vectorSettleMsAfterIngest ?? 45_000) / 1000)}s for vector index)`,
+          `Screening started (waited ${Math.round((q.data?.vectorSettleMsAfterIngest ?? 12_000) / 1000)}s for vector index)`,
         );
         void q.refetch();
       },
@@ -538,6 +550,38 @@ export function BitrixScreeningWidgetWorkspace({
 
   const d = q.data;
   const screeners = d?.screeners ?? [];
+  const latestRunId = d?.lastRun?.runId;
+
+  const shouldFetchRunDetail = Boolean(
+    latestRunId && viewRunId !== null && viewRunId !== latestRunId,
+  );
+
+  const runDetailInput = useMemo(() => {
+    const rid = viewRunId ?? latestRunId;
+    return {
+      ...widgetInput,
+      // Valid placeholder when bootstrap not loaded; query stays disabled.
+      runId: rid && rid.length > 0 ? rid : "bootstrap-pending",
+    };
+  }, [widgetInput, viewRunId, latestRunId]);
+
+  const runDetailQuery = useQuery({
+    ...trpc.dealOpportunities.getBitrixScreeningWidgetRunDetail.queryOptions(
+      runDetailInput,
+    ),
+    enabled: shouldFetchRunDetail,
+  });
+
+  const displayRun: ScreeningRunDetail | null = useMemo(() => {
+    if (!d?.lastRun) return null;
+    if (viewRunId === null || viewRunId === d.lastRun.runId) {
+      return d.lastRun;
+    }
+    return runDetailQuery.data?.run ?? null;
+  }, [d?.lastRun, viewRunId, runDetailQuery.data?.run]);
+
+  const viewingRunDetailLoading =
+    shouldFetchRunDetail && runDetailQuery.isPending && !runDetailQuery.data;
 
   const effectiveScreenerId = useMemo(
     () => screenerId || screeners[0]?.id || "",
@@ -588,7 +632,7 @@ export function BitrixScreeningWidgetWorkspace({
   );
 
   const orderedScreeningAnswers = useMemo(() => {
-    const list = d?.lastRun?.answers;
+    const list = displayRun?.answers;
     if (!list?.length) return [];
     return [...list].sort((a, b) => {
       const pa = a.position ?? 0;
@@ -596,7 +640,9 @@ export function BitrixScreeningWidgetWorkspace({
       if (pa !== pb) return pa - pb;
       return a.questionId.localeCompare(b.questionId);
     });
-  }, [d?.lastRun?.answers]);
+  }, [displayRun?.answers]);
+
+  const effectiveViewRunId = viewRunId ?? latestRunId ?? null;
 
   useEffect(() => {
     if (!d) return;
@@ -609,6 +655,16 @@ export function BitrixScreeningWidgetWorkspace({
       });
     }
   }, [d]);
+
+  /** After a failed run, default the screener dropdown to the same screener (until the user picks another). */
+  useEffect(() => {
+    if (!d?.lastRun || !screeningFailed(d.lastRun.status)) return;
+    if (screenerId !== "") return;
+    const id = d.lastRun.screenerId?.trim();
+    if (id && screeners.some((s) => s.id === id)) {
+      setScreenerId(id);
+    }
+  }, [d?.lastRun, screenerId, screeners]);
 
   if (q.isLoading) {
     return (
@@ -898,7 +954,11 @@ export function BitrixScreeningWidgetWorkspace({
             </div>
           </WorkspaceCard>
 
-          <WorkspaceCard title="Screening history" icon={History}>
+          <WorkspaceCard
+            title="Screening history"
+            icon={History}
+            description="Click a run to show its answers in Screening result →"
+          >
             {d.recentScreeningRuns.length === 0 ? (
               <p className="text-muted-foreground text-sm">No runs yet.</p>
             ) : (
@@ -906,19 +966,40 @@ export function BitrixScreeningWidgetWorkspace({
                 {d.recentScreeningRuns.map((r) => (
                   <li
                     key={r.runId}
-                    className="border-border/70 bg-muted/10 space-y-2 rounded-lg border px-3 py-2.5 text-xs"
+                    className={cn(
+                      "space-y-2 rounded-lg border px-3 py-2.5 text-xs transition-colors",
+                      effectiveViewRunId === r.runId
+                        ? "border-primary/50 bg-primary/[0.07] ring-primary/25 ring-1"
+                        : "border-border/70 bg-muted/10 hover:bg-muted/20",
+                    )}
                   >
-                    <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                      <span className="font-semibold">{r.status}</span>
-                      {r.screenerName ? (
-                        <span className="text-muted-foreground">
-                          {r.screenerName}
-                        </span>
-                      ) : null}
-                      <span className="text-muted-foreground font-mono text-[11px]">
-                        {new Date(r.createdAt).toLocaleString()}
-                      </span>
-                    </div>
+                    <button
+                      type="button"
+                      className="w-full cursor-pointer text-left"
+                      onClick={() => {
+                        const isLatest = r.runId === d.lastRun?.runId;
+                        setViewRunId(isLatest ? null : r.runId);
+                      }}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                          <span className="font-semibold">{r.status}</span>
+                          {r.screenerName ? (
+                            <span className="text-muted-foreground">
+                              {r.screenerName}
+                            </span>
+                          ) : null}
+                          <span className="text-muted-foreground font-mono text-[11px]">
+                            {new Date(r.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        {effectiveViewRunId === r.runId ? (
+                          <span className="text-primary shrink-0 text-[10px] font-semibold tracking-wide uppercase">
+                            Showing
+                          </span>
+                        ) : null}
+                      </div>
+                    </button>
                     {r.documentsAtRun.length > 0 ? (
                       <div className="text-muted-foreground text-[11px] leading-relaxed">
                         <span className="text-foreground font-medium">
@@ -1174,62 +1255,143 @@ export function BitrixScreeningWidgetWorkspace({
               </p>
             ) : (
               <div className="space-y-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="text-sm leading-relaxed">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <span className="text-muted-foreground">Status</span>
-                      <Badge variant="secondary" className="font-medium">
-                        {d.lastRun.status}
-                      </Badge>
-                    </div>
-                    {d.lastRun.screenerName ? (
-                      <p className="text-muted-foreground mt-2 text-sm">
-                        <span className="text-foreground font-medium">
-                          Screener:
-                        </span>{" "}
-                        {d.lastRun.screenerName}
-                      </p>
-                    ) : null}
-                    {d.lastRun.errorMessage ? (
-                      <p className="text-destructive mt-3 text-xs whitespace-pre-wrap">
-                        {d.lastRun.errorMessage}
-                      </p>
-                    ) : null}
-                  </div>
-                  {orderedScreeningAnswers.length > 0 ? (
-                    <Badge
-                      variant="outline"
-                      className="h-fit shrink-0 gap-1.5 self-start py-1.5 font-mono text-[11px]"
+                {d.recentScreeningRuns.length > 1 ? (
+                  <div>
+                    <Label htmlFor="bitrix-widget-view-run">Viewing run</Label>
+                    <Select
+                      value={effectiveViewRunId ?? ""}
+                      onValueChange={(value) => {
+                        if (value === d.lastRun?.runId) setViewRunId(null);
+                        else setViewRunId(value);
+                      }}
                     >
-                      {orderedScreeningAnswers.length} question
-                      {orderedScreeningAnswers.length === 1 ? "" : "s"}
-                      <span className="text-muted-foreground font-sans font-normal">
-                        · screener order
-                      </span>
-                    </Badge>
-                  ) : null}
-                </div>
+                      <SelectTrigger
+                        id="bitrix-widget-view-run"
+                        className="mt-1.5 cursor-pointer"
+                      >
+                        <SelectValue placeholder="Choose run" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {d.recentScreeningRuns.map((r) => (
+                          <SelectItem key={r.runId} value={r.runId}>
+                            {new Date(r.createdAt).toLocaleString()} ·{" "}
+                            {r.screenerName ?? "Screener"} · {r.status}
+                            {r.runId === latestRunId ? " (latest)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
 
-                {orderedScreeningAnswers.length === 0 ? (
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {screeningStillRunning(d.lastRun.status)
-                      ? "Answers appear when screening completes."
-                      : "No answers stored for this run."}
-                  </p>
-                ) : (
-                  <ScrollArea className="h-[min(70vh,800px)] pr-3">
-                    <ol className="m-0 list-none p-0 pb-1">
-                      {orderedScreeningAnswers.map((a, idx) => (
-                        <ScreeningResultQuestionItem
-                          key={a.questionId}
-                          answer={a}
-                          displayIndex={idx + 1}
-                          totalQuestions={orderedScreeningAnswers.length}
-                        />
-                      ))}
-                    </ol>
-                  </ScrollArea>
-                )}
+                {runDetailQuery.isError ? (
+                  <Alert variant="destructive">
+                    <AlertCircle className="size-4" />
+                    <AlertTitle>Could not load run</AlertTitle>
+                    <AlertDescription>
+                      {runDetailQuery.error?.message ??
+                        "Try again or pick another run."}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+
+                {viewingRunDetailLoading ? (
+                  <div
+                    className="text-muted-foreground flex items-center gap-2 text-sm"
+                    role="status"
+                  >
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+                    Loading run…
+                  </div>
+                ) : displayRun ? (
+                  <>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="text-sm leading-relaxed">
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <span className="text-muted-foreground">Status</span>
+                          <Badge variant="secondary" className="font-medium">
+                            {displayRun.status}
+                          </Badge>
+                        </div>
+                        {displayRun.screenerName ? (
+                          <p className="text-muted-foreground mt-2 text-sm">
+                            <span className="text-foreground font-medium">
+                              Screener:
+                            </span>{" "}
+                            {displayRun.screenerName}
+                          </p>
+                        ) : null}
+                        <p className="text-muted-foreground mt-1 text-[11px] font-mono">
+                          {new Date(displayRun.createdAt).toLocaleString()}
+                        </p>
+                        {displayRun.errorMessage ? (
+                          <p className="text-destructive mt-3 text-xs whitespace-pre-wrap">
+                            {displayRun.errorMessage}
+                          </p>
+                        ) : null}
+                        {screeningFailed(displayRun.status) ? (
+                          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="cursor-pointer"
+                              disabled={!canRun || run.isPending}
+                              onClick={handleStartScreening}
+                            >
+                              {run.isPending ? (
+                                <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" />
+                              ) : (
+                                <RefreshCw className="mr-2 size-4" aria-hidden />
+                              )}
+                              Retry screening
+                            </Button>
+                            <p className="text-muted-foreground max-w-md text-xs leading-relaxed">
+                              Starts a new run with the same steps as{" "}
+                              <strong className="text-foreground font-medium">
+                                Start screening
+                              </strong>{" "}
+                              (including the vector wait). Choose a screener
+                              above if you want a different one.
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                      {orderedScreeningAnswers.length > 0 ? (
+                        <Badge
+                          variant="outline"
+                          className="h-fit shrink-0 gap-1.5 self-start py-1.5 font-mono text-[11px]"
+                        >
+                          {orderedScreeningAnswers.length} question
+                          {orderedScreeningAnswers.length === 1 ? "" : "s"}
+                          <span className="text-muted-foreground font-sans font-normal">
+                            · screener order
+                          </span>
+                        </Badge>
+                      ) : null}
+                    </div>
+
+                    {orderedScreeningAnswers.length === 0 ? (
+                      <p className="text-muted-foreground text-sm leading-relaxed">
+                        {screeningStillRunning(displayRun.status)
+                          ? "Answers appear when screening completes."
+                          : "No answers stored for this run."}
+                      </p>
+                    ) : (
+                      <ScrollArea className="h-[min(70vh,800px)] pr-3">
+                        <ol className="m-0 list-none p-0 pb-1">
+                          {orderedScreeningAnswers.map((a, idx) => (
+                            <ScreeningResultQuestionItem
+                              key={a.questionId}
+                              answer={a}
+                              displayIndex={idx + 1}
+                              totalQuestions={orderedScreeningAnswers.length}
+                            />
+                          ))}
+                        </ol>
+                      </ScrollArea>
+                    )}
+                  </>
+                ) : null}
               </div>
             )}
           </WorkspaceCard>

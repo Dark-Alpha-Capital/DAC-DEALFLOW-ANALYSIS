@@ -44,13 +44,17 @@ const openai = getOpenAIProvider();
 const CIM_SCREENING_MODEL =
   process.env.CIM_SCREENING_MODEL?.trim() || "gpt-5.1";
 
-/** Parallel LLM/embed/RAG per question; bounded to limit OpenAI/Vectorize spikes (1–12). */
-function cimScreeningQuestionConcurrency(): number {
-  const raw = process.env.CIM_SCREENING_QUESTION_CONCURRENCY?.trim();
-  if (!raw) return 4;
+/** Pause between questions to avoid Vectorize/OpenAI bursts (deal RAG scans many namespaces per query). */
+function cimScreeningInterQuestionDelayMs(): number {
+  const raw = process.env.CIM_SCREENING_INTER_QUESTION_DELAY_MS?.trim();
+  if (!raw) return 350;
   const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n)) return 4;
-  return Math.min(12, Math.max(1, n));
+  if (!Number.isFinite(n) || n < 0) return 350;
+  return Math.min(30_000, n);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 type ScreenerQuestionRow = Awaited<
@@ -211,6 +215,7 @@ async function searchChunksForQuestion(input: {
   libraryDocumentId: string | null;
   screeningDoc: LibraryScreeningDocMeta | null;
 }): Promise<Awaited<ReturnType<typeof searchDocumentChunksVector>>> {
+  // Deal scope: single filter — chunks for this deal opportunity (Vectorize scans namespaces from Postgres).
   if (input.isDealScope && input.dealOppId) {
     const params: SearchDocumentChunksVectorInput = {
       queryEmbedding: input.queryEmbedding,
@@ -559,12 +564,14 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
           }
 
           const total = questions.length;
-          const concurrency = cimScreeningQuestionConcurrency();
-          logDetail("screen.questions.parallel_plan", {
+          const interQuestionDelayMs = cimScreeningInterQuestionDelayMs();
+          logDetail("screen.questions.sequential_plan", {
             questionCount: total,
-            concurrency,
-            envCIM_SCREENING_QUESTION_CONCURRENCY:
-              process.env.CIM_SCREENING_QUESTION_CONCURRENCY ?? null,
+            interQuestionDelayMs,
+            envCIM_SCREENING_INTER_QUESTION_DELAY_MS:
+              process.env.CIM_SCREENING_INTER_QUESTION_DELAY_MS ?? null,
+            scope: isDealScope ? "deal_opportunity" : "library_document",
+            dealOpportunityId: dealOppId ?? null,
           });
 
           const processQuestionAtIndex = async (
@@ -596,15 +603,36 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             });
 
             const ragT0 = Date.now();
-            const hits = await searchChunksForQuestion({
-              db,
-              vectorIndex,
-              queryEmbedding,
+            logDetail("screen.question.vector_query_start", {
+              questionId: q.id,
+              index: i + 1,
+              total,
               isDealScope,
-              dealOppId: dealOppId ?? null,
+              dealOpportunityId: dealOppId ?? null,
               libraryDocumentId: libraryDocumentId ?? null,
-              screeningDoc,
+              topK: isDealScope ? RETRIEVAL_TOP_K_DEAL : RETRIEVAL_TOP_K,
             });
+            let hits: Awaited<ReturnType<typeof searchChunksForQuestion>>;
+            try {
+              hits = await searchChunksForQuestion({
+                db,
+                vectorIndex,
+                queryEmbedding,
+                isDealScope,
+                dealOppId: dealOppId ?? null,
+                libraryDocumentId: libraryDocumentId ?? null,
+                screeningDoc,
+              });
+            } catch (vectorErr) {
+              logError("screen.question.vector_query_failed", vectorErr, {
+                questionId: q.id,
+                index: i + 1,
+                isDealScope,
+                dealOpportunityId: dealOppId ?? null,
+                libraryDocumentId: libraryDocumentId ?? null,
+              });
+              throw vectorErr;
+            }
             const textHits = hits.filter(
               (h) => h.chunkText && h.chunkText.trim().length > 0,
             );
@@ -667,18 +695,21 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             });
           };
 
-          for (let batchStart = 0; batchStart < total; batchStart += concurrency) {
-            const batch = questions.slice(batchStart, batchStart + concurrency);
-            await Promise.all(
-              batch.map((q, offset) =>
-                processQuestionAtIndex(batchStart + offset, q),
-              ),
-            );
-            const batchEnd = batchStart + batch.length;
+          for (let i = 0; i < total; i++) {
+            const q = questions[i]!;
+            await processQuestionAtIndex(i, q);
             await updateWorkflowJobProgress(instanceId, {
-              step: `Questions ${batchEnd} of ${total}`,
-              percentage: Math.min(45 + Math.round((batchEnd / total) * 50), 95),
+              step: `Questions ${i + 1} of ${total}`,
+              percentage: Math.min(45 + Math.round(((i + 1) / total) * 50), 95),
             });
+            if (i < total - 1 && interQuestionDelayMs > 0) {
+              logDetail("screen.question.after_delay", {
+                ms: interQuestionDelayMs,
+                completedIndex: i + 1,
+                total,
+              });
+              await sleep(interQuestionDelayMs);
+            }
           }
 
           await updateCimScreeningRun(runId, { status: "COMPLETED" });
@@ -690,7 +721,8 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             runId,
             questionsAnswered: total,
             totalScreenElapsedMs: Date.now() - screenT0,
-            questionConcurrency: concurrency,
+            interQuestionDelayMs,
+            sequential: true,
           });
         }),
       );

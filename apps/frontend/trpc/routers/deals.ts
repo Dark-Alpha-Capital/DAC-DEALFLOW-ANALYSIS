@@ -14,6 +14,7 @@ import {
   bitrixScreeningWidgetUploadBatchSchema,
   bitrixScreeningWidgetStartRunSchema,
   bitrixScreeningWidgetRetryCommentSchema,
+  bitrixScreeningWidgetRunDetailSchema,
   bitrixSyncScreeningRunToDealSchema,
   bulkDeleteDealsInputSchema,
   createDealOpportunitySchema,
@@ -1983,10 +1984,11 @@ export const dealsRouter = createTRPCRouter({
           listActiveIngestionPipelineJobsForDeal(dealOpportunityId),
         ]);
 
+      /** Default 12s (was 45s): brief pause so Vectorize sees new chunks; raise via BITRIX_WIDGET_VECTOR_SETTLE_MS if needed. */
       const vectorSettleMsAfterIngest = Math.min(
         Math.max(
-          Number(process.env.BITRIX_WIDGET_VECTOR_SETTLE_MS ?? 45_000),
-          5_000,
+          Number(process.env.BITRIX_WIDGET_VECTOR_SETTLE_MS ?? 12_000),
+          2_000,
         ),
         300_000,
       );
@@ -2061,6 +2063,55 @@ export const dealsRouter = createTRPCRouter({
           }
           : null,
         activeJobs,
+      };
+    }),
+
+  getBitrixScreeningWidgetRunDetail: publicProcedure
+    .input(bitrixScreeningWidgetRunDetailSchema)
+    .query(async ({ input }) => {
+      await assertValidBitrixWidgetContext(input);
+      const dealOpportunityId = await resolveDealOpportunityForBitrixDeal(
+        input.dealId,
+      );
+      const runs = await listCimScreeningRunsForDealOpportunity(dealOpportunityId);
+      const meta = runs.find((r) => r.runId === input.runId);
+      if (!meta) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Screening run not found for this deal.",
+        });
+      }
+      const answers = await getCimScreeningAnswersWithQuestionsByRunId(
+        input.runId,
+      );
+      const evidenceChunkIdsForRun = answers.flatMap(
+        (a) => a.evidenceChunkIds ?? [],
+      );
+      const evidenceChunkRows =
+        evidenceChunkIdsForRun.length > 0
+          ? await getDocumentChunksByIds(evidenceChunkIdsForRun)
+          : [];
+      return {
+        run: {
+          runId: meta.runId,
+          status: meta.status,
+          errorMessage: meta.errorMessage,
+          screenerId: meta.screenerId,
+          screenerName: meta.screenerName,
+          createdAt: meta.runCreatedAt,
+          answers: answers.map((a) => ({
+            questionId: a.questionId,
+            position: a.position,
+            question: a.questionText,
+            score: a.score,
+            rationale: a.rationale,
+            evidenceChunkIds: a.evidenceChunkIds ?? [],
+            evidenceCitations: mapEvidenceChunkIdsToCitations(
+              a.evidenceChunkIds ?? null,
+              evidenceChunkRows,
+            ),
+          })),
+        },
       };
     }),
 
@@ -2263,8 +2314,8 @@ export const dealsRouter = createTRPCRouter({
         })),
         vectorSettleMs: Math.min(
           Math.max(
-            Number(process.env.BITRIX_WIDGET_VECTOR_SETTLE_MS ?? 45_000),
-            5_000,
+            Number(process.env.BITRIX_WIDGET_VECTOR_SETTLE_MS ?? 12_000),
+            2_000,
           ),
           300_000,
         ),

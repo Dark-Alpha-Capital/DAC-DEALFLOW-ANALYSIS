@@ -242,6 +242,12 @@ export const bitrixScreeningWidgetStartRunSchema =
     screenerId: z.string().min(1),
   });
 
+/** Load answers + metadata for one screening run (widget auth). */
+export const bitrixScreeningWidgetRunDetailSchema =
+  bitrixWidgetContextAuthSchema.extend({
+    runId: z.string().min(1),
+  });
+
 export const bitrixScreeningWidgetRetryCommentSchema =
   bitrixWidgetContextAuthSchema.extend({
     dealOpportunityId: z.string().min(1),
