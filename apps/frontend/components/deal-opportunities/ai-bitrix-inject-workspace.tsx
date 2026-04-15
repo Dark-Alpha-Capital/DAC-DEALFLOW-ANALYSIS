@@ -279,35 +279,6 @@ export function AiBitrixInjectWorkspace() {
 
   return (
     <div className="mx-auto w-full max-w-5xl px-3 pb-20 sm:px-5">
-      <nav
-        className="border-border/50 -mx-3 mb-8 border-b pb-4 sm:-mx-5"
-        aria-label="App navigation"
-      >
-        <ul className="flex flex-wrap items-center gap-x-0.5 gap-y-1">
-          {TOP_NAV_LINKS.map(({ to, label }, i) => (
-            <li key={to} className="flex items-center">
-              {i > 0 ? (
-                <span
-                  className="text-border mx-1.5 hidden select-none sm:inline"
-                  aria-hidden
-                >
-                  ·
-                </span>
-              ) : null}
-              <Link
-                to={to}
-                className={cn(
-                  "text-muted-foreground hover:text-foreground rounded-md px-1.5 py-1.5 text-sm transition-colors",
-                  "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-                )}
-              >
-                {label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
       <header className="mb-6 space-y-2">
         <h1 className="text-foreground flex items-center gap-2.5 text-xl font-semibold tracking-tight sm:text-2xl">
           <Sparkles
