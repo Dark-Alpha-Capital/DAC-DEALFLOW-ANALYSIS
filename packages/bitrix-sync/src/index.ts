@@ -18,6 +18,7 @@ export {
 export {
   buildCrmDealFieldsFromOpportunitySync,
   buildCrmDealFieldsFromLegacyRawDeal,
+  resolveBitrixOpportunityAmount,
   BITRIX_UF,
   BITRIX_UF_DEFAULTS,
   getBitrixOpportunitySyncUfCodes,
@@ -54,6 +55,8 @@ export {
   buildDealListSelect,
   buildDealListSelectForImportPipeline,
   coerceBitrixNumeric,
+  formatBitrixMoneyForDisplay,
+  parseBitrixMoneyParts,
   extractBitrixDealCompanyId,
   extractBitrixDealContactIds,
   extractBitrixDealListStageIdRaw,

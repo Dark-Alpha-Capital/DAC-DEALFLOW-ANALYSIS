@@ -1,6 +1,5 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { DocsSidebar } from "@/components/sidebars/docs-sidebar";
-import { ModeToggle } from "@/components/mode-toggle";
 import { Providers } from "@/components/providers";
 import {
   SidebarInset,
@@ -30,7 +29,6 @@ function DocumentationLayout() {
                 <span>Back to app</span>
               </Link>
             </div>
-            <ModeToggle />
           </header>
           <div className="px-4 pt-6 pb-12 md:px-8">
             <main className="mx-auto w-full max-w-3xl space-y-6">

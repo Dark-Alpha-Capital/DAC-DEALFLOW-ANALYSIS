@@ -33,6 +33,11 @@ export const BITRIX_UF_DEFAULTS = {
   ebitdaMargin: "",
   /** External listing URL (Bitrix “Deal Link”); set `BITRIX_UF_DEAL_LISTING_URL` to your `UF_CRM_*` code. */
   dealListingUrl: "",
+  /**
+   * “Pursued on” (date/datetime UF): set automatically to sync time on each push.
+   * Set `BITRIX_UF_PURSUED_ON` to the portal field code from `bun run fetch-deal-fields`.
+   */
+  pursuedOn: "",
 } as const;
 
 /** Alias for older imports; same object as {@link BITRIX_UF_DEFAULTS}. */
@@ -95,5 +100,6 @@ export function getBitrixOpportunitySyncUfCodes(): {
       "BITRIX_UF_DEAL_LISTING_URL",
       BITRIX_UF_DEFAULTS.dealListingUrl,
     ),
+    pursuedOn: e("BITRIX_UF_PURSUED_ON", BITRIX_UF_DEFAULTS.pursuedOn),
   };
 }

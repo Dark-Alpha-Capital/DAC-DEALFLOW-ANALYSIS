@@ -184,7 +184,8 @@ export const bitrixSyncDealOpportunitySchema = z.object({
   dealOpportunityId: z.string().min(1),
   title: z.string().min(1),
   stageId: z.string().min(1),
-  opportunity: z.number(),
+  /** Bitrix OPPORTUNITY; if omitted, server uses askingPrice → revenue → 0. */
+  opportunity: z.number().optional(),
   currencyId: z.string().min(1).default("USD"),
   comments: z.string().optional(),
   sourceWebsite: z.string().optional().nullable(),

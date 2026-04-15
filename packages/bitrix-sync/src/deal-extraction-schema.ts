@@ -11,40 +11,16 @@ export const bitrixDealOpportunityExtractionSchema = z.object({
     .describe(
       "Concise deal name for the Bitrix deal TITLE (company or transaction name).",
     ),
-  opportunity: z
-    .number()
-    .describe(
-      "Deal value for Bitrix OPPORTUNITY (EV, purchase price, or main transaction size—not necessarily company revenue).",
-    ),
   revenue: z
     .number()
     .nullable()
     .describe(
-      "Company TTM or annual revenue when stated separately from deal value; null if unknown or same as deal value.",
-    ),
-  currencyId: z
-    .string()
-    .nullable()
-    .describe(
-      "ISO currency code for amounts, e.g. USD; null if unknown (app defaults to USD).",
+      "Company TTM or annual revenue when stated; null if unknown.",
     ),
   teaser: z
     .string()
-    .nullable()
     .describe(
-      "Very short one-line deal teaser (shown at start of Bitrix deal COMMENTS); null if none.",
-    ),
-  description: z
-    .string()
-    .nullable()
-    .describe(
-      "Longer deal narrative for Bitrix COMMENTS body; null if none.",
-    ),
-  comments: z
-    .string()
-    .nullable()
-    .describe(
-      "Additional notes after teaser/description; null if none.",
+      "Full deal narrative: complete description, thesis, risks, and notes to store as the deal teaser / long-form text in Bitrix (may be multiple paragraphs).",
     ),
   sourceWebsite: z
     .string()

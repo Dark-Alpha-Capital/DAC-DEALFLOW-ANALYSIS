@@ -1,7 +1,7 @@
 
 import { Link } from "@tanstack/react-router";
 import { useRouter } from "@/lib/navigation-shim";
-import { User2, LogOut, ChevronUp, Lock, Moon, Sun } from "lucide-react";
+import { User2, LogOut, ChevronUp, Lock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,8 +11,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 
 interface UserDropdownProps {
   session: any;
@@ -21,14 +19,7 @@ interface UserDropdownProps {
 
 export function UserDropdown({ session, userInitials }: UserDropdownProps) {
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const isAdmin = (session?.user as any)?.role === "ADMIN";
-
-  // Avoid hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   return (
     <DropdownMenu>
@@ -74,14 +65,6 @@ export function UserDropdown({ session, userInitials }: UserDropdownProps) {
               <Lock />
               <span>Admin</span>
             </Link>
-          </DropdownMenuItem>
-        )}
-        {mounted && (
-          <DropdownMenuItem
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            {theme === "dark" ? <Sun /> : <Moon />}
-            <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem

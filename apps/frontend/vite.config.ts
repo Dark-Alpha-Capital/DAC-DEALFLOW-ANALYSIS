@@ -27,7 +27,10 @@ const repoPackages = [
 export default defineConfig({
   root: appRoot,
   envPrefix: ["VITE_", "NEXT_PUBLIC_"],
-  server: { port: 3000 },
+  server: {
+    port: 3000,
+    allowedHosts: [".trycloudflare.com"],
+  },
   plugins: [
     cloudflare({
       viteEnvironment: { name: "ssr" },

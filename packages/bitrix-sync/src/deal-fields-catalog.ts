@@ -272,12 +272,8 @@ export function resolveBitrixDealEbitdaMarginFieldCode(): string | undefined {
 export type AiBitrixFormFieldKey =
   | "title"
   | "stageId"
-  | "opportunity"
   | "revenue"
-  | "currencyId"
   | "teaser"
-  | "description"
-  | "comments"
   | "sourceWebsite"
   | "companyLocation"
   | "industry"
@@ -293,12 +289,8 @@ export type AiBitrixFormFieldKey =
 const FALLBACK_LABELS: Record<AiBitrixFormFieldKey, string> = {
   title: "Title",
   stageId: "Bitrix stage",
-  opportunity: "Opportunity (deal value)",
   revenue: "Revenue (TTM / company)",
-  currencyId: "Currency",
-  teaser: "Teaser",
-  description: "Description",
-  comments: "Comments (extra)",
+  teaser: "Deal narrative (full description)",
   sourceWebsite: "Source website",
   companyLocation: "Company location",
   industry: "Industry",
@@ -323,8 +315,7 @@ export function getAiBitrixFormFieldMeta(): Record<
 
   const mergedIntoComments = (key: AiBitrixFormFieldKey, bitrixFieldId: string) =>
     bitrixFieldId === "COMMENTS" &&
-    (key === "description" ||
-      key === "industry" ||
+    (key === "industry" ||
       key === "ebitda" ||
       key === "ebitdaMargin" ||
       key === "teaser");
@@ -356,12 +347,8 @@ export function getAiBitrixFormFieldMeta(): Record<
   return {
     title: resolve("title", "TITLE"),
     stageId: resolve("stageId", "STAGE_ID"),
-    opportunity: resolve("opportunity", "OPPORTUNITY"),
     revenue: resolve("revenue", uf.revenue),
-    currencyId: resolve("currencyId", "CURRENCY_ID"),
     teaser: resolve("teaser", teaserTarget),
-    description: resolve("description", "COMMENTS"),
-    comments: resolve("comments", "COMMENTS"),
     sourceWebsite: resolve("sourceWebsite", uf.sourceWebsite),
     companyLocation: resolve("companyLocation", uf.companyLocation),
     industry: resolve("industry", "COMMENTS"),

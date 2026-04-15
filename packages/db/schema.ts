@@ -1329,6 +1329,44 @@ export const workflowJobs = pgTable(
   }),
 );
 
+/**
+ * Bitrix CRM file attachment → app Document + RAG (widget auto-ingest).
+ * Keyed by Bitrix deal id + disk file id (not internal deal opportunity id alone).
+ */
+export const bitrixWidgetDealFiles = pgTable(
+  "BitrixWidgetDealFile",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    bitrixDealId: text("bitrixDealId").notNull(),
+    bitrixFieldId: text("bitrixFieldId").notNull(),
+    bitrixDiskFileId: text("bitrixDiskFileId").notNull(),
+    displayName: text("displayName"),
+    documentId: text("documentId").references(() => documents.id, {
+      onDelete: "set null",
+    }),
+    contentHash: text("contentHash"),
+    /** pending | syncing | processed | failed */
+    status: text("status").notNull().default("pending"),
+    lastError: text("lastError"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    bitrixWidgetDealFileUniq: uniqueIndex("bitrix_widget_deal_file_uniq").on(
+      table.bitrixDealId,
+      table.bitrixDiskFileId,
+    ),
+    bitrixWidgetDealFileDealIdx: index("bitrix_widget_deal_file_deal_idx").on(
+      table.bitrixDealId,
+    ),
+  }),
+);
+
 /** CIM template screening: one uploaded CIM PDF per session, or a deal opportunity (multi-doc RAG); runs hold per-template executions */
 export const cimScreeningSessions = pgTable(
   "CimScreeningSession",

@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import ChatSidebar from "@/components/sidebars/chat-sidebar";
-import { ModeToggle } from "@/components/mode-toggle";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
@@ -18,12 +17,7 @@ export const Route = createFileRoute("/_chatbot")({
 
 function ChatbotLayout() {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
+    <ThemeProvider disableTransitionOnChange>
       <TRPCReactProvider>
         <SidebarProvider className="h-svh overflow-hidden">
           <Suspense fallback={null}>
@@ -37,11 +31,6 @@ function ChatbotLayout() {
             </div>
           </SidebarInset>
         </SidebarProvider>
-        <div className="pointer-events-none fixed top-4 right-4 z-50">
-          <div className="pointer-events-auto">
-            <ModeToggle />
-          </div>
-        </div>
         <Toaster />
       </TRPCReactProvider>
     </ThemeProvider>

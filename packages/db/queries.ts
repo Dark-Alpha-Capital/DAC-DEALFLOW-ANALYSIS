@@ -2431,6 +2431,26 @@ export async function getCimScreeningAnswersByRunId(runId: string) {
     .where(eq(cimScreeningAnswers.runId, runId));
 }
 
+/** Answers for a run with screener question text, ordered like the screener. */
+export async function getCimScreeningAnswersWithQuestionsByRunId(runId: string) {
+  return db
+    .select({
+      questionId: cimScreeningAnswers.questionId,
+      questionText: screenerQuestions.question,
+      position: screenerQuestions.position,
+      score: cimScreeningAnswers.score,
+      rationale: cimScreeningAnswers.rationale,
+      evidenceChunkIds: cimScreeningAnswers.evidenceChunkIds,
+    })
+    .from(cimScreeningAnswers)
+    .innerJoin(
+      screenerQuestions,
+      eq(cimScreeningAnswers.questionId, screenerQuestions.id),
+    )
+    .where(eq(cimScreeningAnswers.runId, runId))
+    .orderBy(asc(screenerQuestions.position), asc(screenerQuestions.createdAt));
+}
+
 /** Load chunk excerpts for SIM screening evidence IDs (RAG retrieval citations). */
 export async function getDocumentChunksByIds(ids: string[]) {
   const unique = [...new Set(ids.filter((id) => id?.trim()))];

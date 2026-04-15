@@ -1,4 +1,9 @@
-import { useCallback, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "@/lib/navigation-shim";
@@ -35,28 +40,13 @@ function commaInputValue(n: number | null | undefined): string {
   return formatNumberWithCommas(String(n));
 }
 
-/** Read-only line: em dash when missing. */
-function commaReadOnly(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
-  return formatNumberWithCommas(String(n));
-}
-
-function parseRequiredCommaNumber(formatted: string): number {
-  const p = unformatNumber(formatted).trim();
-  if (p === "") return NaN;
-  const n = Number(p);
-  return Number.isFinite(n) ? n : NaN;
-}
+const BITRIX_SYNC_CURRENCY = "USD" as const;
 
 type ReviewDraft = {
   title: string;
   stageId: string;
-  opportunity: number;
   revenue: number | null;
-  currencyId: string;
   teaser: string;
-  description: string;
-  comments: string;
   sourceWebsite: string;
   companyLocation: string;
   industry: string;
@@ -75,14 +65,9 @@ function extractionToDraft(
   suggestedStageId: string,
 ): ReviewDraft | null {
   const title = typeof o.title === "string" ? o.title.trim() : "";
-  const oppRaw = o.opportunity;
-  const opportunity =
-    typeof oppRaw === "number" && !Number.isNaN(oppRaw)
-      ? oppRaw
-      : typeof oppRaw === "string" && oppRaw.trim() !== ""
-        ? Number(oppRaw)
-        : NaN;
-  if (!title || Number.isNaN(opportunity)) return null;
+  const teaserRaw = typeof o.teaser === "string" ? o.teaser : "";
+  const teaser = teaserRaw.trim();
+  if (!title || !teaser) return null;
 
   const str = (v: unknown) =>
     typeof v === "string" ? v : v == null ? "" : String(v);
@@ -99,12 +84,8 @@ function extractionToDraft(
   return {
     title,
     stageId: suggestedStageId,
-    opportunity,
     revenue: numOrNull(o.revenue),
-    currencyId: str(o.currencyId).trim() || "USD",
-    teaser: str(o.teaser),
-    description: str(o.description),
-    comments: str(o.comments),
+    teaser: teaserRaw,
     sourceWebsite: str(o.sourceWebsite),
     companyLocation: str(o.companyLocation),
     industry: str(o.industry),
@@ -119,32 +100,44 @@ function extractionToDraft(
   };
 }
 
+function dollarReadOnly(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(n)) return "—";
+  return `$${formatNumberWithCommas(String(n))}`;
+}
+
+function DollarInput(props: ComponentProps<typeof Input>) {
+  return (
+    <div className="relative">
+      <span
+        className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 z-10 -translate-y-1/2 text-sm select-none"
+        aria-hidden
+      >
+        $
+      </span>
+      <Input
+        {...props}
+        className={cn("pl-7 font-mono tabular-nums", props.className)}
+      />
+    </div>
+  );
+}
+
 function FieldLabel({
   children,
   required: isRequired,
-  bitrixFieldId,
 }: {
   children: ReactNode;
   required?: boolean;
-  /** Bitrix field code from `crm.deal.fields` snapshot (when populated). */
-  bitrixFieldId?: string;
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-muted-foreground text-xs leading-snug font-medium">
-        {children}
-        {isRequired ? (
-          <span className="text-destructive ml-0.5" aria-hidden>
-            *
-          </span>
-        ) : null}
-      </span>
-      {bitrixFieldId ? (
-        <span className="text-muted-foreground/80 font-mono text-[10px] leading-tight">
-          {bitrixFieldId}
+    <span className="text-muted-foreground text-xs leading-snug font-medium">
+      {children}
+      {isRequired ? (
+        <span className="text-destructive ml-0.5" aria-hidden>
+          *
         </span>
       ) : null}
-    </div>
+    </span>
   );
 }
 
@@ -178,7 +171,9 @@ export function AiBitrixInjectWorkspace() {
         suggestedStage,
       );
       if (!next) {
-        toast.error("Title and opportunity amount are required in the result");
+        toast.error(
+          "Title and deal narrative (teaser) are required in the result",
+        );
         return;
       }
       setDraft(next);
@@ -214,24 +209,18 @@ export function AiBitrixInjectWorkspace() {
     const title = d.title.trim() || "Untitled deal";
     const stageId =
       d.stageId.trim() || suggestedStage || stages[0]?.statusId || "NEW";
-    const opportunity = Number.isNaN(d.opportunity) ? 0 : d.opportunity;
-
-    const descParts = [
-      d.description.trim() || null,
-      d.industry.trim() ? `Industry: ${d.industry.trim()}` : null,
-      d.comments.trim() || null,
-    ].filter(Boolean);
+    const narrative = d.teaser.trim() || title;
 
     const created = await createMutation.mutateAsync({
-      dealTeaser: d.teaser.trim() || title,
-      description: descParts.length ? descParts.join("\n\n") : undefined,
+      dealTeaser: narrative,
+      description: undefined,
       sourceWebsite: d.sourceWebsite.trim() || undefined,
       brokerFirstName: d.brokerFirstName.trim() || undefined,
       brokerLastName: d.brokerLastName.trim() || undefined,
       brokerEmail: d.brokerEmail.trim() || undefined,
       brokerPhone: d.brokerPhone.trim() || undefined,
       brokerLinkedIn: d.brokerLinkedIn.trim() || undefined,
-      revenue: d.revenue ?? opportunity,
+      revenue: d.revenue ?? undefined,
       ebitda: d.ebitda ?? undefined,
       ebitdaMargin: d.ebitdaMargin ?? undefined,
       askingPrice: d.askingPrice ?? undefined,
@@ -247,9 +236,7 @@ export function AiBitrixInjectWorkspace() {
       dealOpportunityId,
       title,
       stageId,
-      opportunity,
-      currencyId: d.currencyId.trim() || "USD",
-      comments: d.comments.trim() || undefined,
+      currencyId: BITRIX_SYNC_CURRENCY,
       sourceWebsite: d.sourceWebsite.trim() || null,
       companyLocation: d.companyLocation.trim() || null,
       industry: d.industry.trim() || null,
@@ -261,9 +248,9 @@ export function AiBitrixInjectWorkspace() {
       askingPrice: d.askingPrice,
       ebitda: d.ebitda,
       ebitdaMargin: d.ebitdaMargin,
-      revenue: d.revenue ?? opportunity,
-      teaser: d.teaser.trim() || null,
-      description: d.description.trim() || null,
+      revenue: d.revenue,
+      teaser: narrative,
+      description: null,
     });
 
     toast.success("Deal created and synced to Bitrix24");
@@ -479,9 +466,7 @@ export function AiBitrixInjectWorkspace() {
             {(isLoading || displayObject) && (
               <div className="grid w-full gap-4 sm:grid-cols-2 sm:gap-x-5">
                 <div className="space-y-1.5 sm:col-span-2">
-                  <FieldLabel bitrixFieldId={fm?.title.bitrixFieldId}>
-                    {fm?.title.label ?? "Title"}
-                  </FieldLabel>
+                  <FieldLabel>{fm?.title.label ?? "Title"}</FieldLabel>
                   {draft ? (
                     <Input
                       value={draft.title}
@@ -499,65 +484,11 @@ export function AiBitrixInjectWorkspace() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.opportunity.bitrixFieldId}>
-                    {fm?.opportunity.label ?? "Opportunity (deal value)"}
-                  </FieldLabel>
-                  {draft ? (
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      value={commaInputValue(draft.opportunity)}
-                      onChange={(e) =>
-                        setDraft((d) =>
-                          d
-                            ? {
-                                ...d,
-                                opportunity: parseRequiredCommaNumber(
-                                  formatNumberWithCommas(e.target.value),
-                                ),
-                              }
-                            : d,
-                        )
-                      }
-                    />
-                  ) : (
-                    <p className="text-sm tabular-nums">
-                      {commaReadOnly(
-                        (displayObject as { opportunity?: number })
-                          ?.opportunity,
-                      )}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.currencyId.bitrixFieldId}>
-                    {fm?.currencyId.label ?? "Currency"}
-                  </FieldLabel>
-                  {draft ? (
-                    <Input
-                      value={draft.currencyId}
-                      onChange={(e) =>
-                        setDraft((d) =>
-                          d ? { ...d, currencyId: e.target.value } : d,
-                        )
-                      }
-                    />
-                  ) : (
-                    <p className="font-mono text-sm">
-                      {(displayObject as { currencyId?: string })?.currencyId ||
-                        "USD"}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.revenue.bitrixFieldId}>
+                  <FieldLabel>
                     {fm?.revenue.label ?? "Revenue (TTM / company)"}
                   </FieldLabel>
                   {draft ? (
-                    <Input
+                    <DollarInput
                       type="text"
                       inputMode="decimal"
                       autoComplete="off"
@@ -575,80 +506,131 @@ export function AiBitrixInjectWorkspace() {
                     />
                   ) : (
                     <p className="text-foreground text-sm tabular-nums">
-                      {commaReadOnly(
+                      {dollarReadOnly(
                         (displayObject as { revenue?: number | null })?.revenue,
                       )}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
-                  <FieldLabel bitrixFieldId={fm?.teaser.bitrixFieldId}>
-                    {fm?.teaser.label ?? "Teaser"}
+                <div className="space-y-1.5">
+                  <FieldLabel>
+                    {fm?.askingPrice.label ?? "Asking price"}
                   </FieldLabel>
                   {draft ? (
-                    <Input
+                    <DollarInput
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={commaInputValue(draft.askingPrice)}
+                      onChange={(e) => {
+                        const f = formatNumberWithCommas(e.target.value);
+                        const p = unformatNumber(f).trim();
+                        setDraft((d) => {
+                          if (!d) return d;
+                          if (p === "") return { ...d, askingPrice: null };
+                          const n = Number(p);
+                          return Number.isFinite(n)
+                            ? { ...d, askingPrice: n }
+                            : d;
+                        });
+                      }}
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm tabular-nums">
+                      {dollarReadOnly(
+                        (displayObject as { askingPrice?: number | null })
+                          ?.askingPrice,
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <FieldLabel>{fm?.ebitda.label ?? "EBITDA"}</FieldLabel>
+                  {draft ? (
+                    <DollarInput
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={commaInputValue(draft.ebitda)}
+                      onChange={(e) => {
+                        const f = formatNumberWithCommas(e.target.value);
+                        const p = unformatNumber(f).trim();
+                        setDraft((d) => {
+                          if (!d) return d;
+                          if (p === "") return { ...d, ebitda: null };
+                          const n = Number(p);
+                          return Number.isFinite(n) ? { ...d, ebitda: n } : d;
+                        });
+                      }}
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm tabular-nums">
+                      {dollarReadOnly(
+                        (displayObject as { ebitda?: number | null })?.ebitda,
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <FieldLabel>
+                    {fm?.ebitdaMargin.label ?? "EBITDA margin"}
+                  </FieldLabel>
+                  {draft ? (
+                    <DollarInput
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={commaInputValue(draft.ebitdaMargin)}
+                      onChange={(e) => {
+                        const f = formatNumberWithCommas(e.target.value);
+                        const p = unformatNumber(f).trim();
+                        setDraft((d) => {
+                          if (!d) return d;
+                          if (p === "") return { ...d, ebitdaMargin: null };
+                          const n = Number(p);
+                          return Number.isFinite(n)
+                            ? { ...d, ebitdaMargin: n }
+                            : d;
+                        });
+                      }}
+                    />
+                  ) : (
+                    <p className="text-foreground text-sm tabular-nums">
+                      {dollarReadOnly(
+                        (displayObject as { ebitdaMargin?: number | null })
+                          ?.ebitdaMargin,
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <FieldLabel required>
+                    {fm?.teaser.label ?? "Deal narrative"}
+                  </FieldLabel>
+                  {draft ? (
+                    <Textarea
+                      rows={12}
                       value={draft.teaser}
                       onChange={(e) =>
                         setDraft((d) =>
                           d ? { ...d, teaser: e.target.value } : d,
                         )
                       }
+                      className="min-h-[200px] text-sm leading-relaxed"
                     />
                   ) : (
-                    <p className="text-foreground text-sm">
-                      {(displayObject as { teaser?: string | null })?.teaser ||
-                        "—"}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <FieldLabel bitrixFieldId={fm?.description.bitrixFieldId}>
-                    {fm?.description.label ?? "Description"}
-                  </FieldLabel>
-                  {draft ? (
-                    <Textarea
-                      rows={4}
-                      value={draft.description}
-                      onChange={(e) =>
-                        setDraft((d) =>
-                          d ? { ...d, description: e.target.value } : d,
-                        )
-                      }
-                    />
-                  ) : (
-                    <p className="text-foreground text-sm whitespace-pre-wrap">
-                      {(displayObject as { description?: string | null })
-                        ?.description || "—"}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <FieldLabel bitrixFieldId={fm?.comments.bitrixFieldId}>
-                    {fm?.comments.label ?? "Comments (extra)"}
-                  </FieldLabel>
-                  {draft ? (
-                    <Textarea
-                      rows={3}
-                      value={draft.comments}
-                      onChange={(e) =>
-                        setDraft((d) =>
-                          d ? { ...d, comments: e.target.value } : d,
-                        )
-                      }
-                    />
-                  ) : (
-                    <p className="text-foreground text-sm whitespace-pre-wrap">
-                      {(displayObject as { comments?: string | null })
-                        ?.comments || "—"}
+                    <p className="text-foreground max-h-[min(40vh,320px)] overflow-y-auto text-sm whitespace-pre-wrap">
+                      {(displayObject as { teaser?: string })?.teaser || "—"}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.sourceWebsite.bitrixFieldId}>
+                  <FieldLabel>
                     {fm?.sourceWebsite.label ?? "Source website"}
                   </FieldLabel>
                   {draft ? (
@@ -672,7 +654,7 @@ export function AiBitrixInjectWorkspace() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.companyLocation.bitrixFieldId}>
+                  <FieldLabel>
                     {fm?.companyLocation.label ?? "Company location"}
                   </FieldLabel>
                   {draft ? (
@@ -693,9 +675,7 @@ export function AiBitrixInjectWorkspace() {
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
-                  <FieldLabel bitrixFieldId={fm?.industry.bitrixFieldId}>
-                    {fm?.industry.label ?? "Industry"}
-                  </FieldLabel>
+                  <FieldLabel>{fm?.industry.label ?? "Industry"}</FieldLabel>
                   {draft ? (
                     <Input
                       value={draft.industry}
@@ -713,106 +693,10 @@ export function AiBitrixInjectWorkspace() {
                   )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.askingPrice.bitrixFieldId}>
-                    {fm?.askingPrice.label ?? "Asking price"}
-                  </FieldLabel>
-                  {draft ? (
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      value={commaInputValue(draft.askingPrice)}
-                      onChange={(e) => {
-                        const f = formatNumberWithCommas(e.target.value);
-                        const p = unformatNumber(f).trim();
-                        setDraft((d) => {
-                          if (!d) return d;
-                          if (p === "") return { ...d, askingPrice: null };
-                          const n = Number(p);
-                          return Number.isFinite(n)
-                            ? { ...d, askingPrice: n }
-                            : d;
-                        });
-                      }}
-                    />
-                  ) : (
-                    <p className="text-foreground text-sm tabular-nums">
-                      {commaReadOnly(
-                        (displayObject as { askingPrice?: number | null })
-                          ?.askingPrice,
-                      )}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.ebitda.bitrixFieldId}>
-                    {fm?.ebitda.label ?? "EBITDA"}
-                  </FieldLabel>
-                  {draft ? (
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      value={commaInputValue(draft.ebitda)}
-                      onChange={(e) => {
-                        const f = formatNumberWithCommas(e.target.value);
-                        const p = unformatNumber(f).trim();
-                        setDraft((d) => {
-                          if (!d) return d;
-                          if (p === "") return { ...d, ebitda: null };
-                          const n = Number(p);
-                          return Number.isFinite(n) ? { ...d, ebitda: n } : d;
-                        });
-                      }}
-                    />
-                  ) : (
-                    <p className="text-foreground text-sm tabular-nums">
-                      {commaReadOnly(
-                        (displayObject as { ebitda?: number | null })?.ebitda,
-                      )}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.ebitdaMargin.bitrixFieldId}>
-                    {fm?.ebitdaMargin.label ?? "EBITDA margin"}
-                  </FieldLabel>
-                  {draft ? (
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      value={commaInputValue(draft.ebitdaMargin)}
-                      onChange={(e) => {
-                        const f = formatNumberWithCommas(e.target.value);
-                        const p = unformatNumber(f).trim();
-                        setDraft((d) => {
-                          if (!d) return d;
-                          if (p === "") return { ...d, ebitdaMargin: null };
-                          const n = Number(p);
-                          return Number.isFinite(n)
-                            ? { ...d, ebitdaMargin: n }
-                            : d;
-                        });
-                      }}
-                    />
-                  ) : (
-                    <p className="text-foreground text-sm tabular-nums">
-                      {commaReadOnly(
-                        (displayObject as { ebitdaMargin?: number | null })
-                          ?.ebitdaMargin,
-                      )}
-                    </p>
-                  )}
-                </div>
-
                 <Separator className="my-2 sm:col-span-2" />
 
                 <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.brokerFirstName.bitrixFieldId}>
+                  <FieldLabel>
                     {fm?.brokerFirstName.label ?? "Broker first name"}
                   </FieldLabel>
                   {draft ? (
@@ -833,7 +717,7 @@ export function AiBitrixInjectWorkspace() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.brokerLastName.bitrixFieldId}>
+                  <FieldLabel>
                     {fm?.brokerLastName.label ?? "Broker last name"}
                   </FieldLabel>
                   {draft ? (
@@ -854,7 +738,7 @@ export function AiBitrixInjectWorkspace() {
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
-                  <FieldLabel bitrixFieldId={fm?.brokerEmail.bitrixFieldId}>
+                  <FieldLabel>
                     {fm?.brokerEmail.label ?? "Broker email"}
                   </FieldLabel>
                   {draft ? (
@@ -875,7 +759,7 @@ export function AiBitrixInjectWorkspace() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.brokerPhone.bitrixFieldId}>
+                  <FieldLabel>
                     {fm?.brokerPhone.label ?? "Broker phone"}
                   </FieldLabel>
                   {draft ? (
@@ -896,7 +780,7 @@ export function AiBitrixInjectWorkspace() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <FieldLabel bitrixFieldId={fm?.brokerLinkedIn.bitrixFieldId}>
+                  <FieldLabel>
                     {fm?.brokerLinkedIn.label ?? "Broker LinkedIn"}
                   </FieldLabel>
                   {draft ? (
@@ -921,19 +805,12 @@ export function AiBitrixInjectWorkspace() {
             {draft && !isLoading ? (
               <div className="border-border/50 mt-5 w-full min-w-0 space-y-4 border-t pt-5">
                 <div className="space-y-2">
-                  <div className="space-y-0.5">
-                    <Label
-                      htmlFor="bitrix-stage-ai"
-                      className="text-muted-foreground text-xs font-medium"
-                    >
-                      {fm?.stageId.label ?? "Bitrix stage"}
-                    </Label>
-                    {fm?.stageId.bitrixFieldId ? (
-                      <p className="text-muted-foreground font-mono text-[10px] leading-tight">
-                        {fm.stageId.bitrixFieldId}
-                      </p>
-                    ) : null}
-                  </div>
+                  <Label
+                    htmlFor="bitrix-stage-ai"
+                    className="text-muted-foreground text-xs font-medium"
+                  >
+                    {fm?.stageId.label ?? "Bitrix stage"}
+                  </Label>
                   {stages.length > 0 ? (
                     <Select
                       value={draft.stageId}

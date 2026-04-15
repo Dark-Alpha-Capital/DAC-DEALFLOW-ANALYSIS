@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "../ui/button";
 import * as XLSX from "xlsx";
@@ -6,17 +5,17 @@ import { BulkImportDialog } from "../Dialogs/bulk-import-dialog";
 
 const BulkImportCard = () => {
   return (
-    <div className="h-fit rounded-lg border bg-muted p-6 shadow-lg">
+    <div className="bg-muted h-fit rounded-lg border p-6 shadow-lg">
       <h2 className="mb-4 text-center text-xl font-semibold">
         Bulk Import Deals
       </h2>
-      <p className="mb-2 text-center text-muted-foreground">
+      <p className="text-muted-foreground mb-2 text-center">
         Quickly import multiple deals at once by uploading a file. Save time and
         effort with bulk import functionality.
       </p>
 
-      <div className="mb-4 rounded-lg border border-warning/50 bg-warning/10 p-3">
-        <p className="text-center text-sm font-medium text-warning">
+      <div className="border-warning/50 bg-warning/10 mb-4 rounded-lg border p-3">
+        <p className="text-warning text-center text-sm font-medium">
           All-or-Nothing Upload: All rows must pass validation before any deals
           are uploaded. Fix all errors to proceed.
         </p>
@@ -42,7 +41,7 @@ const BulkImportCard = () => {
             <li>UploadOnCRM (Required, &quot;Yes&quot; or &quot;No&quot;)</li>
             <li>Company Location (Optional)</li>
           </ul>
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="text-muted-foreground mt-3 text-xs">
             Only rows with Upload = &quot;Y&quot; will be uploaded. Rows with
             Upload = &quot;N&quot; will be skipped.
           </p>

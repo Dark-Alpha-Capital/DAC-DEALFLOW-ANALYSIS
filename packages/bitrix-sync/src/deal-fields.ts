@@ -18,7 +18,10 @@ export type OpportunitySyncPayload = {
   /** Bitrix kanban stage id; omit if not configured (legacy behavior). */
   stageId?: string;
   title: string;
-  opportunity: number;
+  /**
+   * Bitrix standard OPPORTUNITY amount. If omitted, derived from askingPrice, then revenue, then 0.
+   */
+  opportunity?: number;
   currencyId?: string;
   comments?: string | null;
   sourceWebsite?: string | null;
@@ -39,6 +42,28 @@ export type OpportunitySyncPayload = {
   /** Longer narrative merged into COMMENTS and/or dedicated teaser UF. */
   description?: string | null;
 };
+
+/** Bitrix `OPPORTUNITY`: explicit value, else asking price, else revenue, else 0. */
+export function resolveBitrixOpportunityAmount(
+  input: Pick<OpportunitySyncPayload, "opportunity" | "askingPrice" | "revenue">,
+): number {
+  if (
+    input.opportunity != null &&
+    !Number.isNaN(Number(input.opportunity))
+  ) {
+    return Number(input.opportunity);
+  }
+  if (
+    input.askingPrice != null &&
+    !Number.isNaN(Number(input.askingPrice))
+  ) {
+    return Number(input.askingPrice);
+  }
+  if (input.revenue != null && !Number.isNaN(Number(input.revenue))) {
+    return Number(input.revenue);
+  }
+  return 0;
+}
 
 function stripEmpty(
   fields: Record<string, unknown>,
@@ -88,9 +113,10 @@ export function buildCrmDealFieldsFromOpportunitySync(
   const currencyId = input.currencyId ?? "USD";
   const teaserFieldCode = resolveBitrixDealTeaserFieldCode()?.trim() || "";
   const ufNarrativeBody = buildCombinedTeaserForUf(input);
+  const opportunityValue = resolveBitrixOpportunityAmount(input);
 
   const narrativeCommentsNoUf = [
-    input.teaser?.trim() ? `Teaser: ${input.teaser.trim()}` : null,
+    input.teaser?.trim() || null,
     input.description?.trim() || null,
     input.comments?.trim() || null,
   ].filter(Boolean) as string[];
@@ -138,11 +164,11 @@ export function buildCrmDealFieldsFromOpportunitySync(
   const revenueForUf =
     input.revenue != null && !Number.isNaN(Number(input.revenue))
       ? Number(input.revenue)
-      : input.opportunity;
+      : opportunityValue;
 
   const rawFields: Record<string, unknown> = {
     TITLE: input.title,
-    OPPORTUNITY: input.opportunity,
+    OPPORTUNITY: opportunityValue,
     CURRENCY_ID: currencyId,
     COMMENTS: comments,
     ORIGINATOR_ID: BITRIX_ORIGINATOR_ID,
@@ -176,6 +202,10 @@ export function buildCrmDealFieldsFromOpportunitySync(
 
   if (teaserFieldCode && ufNarrativeBody) {
     rawFields[teaserFieldCode] = ufNarrativeBody;
+  }
+
+  if (uf.pursuedOn.trim()) {
+    setUf(rawFields, uf.pursuedOn, new Date(), currencyId);
   }
 
   return stripEmpty(rawFields);
