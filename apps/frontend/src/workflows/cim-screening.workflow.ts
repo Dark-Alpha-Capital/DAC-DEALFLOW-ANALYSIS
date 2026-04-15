@@ -21,6 +21,7 @@ import {
 import { getEmbedding } from "@repo/rag-engine";
 import { updateWorkflowJobProgress } from "@repo/db/workflow-jobs";
 import {
+  listDealOpportunityScreeningChunks,
   searchDocumentChunksVector,
   type SearchDocumentChunksVectorInput,
 } from "@/lib/document-chunk-vectorize";
@@ -208,22 +209,25 @@ async function loadDealListingForScreeningPrompt(input: {
 
 async function searchChunksForQuestion(input: {
   db: AppDb;
-  vectorIndex: VectorizeIndex;
+  vectorIndex: VectorizeIndex | undefined;
   queryEmbedding: number[];
   isDealScope: boolean;
   dealOppId: string | null;
   libraryDocumentId: string | null;
   screeningDoc: LibraryScreeningDocMeta | null;
 }): Promise<Awaited<ReturnType<typeof searchDocumentChunksVector>>> {
-  // Deal scope: single filter — chunks for this deal opportunity (Vectorize scans namespaces from Postgres).
+  // Deal scope: Postgres only (same chunk slice per question — avoids Vectorize query API issues).
   if (input.isDealScope && input.dealOppId) {
-    const params: SearchDocumentChunksVectorInput = {
-      queryEmbedding: input.queryEmbedding,
-      limit: RETRIEVAL_TOP_K_DEAL,
-      entityType: "DEAL_OPPORTUNITY",
-      dealOpportunityId: input.dealOppId,
-    };
-    return searchDocumentChunksVector(input.db, input.vectorIndex, params);
+    return listDealOpportunityScreeningChunks(
+      input.db,
+      input.dealOppId,
+      RETRIEVAL_TOP_K_DEAL,
+    );
+  }
+  if (!input.vectorIndex) {
+    throw new Error(
+      "CimScreeningWorkflow: DOCUMENT_CHUNKS_INDEX required for library document screening",
+    );
   }
   if (!input.libraryDocumentId) {
     throw new Error("CimScreeningWorkflow: library document id required");
@@ -314,9 +318,10 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
         await step.do("validate-deal-rag", { timeout: "10 minutes" }, async () =>
           runDbWithWorkerNeonPool(async () => {
             if (!this.env.DOCUMENT_CHUNKS_INDEX) {
-              throw new Error(
-                "DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config",
-              );
+              logDetail("validate-deal-rag.vectorize_unbound", {
+                message:
+                  "DOCUMENT_CHUNKS_INDEX not bound; deal screening uses DB chunks only",
+              });
             }
             await updateCimScreeningRun(runId, { status: "INGESTING" });
             await updateWorkflowJobProgress(instanceId, {
@@ -442,7 +447,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             dealOpportunityId: dealOppId ?? null,
             scope: isDealScope ? "deal_opportunity" : "library_document",
           });
-          if (!this.env.DOCUMENT_CHUNKS_INDEX) {
+          if (!this.env.DOCUMENT_CHUNKS_INDEX && !isDealScope) {
             throw new Error(
               "DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config",
             );
@@ -485,6 +490,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             documentId: libraryDocumentId ?? null,
             dealOpportunityId: dealOppId ?? null,
             chunkRowsInDb,
+            dealRetrieval: isDealScope ? "postgres_chunks" : null,
             vectorizeNamespace: isDealScope ? null : libraryDocumentId,
             retrievalTopK: isDealScope ? RETRIEVAL_TOP_K_DEAL : RETRIEVAL_TOP_K,
             vectorMetadataScope: isDealScope
@@ -590,28 +596,42 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
               questionPreview: qPreview,
             });
 
-            const embT0 = Date.now();
-            const queryEmbedding = await getEmbedding(q.question);
-            if (!queryEmbedding?.length) {
-              logDetail("screen.question.embed_failed", { questionId: q.id });
-              throw new Error("Failed to embed screener question");
+            let queryEmbedding: number[] = [];
+            if (!isDealScope) {
+              const embT0 = Date.now();
+              const emb = await getEmbedding(q.question);
+              if (!emb?.length) {
+                logDetail("screen.question.embed_failed", { questionId: q.id });
+                throw new Error("Failed to embed screener question");
+              }
+              queryEmbedding = emb;
+              logDetail("screen.question.embedded", {
+                questionId: q.id,
+                dim: queryEmbedding.length,
+                elapsedMs: Date.now() - embT0,
+              });
             }
-            logDetail("screen.question.embedded", {
-              questionId: q.id,
-              dim: queryEmbedding.length,
-              elapsedMs: Date.now() - embT0,
-            });
 
             const ragT0 = Date.now();
-            logDetail("screen.question.vector_query_start", {
-              questionId: q.id,
-              index: i + 1,
-              total,
-              isDealScope,
-              dealOpportunityId: dealOppId ?? null,
-              libraryDocumentId: libraryDocumentId ?? null,
-              topK: isDealScope ? RETRIEVAL_TOP_K_DEAL : RETRIEVAL_TOP_K,
-            });
+            if (isDealScope) {
+              logDetail("screen.question.deal_chunks_sql", {
+                questionId: q.id,
+                index: i + 1,
+                total,
+                dealOpportunityId: dealOppId ?? null,
+                limit: RETRIEVAL_TOP_K_DEAL,
+              });
+            } else {
+              logDetail("screen.question.vector_query_start", {
+                questionId: q.id,
+                index: i + 1,
+                total,
+                isDealScope,
+                dealOpportunityId: dealOppId ?? null,
+                libraryDocumentId: libraryDocumentId ?? null,
+                topK: RETRIEVAL_TOP_K,
+              });
+            }
             let hits: Awaited<ReturnType<typeof searchChunksForQuestion>>;
             try {
               hits = await searchChunksForQuestion({
@@ -623,23 +643,24 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
                 libraryDocumentId: libraryDocumentId ?? null,
                 screeningDoc,
               });
-            } catch (vectorErr) {
-              logError("screen.question.vector_query_failed", vectorErr, {
+            } catch (ragErr) {
+              logError("screen.question.retrieval_failed", ragErr, {
                 questionId: q.id,
                 index: i + 1,
                 isDealScope,
                 dealOpportunityId: dealOppId ?? null,
                 libraryDocumentId: libraryDocumentId ?? null,
               });
-              throw vectorErr;
+              throw ragErr;
             }
             const textHits = hits.filter(
               (h) => h.chunkText && h.chunkText.trim().length > 0,
             );
-            logDetail("screen.question.vector_search", {
+            logDetail("screen.question.rag_hits", {
               questionId: q.id,
               documentId: libraryDocumentId ?? null,
               dealOpportunityId: dealOppId ?? null,
+              retrieval: isDealScope ? "postgres_deal_chunks" : "vectorize",
               vectorizeNamespace: isDealScope ? null : libraryDocumentId,
               hitCount: hits.length,
               textHitCount: textHits.length,
