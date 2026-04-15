@@ -8,20 +8,61 @@ import { EMBEDDING_DIMENSION, type ProcessedChunk } from "@repo/rag-engine";
 const UPSERT_BATCH = 100;
 const DELETE_ID_BATCH = 500;
 
+/** @see https://developers.cloudflare.com/vectorize/platform/limits/ */
+const VECTORIZE_MAX_ID_OR_NAMESPACE_BYTES = 64;
+/** Per-field limit when that field has a metadata index (must stay in sync with Vectorize). */
+const VECTORIZE_MAX_INDEXED_METADATA_VALUE_BYTES = 64;
+
+const utf8ByteLength = (s: string): number =>
+  new TextEncoder().encode(s).length;
+
 type DocumentChunkInsert = InferInsertModel<typeof documentChunks>;
 
 /** Metadata for Vectorize filters; nullable FKs use "" (matches SQL NULL chunks). */
 export function vectorizeMetadataFromChunkRow(
   row: DocumentChunkInsert,
 ): Record<string, string> {
+  const entityType =
+    typeof row.entityType === "string"
+      ? row.entityType
+      : String(row.entityType);
   return {
-    documentId: row.documentId,
-    entityType: row.entityType,
-    entityId: row.entityId ?? "",
-    dealOpportunityId: row.dealOpportunityId ?? "",
-    companyId: row.companyId ?? "",
-    themeId: row.themeId ?? "",
+    documentId: String(row.documentId),
+    entityType,
+    entityId: row.entityId != null ? String(row.entityId) : "",
+    dealOpportunityId:
+      row.dealOpportunityId != null ? String(row.dealOpportunityId) : "",
+    companyId: row.companyId != null ? String(row.companyId) : "",
+    themeId: row.themeId != null ? String(row.themeId) : "",
   };
+}
+
+function assertVectorizeUpsertPayload(vector: VectorizeVector): void {
+  const id = vector.id;
+  const ns = vector.namespace ?? "";
+  const idB = utf8ByteLength(id);
+  const nsB = utf8ByteLength(ns);
+  if (idB > VECTORIZE_MAX_ID_OR_NAMESPACE_BYTES) {
+    throw new Error(
+      `Vectorize upsert: vector id is ${idB} bytes (max ${VECTORIZE_MAX_ID_OR_NAMESPACE_BYTES}). Shorten DocumentChunk ids or namespaces.`,
+    );
+  }
+  if (nsB > VECTORIZE_MAX_ID_OR_NAMESPACE_BYTES) {
+    throw new Error(
+      `Vectorize upsert: namespace (documentId) is ${nsB} bytes (max ${VECTORIZE_MAX_ID_OR_NAMESPACE_BYTES}).`,
+    );
+  }
+  const md = vector.metadata;
+  if (!md) return;
+  for (const [key, val] of Object.entries(md)) {
+    if (typeof val !== "string") continue;
+    const len = utf8ByteLength(val);
+    if (len > VECTORIZE_MAX_INDEXED_METADATA_VALUE_BYTES) {
+      throw new Error(
+        `Vectorize upsert: metadata.${key} is ${len} bytes (max ${VECTORIZE_MAX_INDEXED_METADATA_VALUE_BYTES} per indexed field). Trim FK strings or widen index strategy.`,
+      );
+    }
+  }
 }
 
 function hasFiniteEmbeddingValues(values: number[]): boolean {
@@ -49,12 +90,14 @@ export async function upsertDocumentChunkVectors(
           `Vectorize upsert: chunk ${c.row.id} has non-finite embedding values`,
         );
       }
-      return {
+      const vector: VectorizeVector = {
         id: String(c.row.id),
         namespace: c.row.documentId,
-        values,
+        values: Float32Array.from(values),
         metadata: vectorizeMetadataFromChunkRow(c.row),
       };
+      assertVectorizeUpsertPayload(vector);
+      return vector;
     });
     let mutation:
       | { count?: number; ids?: string[]; mutationId?: string }
@@ -83,7 +126,9 @@ export async function upsertDocumentChunkVectors(
 
       if (failedIds.length > 0) {
         throw new Error(
-          `Vectorize upsert failed for ${failedIds.length}/${vectors.length} vectors (first ids: ${failedIds.slice(0, 5).join(", ")})`,
+          `Vectorize upsert failed for ${failedIds.length}/${vectors.length} vectors (first ids: ${failedIds.slice(0, 5).join(", ")}). ` +
+            `Confirm index dimensions=${EMBEDDING_DIMENSION} (wrangler vectorize info), vector id/namespace ≤${VECTORIZE_MAX_ID_OR_NAMESPACE_BYTES} bytes, ` +
+            `and each metadata string ≤${VECTORIZE_MAX_INDEXED_METADATA_VALUE_BYTES} bytes for indexed fields.`,
         );
       }
       continue;
