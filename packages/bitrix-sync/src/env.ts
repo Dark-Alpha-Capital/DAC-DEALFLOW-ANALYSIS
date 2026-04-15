@@ -77,3 +77,44 @@ export function inferPortalBaseFromWebhook(webhookBaseUrl: string): string {
     return "";
   }
 }
+
+/**
+ * Extract the webhook secret from a Bitrix inbound webhook URL.
+ * URL format: `https://portal.bitrix24.com/rest/USER_ID/WEBHOOK_SECRET/`
+ * The secret is the last non-empty path segment.
+ */
+export function extractWebhookAuthToken(webhookBaseUrl: string): string | null {
+  try {
+    const u = new URL(webhookBaseUrl);
+    const segments = u.pathname.split("/").filter(Boolean);
+    return segments.at(-1) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Given a CRM file downloadUrl (which has `auth=` empty by default) and a
+ * webhook secret, return the URL with `auth=SECRET` so server-side fetch works.
+ */
+export function injectWebhookAuthIntoCrmUrl(
+  crmUrl: string,
+  webhookBaseUrl: string,
+): string {
+  const secret = extractWebhookAuthToken(webhookBaseUrl);
+  if (!secret) return crmUrl;
+  return crmUrl.replace(/\bauth=(?=&|$)/i, `auth=${secret}`);
+}
+
+/** Turn relative CRM / Bitrix paths (e.g. `/bitrix/components/...`) into absolute portal URLs. */
+export function resolveBitrixPortalUrl(
+  portalBase: string,
+  pathOrUrl: string,
+): string {
+  const p = pathOrUrl.trim();
+  if (!p) return "";
+  if (/^https?:\/\//i.test(p)) return p;
+  const base = portalBase.replace(/\/+$/, "");
+  if (p.startsWith("/")) return `${base}${p}`;
+  return `${base}/${p.replace(/^\/+/, "")}`;
+}

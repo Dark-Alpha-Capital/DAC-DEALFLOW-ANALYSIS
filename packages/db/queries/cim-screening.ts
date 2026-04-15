@@ -96,6 +96,7 @@ export async function listCimScreeningRunsForDealOpportunity(
       screenerCategory: screeners.category,
       runCreatedAt: cimScreeningRuns.createdAt,
       sessionCreatedAt: cimScreeningSessions.createdAt,
+      dealDocumentsSnapshot: cimScreeningRuns.dealDocumentsSnapshot,
     })
     .from(cimScreeningRuns)
     .innerJoin(

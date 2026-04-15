@@ -24,11 +24,18 @@ import {
 } from "./progress";
 import type { RagIngestionParams, WorkflowWorkerEnv } from "./workflow-env";
 
-function ragDebug(phase: string, data: Record<string, unknown>) {
-  console.log(`[rag-ingestion] ${phase}`, {
-    ts: new Date().toISOString(),
-    ...data,
-  });
+const LOG = "[rag-ingestion]";
+
+function ragDebug(phase: string, data: Record<string, unknown> = {}): void {
+  console.log(`${LOG} ${phase}`, { ts: new Date().toISOString(), ...data });
+}
+
+function fileUrlHostname(fileUrl: string): string {
+  try {
+    return new URL(fileUrl).hostname;
+  } catch {
+    return "invalid-url";
+  }
 }
 
 async function markDocumentIngestionFailed(documentId: string, message: string) {
@@ -53,6 +60,38 @@ async function markDocumentSkipped(documentId: string, reason: string) {
     .where(eq(documents.id, documentId));
 }
 
+/** Ensures Drizzle returned rows match pre-assigned chunk ids (data integrity). */
+function assertChunkInsertIdsAligned(
+  documentId: string,
+  inserted: { id: string }[],
+  /** Chunk rows always carry client-assigned ids before insert; schema types widen `id`. */
+  chunkRows: { id: string }[],
+): void {
+  if (inserted.length !== chunkRows.length) {
+    ragDebug("sql.insert.mismatch", {
+      documentId,
+      inserted: inserted.length,
+      expected: chunkRows.length,
+    });
+    throw new Error(
+      `Chunk insert count mismatch: inserted ${inserted.length}, expected ${chunkRows.length}`,
+    );
+  }
+  for (let i = 0; i < chunkRows.length; i++) {
+    if (inserted[i]!.id !== chunkRows[i]!.id) {
+      ragDebug("sql.insert.id_mismatch", {
+        documentId,
+        index: i,
+        dbId: inserted[i]!.id,
+        rowId: chunkRows[i]!.id,
+      });
+      throw new Error(
+        `Chunk id mismatch after insert at ${i}: db=${inserted[i]!.id}, row=${chunkRows[i]!.id}`,
+      );
+    }
+  }
+}
+
 export class RagIngestionWorkflow extends WorkflowEntrypoint<
   WorkflowWorkerEnv,
   RagIngestionParams
@@ -63,7 +102,9 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
   ): Promise<{ success: boolean; chunksInserted: number }> {
     const vectorIndex = this.env.DOCUMENT_CHUNKS_INDEX;
     if (!vectorIndex) {
-      throw new Error("DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config");
+      throw new Error(
+        "DOCUMENT_CHUNKS_INDEX is not bound; check wrangler vectorize config",
+      );
     }
 
     const instanceId = event.instanceId;
@@ -71,16 +112,18 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
 
     try {
       ragDebug("workflow.run.start", { instanceId, documentId, forceReingest });
-      await runDbWithWorkerNeonPool(async () => {
-        await markWorkflowRunning(instanceId);
+      console.info(`${LOG} workflow.run.start`, {
+        ts: new Date().toISOString(),
+        instanceId,
+        documentId,
+        forceReingest,
       });
+      await runDbWithWorkerNeonPool(() => markWorkflowRunning(instanceId));
 
-      // `step.do` runs/replays its callback outside normal async ALS scope; bind a fresh Neon pool here.
       const result = await step.do(
         "rag-ingest",
         {
           timeout: "30 minutes",
-          // Avoid repeated full replays of chunk ingestion on failure.
           retries: { limit: 0, delay: "1 second" },
         },
         (stepCtx) =>
@@ -117,13 +160,14 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               dealOpportunityId: document.dealOpportunityId,
               companyId: document.companyId,
               themeId: document.themeId,
-              fileUrlHost: (() => {
-                try {
-                  return new URL(document.fileUrl).hostname;
-                } catch {
-                  return "invalid-url";
-                }
-              })(),
+              fileUrlHost: fileUrlHostname(document.fileUrl),
+            });
+            console.info(`${LOG} document.loaded`, {
+              instanceId,
+              documentId,
+              dealOpportunityId: document.dealOpportunityId,
+              fileName: document.fileName,
+              ingestionStatus: document.ingestionStatus,
             });
 
             if (!forceReingest && document.ingestionStatus === "PROCESSED") {
@@ -146,7 +190,10 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
 
             const filePath = extractFilePathFromUrl(document.fileUrl);
             if (!filePath) {
-              ragDebug("file.path_resolve.failed", { documentId, fileUrl: document.fileUrl });
+              ragDebug("file.path_resolve.failed", {
+                documentId,
+                fileUrl: document.fileUrl,
+              });
               throw new Error("Could not resolve storage path from document.fileUrl");
             }
             ragDebug("file.path_resolved", { documentId, filePath });
@@ -159,10 +206,7 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               elapsedMs: Date.now() - fetchT0,
             });
 
-            const normalizedMime = resolveMimeType(
-              document.fileName,
-              document.mimeType,
-            );
+            const normalizedMime = resolveMimeType(document.fileName, document.mimeType);
             ragDebug("mime.normalized", {
               documentId,
               normalizedMime,
@@ -177,7 +221,9 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
             });
 
             const sqlDelT0 = Date.now();
-            await db.delete(documentChunks).where(eq(documentChunks.documentId, documentId));
+            await db
+              .delete(documentChunks)
+              .where(eq(documentChunks.documentId, documentId));
             ragDebug("sql.chunks_deleted", {
               documentId,
               elapsedMs: Date.now() - sqlDelT0,
@@ -222,7 +268,11 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
             if ("unsupported" in processResult) {
               const reason =
                 processResult.reason ?? `Unsupported mime type: ${normalizedMime}`;
-              ragDebug("ingest.skipped_unsupported", { documentId, reason, normalizedMime });
+              ragDebug("ingest.skipped_unsupported", {
+                documentId,
+                reason,
+                normalizedMime,
+              });
               await markDocumentSkipped(documentId, reason);
               return { success: true as const, chunksInserted: 0 };
             }
@@ -230,7 +280,10 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
             const processed = processResult.chunks;
             if (!processed.length) {
               ragDebug("ingest.skipped_no_chunks", { documentId, normalizedMime });
-              await markDocumentSkipped(documentId, "No valid chunks produced during ingestion");
+              await markDocumentSkipped(
+                documentId,
+                "No valid chunks produced during ingestion",
+              );
               return { success: true as const, chunksInserted: 0 };
             }
 
@@ -249,29 +302,11 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               .insert(documentChunks)
               .values(chunkRows)
               .returning({ id: documentChunks.id });
-            if (inserted.length !== chunkRows.length) {
-              ragDebug("sql.insert.mismatch", {
-                documentId,
-                inserted: inserted.length,
-                expected: chunkRows.length,
-              });
-              throw new Error(
-                `Chunk insert count mismatch: inserted ${inserted.length}, expected ${chunkRows.length}`,
-              );
-            }
-            for (let i = 0; i < chunkRows.length; i++) {
-              if (inserted[i]!.id !== chunkRows[i]!.id) {
-                ragDebug("sql.insert.id_mismatch", {
-                  documentId,
-                  index: i,
-                  dbId: inserted[i]!.id,
-                  rowId: chunkRows[i]!.id,
-                });
-                throw new Error(
-                  `Chunk id mismatch after insert at ${i}: db=${inserted[i]!.id}, row=${chunkRows[i]!.id}`,
-                );
-              }
-            }
+            assertChunkInsertIdsAligned(
+              documentId,
+              inserted,
+              chunkRows as { id: string }[],
+            );
             ragDebug("sql.chunks_inserted", {
               documentId,
               rowCount: inserted.length,
@@ -308,16 +343,19 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
       );
 
       ragDebug("workflow.run.completed", { instanceId, documentId, result });
-      await runDbWithWorkerNeonPool(async () => {
-        await markWorkflowCompleted(instanceId, result);
+      console.info(`${LOG} workflow.run.completed`, {
+        instanceId,
+        documentId,
+        chunksInserted: result.chunksInserted,
       });
+      await runDbWithWorkerNeonPool(() => markWorkflowCompleted(instanceId, result));
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const errorWithContext = new Error(
-        `[rag-ingestion] ${instanceId} for document ${documentId} failed: ${message}`,
+        `${LOG} ${instanceId} for document ${documentId} failed: ${message}`,
       );
-      console.error("[rag-ingestion] workflow.run.failed", {
+      console.error(`${LOG} workflow.run.failed`, {
         ts: new Date().toISOString(),
         instanceId,
         documentId,
@@ -325,15 +363,15 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
         stack: error instanceof Error ? error.stack : undefined,
       });
       try {
-        await runDbWithWorkerNeonPool(async () => {
-          await markDocumentIngestionFailed(documentId, errorWithContext.message);
-        });
+        await runDbWithWorkerNeonPool(() =>
+          markDocumentIngestionFailed(documentId, errorWithContext.message),
+        );
       } catch {
         // ignore
       }
-      await runDbWithWorkerNeonPool(async () => {
-        await markWorkflowFailed(instanceId, errorWithContext);
-      });
+      await runDbWithWorkerNeonPool(() =>
+        markWorkflowFailed(instanceId, errorWithContext),
+      );
       throw errorWithContext;
     }
   }

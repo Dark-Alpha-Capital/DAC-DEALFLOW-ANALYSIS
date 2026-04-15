@@ -5,16 +5,25 @@ import {
 } from "cloudflare:workers";
 import { generateObject } from "ai";
 import { z } from "zod";
+import type { AppDb } from "@repo/db";
 import db, { count, eq, runDbWithWorkerNeonPool } from "@repo/db";
-import { documents, documentChunks, cimScreeningAnswers } from "@repo/db/schema";
-import { getScreenerQuestions } from "@repo/db/queries";
+import { documents, documentChunks } from "@repo/db/schema";
+import {
+  formatDealOpportunityScreeningContext,
+  getCimScreeningAnswersWithQuestionsByRunId,
+  getDealOpportunityScreeningContextRow,
+  getScreenerQuestions,
+} from "@repo/db/queries";
 import {
   updateCimScreeningRun,
   upsertCimScreeningAnswer,
 } from "@repo/db/mutations";
 import { getEmbedding } from "@repo/rag-engine";
 import { updateWorkflowJobProgress } from "@repo/db/workflow-jobs";
-import { searchDocumentChunksVector } from "@/lib/document-chunk-vectorize";
+import {
+  searchDocumentChunksVector,
+  type SearchDocumentChunksVectorInput,
+} from "@/lib/document-chunk-vectorize";
 import {
   buildCimScreeningQuestionPrompt,
   getOpenAIProvider,
@@ -25,7 +34,11 @@ import {
   markWorkflowFailed,
   markWorkflowRunning,
 } from "./progress";
-import type { CimScreeningParams, WorkflowWorkerEnv } from "./workflow-env";
+import type {
+  CimScreeningDealListingContextSource,
+  CimScreeningParams,
+  WorkflowWorkerEnv,
+} from "./workflow-env";
 
 const openai = getOpenAIProvider();
 const CIM_SCREENING_MODEL =
@@ -33,8 +46,16 @@ const CIM_SCREENING_MODEL =
 
 const RETRIEVAL_TOP_K = 8;
 const RETRIEVAL_TOP_K_DEAL = 14;
+const QUESTION_PREVIEW_MAX = 120;
+/** Bitrix timeline comments have practical size limits; keep margin under typical API caps. */
+const BITRIX_SCREENING_COMMENT_MAX_CHARS = 62_000;
 
-/** Structured logs for CIM template screening workflow runs (Workers + dashboard). */
+/** Hoisted once — avoid recreating the schema inside the per-question loop. */
+const SCREENING_ANSWER_SCHEMA = z.object({
+  score: z.number().min(0).max(10),
+  rationale: z.string(),
+});
+
 const LOG = "[CimScreeningWorkflow]";
 
 function logDetail(
@@ -57,6 +78,157 @@ function logError(
   });
 }
 
+function screeningBandFromAverage(
+  avgScore: number | null,
+): "INCOMPLETE" | "PASS" | "FAIL" {
+  if (avgScore == null) return "INCOMPLETE";
+  if (avgScore >= 7) return "PASS";
+  if (avgScore >= 4) return "INCOMPLETE";
+  return "FAIL";
+}
+
+type LibraryScreeningDocMeta = {
+  entityType: (typeof documents.$inferSelect)["entityType"];
+  entityId: (typeof documents.$inferSelect)["entityId"];
+  dealOpportunityId: (typeof documents.$inferSelect)["dealOpportunityId"];
+  companyId: (typeof documents.$inferSelect)["companyId"];
+  themeId: (typeof documents.$inferSelect)["themeId"];
+};
+
+function buildExcerptsFromHits(
+  textHits: { chunkText: string | null }[],
+): string {
+  if (textHits.length === 0) {
+    return "No text excerpts were retrieved for this question.";
+  }
+  return textHits
+    .map((h, idx) => `[Excerpt ${idx + 1}]\n${h.chunkText!.trim()}`)
+    .join("\n\n");
+}
+
+function buildBitrixTimelineCommentText(input: {
+  runId: string;
+  screenerId: string;
+  sessionId: string;
+  qaRows: Awaited<
+    ReturnType<typeof getCimScreeningAnswersWithQuestionsByRunId>
+  >;
+}): { comment: string; truncated: boolean } {
+  const scores = input.qaRows
+    .map((r) => r.score)
+    .filter((s): s is number => s != null);
+  const avgScore =
+    scores.length > 0
+      ? scores.reduce((sum, a) => sum + a, 0) / scores.length
+      : null;
+  const status = screeningBandFromAverage(avgScore);
+
+  const qaBody = input.qaRows
+    .map((row, i) => {
+      const q = row.questionText?.trim() || "(question)";
+      const rationale = row.rationale?.trim() || "—";
+      return [
+        `${i + 1}. ${q}`,
+        `   Score: ${row.score ?? "—"}/10`,
+        "",
+        rationale,
+      ].join("\n");
+    })
+    .join("\n\n---\n\n");
+
+  const header = [
+    "AI CIM screening completed",
+    `Run ID: ${input.runId}`,
+    `Screener ID: ${input.screenerId}`,
+    avgScore == null
+      ? null
+      : `Average score: ${avgScore.toFixed(1)}/10 (${status})`,
+    `App session: /screening/${input.sessionId}`,
+    "",
+    "Questions and answers:",
+    "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const full = `${header}${qaBody}`;
+  const tail =
+    "\n\n[Truncated: comment exceeded maximum length for Bitrix timeline]";
+  if (full.length <= BITRIX_SCREENING_COMMENT_MAX_CHARS) {
+    return { comment: full, truncated: false };
+  }
+  const maxBody = BITRIX_SCREENING_COMMENT_MAX_CHARS - tail.length;
+  return { comment: full.slice(0, maxBody) + tail, truncated: true };
+}
+
+type DealListingLoadResult =
+  | { kind: "bitrix_live_snapshot"; text: string | null }
+  | {
+      kind: "deal_opportunity_db";
+      text: string | null;
+      bitrixId: string | null;
+    };
+
+async function loadDealListingForScreeningPrompt(input: {
+  dealOppId: string;
+  effectiveListingSource: CimScreeningDealListingContextSource | undefined;
+  bitrixLiveDealListingContext: string | undefined;
+}): Promise<DealListingLoadResult> {
+  if (input.effectiveListingSource === "bitrix_live_snapshot") {
+    const raw = input.bitrixLiveDealListingContext?.trim();
+    return { kind: "bitrix_live_snapshot", text: raw || null };
+  }
+  const dealRow = await getDealOpportunityScreeningContextRow(input.dealOppId);
+  if (!dealRow) {
+    return { kind: "deal_opportunity_db", text: null, bitrixId: null };
+  }
+  return {
+    kind: "deal_opportunity_db",
+    text: formatDealOpportunityScreeningContext(dealRow),
+    bitrixId: dealRow.bitrixId ?? null,
+  };
+}
+
+async function searchChunksForQuestion(input: {
+  db: AppDb;
+  vectorIndex: VectorizeIndex;
+  queryEmbedding: number[];
+  isDealScope: boolean;
+  dealOppId: string | null;
+  libraryDocumentId: string | null;
+  screeningDoc: LibraryScreeningDocMeta | null;
+}): Promise<Awaited<ReturnType<typeof searchDocumentChunksVector>>> {
+  if (input.isDealScope && input.dealOppId) {
+    const params: SearchDocumentChunksVectorInput = {
+      queryEmbedding: input.queryEmbedding,
+      limit: RETRIEVAL_TOP_K_DEAL,
+      entityType: "DEAL_OPPORTUNITY",
+      dealOpportunityId: input.dealOppId,
+    };
+    return searchDocumentChunksVector(input.db, input.vectorIndex, params);
+  }
+  if (!input.libraryDocumentId) {
+    throw new Error("CimScreeningWorkflow: library document id required");
+  }
+  const base: SearchDocumentChunksVectorInput = {
+    queryEmbedding: input.queryEmbedding,
+    limit: RETRIEVAL_TOP_K,
+    documentId: input.libraryDocumentId,
+  };
+  const doc = input.screeningDoc;
+  if (doc) {
+    return searchDocumentChunksVector(input.db, input.vectorIndex, {
+      ...base,
+      entityType: doc.entityType,
+      entityId: doc.entityId ?? null,
+      dealOpportunityId: doc.dealOpportunityId ?? "",
+      companyId: doc.companyId ?? "",
+      themeId: doc.themeId ?? "",
+    });
+  }
+  return searchDocumentChunksVector(input.db, input.vectorIndex, base);
+}
+
 export class CimScreeningWorkflow extends WorkflowEntrypoint<
   WorkflowWorkerEnv,
   CimScreeningParams
@@ -75,6 +247,8 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
       runId,
       bitrixDealId,
       postBitrixComment,
+      dealListingContextSource: payloadListingSource,
+      bitrixLiveDealListingContext,
     } = event.payload;
 
     const dealOppId = payloadDealOppId?.trim();
@@ -86,6 +260,10 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
       );
     }
 
+    const effectiveListingSource =
+      payloadListingSource ??
+      (isDealScope ? ("deal_opportunity_db" as const) : undefined);
+
     logDetail("run.start", {
       instanceId,
       sessionId,
@@ -95,6 +273,8 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
       dealOpportunityId: dealOppId ?? null,
       screenerId,
       scope: isDealScope ? "deal_opportunity" : "library_document",
+      dealListingContextSource: effectiveListingSource ?? null,
+      bitrixLiveContextChars: bitrixLiveDealListingContext?.length ?? 0,
     });
 
     try {
@@ -240,20 +420,23 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
           }
           const vectorIndex = this.env.DOCUMENT_CHUNKS_INDEX;
 
-          const [chunkCountRow] = isDealScope
-            ? await db
-                .select({ n: count() })
-                .from(documentChunks)
-                .where(eq(documentChunks.dealOpportunityId, dealOppId!))
-            : await db
-                .select({ n: count() })
-                .from(documentChunks)
-                .where(eq(documentChunks.documentId, libraryDocumentId!));
-          const chunkRowsInDb = Number(chunkCountRow?.n ?? 0);
+          let chunkRowsInDb: number;
+          let screeningDoc: LibraryScreeningDocMeta | null = null;
 
-          const [screeningDoc] = isDealScope
-            ? [null]
-            : await db
+          if (isDealScope) {
+            const [chunkCountRow] = await db
+              .select({ n: count() })
+              .from(documentChunks)
+              .where(eq(documentChunks.dealOpportunityId, dealOppId!));
+            chunkRowsInDb = Number(chunkCountRow?.n ?? 0);
+          } else {
+            const docId = libraryDocumentId!;
+            const [chunkResult, docRows] = await Promise.all([
+              db
+                .select({ n: count() })
+                .from(documentChunks)
+                .where(eq(documentChunks.documentId, docId)),
+              db
                 .select({
                   entityType: documents.entityType,
                   entityId: documents.entityId,
@@ -262,8 +445,12 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
                   themeId: documents.themeId,
                 })
                 .from(documents)
-                .where(eq(documents.id, libraryDocumentId!))
-                .limit(1);
+                .where(eq(documents.id, docId))
+                .limit(1),
+            ]);
+            chunkRowsInDb = Number(chunkResult[0]?.n ?? 0);
+            screeningDoc = docRows[0] ?? null;
+          }
 
           logDetail("screen.rag.preflight", {
             documentId: libraryDocumentId ?? null,
@@ -296,6 +483,37 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             });
           }
 
+          let dealListingContextForPrompt: string | null = null;
+          if (isDealScope && dealOppId) {
+            const listing = await loadDealListingForScreeningPrompt({
+              dealOppId,
+              effectiveListingSource,
+              bitrixLiveDealListingContext,
+            });
+            dealListingContextForPrompt = listing.text;
+            if (listing.kind === "bitrix_live_snapshot") {
+              logDetail("screen.deal_listing_context", {
+                source: "bitrix_live_snapshot",
+                dealOpportunityId: dealOppId,
+                hasListingContext: Boolean(listing.text),
+                charLength: listing.text?.length ?? 0,
+              });
+            } else if (listing.text) {
+              logDetail("screen.deal_listing_context", {
+                source: "deal_opportunity_db",
+                dealOpportunityId: dealOppId,
+                hasListingContext: true,
+                bitrixId: listing.bitrixId,
+                lineCount: listing.text.split("\n").length,
+              });
+            } else {
+              logDetail("screen.deal_listing_context.row_missing", {
+                source: "deal_opportunity_db",
+                dealOpportunityId: dealOppId,
+              });
+            }
+          }
+
           await updateCimScreeningRun(runId, { status: "SCREENING" });
           await updateWorkflowJobProgress(instanceId, {
             step: "Loading screener questions",
@@ -315,8 +533,8 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
           for (let i = 0; i < total; i++) {
             const q = questions[i]!;
             const qPreview =
-              q.question.length > 120
-                ? `${q.question.slice(0, 120)}…`
+              q.question.length > QUESTION_PREVIEW_MAX
+                ? `${q.question.slice(0, QUESTION_PREVIEW_MAX)}…`
                 : q.question;
             const pct = 45 + Math.round(((i + 1) / total) * 50);
             await updateWorkflowJobProgress(instanceId, {
@@ -345,27 +563,15 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             });
 
             const ragT0 = Date.now();
-            const hits = isDealScope
-              ? await searchDocumentChunksVector(db, vectorIndex, {
-                  queryEmbedding,
-                  limit: RETRIEVAL_TOP_K_DEAL,
-                  entityType: "DEAL_OPPORTUNITY",
-                  dealOpportunityId: dealOppId!,
-                })
-              : await searchDocumentChunksVector(db, vectorIndex, {
-                  queryEmbedding,
-                  limit: RETRIEVAL_TOP_K,
-                  documentId: libraryDocumentId!,
-                  ...(screeningDoc
-                    ? {
-                        entityType: screeningDoc.entityType,
-                        entityId: screeningDoc.entityId ?? null,
-                        dealOpportunityId: screeningDoc.dealOpportunityId ?? "",
-                        companyId: screeningDoc.companyId ?? "",
-                        themeId: screeningDoc.themeId ?? "",
-                      }
-                    : {}),
-                });
+            const hits = await searchChunksForQuestion({
+              db,
+              vectorIndex,
+              queryEmbedding,
+              isDealScope,
+              dealOppId: dealOppId ?? null,
+              libraryDocumentId: libraryDocumentId ?? null,
+              screeningDoc,
+            });
             const textHits = hits.filter(
               (h) => h.chunkText && h.chunkText.trim().length > 0,
             );
@@ -380,15 +586,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
               elapsedMs: Date.now() - ragT0,
             });
 
-            const excerpts =
-              textHits.length > 0
-                ? textHits
-                    .map(
-                      (h, idx) =>
-                        `[Excerpt ${idx + 1}]\n${h.chunkText!.trim()}`,
-                    )
-                    .join("\n\n")
-                : "No text excerpts were retrieved for this question.";
+            const excerpts = buildExcerptsFromHits(textHits);
             logDetail("screen.question.excerpts_built", {
               questionId: q.id,
               excerptCharLength: excerpts.length,
@@ -397,15 +595,13 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             const prompt = buildCimScreeningQuestionPrompt({
               question: q.question,
               excerpts,
+              dealListingContext: dealListingContextForPrompt,
             });
 
             const llmT0 = Date.now();
             const { object } = await generateObject({
               model: openai(CIM_SCREENING_MODEL),
-              schema: z.object({
-                score: z.number().min(0).max(10),
-                rationale: z.string(),
-              }),
+              schema: SCREENING_ANSWER_SCHEMA,
               prompt,
             });
             logDetail("screen.question.llm_done", {
@@ -456,35 +652,29 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
             runDbWithWorkerNeonPool(async () => {
               try {
                 const env = getBitrixSyncEnv();
-                if (!env?.webhookBaseUrl) return "failed" as const;
-                const answers = await db
-                  .select({ score: cimScreeningAnswers.score })
-                  .from(cimScreeningAnswers)
-                  .where(eq(cimScreeningAnswers.runId, runId));
-                const avgScore =
-                  answers.length > 0
-                    ? answers.reduce((sum, a) => sum + (a.score ?? 0), 0) /
-                      answers.length
-                    : null;
-                const status =
-                  avgScore == null
-                    ? "INCOMPLETE"
-                    : avgScore >= 7
-                      ? "PASS"
-                      : avgScore >= 4
-                        ? "INCOMPLETE"
-                        : "FAIL";
-                const comment = [
-                  "AI screening completed",
-                  `Run ID: ${runId}`,
-                  `Screener ID: ${screenerId}`,
-                  avgScore == null
-                    ? null
-                    : `Score: ${avgScore.toFixed(1)}/10 (${status})`,
-                  `Session: /screening/${sessionId}`,
-                ]
-                  .filter(Boolean)
-                  .join("\n");
+                if (!env?.webhookBaseUrl) {
+                  logDetail("bitrix.comment.skip_no_webhook", { bitrixDealId });
+                  return "failed" as const;
+                }
+                const qaRows =
+                  await getCimScreeningAnswersWithQuestionsByRunId(runId);
+                const { comment, truncated } = buildBitrixTimelineCommentText({
+                  runId,
+                  screenerId,
+                  sessionId,
+                  qaRows,
+                });
+                if (truncated) {
+                  logDetail("bitrix.comment.truncated", {
+                    bitrixDealId,
+                    postedChars: comment.length,
+                  });
+                }
+                logDetail("bitrix.comment.posting", {
+                  bitrixDealId,
+                  questionCount: qaRows.length,
+                  commentChars: comment.length,
+                });
                 await callBitrix("crm.timeline.comment.add", {
                   fields: {
                     ENTITY_ID: Number(bitrixDealId),
@@ -492,8 +682,10 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
                     COMMENT: comment,
                   },
                 });
+                logDetail("bitrix.comment.posted_ok", { bitrixDealId });
                 return "posted" as const;
-              } catch {
+              } catch (err) {
+                logError("bitrix.comment.failed", err, { bitrixDealId, runId });
                 return "failed" as const;
               }
             }),

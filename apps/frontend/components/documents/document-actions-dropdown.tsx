@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import {
   DropdownMenu,
@@ -7,7 +6,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, ExternalLink, Download, Pencil, Trash2 } from "lucide-react";
+import {
+  MoreHorizontal,
+  ExternalLink,
+  Download,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import type { DocumentRow } from "./columns";
 import { EditDocumentDialog } from "./edit-document-dialog";
 import { DeleteDocumentAlertDialog } from "./delete-document-alert-dialog";

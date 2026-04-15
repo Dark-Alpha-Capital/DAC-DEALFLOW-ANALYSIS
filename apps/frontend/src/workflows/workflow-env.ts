@@ -36,20 +36,29 @@ export type CimExtractionParams = {
 
 export type ScreenDealParams =
   | {
-      mode: "manual";
-      jobId: string;
-      userId: string;
-      dealId: string;
-      dealOpportunityId: string;
-    }
+    mode: "manual";
+    jobId: string;
+    userId: string;
+    dealId: string;
+    dealOpportunityId: string;
+  }
   | {
-      mode: "ai";
-      jobId: string;
-      userId: string;
-      dealId: string;
-      screenerId: string;
-      dealOpportunityId?: string;
-    };
+    mode: "ai";
+    jobId: string;
+    userId: string;
+    dealId: string;
+    screenerId: string;
+    dealOpportunityId?: string;
+  };
+
+/**
+ * Two screening “modes” for listing context (deal-scoped template screening only):
+ * - **deal_opportunity_db**: use `DealOpportunity` in Postgres (main app CIM screening).
+ * - **bitrix_live_snapshot**: use a live `crm.deal.get` dump aligned with the embedded widget (Bitrix widget only; does not use DB listing fields for prompts).
+ */
+export type CimScreeningDealListingContextSource =
+  | "deal_opportunity_db"
+  | "bitrix_live_snapshot";
 
 /** Library CIM upload: set documentId. Deal opportunity (multi-doc RAG): set dealOpportunityId. */
 export type CimScreeningParams = {
@@ -66,6 +75,16 @@ export type CimScreeningParams = {
   bitrixDealId?: string;
   /** When true and bitrixDealId is set, post completion summary comment to Bitrix. */
   postBitrixComment?: boolean;
+  /**
+   * Which structured deal listing to inject into screening prompts (defaults to `deal_opportunity_db` for deal runs).
+   * Omit for library-document screening (ignored).
+   */
+  dealListingContextSource?: CimScreeningDealListingContextSource;
+  /**
+   * Required when `dealListingContextSource === "bitrix_live_snapshot"`: plain-text listing from Bitrix REST
+   * (same presentation as the widget). Built server-side when starting the widget run.
+   */
+  bitrixLiveDealListingContext?: string;
 };
 
 /** Cloudflare Worker env with workflow bindings (see wrangler.jsonc) */

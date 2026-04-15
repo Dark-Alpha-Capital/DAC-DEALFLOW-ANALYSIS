@@ -1425,6 +1425,8 @@ export const cimScreeningRuns = pgTable(
       .default("PENDING")
       .notNull(),
     errorMessage: text("errorMessage"),
+    /** Snapshot of deal documents (ids + names) at run start for Bitrix widget history */
+    dealDocumentsSnapshot: jsonb("dealDocumentsSnapshot"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()

@@ -35,6 +35,7 @@ import {
   cimScreeningRuns,
   cimScreeningAnswers,
   documentChunks,
+  workflowJobs,
   type Deal,
   type Lead,
   type Company,
@@ -2501,6 +2502,7 @@ export async function listCimScreeningRunsForDealOpportunity(
       screenerCategory: screeners.category,
       runCreatedAt: cimScreeningRuns.createdAt,
       sessionCreatedAt: cimScreeningSessions.createdAt,
+      dealDocumentsSnapshot: cimScreeningRuns.dealDocumentsSnapshot,
     })
     .from(cimScreeningRuns)
     .innerJoin(
@@ -2515,6 +2517,49 @@ export async function listCimScreeningRunsForDealOpportunity(
 export type CimScreeningRunForDealRow = Awaited<
   ReturnType<typeof listCimScreeningRunsForDealOpportunity>
 >[number];
+
+/** Documents uploaded for a deal opportunity (widget + app uploads). */
+export async function listDealOpportunityDocumentsSummary(
+  dealOpportunityId: string,
+) {
+  return db
+    .select({
+      id: documents.id,
+      fileName: documents.fileName,
+      contentHash: documents.contentHash,
+      ingestionStatus: documents.ingestionStatus,
+      ingestionError: documents.ingestionError,
+      createdAt: documents.createdAt,
+    })
+    .from(documents)
+    .where(eq(documents.dealOpportunityId, dealOpportunityId))
+    .orderBy(desc(documents.createdAt));
+}
+
+/** File-upload + RAG jobs still running for a deal (no Document row until file-upload save-db completes). */
+export async function listActiveIngestionPipelineJobsForDeal(
+  dealOpportunityId: string,
+) {
+  return db
+    .select({
+      instanceId: workflowJobs.instanceId,
+      workflowKind: workflowJobs.workflowKind,
+      fileName: workflowJobs.fileName,
+      state: workflowJobs.state,
+      progressStep: workflowJobs.progressStep,
+      progressPercent: workflowJobs.progressPercent,
+      updatedAt: workflowJobs.updatedAt,
+    })
+    .from(workflowJobs)
+    .where(
+      and(
+        eq(workflowJobs.dealId, dealOpportunityId),
+        inArray(workflowJobs.workflowKind, ["file-upload", "rag-ingestion"]),
+        inArray(workflowJobs.state, ["waiting", "active", "delayed"]),
+      ),
+    )
+    .orderBy(desc(workflowJobs.updatedAt));
+}
 
 export async function getCimScreeningRunByIdForUser(
   runId: string,

@@ -20,6 +20,12 @@ import {
 import type { FileUploadParams, WorkflowWorkerEnv } from "./workflow-env";
 import { getSsrAppBaseUrl } from "@/lib/env.server";
 
+const LOG = "[file-upload]";
+
+function logInfo(phase: string, data: Record<string, unknown> = {}): void {
+  console.info(`${LOG} ${phase}`, { ts: new Date().toISOString(), ...data });
+}
+
 function isUniqueViolationError(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -31,24 +37,96 @@ function isUniqueViolationError(error: unknown): boolean {
 
 async function revalidateCacheTags(tags: string[]): Promise<void> {
   const frontendUrl = getSsrAppBaseUrl();
-  const revalidateUrl = `${frontendUrl}/api/revalidate`;
   try {
-    const response = await fetch(revalidateUrl, {
+    const response = await fetch(`${frontendUrl}/api/revalidate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tags }),
     });
     if (!response.ok) {
-      console.warn(
-        `[file-upload] Cache revalidation failed: ${response.status}`,
-      );
+      console.warn(`${LOG} cache revalidate failed: ${response.status}`);
     }
   } catch (error) {
     console.warn(
-      `[file-upload] Failed to revalidate cache tags:`,
+      `${LOG} cache revalidate error:`,
       error instanceof Error ? error.message : String(error),
     );
   }
+}
+
+/** Progress-only DB writes must not fail the durable step (workflow will retry forever). */
+async function safeUpdateWorkflowJobProgress(
+  instanceId: string,
+  progress: { step: string; percentage: number },
+): Promise<void> {
+  try {
+    await runDbWithWorkerNeonPool(async () => {
+      await updateWorkflowJobProgress(instanceId, progress);
+    });
+  } catch (e) {
+    console.warn(`${LOG} updateWorkflowJobProgress failed (non-fatal)`, {
+      instanceId,
+      ...progress,
+      message: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+function assertDealOpportunityUploadPayload(
+  p: FileUploadParams,
+  jobId: string,
+): void {
+  if (!p.userId?.trim()) {
+    throw new Error(`[file-upload] ${jobId}: userId is required`);
+  }
+  if (p.entityType !== "DEAL_OPPORTUNITY") {
+    throw new Error(`[file-upload] ${jobId}: entityType must be "DEAL_OPPORTUNITY"`);
+  }
+  if (!p.entityId?.trim()) {
+    throw new Error(`[file-upload] ${jobId}: entityId is required`);
+  }
+  if (!p.contentHash?.trim()) {
+    throw new Error(`[file-upload] ${jobId}: contentHash is required`);
+  }
+}
+
+/** Nextcloud WebDAV check + public URL (throws on missing env, network, or missing file). */
+async function assertNextcloudFilePresent(input: {
+  instanceId: string;
+  jobId: string;
+  filePath: string;
+}): Promise<{ destPath: string; publicUrl: string }> {
+  const { instanceId, jobId, filePath } = input;
+  logInfo("step.verify-nextcloud.check", { instanceId, jobId, filePath });
+  const t0 = Date.now();
+  let exists: boolean;
+  try {
+    exists = await fileExists(filePath);
+    logInfo("step.verify-nextcloud.exists", {
+      instanceId,
+      jobId,
+      filePath,
+      exists,
+      elapsedMs: Date.now() - t0,
+    });
+  } catch (ncErr) {
+    const message = ncErr instanceof Error ? ncErr.message : String(ncErr);
+    console.error(`${LOG} nextcloud fileExists threw`, {
+      instanceId,
+      jobId,
+      filePath,
+      message,
+    });
+    throw new Error(
+      `Nextcloud check failed (${message}). Ensure NEXTCLOUD_* env vars are set and the service is reachable.`,
+    );
+  }
+  if (!exists) {
+    console.error(`${LOG} nextcloud file missing`, { instanceId, jobId, filePath });
+    throw new Error(`File not found at ${filePath} - upload may have failed`);
+  }
+  logInfo("nextcloud file ok", { instanceId, jobId, filePath });
+  return { destPath: filePath, publicUrl: buildNextcloudFileUrl(filePath) };
 }
 
 export class FileUploadWorkflow extends WorkflowEntrypoint<
@@ -65,78 +143,62 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
     fileId?: string;
     message?: string;
   }> {
-    return runDbWithWorkerNeonPool(async () => {
-      const instanceId = event.instanceId;
-      const p = event.payload;
-      const { jobId, fileName, filePath, fileSize, mimeType, userId, entityType, entityId } =
-        p;
+    const instanceId = event.instanceId;
+    const p = event.payload;
+    const { jobId, fileName, filePath, fileSize, mimeType, userId, entityId } = p;
 
-      try {
-        await markWorkflowRunning(instanceId);
+    try {
+      logInfo("workflow.run.start", {
+        instanceId,
+        jobId,
+        fileName,
+        entityId,
+        entityType: p.entityType,
+        fileSize,
+        mimeType,
+        contentHashPrefix: p.contentHash?.slice(0, 12),
+      });
+      await runDbWithWorkerNeonPool(async () => markWorkflowRunning(instanceId));
+      assertDealOpportunityUploadPayload(p, jobId);
 
-        if (!userId?.trim()) {
-          throw new Error(`[file-upload] ${jobId}: userId is required`);
-        }
-        if (entityType !== "DEAL_OPPORTUNITY") {
-          throw new Error(
-            `[file-upload] ${jobId}: entityType must be "DEAL_OPPORTUNITY"`,
-          );
-        }
-        if (!entityId?.trim()) {
-          throw new Error(`[file-upload] ${jobId}: entityId is required`);
-        }
-        if (!p.contentHash?.trim()) {
-          throw new Error(`[file-upload] ${jobId}: contentHash is required`);
-        }
-
-        await step.do("validate", async () => {
-          await updateWorkflowJobProgress(instanceId, {
-            step: "Validating file",
-            percentage: 10,
-          });
-          return {
-            isValid: true,
-            fileSize,
-            mimeType,
-          } as const;
+      await step.do("validate", { timeout: "2 minutes" }, async () => {
+        logInfo("step.validate.enter", { instanceId, jobId, fileName });
+        await safeUpdateWorkflowJobProgress(instanceId, {
+          step: "Validating file",
+          percentage: 10,
         });
+        logInfo("step.validate.done", { instanceId, jobId, fileName });
+        return { isValid: true as const, fileSize, mimeType };
+      });
 
-        const nextcloudResult = await step.do("verify-nextcloud", async () => {
-          await updateWorkflowJobProgress(instanceId, {
+      const nextcloudResult = await step.do(
+        "verify-nextcloud",
+        { timeout: "5 minutes" },
+        async () => {
+          await safeUpdateWorkflowJobProgress(instanceId, {
             step: "Verifying Nextcloud upload",
             percentage: 40,
           });
           if (!filePath) throw new Error("Missing filePath");
-          const exists = await fileExists(filePath);
-          if (!exists) {
-            throw new Error(
-              `File not found at ${filePath} - upload may have failed`,
-            );
-          }
-          return {
-            destPath: filePath,
-            publicUrl: buildNextcloudFileUrl(filePath),
-          } as const;
-        });
+          return assertNextcloudFilePresent({ instanceId, jobId, filePath });
+        },
+      );
 
-        const saveResult = await step.do(
-          "save-db",
-          {
-            timeout: "5 minutes",
-            // Prevent repeated full replay when DB insert / RAG trigger fails.
-            retries: { limit: 0, delay: "1 second" },
-          },
-          async (stepCtx) => {
-            console.log(`[file-upload] ${jobId}: save-db attempt`, {
-              attempt: stepCtx.attempt,
-            });
+      const saveResult = await step.do(
+        "save-db",
+        {
+          timeout: "5 minutes",
+          retries: { limit: 0, delay: "1 second" },
+        },
+        async (stepCtx) =>
+          runDbWithWorkerNeonPool(async () => {
+            logInfo(`${jobId}: save-db attempt`, { attempt: stepCtx.attempt });
             await updateWorkflowJobProgress(instanceId, {
               step: "Saving to database",
               percentage: 90,
             });
 
             const category = (p.fileCategory as DocumentCategory) || "OTHER";
-
             const insertResult = await db
               .insert(documents)
               .values({
@@ -161,6 +223,14 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
             }
 
             const ragJobId = `${jobId}-rag`;
+            logInfo("document row created, queue rag-ingestion", {
+              instanceId,
+              jobId,
+              ragJobId,
+              documentId: documentRecord.id,
+              dealOpportunityId: entityId,
+              fileName,
+            });
             await insertWorkflowJob({
               instanceId: ragJobId,
               workflowKind: "rag-ingestion",
@@ -171,25 +241,21 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
             try {
               await this.env.RAG_INGESTION_WORKFLOW.create({
                 id: ragJobId,
-                params: {
-                  documentId: documentRecord.id,
-                  userId,
-                },
+                params: { documentId: documentRecord.id, userId },
+              });
+              logInfo("rag-ingestion workflow.create ok", {
+                ragJobId,
+                documentId: documentRecord.id,
               });
             } catch (error) {
               await setWorkflowJobState(ragJobId, "failed", {
                 failedReason:
-                  error instanceof Error
-                    ? error.message
-                    : "Failed to start workflow",
+                  error instanceof Error ? error.message : "Failed to start workflow",
               });
               throw error;
             }
 
-            const cacheTags: string[] = [`deal-${entityId}`, "deals"];
-            if (cacheTags.length > 0) {
-              await revalidateCacheTags(cacheTags);
-            }
+            await revalidateCacheTags([`deal-${entityId}`, "deals"]);
 
             await updateWorkflowJobProgress(instanceId, {
               step: "Completed",
@@ -200,29 +266,43 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
               fileId: documentRecord.id,
               nextcloudUrl: nextcloudResult.publicUrl,
             } as const;
-          },
-        );
+          }),
+      );
 
-        const out = {
-          success: true,
-          fileName,
-          nextcloudUrl: saveResult.nextcloudUrl,
-          fileId: saveResult.fileId,
-          message: "File uploaded successfully",
-        };
-        await markWorkflowCompleted(instanceId, out);
-        return out;
-      } catch (err) {
-        if (isUniqueViolationError(err)) {
-          const duplicateError = new Error(
-            "This document was already uploaded for this deal",
-          );
-          await markWorkflowFailed(instanceId, duplicateError);
-          throw duplicateError;
-        }
-        await markWorkflowFailed(instanceId, err);
-        throw err;
+      const out = {
+        success: true,
+        fileName,
+        nextcloudUrl: saveResult.nextcloudUrl,
+        fileId: saveResult.fileId,
+        message: "File uploaded successfully",
+      };
+      logInfo("workflow.run.completed", {
+        instanceId,
+        jobId,
+        fileName,
+        fileId: saveResult.fileId,
+      });
+      await runDbWithWorkerNeonPool(async () => markWorkflowCompleted(instanceId, out));
+      return out;
+    } catch (err) {
+      if (isUniqueViolationError(err)) {
+        const duplicateError = new Error(
+          "This document was already uploaded for this deal",
+        );
+        await runDbWithWorkerNeonPool(async () =>
+          markWorkflowFailed(instanceId, duplicateError),
+        );
+        throw duplicateError;
       }
-    });
+      console.error(`${LOG} workflow.run.failed`, {
+        instanceId,
+        jobId,
+        fileName,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
+      await runDbWithWorkerNeonPool(async () => markWorkflowFailed(instanceId, err));
+      throw err;
+    }
   }
 }

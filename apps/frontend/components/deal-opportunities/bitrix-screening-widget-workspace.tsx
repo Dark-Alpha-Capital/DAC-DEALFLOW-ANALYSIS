@@ -1,13 +1,44 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, Play, Upload } from "lucide-react";
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  ExternalLink,
+  FileStack,
+  History,
+  Layers,
+  Loader2,
+  Play,
+  Upload,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { inferRouterOutputs } from "@trpc/server";
 import { useTRPC } from "@/trpc/client";
 import type { AppRouter } from "@/trpc/routers/_app";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -37,46 +68,105 @@ function toBase64(file: File): Promise<string> {
   });
 }
 
-function Panel({
-  title,
-  children,
-  className,
-}: {
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={cn(
-        "border-border bg-card rounded-lg border p-4 shadow-sm",
-        className,
-      )}
-    >
-      <h2 className="text-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
 function screeningStillRunning(status: string | undefined) {
   return (
     status === "PENDING" || status === "INGESTING" || status === "SCREENING"
   );
 }
 
+const INGEST_IN_FLIGHT = new Set(["PENDING", "PROCESSING"]);
+
+function pipelineKindLabel(kind: string) {
+  switch (kind) {
+    case "file-upload":
+      return "Upload & save";
+    case "rag-ingestion":
+      return "Index for search";
+    default:
+      return kind;
+  }
+}
+
+function ingestionStatusLabel(status: string) {
+  switch (status) {
+    case "PENDING":
+      return "Queued";
+    case "PROCESSING":
+      return "Indexing…";
+    case "PROCESSED":
+      return "Indexed";
+    case "FAILED":
+      return "Failed";
+    case "SKIPPED":
+      return "Skipped (duplicate)";
+    default:
+      return status;
+  }
+}
+
+function summarizeIngestion(docs: DealDocumentRow[]) {
+  const total = docs.length;
+  let pending = 0;
+  let processing = 0;
+  let processed = 0;
+  let failed = 0;
+  let skipped = 0;
+  for (const d of docs) {
+    switch (d.ingestionStatus) {
+      case "PENDING":
+        pending += 1;
+        break;
+      case "PROCESSING":
+        processing += 1;
+        break;
+      case "PROCESSED":
+        processed += 1;
+        break;
+      case "FAILED":
+        failed += 1;
+        break;
+      case "SKIPPED":
+        skipped += 1;
+        break;
+      default:
+        break;
+    }
+  }
+  const inFlight = pending + processing;
+  const finishedPipeline = total - inFlight;
+  const pct =
+    total > 0 ? Math.min(100, Math.round((finishedPipeline / total) * 100)) : 0;
+  return {
+    total,
+    pending,
+    processing,
+    processed,
+    failed,
+    skipped,
+    inFlight,
+    finishedPipeline,
+    pct,
+  };
+}
+
 type WidgetBootstrap =
   inferRouterOutputs<AppRouter>["dealOpportunities"]["getBitrixScreeningWidgetContext"];
+
+type DealDocumentRow = WidgetBootstrap["dealDocuments"][number];
+
+function hasBitrixFieldValue(value: string): boolean {
+  const t = value.trim();
+  return t !== "" && t !== "—";
+}
 
 function startScreeningBlockedReason(args: {
   data: WidgetBootstrap;
   effectiveScreenerId: string;
   indexed: boolean;
   runPending: boolean;
+  ingestBusy: boolean;
 }): string | null {
-  const { data, effectiveScreenerId, indexed, runPending } = args;
+  const { data, effectiveScreenerId, indexed, runPending, ingestBusy } = args;
   if (runPending) return "Starting screening…";
   if (data.activeJobs.length > 0) {
     return "Screening is already running for this deal (workflow job in progress). Wait for it to finish.";
@@ -86,544 +176,878 @@ function startScreeningBlockedReason(args: {
       ? "No screeners exist in the app."
       : "Select a screener from the dropdown.";
   }
+  const pipelineBusy = (data.ingestionPipelineJobs?.length ?? 0) > 0;
+  if (pipelineBusy) {
+    return "Upload or indexing workflow still running — see Pipeline progress below.";
+  }
+  if (ingestBusy) {
+    return "File ingestion still in progress. Wait until documents show as processed.";
+  }
   if (!indexed) {
-    const syncing = data.bitrixAttachmentSync.some(
-      (a) =>
-        a.syncStatus === "syncing" ||
-        a.syncStatus === "pending" ||
-        a.ingestionStatus === "PENDING" ||
-        a.ingestionStatus === "PROCESSING",
-    );
-    if (syncing) {
-      return "Bitrix files are downloading / ingesting into search. Wait a moment, then this will enable automatically.";
-    }
-    return "No indexed text yet. We try to pull Bitrix files automatically on load—check status below—or upload a file manually.";
+    return "Upload at least one document below and wait until it is indexed (chunks > 0).";
   }
   return null;
 }
 
-export function BitrixScreeningWidgetWorkspace(props: Props) {
+function WorkspaceCard({
+  title,
+  description,
+  icon: Icon,
+  children,
+  className,
+}: {
+  title: string;
+  description?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card
+      className={cn(
+        "border-border/80 bg-card/95 shadow-xs backdrop-blur-sm transition-shadow duration-200 hover:shadow-md motion-reduce:transition-none",
+        className,
+      )}
+    >
+      <CardHeader className="space-y-1 pb-3">
+        <div className="flex items-start gap-2.5">
+          {Icon ? (
+            <span className="bg-primary/10 text-primary mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg">
+              <Icon className="size-4" aria-hidden />
+            </span>
+          ) : null}
+          <div className="min-w-0 flex-1 space-y-1">
+            <CardTitle className="font-serif text-base tracking-tight">
+              {title}
+            </CardTitle>
+            {description ? (
+              <CardDescription className="text-xs leading-relaxed">
+                {description}
+              </CardDescription>
+            ) : null}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">{children}</CardContent>
+    </Card>
+  );
+}
+
+const DocumentStatusIcon = memo(function DocumentStatusIcon({
+  status,
+}: {
+  status: string;
+}) {
+  if (INGEST_IN_FLIGHT.has(status)) {
+    return (
+      <Loader2
+        className="text-muted-foreground size-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+        aria-hidden
+      />
+    );
+  }
+  if (status === "PROCESSED") {
+    return (
+      <CheckCircle2
+        className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+        aria-hidden
+      />
+    );
+  }
+  if (status === "FAILED") {
+    return (
+      <AlertCircle className="text-destructive size-3.5 shrink-0" aria-hidden />
+    );
+  }
+  return null;
+});
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[88px_1fr] gap-2 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="min-w-0 wrap-break-word font-medium">{value}</span>
+    </div>
+  );
+}
+
+export function BitrixScreeningWidgetWorkspace({
+  dealId,
+  memberId,
+  expiresAt,
+  authSig,
+  authId,
+  appSid,
+  domain,
+}: Props) {
   const trpc = useTRPC();
+  const widgetInput = useMemo(
+    () => ({
+      dealId,
+      memberId,
+      expiresAt,
+      authSig,
+      authId,
+      appSid,
+      domain,
+    }),
+    [dealId, memberId, expiresAt, authSig, authId, appSid, domain],
+  );
+
   const [screenerId, setScreenerId] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const didAutoSync = useRef(false);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
 
   const q = useQuery({
     ...trpc.dealOpportunities.getBitrixScreeningWidgetContext.queryOptions(
-      props,
+      widgetInput,
     ),
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return false;
       if (data.activeJobs.length > 0) return 4_000;
       if (screeningStillRunning(data.lastRun?.status)) return 4_000;
-      const ingestBusy = data.bitrixAttachmentSync.some(
-        (a) =>
-          a.syncStatus === "syncing" ||
-          a.syncStatus === "pending" ||
-          a.ingestionStatus === "PENDING" ||
-          a.ingestionStatus === "PROCESSING",
+      if ((data.ingestionPipelineJobs?.length ?? 0) > 0) return 2_000;
+      const ingestBusy = data.dealDocuments.some(
+        (doc: DealDocumentRow) =>
+          doc.ingestionStatus === "PENDING" ||
+          doc.ingestionStatus === "PROCESSING",
       );
-      if (
-        ingestBusy ||
-        (data.indexedCount === 0 && data.bitrixFiles.length > 0)
-      ) {
-        return 4_000;
-      }
+      if (ingestBusy) return 3_000;
       return false;
     },
   });
 
-  const syncAttachments = useMutation(
-    trpc.dealOpportunities.syncBitrixWidgetAttachments.mutationOptions({
-      onSuccess: (res) => {
-        if (res.started > 0) {
-          toast.success(`Queued ${res.started} Bitrix file(s) for ingestion`);
-        }
-        void q.refetch();
-      },
-      onError: (e) => toast.error(e.message || "Could not sync Bitrix files"),
-    }),
-  );
-
-  const propsRef = useRef(props);
-  propsRef.current = props;
-  useEffect(() => {
-    if (!q.data?.dealOpportunityId || didAutoSync.current) return;
-    didAutoSync.current = true;
-    syncAttachments.mutate(propsRef.current);
-  }, [q.data?.dealOpportunityId, syncAttachments]);
-
   const upload = useMutation(
-    trpc.dealOpportunities.uploadBitrixScreeningWidgetDocument.mutationOptions({
-      onSuccess: () => {
-        toast.success("Upload queued");
-        setFile(null);
-        void q.refetch();
+    trpc.dealOpportunities.uploadBitrixScreeningWidgetDocuments.mutationOptions(
+      {
+        onSuccess: (res) => {
+          const n = res.uploaded.length;
+          const s = res.skippedDuplicate.length;
+          if (n > 0) toast.success(`Queued ${n} file(s) for ingestion`);
+          if (s > 0) {
+            toast.message(
+              `${s} duplicate(s) skipped (same content already on deal)`,
+            );
+          }
+          setUploadFiles([]);
+          void q.refetch();
+        },
+        onError: (e) => toast.error(e.message || "Upload failed"),
       },
-      onError: (e) => toast.error(e.message || "Upload failed"),
-    }),
+    ),
   );
 
   const run = useMutation(
     trpc.dealOpportunities.startBitrixScreeningWidgetRun.mutationOptions({
       onSuccess: () => {
-        toast.success("Screening started");
+        toast.success(
+          `Screening started (waited ${Math.round((q.data?.vectorSettleMsAfterIngest ?? 45_000) / 1000)}s for vector index)`,
+        );
         void q.refetch();
       },
       onError: (e) => toast.error(e.message || "Could not start screening"),
     }),
   );
 
+  const handleUpload = useCallback(async () => {
+    if (uploadFiles.length === 0) return;
+    const files = await Promise.all(
+      uploadFiles.map(async (file) => ({
+        fileName: file.name,
+        fileType: file.type || "application/octet-stream",
+        fileData: await toBase64(file),
+      })),
+    );
+    await upload.mutateAsync({
+      ...widgetInput,
+      files,
+      description: "Bitrix widget upload",
+      category: "OTHER",
+    });
+  }, [uploadFiles, upload, widgetInput]);
+
   const d = q.data;
   const screeners = d?.screeners ?? [];
-  const effectiveScreenerId = screenerId || screeners[0]?.id || "";
+
+  const effectiveScreenerId = useMemo(
+    () => screenerId || screeners[0]?.id || "",
+    [screenerId, screeners],
+  );
+
+  const handleStartScreening = useCallback(() => {
+    run.mutate({ ...widgetInput, screenerId: effectiveScreenerId });
+  }, [run, widgetInput, effectiveScreenerId]);
+
   const indexed = (d?.indexedCount ?? 0) > 0;
-  const runBlocked =
-    d == null
-      ? null
-      : startScreeningBlockedReason({
-          data: d,
-          effectiveScreenerId,
-          indexed,
-          runPending: run.isPending,
-        });
+  const ingestSummary = useMemo(
+    () => (d ? summarizeIngestion(d.dealDocuments) : null),
+    [d],
+  );
+  const pipelineBusy = (d?.ingestionPipelineJobs?.length ?? 0) > 0;
+  const ingestBusy = useMemo(() => {
+    if (!d) return false;
+    return (
+      pipelineBusy ||
+      d.dealDocuments.some(
+        (doc: DealDocumentRow) =>
+          doc.ingestionStatus === "PENDING" ||
+          doc.ingestionStatus === "PROCESSING",
+      )
+    );
+  }, [d, pipelineBusy]);
+
+  const runBlocked = useMemo(() => {
+    if (d == null) return null;
+    return startScreeningBlockedReason({
+      data: d,
+      effectiveScreenerId,
+      indexed,
+      runPending: run.isPending,
+      ingestBusy,
+    });
+  }, [d, effectiveScreenerId, indexed, run.isPending, ingestBusy]);
+
   const canRun = d != null && runBlocked === null;
+
+  const bitrixFilledFields = useMemo(
+    () =>
+      (d?.bitrixDealFields ?? []).filter((row) =>
+        hasBitrixFieldValue(row.value),
+      ),
+    [d?.bitrixDealFields],
+  );
 
   useEffect(() => {
     if (!d) return;
-    console.info("[Bitrix screening widget] summary", {
-      bitrixDealId: d.bitrixDealId,
-      labelSource: d.bitrixFieldLabelSource,
-      fieldRows: d.bitrixDealFields.length,
-      fileAttachments: d.bitrixFiles.length,
-      indexedChunks: d.indexedCount,
-      screeners: d.screeners.length,
-      activeScreeningJobs: d.activeJobs.length,
-    });
     if (import.meta.env.DEV) {
-      console.info("[Bitrix screening widget] full TRPC payload (dev)", {
-        bitrixDealFields: d.bitrixDealFields,
-        bitrixFiles: d.bitrixFiles,
+      console.info("[Bitrix screening widget]", {
+        bitrixDealId: d.bitrixDealId,
+        indexedChunks: d.indexedCount,
+        documents: d.dealDocuments.length,
+        pipelineJobs: d.ingestionPipelineJobs?.length ?? 0,
       });
     }
   }, [d]);
 
   if (q.isLoading) {
     return (
-      <div className="text-muted-foreground flex items-center justify-center gap-2 p-12 text-sm">
-        <Loader2 className="size-4 animate-spin" />
-        Loading…
+      <div
+        className="text-muted-foreground flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed bg-muted/20 p-12 text-sm"
+        role="status"
+        aria-live="polite"
+      >
+        <Loader2 className="size-8 animate-spin motion-reduce:animate-none" />
+        <span>Loading workspace…</span>
       </div>
     );
   }
 
   if (q.error || !d) {
     return (
-      <div className="text-destructive mx-auto max-w-lg p-6 text-sm">
-        {q.error?.message ??
-          "Could not load deal. Check widget auth and retry."}
-      </div>
+      <Alert variant="destructive" className="mx-auto max-w-lg">
+        <AlertCircle className="size-4" />
+        <AlertTitle>Could not load deal</AlertTitle>
+        <AlertDescription>
+          {q.error?.message ??
+            "Check widget auth and retry, or contact your administrator."}
+        </AlertDescription>
+      </Alert>
     );
   }
 
+  const vectorWaitSec = Math.round(d.vectorSettleMsAfterIngest / 1000);
+
   return (
-    <div className="mx-auto grid max-w-[1400px] gap-4 p-3 md:grid-cols-2 md:gap-6 md:p-4">
-      {/* Left: context + config */}
-      <div className="flex min-w-0 flex-col gap-4">
-        <header>
-          <h1 className="text-foreground text-lg font-semibold tracking-tight">
-            Deal screening
-          </h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            Bitrix #{d.bitrixDealId} · App{" "}
-            <code className="text-xs">{d.appDeal.id}</code>
-            {syncAttachments.isPending ? (
-              <span className="ml-2 inline-flex items-center gap-1">
-                <Loader2 className="size-3 animate-spin" />
-                Syncing Bitrix files…
-              </span>
-            ) : null}
-          </p>
-        </header>
-
-        <Panel title="Bitrix files → app (auto-ingest)">
-          <p className="text-muted-foreground mb-2 text-xs">
-            On load we pull Drive attachments into this workspace and index them
-            for screening. Tracked per Bitrix file id (not only the app deal
-            id).
-          </p>
-          {d.bitrixAttachmentSync.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No file fields detected on this Bitrix deal, or deal fetch failed.
-            </p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {d.bitrixAttachmentSync.map((a) => (
-                <li
-                  key={a.bitrixDiskFileId}
-                  className="border-border/80 rounded border px-2 py-2"
-                >
-                  <div className="font-medium">
-                    {a.displayName ?? a.fieldLabel}
-                  </div>
-                  <div className="text-muted-foreground text-xs">
-                    Sync:{" "}
-                    <span className="text-foreground font-medium">
-                      {a.syncStatus}
-                    </span>
-                    {a.chunkCount > 0
-                      ? ` · ${a.chunkCount} chunks indexed`
-                      : ""}
-                    {a.ingestionStatus ? ` · doc ${a.ingestionStatus}` : ""}
-                  </div>
-                  {a.lastError ? (
-                    <p className="text-destructive mt-1 text-xs">
-                      {a.lastError}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-3 cursor-pointer"
-            disabled={syncAttachments.isPending}
-            onClick={() => syncAttachments.mutate(props)}
-          >
-            {syncAttachments.isPending ? (
-              <Loader2 className="mr-2 size-4 animate-spin" />
-            ) : null}
-            Retry Bitrix file sync
-          </Button>
-        </Panel>
-
-        <Panel title="Recent screening runs">
-          {d.recentScreeningRuns.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No runs yet.</p>
-          ) : (
-            <ul className="space-y-1.5 text-sm">
-              {d.recentScreeningRuns.map((r) => (
-                <li
-                  key={r.runId}
-                  className="border-border/60 flex flex-wrap gap-x-3 gap-y-0.5 rounded border px-2 py-1.5 text-xs"
-                >
-                  <span className="font-medium">{r.status}</span>
-                  {r.screenerName ? (
-                    <span className="text-muted-foreground">
-                      {r.screenerName}
-                    </span>
-                  ) : null}
-                  <span className="text-muted-foreground">
-                    {new Date(r.createdAt).toLocaleString()}
-                  </span>
-                  {r.errorMessage ? (
-                    <span className="text-destructive w-full">
-                      {r.errorMessage}
-                    </span>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
-
-        <Panel title="Workspace opportunity">
-          <div className="grid gap-2 text-sm">
-            <SummaryRow label="Title" value={d.appDeal.title ?? "—"} />
-            <SummaryRow label="Stage" value={d.appDeal.stage ?? "—"} />
-          </div>
-          <Link
-            to="/deal-opportunities/$uid"
-            params={{ uid: d.appDeal.id }}
-            className="text-primary mt-3 inline-block text-sm font-medium underline-offset-4 hover:underline"
-          >
-            Open in app
-          </Link>
-        </Panel>
-
-        <Panel title="Bitrix deal — all fields">
-          <p className="text-muted-foreground mb-2 text-xs">
-            Labels from{" "}
-            {d.bitrixFieldLabelSource === "live"
-              ? "live Bitrix metadata (crm.deal.fields + userfield.list)."
-              : d.bitrixFieldLabelSource === "catalog"
-                ? "saved catalog / env JSON (live metadata unavailable)."
-                : "API key only (no catalog)."}
-            Values are from <code className="text-[11px]">crm.deal.get</code>.
-          </p>
-          <div className="max-h-[40vh] overflow-auto rounded-md border">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-muted/50 sticky top-0">
-                <tr>
-                  <th className="border-b px-2 py-1.5 font-medium">Label</th>
-                  <th className="border-b px-2 py-1.5 font-medium">API key</th>
-                  <th className="border-b px-2 py-1.5 font-medium">Type</th>
-                  <th className="border-b px-2 py-1.5 font-medium">Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.bitrixDealFields.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="text-muted-foreground px-2 py-3 text-center"
-                    >
-                      No Bitrix payload (webhook or deal fetch failed).
-                    </td>
-                  </tr>
-                ) : (
-                  d.bitrixDealFields.map((row) => (
-                    <tr key={row.key} className="border-border/60 border-b">
-                      <td className="text-foreground px-2 py-1.5 align-top font-medium">
-                        {row.label}
-                      </td>
-                      <td className="text-muted-foreground px-2 py-1.5 align-top font-mono">
-                        {row.key}
-                      </td>
-                      <td className="text-muted-foreground px-2 py-1.5 align-top font-mono">
-                        {row.type ?? "—"}
-                      </td>
-                      <td className="max-w-[min(40vw,240px)] px-2 py-1.5 wrap-break-word whitespace-pre-wrap">
-                        {row.value}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-
-        <Panel title="File / disk fields (detected)">
-          <p className="text-muted-foreground mb-2 text-xs">
-            File titles are loaded with{" "}
-            <code className="text-[11px]">disk.file.get</code> when the webhook
-            has Drive access. If you only see field codes, widen webhook scopes.
-          </p>
-          {d.bitrixFiles.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No file-typed fields detected on this deal (or values are empty).
-            </p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {d.bitrixFiles.map((f, i) => (
-                <li
-                  key={`${f.field}-${f.primaryId}-${i}`}
-                  className="border-border/80 space-y-1 rounded border px-2 py-2"
-                >
-                  <div className="text-foreground font-medium">
-                    {f.displayName ?? f.fieldLabel}
-                  </div>
-                  {f.displayName ? (
-                    <div className="text-muted-foreground text-xs">
-                      Bitrix field: {f.fieldLabel}
-                    </div>
-                  ) : null}
-                  <div className="text-muted-foreground font-mono text-[11px]">
-                    {f.field}
-                    {f.fieldType ? ` · ${f.fieldType}` : ""}
-                  </div>
-                  <div className="text-xs">
-                    <span className="text-muted-foreground">
-                      {f.displayName ? "Drive id: " : "Primary id: "}
-                    </span>
-                    <code className="text-[11px]">{f.primaryId}</code>
-                    <span className="text-muted-foreground ml-2">
-                      ({f.shape})
-                    </span>
-                  </div>
-                  <p className="text-muted-foreground text-xs">{f.summary}</p>
-                  <details className="text-xs">
-                    <summary className="cursor-pointer font-medium">
-                      Raw JSON (debug)
-                    </summary>
-                    <pre className="bg-muted/40 mt-1 max-h-32 overflow-auto rounded p-2 font-mono text-[10px] whitespace-pre-wrap">
-                      {f.rawJson}
-                    </pre>
-                  </details>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="text-muted-foreground mt-2 text-xs">
-            Indexed chunks for screening: {d.indexedCount}
-            {!d.webhookConfigured ? " · Bitrix webhook not configured" : ""}
-          </p>
-        </Panel>
-
-        <Panel title="Run screening">
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="scr">Screener</Label>
-              <Select value={effectiveScreenerId} onValueChange={setScreenerId}>
-                <SelectTrigger id="scr" className="mt-1">
-                  <SelectValue placeholder="Choose screener" />
-                </SelectTrigger>
-                <SelectContent>
-                  {screeners.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {!indexed ? (
-              <div className="space-y-2 rounded-md border border-dashed p-3">
-                <Label htmlFor="up">Upload document (ingest)</Label>
-                <input
-                  id="up"
-                  type="file"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="mt-1 block w-full text-sm"
-                />
-                <Button
-                  type="button"
-                  size="sm"
+    <div className="relative isolate mx-auto max-w-[1400px] overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-b from-muted/25 via-background to-background shadow-sm">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.45] motion-reduce:opacity-25 [background-image:radial-gradient(900px_circle_at_0%_-20%,oklch(0.6231_0.188_259.8_/_0.12),transparent_55%),radial-gradient(700px_circle_at_100%_0%,oklch(0.55_0.06_250_/_0.08),transparent_50%)]"
+        aria-hidden
+      />
+      <div className="relative grid gap-5 p-4 md:grid-cols-2 md:gap-6 md:p-6">
+        <div className="flex min-w-0 flex-col gap-5">
+          <header className="space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <p className="text-muted-foreground font-mono text-[11px] font-medium tracking-widest uppercase">
+                  Opportunity screening
+                </p>
+                <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                  Deal screening
+                </h1>
+              </div>
+              {run.isPending ? (
+                <Badge
                   variant="secondary"
-                  disabled={!file || upload.isPending}
-                  className="cursor-pointer"
-                  onClick={async () => {
-                    if (!file) return;
-                    const fileData = await toBase64(file);
-                    await upload.mutateAsync({
-                      ...props,
-                      fileName: file.name,
-                      fileType: file.type || "application/octet-stream",
-                      fileData,
-                      title: file.name,
-                      description: "Bitrix widget upload",
-                      category: "OTHER",
-                    });
-                  }}
+                  className="shrink-0 gap-1.5 py-1.5 pr-2.5 pl-2"
                 >
-                  {upload.isPending ? (
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                  ) : (
-                    <Upload className="mr-2 size-4" />
-                  )}
-                  Upload
-                </Button>
-              </div>
-            ) : null}
-
-            <div className="space-y-2">
-              <Button
-                type="button"
-                disabled={!canRun}
-                className="cursor-pointer"
-                onClick={() =>
-                  run.mutate({ ...props, screenerId: effectiveScreenerId })
-                }
-              >
-                {run.isPending ? (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                ) : (
-                  <Play className="mr-2 size-4" />
-                )}
-                Start screening
-              </Button>
-              <p
-                className={
-                  canRun
-                    ? "text-muted-foreground text-xs"
-                    : "text-destructive text-sm"
-                }
-                role="status"
-              >
-                {canRun
-                  ? "Button is enabled — screening will use indexed chunks."
-                  : (runBlocked ?? "")}
-              </p>
+                  <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+                  Preparing…
+                </Badge>
+              ) : null}
             </div>
-          </div>
-        </Panel>
-      </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="gap-1.5 font-mono text-[11px]">
+                Bitrix #{d.bitrixDealId}
+              </Badge>
+              <Badge variant="outline" className="gap-1.5 font-mono text-[11px]">
+                App {d.appDeal.id}
+              </Badge>
+              <Badge
+                variant={indexed ? "default" : "secondary"}
+                className="gap-1.5"
+              >
+                <Layers className="size-3.5" aria-hidden />
+                {d.indexedCount} chunk{d.indexedCount === 1 ? "" : "s"}
+              </Badge>
+            </div>
+            <Separator className="bg-border/80" />
+          </header>
 
-      {/* Right: screening output */}
-      <div className="flex min-h-0 min-w-0 flex-col gap-4 md:sticky md:top-4 md:self-start">
-        <Panel title="Screening result" className="min-h-[200px]">
-          {d.activeJobs.length > 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Workflow running ({d.activeJobs.length} job
-              {d.activeJobs.length > 1 ? "s" : ""})…
-            </p>
-          ) : null}
-
-          {!d.lastRun ? (
-            <p className="text-muted-foreground text-sm">
-              No screening run yet for this opportunity.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              <div className="text-sm">
-                <p>
-                  <span className="text-muted-foreground">Status:</span>{" "}
-                  <span className="font-medium">{d.lastRun.status}</span>
+          <WorkspaceCard
+            title="Documents for screening"
+            icon={FileStack}
+            description={`Upload PDFs or other files to ingest into search. Duplicate content hashes are skipped. After a run starts, the server waits ${vectorWaitSec}s so Cloudflare Vectorize can serve fresh embeddings.`}
+          >
+            {(d.ingestionPipelineJobs?.length ?? 0) > 0 ? (
+              <div className="border-primary/25 bg-primary/[0.06] mb-5 space-y-3 rounded-xl border p-4">
+                <p className="text-foreground text-xs font-semibold tracking-wide uppercase">
+                  Pipeline progress
                 </p>
-                {d.lastRun.screenerName ? (
-                  <p>
-                    <span className="text-muted-foreground">Screener:</span>{" "}
-                    {d.lastRun.screenerName}
-                  </p>
-                ) : null}
-                {d.lastRun.errorMessage ? (
-                  <p className="text-destructive mt-2 text-xs whitespace-pre-wrap">
-                    {d.lastRun.errorMessage}
-                  </p>
-                ) : null}
-              </div>
-
-              {d.lastRun.answers.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  {screeningStillRunning(d.lastRun.status)
-                    ? "Answers appear when screening completes."
-                    : "No answers stored for this run."}
+                <p className="text-muted-foreground text-[11px] leading-relaxed">
+                  Files appear after they are saved to the app. While{" "}
+                  <strong className="text-foreground">Upload & save</strong>{" "}
+                  runs, steps show here first, then{" "}
+                  <strong className="text-foreground">Index for search</strong>.
                 </p>
-              ) : (
-                <ol className="max-h-[min(70vh,800px)] space-y-3 overflow-y-auto pr-1">
-                  {d.lastRun.answers.map((a, i) => (
+                <ul className="space-y-3">
+                  {(d.ingestionPipelineJobs ?? []).map((job) => (
                     <li
-                      key={a.questionId}
-                      className="border-border rounded-md border p-3 text-sm"
+                      key={job.instanceId}
+                      className="bg-card/90 space-y-2 rounded-lg border border-border/60 px-3 py-2.5 text-xs shadow-xs"
                     >
-                      <p className="text-muted-foreground text-xs font-medium">
-                        Q{i + 1}
-                      </p>
-                      <p className="mt-1 font-medium">{a.question}</p>
-                      <p className="text-muted-foreground mt-2 text-xs">
-                        Score: {a.score}
-                      </p>
-                      <p className="mt-2 leading-relaxed whitespace-pre-wrap">
-                        {a.rationale}
-                      </p>
-                      {a.evidenceChunkIds.length > 0 ? (
-                        <p className="text-muted-foreground mt-2 font-mono text-[11px]">
-                          Evidence: {a.evidenceChunkIds.join(", ")}
-                        </p>
-                      ) : null}
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span className="min-w-0 font-medium wrap-break-word">
+                          {job.fileName ?? "—"}
+                        </span>
+                        <span className="text-muted-foreground shrink-0 text-[11px] font-medium">
+                          {pipelineKindLabel(job.workflowKind)}
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-[11px]">
+                        <Loader2
+                          className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+                          aria-hidden
+                        />
+                        <span>
+                          {job.progressStep?.trim() ||
+                            (job.state === "waiting"
+                              ? "Starting…"
+                              : job.state)}
+                        </span>
+                        <span className="text-muted-foreground/90 font-mono text-[10px]">
+                          {job.progressPercent}%
+                        </span>
+                      </div>
+                      <Progress
+                        value={Math.min(100, Math.max(0, job.progressPercent))}
+                        className="h-1.5"
+                        aria-label={`${job.fileName ?? "file"} ${pipelineKindLabel(job.workflowKind)}`}
+                      />
                     </li>
                   ))}
-                </ol>
-              )}
-            </div>
-          )}
-        </Panel>
-      </div>
-    </div>
-  );
-}
+                </ul>
+              </div>
+            ) : null}
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-[88px_1fr] gap-2">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="min-w-0 wrap-break-word">{value}</span>
+            {ingestSummary && ingestSummary.total > 0 ? (
+              <div className="mb-5 space-y-2">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  <span className="text-foreground font-medium">
+                    Indexing progress
+                  </span>
+                  {ingestSummary.inFlight > 0 ? (
+                    <span className="text-muted-foreground inline-flex items-center gap-1">
+                      <Loader2
+                        className="size-3 animate-spin motion-reduce:animate-none"
+                        aria-hidden
+                      />
+                      {ingestSummary.finishedPipeline} of {ingestSummary.total}{" "}
+                      files finished
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {ingestSummary.finishedPipeline} of {ingestSummary.total}{" "}
+                      files finished
+                    </span>
+                  )}
+                </div>
+                <Progress
+                  value={ingestSummary.pct}
+                  className="h-1.5"
+                  aria-label="Document indexing progress"
+                />
+                <p className="text-muted-foreground text-[11px] leading-relaxed">
+                  {ingestSummary.inFlight > 0
+                    ? "Large files can take a few minutes. This view refreshes until each file shows Indexed."
+                    : ingestSummary.failed > 0
+                      ? "Some files failed indexing — fix or re-upload those files. Others may still be usable if indexed."
+                      : "All current uploads finished the ingestion pipeline."}
+                </p>
+                {ingestSummary.inFlight === 0 && indexed ? (
+                  <Alert className="border-emerald-500/35 bg-emerald-500/[0.08] py-3 [&>svg]:top-3.5 [&>svg+div]:translate-y-0">
+                    <CheckCircle2
+                      className="text-emerald-600 dark:text-emerald-400"
+                      aria-hidden
+                    />
+                    <AlertTitle className="text-emerald-950 dark:text-emerald-50">
+                      Ready to screen
+                    </AlertTitle>
+                    <AlertDescription className="text-xs text-emerald-950/90 dark:text-emerald-50/90">
+                      Documents are indexed ({d.indexedCount} chunk
+                      {d.indexedCount === 1 ? "" : "s"}). Go to{" "}
+                      <strong className="font-semibold">Run screening</strong>{" "}
+                      and press{" "}
+                      <strong className="font-semibold">Start screening</strong>.
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+                {ingestSummary.inFlight === 0 &&
+                !indexed &&
+                ingestSummary.total > 0 &&
+                ingestSummary.failed === ingestSummary.total ? (
+                  <Alert
+                    variant="destructive"
+                    className="py-3 [&>svg]:top-3.5 [&>svg+div]:translate-y-0"
+                  >
+                    <AlertCircle aria-hidden />
+                    <AlertTitle>Nothing indexed yet</AlertTitle>
+                    <AlertDescription className="text-xs">
+                      Every file failed or was skipped without searchable
+                      chunks. Try re-uploading or another format.
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-muted-foreground mb-4 text-xs leading-relaxed">
+                Upload at least one file below to begin indexing.
+              </p>
+            )}
+
+            {d.dealDocuments.length === 0 ? (
+              <p className="text-muted-foreground mb-4 text-sm">
+                No uploads yet for this deal workspace.
+              </p>
+            ) : (
+              <ul className="mb-4 space-y-2 text-sm">
+                {d.dealDocuments.map((doc: DealDocumentRow) => (
+                  <li
+                    key={doc.id}
+                    className={cn(
+                      "border-border/70 flex flex-wrap items-start justify-between gap-2 rounded-lg border bg-muted/15 px-3 py-2 text-xs transition-colors",
+                      doc.ingestionStatus === "PROCESSED" &&
+                        "border-emerald-500/25 bg-emerald-500/[0.04]",
+                      doc.ingestionStatus === "FAILED" &&
+                        "border-destructive/30 bg-destructive/[0.04]",
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <DocumentStatusIcon status={doc.ingestionStatus} />
+                        <span className="font-medium wrap-break-word">
+                          {doc.fileName}
+                        </span>
+                      </div>
+                      {doc.ingestionError ? (
+                        <p className="text-destructive mt-1.5 text-[11px] whitespace-pre-wrap">
+                          {doc.ingestionError}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 font-medium",
+                        doc.ingestionStatus === "PROCESSED" &&
+                          "text-emerald-700 dark:text-emerald-400",
+                        INGEST_IN_FLIGHT.has(doc.ingestionStatus) &&
+                          "text-muted-foreground",
+                        doc.ingestionStatus === "FAILED" && "text-destructive",
+                      )}
+                    >
+                      {ingestionStatusLabel(doc.ingestionStatus)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="space-y-3 rounded-xl border border-dashed border-border/90 bg-muted/20 p-4 transition-colors hover:border-primary/30 hover:bg-muted/30">
+              <Label htmlFor="bitrix-widget-upload" className="text-sm">
+                Upload files
+              </Label>
+              <input
+                id="bitrix-widget-upload"
+                type="file"
+                multiple
+                onChange={(e) =>
+                  setUploadFiles(Array.from(e.target.files ?? []))
+                }
+                className="block w-full cursor-pointer text-sm file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={uploadFiles.length === 0 || upload.isPending}
+                className="cursor-pointer"
+                onClick={() => void handleUpload()}
+              >
+                {upload.isPending ? (
+                  <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" />
+                ) : (
+                  <Upload className="mr-2 size-4" />
+                )}
+                Upload {uploadFiles.length > 0 ? `(${uploadFiles.length})` : ""}
+              </Button>
+            </div>
+          </WorkspaceCard>
+
+          <WorkspaceCard title="Screening history" icon={History}>
+            {d.recentScreeningRuns.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No runs yet.</p>
+            ) : (
+              <ul className="space-y-3 text-sm">
+                {d.recentScreeningRuns.map((r) => (
+                  <li
+                    key={r.runId}
+                    className="border-border/70 space-y-2 rounded-lg border bg-muted/10 px-3 py-2.5 text-xs"
+                  >
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                      <span className="font-semibold">{r.status}</span>
+                      {r.screenerName ? (
+                        <span className="text-muted-foreground">
+                          {r.screenerName}
+                        </span>
+                      ) : null}
+                      <span className="text-muted-foreground font-mono text-[11px]">
+                        {new Date(r.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    {r.documentsAtRun.length > 0 ? (
+                      <div className="text-muted-foreground text-[11px] leading-relaxed">
+                        <span className="text-foreground font-medium">
+                          Files in this run:
+                        </span>{" "}
+                        {r.documentsAtRun.map((x) => x.fileName).join(", ")}
+                      </div>
+                    ) : null}
+                    {r.errorMessage ? (
+                      <span className="text-destructive block whitespace-pre-wrap">
+                        {r.errorMessage}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </WorkspaceCard>
+
+          {d.bitrixLinkedContact || d.bitrixLinkedCompany ? (
+            <WorkspaceCard
+              title="Bitrix contact & company"
+              icon={Building2}
+              description="From CONTACT_ID / COMPANY_ID via REST."
+            >
+              {d.bitrixLinkedCompany ? (
+                <div className="border-border/80 mb-4 space-y-2 rounded-lg border bg-muted/10 px-3 py-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-semibold">{d.bitrixLinkedCompany.title}</div>
+                    <Building2
+                      className="text-muted-foreground size-4 shrink-0"
+                      aria-hidden
+                    />
+                  </div>
+                  {d.bitrixLinkedCompany.industry ? (
+                    <div className="text-muted-foreground text-xs">
+                      {d.bitrixLinkedCompany.industry}
+                    </div>
+                  ) : null}
+                  {d.bitrixLinkedCompany.email ? (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Email: </span>
+                      {d.bitrixLinkedCompany.email}
+                    </div>
+                  ) : null}
+                  {d.bitrixLinkedCompany.phones ? (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Phone: </span>
+                      {d.bitrixLinkedCompany.phones}
+                    </div>
+                  ) : null}
+                  {d.bitrixLinkedCompany.website ? (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Web: </span>
+                      {d.bitrixLinkedCompany.website}
+                    </div>
+                  ) : null}
+                  {d.portalBaseUrl ? (
+                    <a
+                      href={`${d.portalBaseUrl.replace(/\/+$/, "")}/crm/company/details/${d.bitrixLinkedCompany.id}/`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary mt-2 inline-flex cursor-pointer items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
+                    >
+                      Open company in Bitrix
+                      <ExternalLink className="size-3" aria-hidden />
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
+              {d.bitrixLinkedContact ? (
+                <div className="border-border/80 space-y-2 rounded-lg border bg-muted/10 px-3 py-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-semibold">
+                      {d.bitrixLinkedContact.displayName}
+                    </div>
+                    <User
+                      className="text-muted-foreground size-4 shrink-0"
+                      aria-hidden
+                    />
+                  </div>
+                  {d.bitrixLinkedContact.email ? (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Email: </span>
+                      {d.bitrixLinkedContact.email}
+                    </div>
+                  ) : null}
+                  {d.bitrixLinkedContact.phones ? (
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Phone: </span>
+                      {d.bitrixLinkedContact.phones}
+                    </div>
+                  ) : null}
+                  {d.portalBaseUrl ? (
+                    <a
+                      href={`${d.portalBaseUrl.replace(/\/+$/, "")}/crm/contact/details/${d.bitrixLinkedContact.id}/`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary mt-2 inline-flex cursor-pointer items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
+                    >
+                      Open contact in Bitrix
+                      <ExternalLink className="size-3" aria-hidden />
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
+            </WorkspaceCard>
+          ) : null}
+
+          <WorkspaceCard title="Workspace opportunity" icon={Layers}>
+            <div className="grid gap-2">
+              <SummaryRow label="Title" value={d.appDeal.title ?? "—"} />
+              <SummaryRow label="Stage" value={d.appDeal.stage ?? "—"} />
+            </div>
+            <Link
+              to="/deal-opportunities/$uid"
+              params={{ uid: d.appDeal.id }}
+              className="text-primary mt-4 inline-flex cursor-pointer items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+            >
+              Open in app
+              <ExternalLink className="size-3.5" aria-hidden />
+            </Link>
+          </WorkspaceCard>
+
+          <WorkspaceCard
+            title="Bitrix deal fields"
+            description="Only fields with a value from crm.deal.get. File attachment fields are omitted."
+          >
+            <div className="max-h-[40vh] overflow-auto rounded-lg border border-border/70">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-muted/60 sticky top-0 backdrop-blur-sm">
+                  <tr>
+                    <th className="border-b border-border/80 px-3 py-2 font-semibold">
+                      Label
+                    </th>
+                    <th className="border-b border-border/80 px-3 py-2 font-semibold">
+                      Value
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.bitrixDealFields.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={2}
+                        className="text-muted-foreground px-3 py-4 text-center"
+                      >
+                        No Bitrix payload (webhook or deal fetch failed).
+                      </td>
+                    </tr>
+                  ) : bitrixFilledFields.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={2}
+                        className="text-muted-foreground px-3 py-4 text-center"
+                      >
+                        No non-empty field values on this deal.
+                      </td>
+                    </tr>
+                  ) : (
+                    bitrixFilledFields.map((row) => (
+                      <tr
+                        key={row.key}
+                        className="border-border/50 border-b last:border-0"
+                      >
+                        <td className="text-foreground w-[min(40%,200px)] px-3 py-2 align-top font-medium">
+                          {row.label}
+                        </td>
+                        <td className="max-w-[min(55vw,320px)] px-3 py-2 wrap-break-word whitespace-pre-wrap">
+                          {row.value}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </WorkspaceCard>
+
+          <WorkspaceCard title="Run screening" icon={Play}>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="bitrix-widget-screener">Screener</Label>
+                <Select
+                  value={effectiveScreenerId}
+                  onValueChange={setScreenerId}
+                >
+                  <SelectTrigger
+                    id="bitrix-widget-screener"
+                    className="mt-1.5 cursor-pointer"
+                  >
+                    <SelectValue placeholder="Choose screener" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {screeners.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Button
+                  type="button"
+                  disabled={!canRun}
+                  className="cursor-pointer"
+                  onClick={handleStartScreening}
+                >
+                  {run.isPending ? (
+                    <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <Play className="mr-2 size-4" />
+                  )}
+                  Start screening
+                </Button>
+                <p
+                  className={
+                    canRun
+                      ? "text-muted-foreground text-xs leading-relaxed"
+                      : "text-destructive text-sm leading-relaxed"
+                  }
+                  role="status"
+                >
+                  {canRun
+                    ? `Ready when you are. Uses ${d.indexedCount} indexed chunk${d.indexedCount === 1 ? "" : "s"}. On start, the server waits ${vectorWaitSec}s for the vector index.`
+                    : (runBlocked ?? "")}
+                </p>
+              </div>
+            </div>
+          </WorkspaceCard>
+        </div>
+
+        <div className="flex min-h-0 min-w-0 flex-col gap-4 md:sticky md:top-4 md:self-start">
+          <WorkspaceCard
+            title="Screening result"
+            className="min-h-[200px] border-primary/15 bg-card/90 shadow-md backdrop-blur-md md:min-h-[280px]"
+          >
+            {d.activeJobs.length > 0 ? (
+              <div className="text-muted-foreground mb-4 flex items-center gap-2 text-sm">
+                <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+                Workflow running ({d.activeJobs.length} job
+                {d.activeJobs.length > 1 ? "s" : ""})…
+              </div>
+            ) : null}
+
+            {!d.lastRun ? (
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                No screening run yet for this opportunity.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-sm">
+                  <p>
+                    <span className="text-muted-foreground">Status:</span>{" "}
+                    <span className="font-semibold">{d.lastRun.status}</span>
+                  </p>
+                  {d.lastRun.screenerName ? (
+                    <p className="mt-1">
+                      <span className="text-muted-foreground">Screener:</span>{" "}
+                      {d.lastRun.screenerName}
+                    </p>
+                  ) : null}
+                  {d.lastRun.errorMessage ? (
+                    <p className="text-destructive mt-3 text-xs whitespace-pre-wrap">
+                      {d.lastRun.errorMessage}
+                    </p>
+                  ) : null}
+                </div>
+
+                {d.lastRun.answers.length === 0 ? (
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {screeningStillRunning(d.lastRun.status)
+                      ? "Answers appear when screening completes."
+                      : "No answers stored for this run."}
+                  </p>
+                ) : (
+                  <ScrollArea className="h-[min(70vh,800px)] pr-3">
+                    <ol className="space-y-3 pb-1">
+                      {d.lastRun.answers.map((a, i) => (
+                        <li
+                          key={a.questionId}
+                          className="border-border/80 rounded-xl border bg-muted/20 p-4 text-sm shadow-xs transition-shadow hover:shadow-sm motion-reduce:transition-none"
+                        >
+                          <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+                            Question {i + 1}
+                          </p>
+                          <p className="mt-2 font-semibold leading-snug">
+                            {a.question}
+                          </p>
+                          <p className="text-muted-foreground mt-2 text-xs">
+                            Score:{" "}
+                            <span className="text-foreground font-medium">
+                              {a.score}
+                            </span>
+                          </p>
+                          <p className="mt-3 leading-relaxed whitespace-pre-wrap">
+                            {a.rationale}
+                          </p>
+                          {a.evidenceChunkIds.length > 0 ? (
+                            <p className="text-muted-foreground mt-3 font-mono text-[11px] leading-relaxed">
+                              Evidence: {a.evidenceChunkIds.join(", ")}
+                            </p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ol>
+                  </ScrollArea>
+                )}
+              </div>
+            )}
+          </WorkspaceCard>
+        </div>
+      </div>
     </div>
   );
 }

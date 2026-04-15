@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { ExternalLink, FileIcon, Download } from "lucide-react";
 import { DocumentCategory } from "@repo/db/enums";
@@ -23,31 +22,28 @@ const DealDocumentItem = ({
   fileType?: string | null;
 }) => {
   return (
-    <div className="mb-4 border-b border-border pb-4">
+    <div className="border-border mb-4 border-b pb-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-center gap-2">
-            <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            <FileIcon className="text-muted-foreground h-4 w-4 shrink-0" />
+            <h3 className="text-foreground text-sm font-semibold">{title}</h3>
           </div>
           {caption && (
-            <p className="text-xs italic text-muted-foreground">{caption}</p>
+            <p className="text-muted-foreground text-xs italic">{caption}</p>
           )}
           {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
+            <p className="text-muted-foreground text-xs">{description}</p>
           )}
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               {category.toLowerCase()}
             </span>
             {tags && tags.length > 0 && (
               <>
                 <span className="text-border">·</span>
                 {tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="text-xs text-muted-foreground"
-                  >
+                  <span key={index} className="text-muted-foreground text-xs">
                     {tag}
                   </span>
                 ))}
@@ -55,7 +51,7 @@ const DealDocumentItem = ({
             )}
           </div>
           {(fileName || fileType) && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               {fileName}
               {fileName && fileType && " · "}
               {fileType}

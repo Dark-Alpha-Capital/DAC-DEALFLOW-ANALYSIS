@@ -1,8 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RefreshCw } from "lucide-react";
 import { z } from "zod";
 import { BitrixScreeningWidgetWorkspace } from "@/components/deal-opportunities/bitrix-screening-widget-workspace";
+import { Button } from "@/components/ui/button";
 import { useBitrixWidgetDealId } from "@/hooks/use-bitrix-widget-deal-id";
 import { loadBitrixScreenWidgetPostContext } from "@/lib/server/bitrix-screen-widget-post";
+
+function reloadPage() {
+  window.location.reload();
+}
 
 const searchSchema = z.object({
   dealId: z.string().min(1).optional(),
@@ -76,8 +82,6 @@ function BitrixScreeningWidgetPage() {
   const search = Route.useSearch();
   const loaderData = Route.useLoaderData();
 
-  console.log("loaderData", loaderData);
-
   const { effectiveDealId } = useBitrixWidgetDealId({
     searchDealId: search.dealId,
     loader: loaderData,
@@ -85,7 +89,19 @@ function BitrixScreeningWidgetPage() {
 
   if (!effectiveDealId) {
     return (
-      <main className="text-muted-foreground mx-auto max-w-md p-6 text-sm">
+      <main className="text-muted-foreground relative mx-auto max-w-md p-6 text-sm">
+        <div className="absolute inset-e-0 top-0 p-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={reloadPage}
+            className="gap-1.5"
+          >
+            <RefreshCw className="size-3.5" aria-hidden />
+            Reload
+          </Button>
+        </div>
         <p>
           No deal id. Open this URL from the Bitrix widget, or append{" "}
           <code className="text-foreground">?dealId=123</code> for local
@@ -96,7 +112,19 @@ function BitrixScreeningWidgetPage() {
   }
 
   return (
-    <main className="bg-background min-h-dvh">
+    <main className="bg-background relative min-h-dvh">
+      <div className="absolute inset-e-0 top-0 z-10 p-2 md:p-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={reloadPage}
+          className="gap-1.5 shadow-sm"
+        >
+          <RefreshCw className="size-3.5" aria-hidden />
+          Reload
+        </Button>
+      </div>
       <BitrixScreeningWidgetWorkspace
         dealId={effectiveDealId}
         memberId={search.memberId}

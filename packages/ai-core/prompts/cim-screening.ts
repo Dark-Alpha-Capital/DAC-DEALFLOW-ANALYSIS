@@ -1,8 +1,20 @@
 export function buildCimScreeningQuestionPrompt(params: {
   question: string;
   excerpts: string;
+  /** CRM / deal-opportunity listing fields (e.g. Bitrix title, teaser, revenue) — not a substitute for document evidence. */
+  dealListingContext?: string | null;
 }): string {
-  return `You are screening a confidential information memorandum (CIM). Answer ONLY using the excerpts below. If the excerpts do not contain enough information, state that explicitly and use a conservative score.
+  const listing = params.dealListingContext?.trim();
+  const listingBlock = listing
+    ? `Deal listing context (synced CRM fields — use for orientation; for claims about document content, rely on excerpts below; if CRM and excerpts conflict, prefer excerpts):
+---
+${listing}
+---
+
+`
+    : "";
+
+  return `${listingBlock}You are screening a confidential information memorandum (CIM). Ground your score primarily in the document excerpts below. You may use the listing context above only to interpret names, scale, or labels. If the excerpts do not contain enough information, state that explicitly and use a conservative score.
 
 Excerpts from the document:
 ---

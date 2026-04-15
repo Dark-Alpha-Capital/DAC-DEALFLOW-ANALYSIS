@@ -52,15 +52,15 @@ export const filesRouter = createTRPCRouter({
       const existingDocument =
         input.scopeType === "GLOBAL"
           ? await findDocumentDuplicateForCheck({
-              scopeType: "GLOBAL",
-              contentHash: input.contentHash,
-            })
+            scopeType: "GLOBAL",
+            contentHash: input.contentHash,
+          })
           : await findDocumentDuplicateForCheck({
-              scopeType: "ENTITY",
-              contentHash: input.contentHash,
-              entityType: input.entityType,
-              entityId: input.entityId,
-            });
+            scopeType: "ENTITY",
+            contentHash: input.contentHash,
+            entityType: input.entityType,
+            entityId: input.entityId,
+          });
 
       return {
         isDuplicate: Boolean(existingDocument),

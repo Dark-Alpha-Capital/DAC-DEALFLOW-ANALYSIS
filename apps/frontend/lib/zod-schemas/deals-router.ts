@@ -224,12 +224,15 @@ export const bitrixWidgetContextAuthSchema = z.object({
 export const bitrixScreeningWidgetBootstrapSchema =
   bitrixWidgetContextAuthSchema;
 
-export const bitrixScreeningWidgetUploadSchema =
+const bitrixWidgetUploadFileSchema = z.object({
+  fileName: z.string().min(1),
+  fileType: z.string().min(1),
+  fileData: z.string().min(1),
+});
+
+export const bitrixScreeningWidgetUploadBatchSchema =
   bitrixWidgetContextAuthSchema.extend({
-    fileName: z.string().min(1),
-    fileType: z.string().min(1),
-    fileData: z.string().min(1),
-    title: z.string().min(1),
+    files: z.array(bitrixWidgetUploadFileSchema).min(1).max(25),
     description: z.string().optional(),
     category: z.nativeEnum(DealDocumentCategory).default("OTHER"),
   });

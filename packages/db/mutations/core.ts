@@ -585,6 +585,7 @@ export async function insertCimScreeningRun(input: {
   sessionId: string;
   screenerId: string;
   workflowInstanceId: string | null;
+  dealDocumentsSnapshot?: unknown | null;
 }) {
   const [row] = await db
     .insert(cimScreeningRuns)
@@ -593,6 +594,7 @@ export async function insertCimScreeningRun(input: {
       screenerId: input.screenerId,
       workflowInstanceId: input.workflowInstanceId,
       status: "PENDING",
+      dealDocumentsSnapshot: input.dealDocumentsSnapshot ?? null,
     })
     .returning();
   return row ?? null;
@@ -604,6 +606,7 @@ export async function updateCimScreeningRun(
     status: CimScreeningSessionStatus;
     workflowInstanceId: string | null;
     errorMessage: string | null;
+    dealDocumentsSnapshot: unknown | null;
   }>,
 ) {
   await db

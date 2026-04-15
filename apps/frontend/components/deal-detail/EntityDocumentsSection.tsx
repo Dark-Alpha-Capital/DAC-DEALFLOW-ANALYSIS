@@ -91,7 +91,9 @@ export function EntityDocumentsSection({
                 <TableHead className="hidden text-right lg:table-cell">
                   Size
                 </TableHead>
-                <TableHead className="hidden xl:table-cell">Ingestion</TableHead>
+                <TableHead className="hidden xl:table-cell">
+                  Ingestion
+                </TableHead>
                 <TableHead className="w-[1%] text-end">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -131,7 +133,7 @@ export function EntityDocumentsSection({
                   <TableCell className="hidden align-top xl:table-cell">
                     {ingestionBadge(doc.ingestionStatus)}
                   </TableCell>
-                  <TableCell className="align-top text-end">
+                  <TableCell className="text-end align-top">
                     <div className="flex justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
