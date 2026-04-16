@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -14,10 +15,12 @@ import {
   Building2,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
   ExternalLink,
   FileStack,
   History,
   Layers,
+  ListChecks,
   Loader2,
   Play,
   RefreshCw,
@@ -55,6 +58,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  DealOpportunityWorkflowStepper,
+  type DealOpportunityWorkflowStepId,
+} from "@/components/deal-opportunities/deal-opportunity-workflow-stepper";
 import { cn } from "@/lib/utils";
 
 function formatChunkIdForUi(chunkId: string) {
@@ -357,13 +364,13 @@ function startScreeningBlockedReason(args: {
   }
   const pipelineBusy = (data.ingestionPipelineJobs?.length ?? 0) > 0;
   if (pipelineBusy) {
-    return "Upload or indexing workflow still running — see Pipeline progress below.";
+    return "Upload or indexing workflow still running — see Pipeline progress on the Documents step.";
   }
   if (ingestBusy) {
-    return "File ingestion still in progress. Wait until documents show as processed.";
+    return "File ingestion still in progress. Wait until documents show as processed (Documents step).";
   }
   if (!indexed) {
-    return "Upload at least one document below and wait until it is indexed (chunks > 0).";
+    return "Upload at least one document on the Documents step and wait until it is indexed (chunks > 0).";
   }
   return null;
 }
@@ -450,6 +457,32 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+const SCREENING_WORKFLOW_STEPS: {
+  step: DealOpportunityWorkflowStepId;
+  label: string;
+  description: string;
+  icon: typeof FileStack;
+}[] = [
+  {
+    step: 1,
+    label: "Documents",
+    description: "Upload & indexing",
+    icon: FileStack,
+  },
+  {
+    step: 2,
+    label: "Run screening",
+    description: "Screener & start",
+    icon: Play,
+  },
+  {
+    step: 3,
+    label: "Results",
+    description: "Answers & history",
+    icon: ListChecks,
+  },
+];
+
 export function BitrixScreeningWidgetWorkspace({
   dealId,
   memberId,
@@ -477,6 +510,10 @@ export function BitrixScreeningWidgetWorkspace({
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   /** `null` = show the latest run from bootstrap (refetches with polling). Set to a past `runId` to load that run’s answers. */
   const [viewRunId, setViewRunId] = useState<string | null>(null);
+
+  const [workflowStep, setWorkflowStep] =
+    useState<DealOpportunityWorkflowStepId>(1);
+  const screeningWorkflowInitialized = useRef(false);
 
   const q = useQuery({
     ...trpc.dealOpportunities.getBitrixScreeningWidgetContext.queryOptions(
@@ -522,6 +559,7 @@ export function BitrixScreeningWidgetWorkspace({
     trpc.dealOpportunities.startBitrixScreeningWidgetRun.mutationOptions({
       onSuccess: () => {
         setViewRunId(null);
+        setWorkflowStep(3);
         toast.success(
           `Screening started (waited ${Math.round((q.data?.vectorSettleMsAfterIngest ?? 12_000) / 1000)}s for vector index)`,
         );
@@ -666,6 +704,43 @@ export function BitrixScreeningWidgetWorkspace({
     }
   }, [d?.lastRun, screenerId, screeners]);
 
+  useEffect(() => {
+    if (!d || screeningWorkflowInitialized.current) return;
+    screeningWorkflowInitialized.current = true;
+    setWorkflowStep((d.indexedCount ?? 0) > 0 ? 2 : 1);
+  }, [d]);
+
+  useEffect(() => {
+    if (!d) return;
+    if (!indexed) {
+      const hasAnyRun =
+        d.lastRun != null || d.recentScreeningRuns.length > 0;
+      if (!hasAnyRun && workflowStep !== 1) setWorkflowStep(1);
+    }
+  }, [d, indexed, workflowStep]);
+
+  const canNavigateToScreeningStep = useCallback(
+    (target: DealOpportunityWorkflowStepId) => {
+      if (!d) return target === 1;
+      if (target === 1) return true;
+      if (target === 2) return true;
+      return (
+        d.recentScreeningRuns.length > 0 ||
+        d.activeJobs.length > 0 ||
+        d.lastRun != null
+      );
+    },
+    [d],
+  );
+
+  const screeningStepDisabledTitle = useCallback(
+    (target: DealOpportunityWorkflowStepId) => {
+      if (canNavigateToScreeningStep(target)) return undefined;
+      return "Start a screening or wait until a run exists to open Results.";
+    },
+    [canNavigateToScreeningStep],
+  );
+
   if (q.isLoading) {
     return (
       <div
@@ -694,14 +769,16 @@ export function BitrixScreeningWidgetWorkspace({
 
   const vectorWaitSec = Math.round(d.vectorSettleMsAfterIngest / 1000);
 
+  const canContinueFromDocuments = indexed && !ingestBusy;
+
   return (
     <div className="border-border/70 from-muted/25 via-background to-background relative isolate mx-auto max-w-[1400px] overflow-hidden rounded-2xl border bg-gradient-to-b shadow-sm">
       <div
         className="pointer-events-none absolute inset-0 [background-image:radial-gradient(900px_circle_at_0%_-20%,oklch(0.6231_0.188_259.8_/_0.12),transparent_55%),radial-gradient(700px_circle_at_100%_0%,oklch(0.55_0.06_250_/_0.08),transparent_50%)] opacity-[0.45] motion-reduce:opacity-25"
         aria-hidden
       />
-      <div className="relative grid gap-5 p-4 md:grid-cols-2 md:gap-6 md:p-6">
-        <div className="flex min-w-0 flex-col gap-5">
+      <div className="relative space-y-4 p-4 md:space-y-5 md:p-6">
+        <div className="mx-auto flex min-w-0 max-w-4xl flex-col gap-4">
           <header className="space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
@@ -746,6 +823,36 @@ export function BitrixScreeningWidgetWorkspace({
             <Separator className="bg-border/80" />
           </header>
 
+          <DealOpportunityWorkflowStepper
+            steps={SCREENING_WORKFLOW_STEPS}
+            current={workflowStep}
+            onStepChange={setWorkflowStep}
+            canNavigateTo={canNavigateToScreeningStep}
+            stepDisabledTitle={screeningStepDisabledTitle}
+          />
+
+          {d.recentScreeningRuns.length > 0 && workflowStep !== 3 ? (
+            <Alert className="border-primary/25 bg-primary/[0.04] py-3 [&>svg]:top-3.5 [&>svg+div]:translate-y-0">
+              <History className="size-4" aria-hidden />
+              <AlertTitle className="text-sm">Previous screenings</AlertTitle>
+              <AlertDescription className="text-xs sm:text-sm">
+                <span className="text-muted-foreground block sm:inline sm:pr-2">
+                  You have saved runs — open Results to review or compare.
+                </span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="mt-2 cursor-pointer sm:mt-0"
+                  onClick={() => setWorkflowStep(3)}
+                >
+                  View results
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {workflowStep === 1 ? (
           <WorkspaceCard
             title="Documents for screening"
             icon={FileStack}
@@ -845,11 +952,9 @@ export function BitrixScreeningWidgetWorkspace({
                     </AlertTitle>
                     <AlertDescription className="text-xs text-emerald-950/90 dark:text-emerald-50/90">
                       Documents are indexed ({d.indexedCount} chunk
-                      {d.indexedCount === 1 ? "" : "s"}). Go to{" "}
-                      <strong className="font-semibold">Run screening</strong>{" "}
-                      and press{" "}
-                      <strong className="font-semibold">Start screening</strong>
-                      .
+                      {d.indexedCount === 1 ? "" : "s"}). Use{" "}
+                      <strong className="font-semibold">Continue to screening</strong>{" "}
+                      below, then start from the Run screening step.
                     </AlertDescription>
                   </Alert>
                 ) : null}
@@ -952,235 +1057,25 @@ export function BitrixScreeningWidgetWorkspace({
                 Upload {uploadFiles.length > 0 ? `(${uploadFiles.length})` : ""}
               </Button>
             </div>
-          </WorkspaceCard>
 
-          <WorkspaceCard
-            title="Screening history"
-            icon={History}
-            description="Click a run to show its answers in Screening result →"
-          >
-            {d.recentScreeningRuns.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No runs yet.</p>
-            ) : (
-              <ul className="space-y-3 text-sm">
-                {d.recentScreeningRuns.map((r) => (
-                  <li
-                    key={r.runId}
-                    className={cn(
-                      "space-y-2 rounded-lg border px-3 py-2.5 text-xs transition-colors",
-                      effectiveViewRunId === r.runId
-                        ? "border-primary/50 bg-primary/[0.07] ring-primary/25 ring-1"
-                        : "border-border/70 bg-muted/10 hover:bg-muted/20",
-                    )}
-                  >
-                    <button
-                      type="button"
-                      className="w-full cursor-pointer text-left"
-                      onClick={() => {
-                        const isLatest = r.runId === d.lastRun?.runId;
-                        setViewRunId(isLatest ? null : r.runId);
-                      }}
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                          <span className="font-semibold">{r.status}</span>
-                          {r.screenerName ? (
-                            <span className="text-muted-foreground">
-                              {r.screenerName}
-                            </span>
-                          ) : null}
-                          <span className="text-muted-foreground font-mono text-[11px]">
-                            {new Date(r.createdAt).toLocaleString()}
-                          </span>
-                        </div>
-                        {effectiveViewRunId === r.runId ? (
-                          <span className="text-primary shrink-0 text-[10px] font-semibold tracking-wide uppercase">
-                            Showing
-                          </span>
-                        ) : null}
-                      </div>
-                    </button>
-                    {r.documentsAtRun.length > 0 ? (
-                      <div className="text-muted-foreground text-[11px] leading-relaxed">
-                        <span className="text-foreground font-medium">
-                          Files in this run:
-                        </span>{" "}
-                        {r.documentsAtRun.map((x) => x.fileName).join(", ")}
-                      </div>
-                    ) : null}
-                    {r.errorMessage ? (
-                      <span className="text-destructive block whitespace-pre-wrap">
-                        {r.errorMessage}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </WorkspaceCard>
-
-          {d.bitrixLinkedContact || d.bitrixLinkedCompany ? (
-            <WorkspaceCard
-              title="Bitrix contact & company"
-              icon={Building2}
-              description="From CONTACT_ID / COMPANY_ID via REST."
-            >
-              {d.bitrixLinkedCompany ? (
-                <div className="border-border/80 bg-muted/10 mb-4 space-y-2 rounded-lg border px-3 py-3 text-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="font-semibold">
-                      {d.bitrixLinkedCompany.title}
-                    </div>
-                    <Building2
-                      className="text-muted-foreground size-4 shrink-0"
-                      aria-hidden
-                    />
-                  </div>
-                  {d.bitrixLinkedCompany.industry ? (
-                    <div className="text-muted-foreground text-xs">
-                      {d.bitrixLinkedCompany.industry}
-                    </div>
-                  ) : null}
-                  {d.bitrixLinkedCompany.email ? (
-                    <div className="text-xs">
-                      <span className="text-muted-foreground">Email: </span>
-                      {d.bitrixLinkedCompany.email}
-                    </div>
-                  ) : null}
-                  {d.bitrixLinkedCompany.phones ? (
-                    <div className="text-xs">
-                      <span className="text-muted-foreground">Phone: </span>
-                      {d.bitrixLinkedCompany.phones}
-                    </div>
-                  ) : null}
-                  {d.bitrixLinkedCompany.website ? (
-                    <div className="text-xs">
-                      <span className="text-muted-foreground">Web: </span>
-                      {d.bitrixLinkedCompany.website}
-                    </div>
-                  ) : null}
-                  {d.portalBaseUrl ? (
-                    <a
-                      href={`${d.portalBaseUrl.replace(/\/+$/, "")}/crm/company/details/${d.bitrixLinkedCompany.id}/`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-primary mt-2 inline-flex cursor-pointer items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
-                    >
-                      Open company in Bitrix
-                      <ExternalLink className="size-3" aria-hidden />
-                    </a>
-                  ) : null}
-                </div>
-              ) : null}
-              {d.bitrixLinkedContact ? (
-                <div className="border-border/80 bg-muted/10 space-y-2 rounded-lg border px-3 py-3 text-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="font-semibold">
-                      {d.bitrixLinkedContact.displayName}
-                    </div>
-                    <User
-                      className="text-muted-foreground size-4 shrink-0"
-                      aria-hidden
-                    />
-                  </div>
-                  {d.bitrixLinkedContact.email ? (
-                    <div className="text-xs">
-                      <span className="text-muted-foreground">Email: </span>
-                      {d.bitrixLinkedContact.email}
-                    </div>
-                  ) : null}
-                  {d.bitrixLinkedContact.phones ? (
-                    <div className="text-xs">
-                      <span className="text-muted-foreground">Phone: </span>
-                      {d.bitrixLinkedContact.phones}
-                    </div>
-                  ) : null}
-                  {d.portalBaseUrl ? (
-                    <a
-                      href={`${d.portalBaseUrl.replace(/\/+$/, "")}/crm/contact/details/${d.bitrixLinkedContact.id}/`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-primary mt-2 inline-flex cursor-pointer items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
-                    >
-                      Open contact in Bitrix
-                      <ExternalLink className="size-3" aria-hidden />
-                    </a>
-                  ) : null}
-                </div>
-              ) : null}
-            </WorkspaceCard>
-          ) : null}
-
-          <WorkspaceCard title="Workspace opportunity" icon={Layers}>
-            <div className="grid gap-2">
-              <SummaryRow label="Title" value={d.appDeal.title ?? "—"} />
-              <SummaryRow label="Stage" value={d.appDeal.stage ?? "—"} />
-            </div>
-            <Link
-              to="/deal-opportunities/$uid"
-              params={{ uid: d.appDeal.id }}
-              className="text-primary mt-4 inline-flex cursor-pointer items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
-            >
-              Open in app
-              <ExternalLink className="size-3.5" aria-hidden />
-            </Link>
-          </WorkspaceCard>
-
-          <WorkspaceCard
-            title="Bitrix deal fields"
-            description="Only fields with a value from crm.deal.get. File attachment fields are omitted."
-          >
-            <div className="border-border/70 max-h-[40vh] overflow-auto rounded-lg border">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-muted/60 sticky top-0 backdrop-blur-sm">
-                  <tr>
-                    <th className="border-border/80 border-b px-3 py-2 font-semibold">
-                      Label
-                    </th>
-                    <th className="border-border/80 border-b px-3 py-2 font-semibold">
-                      Value
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {d.bitrixDealFields.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={2}
-                        className="text-muted-foreground px-3 py-4 text-center"
-                      >
-                        No Bitrix payload (webhook or deal fetch failed).
-                      </td>
-                    </tr>
-                  ) : bitrixFilledFields.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={2}
-                        className="text-muted-foreground px-3 py-4 text-center"
-                      >
-                        No non-empty field values on this deal.
-                      </td>
-                    </tr>
-                  ) : (
-                    bitrixFilledFields.map((row) => (
-                      <tr
-                        key={row.key}
-                        className="border-border/50 border-b last:border-0"
-                      >
-                        <td className="text-foreground w-[min(40%,200px)] px-3 py-2 align-top font-medium">
-                          {row.label}
-                        </td>
-                        <td className="max-w-[min(55vw,320px)] px-3 py-2 wrap-break-word whitespace-pre-wrap">
-                          {row.value}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div className="border-border/80 mt-6 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-muted-foreground text-xs leading-relaxed sm:max-w-md">
+                {canContinueFromDocuments
+                  ? "Indexed chunks are ready. Continue to pick a screener and start screening."
+                  : "Wait until indexing finishes and chunk count is above zero, then continue."}
+              </p>
+              <Button
+                type="button"
+                className="cursor-pointer shrink-0"
+                disabled={!canContinueFromDocuments}
+                onClick={() => setWorkflowStep(2)}
+              >
+                Continue to screening
+              </Button>
             </div>
           </WorkspaceCard>
-
+          ) : workflowStep === 2 ? (
+          <div className="space-y-4">
           <WorkspaceCard title="Run screening" icon={Play}>
             <div className="space-y-4">
               <div>
@@ -1234,12 +1129,89 @@ export function BitrixScreeningWidgetWorkspace({
               </div>
             </div>
           </WorkspaceCard>
-        </div>
 
-        <div className="flex min-h-0 min-w-0 flex-col gap-4 md:sticky md:top-4 md:self-start">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="cursor-pointer gap-1.5"
+            onClick={() => setWorkflowStep(1)}
+          >
+            <ChevronLeft className="size-4" aria-hidden />
+            Back to documents
+          </Button>
+          </div>
+          ) : (
+          <div className="space-y-5">
+          <WorkspaceCard
+            title="Screening history"
+            icon={History}
+            description="Click a run to load its answers below."
+          >
+            {d.recentScreeningRuns.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No runs yet.</p>
+            ) : (
+              <ul className="space-y-3 text-sm">
+                {d.recentScreeningRuns.map((r) => (
+                  <li
+                    key={r.runId}
+                    className={cn(
+                      "space-y-2 rounded-lg border px-3 py-2.5 text-xs transition-colors",
+                      effectiveViewRunId === r.runId
+                        ? "border-primary/50 bg-primary/[0.07] ring-primary/25 ring-1"
+                        : "border-border/70 bg-muted/10 hover:bg-muted/20",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      className="w-full cursor-pointer text-left"
+                      onClick={() => {
+                        setWorkflowStep(3);
+                        const isLatest = r.runId === d.lastRun?.runId;
+                        setViewRunId(isLatest ? null : r.runId);
+                      }}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                          <span className="font-semibold">{r.status}</span>
+                          {r.screenerName ? (
+                            <span className="text-muted-foreground">
+                              {r.screenerName}
+                            </span>
+                          ) : null}
+                          <span className="text-muted-foreground font-mono text-[11px]">
+                            {new Date(r.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        {effectiveViewRunId === r.runId ? (
+                          <span className="text-primary shrink-0 text-[10px] font-semibold tracking-wide uppercase">
+                            Showing
+                          </span>
+                        ) : null}
+                      </div>
+                    </button>
+                    {r.documentsAtRun.length > 0 ? (
+                      <div className="text-muted-foreground text-[11px] leading-relaxed">
+                        <span className="text-foreground font-medium">
+                          Files in this run:
+                        </span>{" "}
+                        {r.documentsAtRun.map((x) => x.fileName).join(", ")}
+                      </div>
+                    ) : null}
+                    {r.errorMessage ? (
+                      <span className="text-destructive block whitespace-pre-wrap">
+                        {r.errorMessage}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </WorkspaceCard>
+
           <WorkspaceCard
             title="Screening result"
-            className="border-primary/15 bg-card/90 min-h-[200px] shadow-md backdrop-blur-md md:min-h-[280px]"
+            className="border-primary/15 bg-card/90 min-h-[240px] shadow-md backdrop-blur-md"
           >
             {d.activeJobs.length > 0 ? (
               <div className="text-muted-foreground mb-4 flex items-center gap-2 text-sm">
@@ -1350,8 +1322,8 @@ export function BitrixScreeningWidgetWorkspace({
                               <strong className="text-foreground font-medium">
                                 Start screening
                               </strong>{" "}
-                              (including the vector wait). Choose a screener
-                              above if you want a different one.
+                              (including the vector wait). Go back to the Run
+                              screening step to pick a different screener.
                             </p>
                           </div>
                         ) : null}
@@ -1395,6 +1367,201 @@ export function BitrixScreeningWidgetWorkspace({
               </div>
             )}
           </WorkspaceCard>
+
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="cursor-pointer gap-1.5"
+              onClick={() => setWorkflowStep(2)}
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+              Back to run screening
+            </Button>
+          </div>
+          </div>
+          )}
+
+          <Collapsible defaultOpen={false} className="border-border/80 bg-muted/15 w-full rounded-xl border">
+            <CollapsibleTrigger
+              type="button"
+              className={cn(
+                "group border-border/70 flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl px-4 py-3 text-left text-sm font-medium transition-colors",
+                "hover:bg-muted/40 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-background focus-visible:ring-offset-2 focus-visible:outline-none",
+              )}
+            >
+              <span>Deal & Bitrix details</span>
+              <ChevronDown
+                className="text-muted-foreground size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180 motion-reduce:transition-none"
+                aria-hidden
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="border-border/60 data-[state=closed]:animate-out data-[state=open]:animate-in space-y-4 border-t px-4 pt-4 pb-4">
+              {d.bitrixLinkedContact || d.bitrixLinkedCompany ? (
+                <WorkspaceCard
+                  title="Bitrix contact & company"
+                  icon={Building2}
+                  description="From CONTACT_ID / COMPANY_ID via REST."
+                >
+                  {d.bitrixLinkedCompany ? (
+                    <div className="border-border/80 bg-muted/10 mb-4 space-y-2 rounded-lg border px-3 py-3 text-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-semibold">
+                          {d.bitrixLinkedCompany.title}
+                        </div>
+                        <Building2
+                          className="text-muted-foreground size-4 shrink-0"
+                          aria-hidden
+                        />
+                      </div>
+                      {d.bitrixLinkedCompany.industry ? (
+                        <div className="text-muted-foreground text-xs">
+                          {d.bitrixLinkedCompany.industry}
+                        </div>
+                      ) : null}
+                      {d.bitrixLinkedCompany.email ? (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Email: </span>
+                          {d.bitrixLinkedCompany.email}
+                        </div>
+                      ) : null}
+                      {d.bitrixLinkedCompany.phones ? (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Phone: </span>
+                          {d.bitrixLinkedCompany.phones}
+                        </div>
+                      ) : null}
+                      {d.bitrixLinkedCompany.website ? (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Web: </span>
+                          {d.bitrixLinkedCompany.website}
+                        </div>
+                      ) : null}
+                      {d.portalBaseUrl ? (
+                        <a
+                          href={`${d.portalBaseUrl.replace(/\/+$/, "")}/crm/company/details/${d.bitrixLinkedCompany.id}/`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary mt-2 inline-flex cursor-pointer items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
+                        >
+                          Open company in Bitrix
+                          <ExternalLink className="size-3" aria-hidden />
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {d.bitrixLinkedContact ? (
+                    <div className="border-border/80 bg-muted/10 space-y-2 rounded-lg border px-3 py-3 text-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-semibold">
+                          {d.bitrixLinkedContact.displayName}
+                        </div>
+                        <User
+                          className="text-muted-foreground size-4 shrink-0"
+                          aria-hidden
+                        />
+                      </div>
+                      {d.bitrixLinkedContact.email ? (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Email: </span>
+                          {d.bitrixLinkedContact.email}
+                        </div>
+                      ) : null}
+                      {d.bitrixLinkedContact.phones ? (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Phone: </span>
+                          {d.bitrixLinkedContact.phones}
+                        </div>
+                      ) : null}
+                      {d.portalBaseUrl ? (
+                        <a
+                          href={`${d.portalBaseUrl.replace(/\/+$/, "")}/crm/contact/details/${d.bitrixLinkedContact.id}/`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary mt-2 inline-flex cursor-pointer items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
+                        >
+                          Open contact in Bitrix
+                          <ExternalLink className="size-3" aria-hidden />
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </WorkspaceCard>
+              ) : null}
+
+              <WorkspaceCard title="Workspace opportunity" icon={Layers}>
+                <div className="grid gap-2">
+                  <SummaryRow label="Title" value={d.appDeal.title ?? "—"} />
+                  <SummaryRow label="Stage" value={d.appDeal.stage ?? "—"} />
+                </div>
+                <Link
+                  to="/deal-opportunities/$uid"
+                  params={{ uid: d.appDeal.id }}
+                  className="text-primary mt-4 inline-flex cursor-pointer items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+                >
+                  Open in app
+                  <ExternalLink className="size-3.5" aria-hidden />
+                </Link>
+              </WorkspaceCard>
+
+              <WorkspaceCard
+                title="Bitrix deal fields"
+                description="Only fields with a value from crm.deal.get. File attachment fields are omitted."
+              >
+                <div className="border-border/70 max-h-[40vh] overflow-auto rounded-lg border">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-muted/60 sticky top-0 backdrop-blur-sm">
+                      <tr>
+                        <th className="border-border/80 border-b px-3 py-2 font-semibold">
+                          Label
+                        </th>
+                        <th className="border-border/80 border-b px-3 py-2 font-semibold">
+                          Value
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.bitrixDealFields.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={2}
+                            className="text-muted-foreground px-3 py-4 text-center"
+                          >
+                            No Bitrix payload (webhook or deal fetch failed).
+                          </td>
+                        </tr>
+                      ) : bitrixFilledFields.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={2}
+                            className="text-muted-foreground px-3 py-4 text-center"
+                          >
+                            No non-empty field values on this deal.
+                          </td>
+                        </tr>
+                      ) : (
+                        bitrixFilledFields.map((row) => (
+                          <tr
+                            key={row.key}
+                            className="border-border/50 border-b last:border-0"
+                          >
+                            <td className="text-foreground w-[min(40%,200px)] px-3 py-2 align-top font-medium">
+                              {row.label}
+                            </td>
+                            <td className="max-w-[min(55vw,320px)] px-3 py-2 wrap-break-word whitespace-pre-wrap">
+                              {row.value}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </WorkspaceCard>
+            </CollapsibleContent>
+          </Collapsible>
+
         </div>
       </div>
     </div>
