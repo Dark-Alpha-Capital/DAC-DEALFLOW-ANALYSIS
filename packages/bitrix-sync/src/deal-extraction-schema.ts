@@ -20,13 +20,7 @@ export const bitrixDealOpportunityExtractionSchema = z.object({
   teaser: z
     .string()
     .describe(
-      "Full deal narrative: complete description, thesis, risks, and notes to store as the deal teaser / long-form text in Bitrix (may be multiple paragraphs).",
-    ),
-  sourceWebsite: z
-    .string()
-    .nullable()
-    .describe(
-      "Company or listing URL from the text (https://…); null only if absent—users must supply one before sync.",
+      "Deal narrative for Bitrix teaser: description, thesis, risks, notes. Use an empty string if the source has no long-form narrative (users may add it later).",
     ),
   companyLocation: z
     .string()
