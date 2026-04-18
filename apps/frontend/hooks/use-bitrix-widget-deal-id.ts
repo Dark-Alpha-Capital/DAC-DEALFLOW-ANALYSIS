@@ -3,6 +3,13 @@ import {
   extractDealIdFromPlacementInfo,
   extractDealIdFromReferrer,
 } from "@/lib/bitrix-widget-client";
+import {
+  mergeBitrixWidgetSearchWithSession,
+  readBitrixWidgetSessionCache,
+  writeBitrixWidgetSessionCache,
+  type BitrixWidgetSearchFields,
+  type BitrixWidgetSessionCacheV1,
+} from "@/lib/bitrix-widget-session-cache";
 
 export type BitrixWidgetLoaderPost = {
   initialDealId: string | null;
@@ -10,58 +17,43 @@ export type BitrixWidgetLoaderPost = {
   postKeys: string[];
 };
 
+export type BitrixWidgetWorkspaceInput = {
+  memberId?: string;
+  expiresAt?: number;
+  authSig?: string;
+  authId?: string;
+  appSid?: string;
+  domain?: string;
+};
+
 /**
- * Resolves Bitrix deal id from URL search, SSR POST (loader), then BX24 / referrer.
+ * URL → Bitrix POST body (loader) → BX24 placement → sessionStorage (reload / HMR).
+ * Persists deal id + auth fields to sessionStorage once a deal id is known.
  */
-export function useBitrixWidgetDealId(args: {
-  searchDealId?: string;
-  loader: BitrixWidgetLoaderPost;
-}) {
-  const { searchDealId, loader } = args;
+export function useBitrixWidgetDealId(
+  search: BitrixWidgetSearchFields,
+  loader: BitrixWidgetLoaderPost,
+) {
+  const searchDealId = search.dealId;
   const [fromBitrixUi, setFromBitrixUi] = useState<string | undefined>();
-  const [bitrixFrontendDebug, setBitrixFrontendDebug] = useState<
-    Record<string, unknown>
-  >({});
+  const [sessionRow, setSessionRow] = useState<BitrixWidgetSessionCacheV1 | null>(
+    null,
+  );
+
+  useEffect(() => {
+    setSessionRow(readBitrixWidgetSessionCache());
+  }, []);
+
+  const merged = useMemo(
+    () => mergeBitrixWidgetSearchWithSession(search, sessionRow),
+    [search, sessionRow],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
     const bx = window.BX24;
-    const base: Record<string, unknown> = {
-      hasBX24: Boolean(bx),
-      topIsSelf: window.top === window.self,
-      referrer: document.referrer || null,
-      search: window.location.search,
-    };
-
-    const collectBxMeta = (): Record<string, unknown> => {
-      if (!bx) return base;
-      let next: Record<string, unknown> = {
-        ...base,
-        bx24Keys: Object.keys(bx),
-        hasPlacementInfo: typeof bx.placement?.info === "function",
-        hasPlacementGetOptions: typeof bx.placement?.getOptions === "function",
-      };
-      for (const [key, fn] of [
-        ["bx24GetAuth", bx.getAuth],
-        ["bx24GetPlacement", bx.getPlacement],
-        ["bx24GetLang", bx.getLang],
-      ] as const) {
-        if (typeof fn !== "function") continue;
-        try {
-          next = { ...next, [key]: fn() };
-        } catch (e) {
-          next = {
-            ...next,
-            [`${key}Error`]: e instanceof Error ? e.message : String(e),
-          };
-        }
-      }
-      return next;
-    };
 
     const applyPlacementInfo = (info: unknown) => {
-      const meta = collectBxMeta();
       const fromPlacement = extractDealIdFromPlacementInfo(info);
       const locked = Boolean(searchDealId || loader.initialDealId);
       if (!locked && fromPlacement) setFromBitrixUi(fromPlacement);
@@ -69,12 +61,15 @@ export function useBitrixWidgetDealId(args: {
         const refId = extractDealIdFromReferrer();
         if (refId) setFromBitrixUi(refId);
       }
-      setBitrixFrontendDebug({ ...meta, bx24PlacementInfo: info ?? null });
     };
 
     const run = () => {
       if (!bx) {
-        setBitrixFrontendDebug(base);
+        const locked = Boolean(searchDealId || loader.initialDealId);
+        if (!locked) {
+          const refId = extractDealIdFromReferrer();
+          if (refId) setFromBitrixUi(refId);
+        }
         return;
       }
       try {
@@ -91,13 +86,8 @@ export function useBitrixWidgetDealId(args: {
           const refId = extractDealIdFromReferrer();
           if (refId) setFromBitrixUi(refId);
         }
-        setBitrixFrontendDebug(collectBxMeta());
-      } catch (e) {
-        setBitrixFrontendDebug({
-          ...collectBxMeta(),
-          bx24PlacementInfoError:
-            e instanceof Error ? e.message : String(e),
-        });
+      } catch {
+        /* placement optional */
       }
     };
 
@@ -112,26 +102,49 @@ export function useBitrixWidgetDealId(args: {
     searchDealId?.trim() ||
     loader.initialDealId?.trim() ||
     fromBitrixUi?.trim() ||
+    sessionRow?.dealId?.trim() ||
     undefined;
 
-  const debugPayload = useMemo(
+  const workspaceInput: BitrixWidgetWorkspaceInput = useMemo(
     () => ({
-      effectiveDealId,
-      server: {
-        placement: loader.bitrixPlacement,
-        postKeys: loader.postKeys,
-        initialDealId: loader.initialDealId,
-      },
-      bitrixFrontend: bitrixFrontendDebug,
+      memberId: merged.memberId,
+      expiresAt: merged.expiresAt,
+      authSig: merged.authSig,
+      authId: merged.authId,
+      appSid: merged.appSid,
+      domain: merged.domain,
     }),
     [
-      effectiveDealId,
-      loader.bitrixPlacement,
-      loader.postKeys,
-      loader.initialDealId,
-      bitrixFrontendDebug,
+      merged.memberId,
+      merged.expiresAt,
+      merged.authSig,
+      merged.authId,
+      merged.appSid,
+      merged.domain,
     ],
   );
 
-  return { effectiveDealId, debugPayload };
+  useEffect(() => {
+    const id = effectiveDealId?.trim();
+    if (!id) return;
+    writeBitrixWidgetSessionCache({
+      dealId: id,
+      memberId: merged.memberId,
+      expiresAt: merged.expiresAt,
+      authSig: merged.authSig,
+      authId: merged.authId,
+      appSid: merged.appSid,
+      domain: merged.domain,
+    });
+  }, [
+    effectiveDealId,
+    merged.memberId,
+    merged.expiresAt,
+    merged.authSig,
+    merged.authId,
+    merged.appSid,
+    merged.domain,
+  ]);
+
+  return { effectiveDealId, workspaceInput };
 }

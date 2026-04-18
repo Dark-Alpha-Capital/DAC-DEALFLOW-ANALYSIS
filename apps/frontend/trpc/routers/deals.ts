@@ -10,8 +10,8 @@ import {
   addRiskFlagSchema,
   adminDeleteDealInputSchema,
   bitrixSyncDealOpportunitySchema,
-  bitrixScreeningWidgetBootstrapSchema,
   bitrixScreeningWidgetUploadBatchSchema,
+  bitrixScreeningWidgetDeleteDocumentSchema,
   bitrixScreeningWidgetStartRunSchema,
   bitrixScreeningWidgetRetryCommentSchema,
   bitrixScreeningWidgetRunDetailSchema,
@@ -70,6 +70,8 @@ import {
   createDealRiskFlag,
   insertCimScreeningSession,
   insertCimScreeningRun,
+  getDocumentFileMetaForDelete,
+  deleteDocumentById,
 } from "@repo/db/mutations";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
@@ -93,7 +95,6 @@ import {
   GetDealFinancialSnapshotsByDealOpportunityId,
   GetDealRiskFlagsByDealOpportunityId,
   countDocumentChunksByDealOpportunityId,
-  getAllScreeners,
   getScreenerById,
   getCimScreeningRunByIdForUser,
   getCimScreeningSessionByIdForUser,
@@ -115,11 +116,18 @@ import {
   selectDealOpportunityBitrixIds,
   listCimScreeningRunsForDealOpportunity,
   listDealOpportunityDocumentsSummary,
-  listActiveIngestionPipelineJobsForDeal,
   getCimScreeningAnswersWithQuestionsByRunId,
   getDocumentChunksByIds,
 } from "@repo/db/queries";
-import { buildNextcloudFileUrl, uploadBuffer } from "@repo/nextcloud";
+import {
+  buildNextcloudFileUrl,
+  uploadBuffer,
+  deleteFile,
+} from "@repo/nextcloud";
+import {
+  deleteChunkVectorsForDocument,
+  getDocumentChunksVectorIndex,
+} from "@/lib/document-chunk-vectorize";
 import { TRPCError } from "@trpc/server";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import {
@@ -131,35 +139,34 @@ import {
   buildBitrixDealDetailUrl,
   buildCrmDealFieldsFromOpportunitySync,
   callBitrix,
-  callBitrixListAll,
   type BitrixContactBrokerFields,
-  type BitrixDealFieldRow,
   extractBitrixDealCompanyId,
   extractBitrixDealContactIds,
   extractBitrixDealListStageIdRaw,
   fetchBitrixCompanyTitleMap,
   fetchBitrixContactBrokerMap,
   fetchDealsForSyncPipeline,
-  formatBitrixMoneyForDisplay,
   getBitrixDealStages,
   getDefaultBitrixStageId,
   getAiBitrixFormFieldMeta,
   getBitrixDealFieldsCatalog,
   getBitrixSyncEnv,
   inferPortalBaseFromWebhook,
-  mergeBitrixDealFieldRows,
-  normalizeBitrixDealFieldsResult,
-  normalizeBitrixDealUserfieldListItem,
   normalizeBitrixListRow,
   resolveBitrixDealTeaserFieldCode,
 } from "@repo/bitrix-sync";
 import { getBitrixSyncPreviewData } from "@/lib/server/bitrix-sync-preview-data";
 import { mapEvidenceChunkIdsToCitations } from "@/lib/map-cim-screening-evidence";
 import { fetchBitrixWidgetScreeningListingContext } from "@/lib/server/bitrix-widget-screening-listing-context";
-import { verifyBitrixWidgetSignature } from "@/lib/server/bitrix-widget-signature";
-import { verifyBitrixAuthId } from "@/lib/server/bitrix-ai-widget-gate";
-import db, { workflowJobs, desc, and as drizzleAnd, inArray, eq } from "@repo/db";
-import { dealOpportunities } from "@repo/db/schema";
+import {
+  assertValidBitrixWidgetContext,
+  resolveDealOpportunityForBitrixDeal,
+} from "@/lib/server/bitrix-widget-deal-resolve";
+import {
+  fetchBitrixWidgetLinkedEntities,
+  type BitrixWidgetLinkedEntities,
+} from "@/lib/server/bitrix-widget-linked-entities";
+import db, { workflowJobs, and as drizzleAnd, inArray, eq } from "@repo/db";
 
 function defaultDealOpportunityStage(): string {
   return getDefaultBitrixStageId(getBitrixDealStages());
@@ -181,330 +188,6 @@ function isUniqueViolationError(error: unknown): boolean {
     "code" in error &&
     (error as { code?: string }).code === "23505"
   );
-}
-
-async function assertValidBitrixWidgetContext(input: {
-  dealId: string;
-  memberId?: string;
-  expiresAt?: number;
-  authSig?: string;
-  authId?: string;
-  appSid?: string;
-  domain?: string;
-}) {
-  if (input.memberId && input.expiresAt && input.authSig) {
-    const verified = verifyBitrixWidgetSignature({
-      dealId: input.dealId,
-      memberId: input.memberId,
-      expiresAt: input.expiresAt,
-      authSig: input.authSig,
-    });
-    if (!verified.ok) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: verified.reason,
-      });
-    }
-    return;
-  }
-
-  if (input.authId && input.domain) {
-    const ok = await verifyBitrixAuthId(input.authId, input.domain);
-    if (ok) return;
-  }
-
-  // Some Bitrix placements pass APP_SID + DOMAIN instead of AUTH_ID.
-  if (input.appSid && input.domain) {
-    return;
-  }
-
-  throw new TRPCError({
-    code: "FORBIDDEN",
-    message:
-      "Missing widget auth. Provide signed params (memberId/expiresAt/authSig) or Bitrix AUTH_ID + DOMAIN.",
-  });
-}
-
-async function resolveDealOpportunityForBitrixDeal(bitrixDealId: string) {
-  const [existing] = await db
-    .select({ id: dealOpportunities.id })
-    .from(dealOpportunities)
-    .where(eq(dealOpportunities.bitrixId, bitrixDealId))
-    .limit(1);
-  if (existing?.id) return existing.id;
-
-  const created = await insertDealOpportunityRow({
-    companyId: null,
-    leadId: null,
-    sourceWebsite: null,
-    brokerage: "Bitrix24",
-    revenue: null,
-    ebitda: null,
-    ebitdaMargin: null,
-    askingPrice: null,
-    title: `Bitrix deal ${bitrixDealId}`,
-    dealTeaser: `Imported from Bitrix deal ${bitrixDealId}`,
-    description: null,
-    brokerFirstName: null,
-    brokerLastName: null,
-    brokerEmail: null,
-    brokerPhone: null,
-    brokerLinkedIn: null,
-    userId: null,
-    stage: defaultDealOpportunityStage(),
-  });
-  if (!created?.id) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Failed to create deal mapping for Bitrix widget",
-    });
-  }
-  await updateDealOpportunityBitrixFields(created.id, {
-    bitrixId: bitrixDealId,
-    bitrixLink: null,
-    bitrixCreatedAt: new Date(),
-  });
-  return created.id;
-}
-
-/** Omit CRM file / disk attachment fields from the widget field table (manual upload only). */
-function bitrixWidgetOmitFileFieldType(fieldType: string | null | undefined): boolean {
-  const t = (fieldType ?? "").toLowerCase();
-  return t.includes("file") || t.includes("disk");
-}
-
-function parseDealDocumentsSnapshot(raw: unknown): Array<{
-  id: string;
-  fileName: string;
-  contentHash: string | null;
-}> {
-  if (raw == null || typeof raw !== "object") return [];
-  const docs = (raw as { documents?: unknown }).documents;
-  if (!Array.isArray(docs)) return [];
-  const out: Array<{ id: string; fileName: string; contentHash: string | null }> = [];
-  for (const d of docs) {
-    if (!d || typeof d !== "object") continue;
-    const o = d as Record<string, unknown>;
-    const id = typeof o.id === "string" ? o.id.trim() : "";
-    if (!id) continue;
-    out.push({
-      id,
-      fileName: typeof o.fileName === "string" ? o.fileName : id,
-      contentHash: typeof o.contentHash === "string" ? o.contentHash : null,
-    });
-  }
-  return out;
-}
-
-type BitrixWidgetLinkedContact = {
-  id: string;
-  displayName: string;
-  email: string | null;
-  phones: string | null;
-};
-
-type BitrixWidgetLinkedCompany = {
-  id: string;
-  title: string;
-  email: string | null;
-  phones: string | null;
-  website: string | null;
-  industry: string | null;
-};
-
-type BitrixWidgetLinkedEntities = {
-  contact: BitrixWidgetLinkedContact | null;
-  company: BitrixWidgetLinkedCompany | null;
-};
-
-function normalizeBitrixEntityId(v: unknown): string | null {
-  if (v == null || v === "") return null;
-  const s = String(v).trim();
-  if (!s || s === "0") return null;
-  return /^\d+$/.test(s) ? s : null;
-}
-
-function stringifyBitrixMultiValue(v: unknown): string | null {
-  if (v == null || v === "") return null;
-  if (typeof v === "string") {
-    const t = v.trim();
-    return t || null;
-  }
-  if (Array.isArray(v)) {
-    const parts: string[] = [];
-    for (const x of v) {
-      if (x && typeof x === "object" && "VALUE" in (x as object)) {
-        const val = (x as { VALUE?: unknown }).VALUE;
-        if (typeof val === "string" && val.trim()) parts.push(val.trim());
-      }
-    }
-    const s = parts.join(", ").trim();
-    return s || null;
-  }
-  return null;
-}
-
-function contactDisplayName(row: Record<string, unknown>): string {
-  const parts = [
-    typeof row.NAME === "string" ? row.NAME.trim() : "",
-    typeof row.LAST_NAME === "string" ? row.LAST_NAME.trim() : "",
-    typeof row.SECOND_NAME === "string" ? row.SECOND_NAME.trim() : "",
-  ].filter(Boolean);
-  if (parts.length > 0) return parts.join(" ");
-  return typeof row.FULL_NAME === "string" && row.FULL_NAME.trim()
-    ? row.FULL_NAME.trim()
-    : "Contact";
-}
-
-async function fetchBitrixLinkedContact(
-  id: string,
-  webhookOpts: { webhookBaseUrl: string },
-): Promise<BitrixWidgetLinkedContact | null> {
-  try {
-    const row = await callBitrix<Record<string, unknown>>(
-      "crm.contact.get",
-      { id },
-      webhookOpts,
-    );
-    return {
-      id,
-      displayName: contactDisplayName(row),
-      email: stringifyBitrixMultiValue(row.EMAIL),
-      phones: stringifyBitrixMultiValue(row.PHONE),
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function fetchBitrixLinkedCompany(
-  id: string,
-  webhookOpts: { webhookBaseUrl: string },
-): Promise<BitrixWidgetLinkedCompany | null> {
-  try {
-    const row = await callBitrix<Record<string, unknown>>(
-      "crm.company.get",
-      { id },
-      webhookOpts,
-    );
-    const title =
-      typeof row.TITLE === "string" && row.TITLE.trim()
-        ? row.TITLE.trim()
-        : `Company ${id}`;
-    return {
-      id,
-      title,
-      email: stringifyBitrixMultiValue(row.EMAIL),
-      phones: stringifyBitrixMultiValue(row.PHONE),
-      website:
-        typeof row.WEB === "string" && row.WEB.trim()
-          ? row.WEB.trim()
-          : typeof row.WEBSITE === "string" && row.WEBSITE.trim()
-            ? row.WEBSITE.trim()
-            : null,
-      industry:
-        typeof row.INDUSTRY === "string" && row.INDUSTRY.trim()
-          ? row.INDUSTRY.trim()
-          : null,
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function fetchBitrixWidgetLinkedEntities(
-  rawDeal: Record<string, unknown> | null | undefined,
-  webhookOpts: { webhookBaseUrl: string },
-): Promise<BitrixWidgetLinkedEntities> {
-  const contactId = normalizeBitrixEntityId(
-    rawDeal?.CONTACT_ID ?? rawDeal?.contactId,
-  );
-  const companyId = normalizeBitrixEntityId(
-    rawDeal?.COMPANY_ID ?? rawDeal?.companyId,
-  );
-  const [contact, company] = await Promise.all([
-    contactId ? fetchBitrixLinkedContact(contactId, webhookOpts) : null,
-    companyId ? fetchBitrixLinkedCompany(companyId, webhookOpts) : null,
-  ]);
-  return {
-    contact: contact ?? null,
-    company: company ?? null,
-  };
-}
-
-function buildBitrixOpportunitySyncFieldLabelById(): Map<string, string> {
-  const meta = getAiBitrixFormFieldMeta();
-  const m = new Map<string, string>();
-  for (const v of Object.values(meta)) {
-    const id = v.bitrixFieldId?.trim();
-    if (id) m.set(id, v.label);
-  }
-  return m;
-}
-
-function formatBitrixWidgetFieldDisplayValue(
-  fieldType: string | null,
-  raw: unknown,
-  serialize: (v: unknown) => string,
-): string {
-  const t = (fieldType ?? "").toLowerCase();
-  if (t === "money") {
-    const formatted = formatBitrixMoneyForDisplay(raw);
-    if (formatted) return formatted;
-  }
-  if (typeof raw === "string" && raw.includes("|")) {
-    const formatted = formatBitrixMoneyForDisplay(raw);
-    if (formatted) return formatted;
-  }
-  if (
-    raw !== null &&
-    typeof raw === "object" &&
-    !Array.isArray(raw) &&
-    "VALUE" in (raw as object) &&
-    ("CURRENCY" in (raw as object) || "currency" in (raw as object))
-  ) {
-    const formatted = formatBitrixMoneyForDisplay(raw);
-    if (formatted) return formatted;
-  }
-  return serialize(raw);
-}
-
-async function loadBitrixDealFieldRowsForWidget(webhookBaseUrl: string | undefined): Promise<{
-  rows: BitrixDealFieldRow[];
-  source: "live" | "catalog";
-}> {
-  const catalog = getBitrixDealFieldsCatalog();
-  if (!webhookBaseUrl?.trim()) {
-    return { rows: catalog, source: "catalog" };
-  }
-  try {
-    const rawFields = await callBitrix<Record<string, unknown>>(
-      "crm.deal.fields",
-      {},
-      { webhookBaseUrl },
-    );
-    const fromDeal = normalizeBitrixDealFieldsResult(rawFields);
-    const userfieldRows: BitrixDealFieldRow[] = [];
-    try {
-      const ufItems = await callBitrixListAll<Record<string, unknown>>(
-        "crm.deal.userfield.list",
-        { order: { ID: "ASC" } },
-        { webhookBaseUrl },
-      );
-      for (const item of ufItems) {
-        const row = normalizeBitrixDealUserfieldListItem(item);
-        if (row) userfieldRows.push(row);
-      }
-    } catch {
-      /* userfield list is optional */
-    }
-    return {
-      rows: mergeBitrixDealFieldRows(fromDeal, userfieldRows),
-      source: "live",
-    };
-  } catch {
-    return { rows: catalog, source: "catalog" };
-  }
 }
 
 export const dealsRouter = createTRPCRouter({
@@ -1834,238 +1517,6 @@ export const dealsRouter = createTRPCRouter({
     };
   }),
 
-  getBitrixScreeningWidgetContext: publicProcedure
-    .input(bitrixScreeningWidgetBootstrapSchema)
-    .query(async ({ input }) => {
-      await assertValidBitrixWidgetContext(input);
-      const env = getBitrixSyncEnv();
-      const dealOpportunityId = await resolveDealOpportunityForBitrixDeal(
-        input.dealId,
-      );
-
-      const [screeners, latestRunRows, activeJobs, appOpp] =
-        await Promise.all([
-          getAllScreeners(),
-          listCimScreeningRunsForDealOpportunity(dealOpportunityId),
-          db
-            .select({
-              instanceId: workflowJobs.instanceId,
-              state: workflowJobs.state,
-              screenerId: workflowJobs.screenerId,
-              updatedAt: workflowJobs.updatedAt,
-            })
-            .from(workflowJobs)
-            .where(
-              drizzleAnd(
-                eq(workflowJobs.workflowKind, "cim-screening"),
-                eq(workflowJobs.dealId, dealOpportunityId),
-                inArray(workflowJobs.state, ["waiting", "active", "delayed"]),
-              ),
-            )
-            .orderBy(desc(workflowJobs.updatedAt)),
-          GetDealOpportunityById(dealOpportunityId),
-        ]);
-
-      const bitrixStr = (v: unknown) => {
-        if (v == null) return null;
-        const s = String(v).trim();
-        return s || null;
-      };
-
-      let bitrixDeal: {
-        id: string;
-        title: string | null;
-        stageId: string | null;
-        amount: string | null;
-      } | null = null;
-      let bitrixDealFields: Array<{
-        key: string;
-        label: string;
-        type: string | null;
-        value: string;
-      }> = [];
-      let bitrixFieldLabelSource: "live" | "catalog" | "none" = "none";
-      let bitrixLinkedEntities: BitrixWidgetLinkedEntities | null = null;
-
-      const portalBaseForUi =
-        env?.portalBaseUrl?.trim() ||
-        (env?.webhookBaseUrl
-          ? inferPortalBaseFromWebhook(env.webhookBaseUrl)
-          : "");
-
-      const serializeBitrixValue = (value: unknown): string => {
-        if (value == null || value === "") return "—";
-        if (
-          typeof value === "string" ||
-          typeof value === "number" ||
-          typeof value === "boolean"
-        ) {
-          return String(value);
-        }
-        try {
-          return JSON.stringify(value);
-        } catch {
-          return String(value);
-        }
-      };
-
-      const webhookOpts = env?.webhookBaseUrl
-        ? { webhookBaseUrl: env.webhookBaseUrl }
-        : undefined;
-
-      try {
-        const [{ rows: fieldRows, source: labelSource }, rawDeal] =
-          await Promise.all([
-            loadBitrixDealFieldRowsForWidget(env?.webhookBaseUrl),
-            callBitrix<Record<string, unknown>>(
-              "crm.deal.get",
-              { id: input.dealId },
-              webhookOpts,
-            ),
-          ]);
-
-        bitrixFieldLabelSource = labelSource;
-        const fieldMetaById = new Map(
-          fieldRows.map((r) => [r.fieldId, r] as const),
-        );
-        const opportunitySyncLabels = buildBitrixOpportunitySyncFieldLabelById();
-
-        bitrixDeal = {
-          id: input.dealId,
-          title: bitrixStr(rawDeal?.TITLE),
-          stageId: bitrixStr(rawDeal?.STAGE_ID),
-          amount: bitrixStr(rawDeal?.OPPORTUNITY),
-        };
-        bitrixDealFields = Object.entries(rawDeal ?? {})
-          .filter(([k]) => k !== "undefined")
-          .filter(([key]) => !bitrixWidgetOmitFileFieldType(fieldMetaById.get(key)?.type))
-          .map(([key, value]) => {
-            const meta = fieldMetaById.get(key);
-            const portalTitle = meta?.title?.trim() ?? "";
-            const label =
-              opportunitySyncLabels.get(key) ??
-              (portalTitle && portalTitle !== key ? portalTitle : key);
-            const fieldType = meta?.type ?? null;
-            return {
-              key,
-              label,
-              type: fieldType,
-              value: formatBitrixWidgetFieldDisplayValue(
-                fieldType,
-                value,
-                serializeBitrixValue,
-              ),
-            };
-          })
-          .sort(
-            (a, b) =>
-              a.label.localeCompare(b.label, undefined, {
-                sensitivity: "base",
-              }) || a.key.localeCompare(b.key),
-          );
-
-        if (webhookOpts?.webhookBaseUrl) {
-          bitrixLinkedEntities = await fetchBitrixWidgetLinkedEntities(
-            rawDeal,
-            webhookOpts,
-          );
-        }
-      } catch (error) {
-        console.warn("[bitrix-screen-widget] failed to fetch Bitrix deal", {
-          bitrixDealId: input.dealId,
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
-
-      const [indexedCount, dealDocuments, ingestionPipelineJobs] =
-        await Promise.all([
-          countDocumentChunksByDealOpportunityId(dealOpportunityId),
-          listDealOpportunityDocumentsSummary(dealOpportunityId),
-          listActiveIngestionPipelineJobsForDeal(dealOpportunityId),
-        ]);
-
-      /** Default 12s (was 45s): brief pause so Vectorize sees new chunks; raise via BITRIX_WIDGET_VECTOR_SETTLE_MS if needed. */
-      const vectorSettleMsAfterIngest = Math.min(
-        Math.max(
-          Number(process.env.BITRIX_WIDGET_VECTOR_SETTLE_MS ?? 12_000),
-          2_000,
-        ),
-        300_000,
-      );
-
-      const latestRun = latestRunRows[0] ?? null;
-      const lastRunAnswers = latestRun
-        ? await getCimScreeningAnswersWithQuestionsByRunId(latestRun.runId)
-        : [];
-
-      const evidenceChunkIdsForRun = lastRunAnswers.flatMap(
-        (a) => a.evidenceChunkIds ?? [],
-      );
-      const evidenceChunkRows =
-        evidenceChunkIdsForRun.length > 0
-          ? await getDocumentChunksByIds(evidenceChunkIdsForRun)
-          : [];
-
-      return {
-        dealOpportunityId,
-        webhookConfigured: Boolean(env?.webhookBaseUrl),
-        portalBaseUrl: portalBaseForUi,
-        bitrixDealId: input.dealId,
-        bitrixDeal,
-        bitrixFieldLabelSource,
-        bitrixDealFields,
-        bitrixLinkedContact: bitrixLinkedEntities?.contact ?? null,
-        bitrixLinkedCompany: bitrixLinkedEntities?.company ?? null,
-        appDeal: {
-          id: dealOpportunityId,
-          title: appOpp?.title ?? null,
-          stage: appOpp?.stage ?? null,
-        },
-        dealDocuments,
-        ingestionPipelineJobs,
-        indexedCount,
-        vectorSettleMsAfterIngest,
-        recentScreeningRuns: latestRunRows.slice(0, 20).map((r) => ({
-          runId: r.runId,
-          sessionId: r.sessionId,
-          status: r.status,
-          screenerName: r.screenerName,
-          createdAt: r.runCreatedAt,
-          errorMessage: r.errorMessage,
-          documentsAtRun: parseDealDocumentsSnapshot(r.dealDocumentsSnapshot),
-        })),
-        screeners: (screeners ?? []).map((s) => ({
-          id: s.id,
-          name: s.name,
-          category: s.category,
-          questionCount: s.questionCount,
-        })),
-        lastRun: latestRun
-          ? {
-            runId: latestRun.runId,
-            status: latestRun.status,
-            errorMessage: latestRun.errorMessage,
-            screenerId: latestRun.screenerId,
-            screenerName: latestRun.screenerName,
-            createdAt: latestRun.runCreatedAt,
-            answers: lastRunAnswers.map((a) => ({
-              questionId: a.questionId,
-              position: a.position,
-              question: a.questionText,
-              score: a.score,
-              rationale: a.rationale,
-              evidenceChunkIds: a.evidenceChunkIds ?? [],
-              evidenceCitations: mapEvidenceChunkIdsToCitations(
-                a.evidenceChunkIds ?? null,
-                evidenceChunkRows,
-              ),
-            })),
-          }
-          : null,
-        activeJobs,
-      };
-    }),
-
   getBitrixScreeningWidgetRunDetail: publicProcedure
     .input(bitrixScreeningWidgetRunDetailSchema)
     .query(async ({ input }) => {
@@ -2271,6 +1722,55 @@ export const dealsRouter = createTRPCRouter({
         uploaded,
         skippedDuplicate,
       };
+    }),
+
+  deleteBitrixScreeningWidgetDocument: publicProcedure
+    .input(bitrixScreeningWidgetDeleteDocumentSchema)
+    .mutation(async ({ input }) => {
+      await assertValidBitrixWidgetContext(input);
+      const dealOpportunityId = await resolveDealOpportunityForBitrixDeal(
+        input.dealId,
+      );
+      const doc = await getDocumentFileMetaForDelete(input.documentId);
+      if (!doc) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Document not found",
+        });
+      }
+      const matchesDeal =
+        doc.entityType === "DEAL_OPPORTUNITY" &&
+        (doc.entityId === dealOpportunityId ||
+          doc.dealOpportunityId === dealOpportunityId);
+      if (!matchesDeal) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Document does not belong to this deal",
+        });
+      }
+      try {
+        const vectorIndex = getDocumentChunksVectorIndex();
+        if (vectorIndex) {
+          await deleteChunkVectorsForDocument(
+            db,
+            vectorIndex,
+            input.documentId,
+          );
+        }
+      } catch (err) {
+        console.error(
+          "[deleteBitrixScreeningWidgetDocument] Vectorize chunk cleanup failed",
+          err,
+        );
+      }
+      await deleteFile(doc.fileUrl);
+      await deleteDocumentById(input.documentId);
+      console.info("[bitrix-widget-delete-document]", {
+        bitrixDealId: input.dealId,
+        dealOpportunityId,
+        documentId: input.documentId,
+      });
+      return { success: true as const };
     }),
 
   startBitrixScreeningWidgetRun: publicProcedure

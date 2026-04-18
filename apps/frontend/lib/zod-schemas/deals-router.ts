@@ -237,6 +237,11 @@ export const bitrixScreeningWidgetUploadBatchSchema =
     category: z.nativeEnum(DealDocumentCategory).default("OTHER"),
   });
 
+export const bitrixScreeningWidgetDeleteDocumentSchema =
+  bitrixWidgetContextAuthSchema.extend({
+    documentId: z.string().min(1),
+  });
+
 export const bitrixScreeningWidgetStartRunSchema =
   bitrixWidgetContextAuthSchema.extend({
     screenerId: z.string().min(1),

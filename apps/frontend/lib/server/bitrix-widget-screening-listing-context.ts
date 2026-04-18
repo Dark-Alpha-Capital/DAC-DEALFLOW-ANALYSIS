@@ -1,5 +1,6 @@
 /**
- * Builds the same Bitrix deal field listing as the embedded widget (`getBitrixScreeningWidgetContext`),
+ * Builds the same Bitrix deal field listing as the embedded widget bootstrap
+ * (`loadBitrixScreeningWidgetBootstrapData`),
  * as plain text for CIM screening prompts. Used only for the Bitrix widget screening path
  * (`dealListingContextSource: "bitrix_live_snapshot"`), not for in-app deal screening (DB row).
  */
