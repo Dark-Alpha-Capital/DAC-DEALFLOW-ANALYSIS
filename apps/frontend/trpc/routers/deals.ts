@@ -156,6 +156,10 @@ import {
   resolveBitrixDealTeaserFieldCode,
 } from "@repo/bitrix-sync";
 import { getBitrixSyncPreviewData } from "@/lib/server/bitrix-sync-preview-data";
+import {
+  requireDealOpportunityForBitrixSync,
+  upsertBitrixCrmDeal,
+} from "@/lib/server/bitrix-deal-opportunity-sync";
 import { mapEvidenceChunkIdsToCitations } from "@/lib/map-cim-screening-evidence";
 import { fetchBitrixWidgetScreeningListingContext } from "@/lib/server/bitrix-widget-screening-listing-context";
 import {
@@ -1966,17 +1970,9 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      let opp = await GetDealOpportunityById(input.dealOpportunityId);
-      if (!opp) {
-        opp = await GetDealOpportunityByLegacyDealId(input.dealOpportunityId);
-      }
-      if (!opp) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Deal opportunity not found",
-        });
-      }
-
+      const opp = await requireDealOpportunityForBitrixSync(
+        input.dealOpportunityId,
+      );
       const fields = buildCrmDealFieldsFromOpportunitySync({
         dealOpportunityId: opp.id,
         categoryId: env.dealCategoryId.trim(),
@@ -2001,24 +1997,10 @@ export const dealsRouter = createTRPCRouter({
         description: input.description ?? null,
       });
 
+      const { bitrixId } = await upsertBitrixCrmDeal(opp, fields);
       const portalBase =
         env.portalBaseUrl?.trim() ||
         inferPortalBaseFromWebhook(env.webhookBaseUrl);
-
-      let bitrixId: string;
-      if (opp.bitrixId?.trim()) {
-        await callBitrix("crm.deal.update", {
-          id: opp.bitrixId.trim(),
-          fields,
-        });
-        bitrixId = opp.bitrixId.trim();
-      } else {
-        const created = await callBitrix<number | string>("crm.deal.add", {
-          fields,
-        });
-        bitrixId = String(created);
-      }
-
       const bitrixLink = portalBase
         ? buildBitrixDealDetailUrl(portalBase, bitrixId)
         : null;
@@ -2078,11 +2060,10 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      let opp = await GetDealOpportunityById(input.dealOpportunityId);
-      if (!opp) {
-        opp = await GetDealOpportunityByLegacyDealId(input.dealOpportunityId);
-      }
-      if (!opp || opp.id !== session.dealOpportunityId) {
+      const opp = await requireDealOpportunityForBitrixSync(
+        input.dealOpportunityId,
+      );
+      if (opp.id !== session.dealOpportunityId) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Deal opportunity not found for this screening session.",
@@ -2113,23 +2094,7 @@ export const dealsRouter = createTRPCRouter({
         description: input.description ?? null,
       });
 
-      const portalBase =
-        env.portalBaseUrl?.trim() ||
-        inferPortalBaseFromWebhook(env.webhookBaseUrl);
-
-      let bitrixId: string;
-      if (opp.bitrixId?.trim()) {
-        await callBitrix("crm.deal.update", {
-          id: opp.bitrixId.trim(),
-          fields,
-        });
-        bitrixId = opp.bitrixId.trim();
-      } else {
-        const created = await callBitrix<number | string>("crm.deal.add", {
-          fields,
-        });
-        bitrixId = String(created);
-      }
+      const { bitrixId } = await upsertBitrixCrmDeal(opp, fields);
 
       await callBitrix("crm.timeline.comment.add", {
         fields: {
@@ -2139,6 +2104,9 @@ export const dealsRouter = createTRPCRouter({
         },
       });
 
+      const portalBase =
+        env.portalBaseUrl?.trim() ||
+        inferPortalBaseFromWebhook(env.webhookBaseUrl);
       const bitrixLink = portalBase
         ? buildBitrixDealDetailUrl(portalBase, bitrixId)
         : null;

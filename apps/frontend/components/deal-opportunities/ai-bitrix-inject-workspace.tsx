@@ -6,8 +6,10 @@ import {
   type ReactNode,
 } from "react";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
+import type { inferRouterOutputs } from "@trpc/server";
 import { useRouter } from "@/lib/navigation-shim";
+import type { AppRouter } from "@/trpc/routers/_app";
 import { bitrixDealOpportunityExtractionSchema } from "@repo/bitrix-sync";
 import { toast } from "sonner";
 import {
@@ -326,19 +328,23 @@ function SummaryRow({
   );
 }
 
-export function AiBitrixInjectWorkspace() {
+export type BitrixAiInjectContext =
+  inferRouterOutputs<AppRouter>["dealOpportunities"]["getBitrixAiInjectContext"];
+
+export function AiBitrixInjectWorkspace({
+  bitrixAiInjectContext: bx,
+}: {
+  bitrixAiInjectContext: BitrixAiInjectContext;
+}) {
   const trpc = useTRPC();
   const router = useRouter();
-  const { data: bx } = useQuery(
-    trpc.dealOpportunities.getBitrixAiInjectContext.queryOptions(),
-  );
 
   const [rawText, setRawText] = useState("");
   const [draft, setDraft] = useState<ReviewDraft | null>(null);
   const [step, setStep] = useState<WorkflowStep>(1);
   const [step2ContinueAttempted, setStep2ContinueAttempted] = useState(false);
 
-  const suggestedStage = bx?.suggestedStageId ?? "";
+  const suggestedStage = bx.suggestedStageId ?? "";
 
   useEffect(() => {
     if (!draft && step !== 1) setStep(1);
@@ -375,11 +381,11 @@ export function AiBitrixInjectWorkspace() {
     },
   });
 
-  const stages = bx?.stages ?? [];
+  const stages = bx.stages ?? [];
   const needsManualStageId = stages.length === 0;
-  const fm = bx?.aiBitrixFieldMeta;
+  const fm = bx.aiBitrixFieldMeta;
   const dealFieldsCatalogEmpty =
-    (bx?.dealFieldsCatalogCount ?? 0) === 0 && Boolean(bx?.webhookConfigured);
+    (bx.dealFieldsCatalogCount ?? 0) === 0 && Boolean(bx.webhookConfigured);
 
   const createMutation = useMutation(
     trpc.dealOpportunities.createOpportunity.mutationOptions({
@@ -501,7 +507,7 @@ export function AiBitrixInjectWorkspace() {
       />
 
       <div className="space-y-2">
-        {!bx?.webhookConfigured && (
+        {!bx.webhookConfigured && (
           <Alert variant="destructive" className="py-2">
             <AlertTitle className="text-sm">Not configured</AlertTitle>
             <AlertDescription className="text-xs sm:text-sm">
@@ -511,7 +517,7 @@ export function AiBitrixInjectWorkspace() {
           </Alert>
         )}
 
-        {needsManualStageId && bx?.webhookConfigured && (
+        {needsManualStageId && bx.webhookConfigured && (
           <Alert className="border-border/80 py-2">
             <AlertTitle className="text-sm">No stage list</AlertTitle>
             <AlertDescription className="text-xs sm:text-sm">

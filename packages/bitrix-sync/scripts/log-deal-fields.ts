@@ -147,7 +147,10 @@ function formatScalarOneLine(value: unknown, maxLen: number): string {
 }
 
 async function main() {
-  const { dealId, jsonOnly, verbose } = parseArgs();
+  const { jsonOnly, verbose } = parseArgs();
+
+  let dealId = "25191"
+
   if (!dealId) {
     console.error(
       "Usage: bun run log-deal <dealId>   or   bun run log-deal --deal=<dealId> [--json] [--verbose]",

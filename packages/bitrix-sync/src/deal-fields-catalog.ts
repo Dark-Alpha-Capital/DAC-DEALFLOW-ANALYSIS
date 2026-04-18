@@ -340,7 +340,8 @@ export function getAiBitrixFormFieldMeta(): Record<
   };
 
   const uf = getBitrixOpportunitySyncUfCodes();
-  const teaserTarget = teaserUf ?? "COMMENTS";
+  /** Sync sends narrative to standard `SOURCE_DESCRIPTION` when no dedicated teaser UF is configured. */
+  const teaserTarget = teaserUf ?? "SOURCE_DESCRIPTION";
   const ebitdaTarget = resolveBitrixDealEbitdaFieldCode() ?? "";
   const ebitdaMarginTarget = resolveBitrixDealEbitdaMarginFieldCode() ?? "";
 
