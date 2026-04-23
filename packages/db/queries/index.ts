@@ -22,3 +22,4 @@ export * from "./users";
 export * from "./cim-screening";
 export * from "./cim-screening-trpc";
 export * from "./deal-detail";
+export * from "./ic-scorer-runs";

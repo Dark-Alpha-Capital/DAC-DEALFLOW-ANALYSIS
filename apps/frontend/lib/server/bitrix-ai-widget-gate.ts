@@ -11,6 +11,9 @@ export const BITRIX_SCREENING_WIDGET_PAGE_PATH =
 export const BITRIX_AI_EXTRACT_API_PATH =
   "/api/deal-opportunities/ai-bitrix-extract";
 
+/** Bitrix deal pull + attachment text for IC scorer (server logs full payload). */
+export const BITRIX_IC_SCORER_API_PATH = "/api/ic-scorer";
+
 const BITRIX_HOST =
   /^(?:[a-z0-9-]+\.)*bitrix24\.(com|ru|de|eu|in|kz|fr|la|co|pl|it|es|com\.br)$/i;
 
@@ -20,7 +23,9 @@ export function isBitrixAiWidgetGatePath(pathname: string): boolean {
     p === BITRIX_AI_WIDGET_PAGE_PATH ||
     p === BITRIX_SCREENING_WIDGET_PAGE_PATH ||
     p === BITRIX_AI_EXTRACT_API_PATH ||
-    pathname.startsWith(`${BITRIX_AI_EXTRACT_API_PATH}/`)
+    pathname.startsWith(`${BITRIX_AI_EXTRACT_API_PATH}/`) ||
+    p === BITRIX_IC_SCORER_API_PATH ||
+    pathname.startsWith(`${BITRIX_IC_SCORER_API_PATH}/`)
   );
 }
 

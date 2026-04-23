@@ -18,7 +18,12 @@ import type {
   WidgetBootstrap,
   WizardStep,
 } from "./types";
-import { screeningFailed, screeningStillRunning } from "./utils";
+import { cn } from "@/lib/utils";
+import {
+  screeningFailed,
+  screeningRunStatusBadgeClassName,
+  screeningStillRunning,
+} from "./utils";
 
 export function StepResults({
   activeJobsCount,
@@ -73,8 +78,8 @@ export function StepResults({
         </div>
 
         {activeJobsCount > 0 ? (
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+          <div className="flex items-center gap-2 text-sm text-amber-900 dark:text-amber-200">
+            <Loader2 className="size-4 shrink-0 animate-spin motion-reduce:animate-none" />
             Workflow running ({activeJobsCount} job
             {activeJobsCount > 1 ? "s" : ""})…
           </div>
@@ -107,9 +112,23 @@ export function StepResults({
                   <SelectContent>
                     {recentRuns.map((r) => (
                       <SelectItem key={r.runId} value={r.runId}>
-                        {new Date(r.createdAt).toLocaleString()} ·{" "}
-                        {r.screenerName ?? "Screener"} · {r.status}
-                        {r.runId === latestRunId ? " (latest)" : ""}
+                        <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
+                          <span className="text-foreground">
+                            {new Date(r.createdAt).toLocaleString()} ·{" "}
+                            {r.screenerName ?? "Screener"} ·
+                          </span>
+                          <span
+                            className={cn(
+                              "rounded-md border px-1.5 py-0.5 text-[10px] font-semibold",
+                              screeningRunStatusBadgeClassName(r.status),
+                            )}
+                          >
+                            {r.status}
+                          </span>
+                          {r.runId === latestRunId ? (
+                            <span className="text-muted-foreground">(latest)</span>
+                          ) : null}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -127,10 +146,10 @@ export function StepResults({
 
             {runDetailLoading ? (
               <div
-                className="text-muted-foreground flex items-center gap-2 text-sm"
+                className="flex items-center gap-2 text-sm text-amber-900 dark:text-amber-200"
                 role="status"
               >
-                <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+                <Loader2 className="size-4 shrink-0 animate-spin motion-reduce:animate-none" />
                 Loading run…
               </div>
             ) : displayRun ? (
@@ -170,7 +189,13 @@ function RunDetailView({
             <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase">
               Status
             </span>
-            <Badge variant="secondary" className="font-medium">
+            <Badge
+              variant="outline"
+              className={cn(
+                "border font-medium",
+                screeningRunStatusBadgeClassName(run.status),
+              )}
+            >
               {run.status}
             </Badge>
           </div>

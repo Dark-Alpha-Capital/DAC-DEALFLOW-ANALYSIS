@@ -35,6 +35,7 @@ import {
   screeningStillRunning,
   startScreeningBlockedReason,
   summarizeIngestion,
+  inProgressStatusChipClassName,
   toBase64,
 } from "./bitrix-screening-widget/utils";
 
@@ -455,7 +456,11 @@ export function BitrixScreeningWidgetWorkspace({
                   <span>App {d.appDeal.id}</span>
                   <span aria-hidden>·</span>
                   <span
-                    className={cn(indexed && "text-foreground font-medium")}
+                    className={cn(
+                      indexed
+                        ? "text-emerald-700 font-medium dark:text-emerald-400"
+                        : "text-muted-foreground",
+                    )}
                   >
                     {d.indexedCount} chunk{d.indexedCount === 1 ? "" : "s"}{" "}
                     indexed
@@ -475,7 +480,13 @@ export function BitrixScreeningWidgetWorkspace({
                   </Button>
                 </DialogTrigger>
                 {run.isPending ? (
-                  <Badge variant="secondary" className="gap-1.5 py-1">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "gap-1.5 border py-1",
+                      inProgressStatusChipClassName,
+                    )}
+                  >
                     <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
                     Preparing…
                   </Badge>

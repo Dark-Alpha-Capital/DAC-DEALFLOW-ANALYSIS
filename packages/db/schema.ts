@@ -119,6 +119,16 @@ export const cimScreeningSessionStatusEnum = pgEnum(
   ["PENDING", "INGESTING", "SCREENING", "COMPLETED", "FAILED"],
 );
 
+export const icScorerRunStatusEnum = pgEnum("IcScorerRunStatus", [
+  "PENDING",
+  "SCORING",
+  "MEMO",
+  "COMPLETED",
+  "FAILED",
+]);
+
+export const icScorerModeEnum = pgEnum("IcScorerMode", ["rag", "monograph"]);
+
 export const cimExtractionSourceEnum = pgEnum("CIMExtractionSource", [
   "AI",
   "USER",
@@ -1472,6 +1482,57 @@ export const cimScreeningAnswers = pgTable(
 );
 
 /**
+ * IC Readiness scorer runs: one row per scoring attempt for a Bitrix deal.
+ * Holds the structured score payload + final memo output so past runs are replayable from history.
+ */
+export const icScorerRuns = pgTable(
+  "IcScorerRun",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dealOpportunityId: text("dealOpportunityId")
+      .notNull()
+      .references(() => dealOpportunities.id, { onDelete: "cascade" }),
+    bitrixDealId: text("bitrixDealId"),
+    mode: icScorerModeEnum("mode").notNull(),
+    targetDocumentId: text("targetDocumentId").references(() => documents.id, {
+      onDelete: "set null",
+    }),
+    status: icScorerRunStatusEnum("status").default("PENDING").notNull(),
+    errorMessage: text("errorMessage"),
+    scoreWorkflowInstanceId: text("scoreWorkflowInstanceId"),
+    memoWorkflowInstanceId: text("memoWorkflowInstanceId"),
+    /** Score core produced by the score workflow; nullable until the score step completes. */
+    scorePayload: jsonb("scorePayload"),
+    /** Full IC scorer payload (score + structured `memo`); nullable until the run completes. */
+    output: jsonb("output"),
+    /** Snapshot of deal documents (ids + names) at run start for history display. */
+    dealDocumentsSnapshot: jsonb("dealDocumentsSnapshot"),
+    evidenceChunkIds: jsonb("evidenceChunkIds").$type<string[]>(),
+    promptVersion: text("promptVersion"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    icScorerRunDealOppIdx: index("ic_scorer_run_deal_opp_idx").on(
+      table.dealOpportunityId,
+      table.createdAt,
+    ),
+    icScorerRunUserIdx: index("ic_scorer_run_user_idx").on(table.userId),
+    icScorerRunBitrixDealIdx: index("ic_scorer_run_bitrix_deal_idx").on(
+      table.bitrixDealId,
+    ),
+  }),
+);
+
+/**
  * Deal CIM uploads — one active per deal opportunity.
  * Latest upload becomes active; previous is archived.
  */
@@ -2096,6 +2157,21 @@ export const cimScreeningAnswersRelations = relations(
   }),
 );
 
+export const icScorerRunsRelations = relations(icScorerRuns, ({ one }) => ({
+  user: one(users, {
+    fields: [icScorerRuns.userId],
+    references: [users.id],
+  }),
+  dealOpportunity: one(dealOpportunities, {
+    fields: [icScorerRuns.dealOpportunityId],
+    references: [dealOpportunities.id],
+  }),
+  targetDocument: one(documents, {
+    fields: [icScorerRuns.targetDocumentId],
+    references: [documents.id],
+  }),
+}));
+
 export const screenerResponsesRelations = relations(
   screenerResponses,
   ({ one }) => ({
@@ -2398,6 +2474,8 @@ export type CimScreeningRun = typeof cimScreeningRuns.$inferSelect;
 export type NewCimScreeningRun = typeof cimScreeningRuns.$inferInsert;
 export type CimScreeningAnswer = typeof cimScreeningAnswers.$inferSelect;
 export type NewCimScreeningAnswer = typeof cimScreeningAnswers.$inferInsert;
+export type IcScorerRun = typeof icScorerRuns.$inferSelect;
+export type NewIcScorerRun = typeof icScorerRuns.$inferInsert;
 
 export type Outreach = typeof outreach.$inferSelect;
 export type NewOutreach = typeof outreach.$inferInsert;

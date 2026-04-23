@@ -263,6 +263,27 @@ export const bitrixScreeningWidgetRunDetailSchema =
     runId: z.string().min(1),
   });
 
+export const bitrixIcScorerWidgetStartRunSchema =
+  bitrixWidgetContextAuthSchema
+    .extend({
+      screeningMode: z.enum(["rag", "monograph"]).default("rag"),
+      targetDocumentId: z.string().min(1).optional(),
+    })
+    .superRefine((value, ctx) => {
+      if (value.screeningMode === "monograph" && !value.targetDocumentId?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "targetDocumentId is required in monograph mode",
+          path: ["targetDocumentId"],
+        });
+      }
+    });
+
+export const bitrixIcScorerWidgetRunDetailSchema =
+  bitrixWidgetContextAuthSchema.extend({
+    runId: z.string().min(1),
+  });
+
 export const bitrixScreeningWidgetRetryCommentSchema =
   bitrixWidgetContextAuthSchema.extend({
     dealOpportunityId: z.string().min(1),

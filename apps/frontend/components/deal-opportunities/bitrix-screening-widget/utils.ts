@@ -8,6 +8,62 @@ import type {
 
 export const INGEST_IN_FLIGHT = new Set(["PENDING", "PROCESSING"]);
 
+/**
+ * File types the ingestion pipeline can extract text from. Kept in sync with
+ * `packages/rag-engine/mime.ts` dispatchers in `processContent`. Advertising a
+ * concrete allow-list up front prevents users from uploading archives, images,
+ * or other formats that would silently fail downstream.
+ */
+export const SUPPORTED_UPLOAD_EXTENSIONS = [
+  ".pdf",
+  ".docx",
+  ".xlsx",
+  ".xls",
+  ".csv",
+  ".txt",
+  ".md",
+  ".json",
+] as const;
+
+const SUPPORTED_UPLOAD_MIMES = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "text/csv",
+  "text/plain",
+  "text/markdown",
+  "application/json",
+] as const;
+
+/**
+ * Value for the `accept` attribute on an `<input type="file">` that both hints
+ * the native picker and acts as a first-line filter. We include both the
+ * extensions *and* canonical MIMEs because browsers vary in which one they use
+ * to drive the filter dialog.
+ */
+export const UPLOAD_ACCEPT_ATTR = [
+  ...SUPPORTED_UPLOAD_EXTENSIONS,
+  ...SUPPORTED_UPLOAD_MIMES,
+].join(",");
+
+/**
+ * Human-readable summary of supported types for help text next to the input.
+ * Keep short — users don't need the MIME detail.
+ */
+export const SUPPORTED_UPLOAD_LABEL = "PDF, DOCX, XLSX, XLS, CSV, TXT, MD, JSON";
+
+/**
+ * True when the file's extension is in the supported allow-list. The MIME is
+ * intentionally ignored here because browsers often report `application/
+ * octet-stream` (or nothing) for Office files — trusting the extension matches
+ * what the server-side `resolveMimeType` does.
+ */
+export function isSupportedUploadFile(file: File): boolean {
+  const name = file.name.toLowerCase();
+  return SUPPORTED_UPLOAD_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
+
 export function formatChunkIdForUi(chunkId: string): string {
   return chunkId.length > 18 ? `${chunkId.slice(0, 16)}…` : chunkId;
 }
@@ -78,6 +134,32 @@ export function screeningStillRunning(status: string | undefined): boolean {
 
 export function screeningFailed(status: string | undefined): boolean {
   return status === "FAILED";
+}
+
+/** In-progress (queued / running) — same tone as screening PENDING, INGESTING, SCREENING. */
+export const inProgressStatusChipClassName =
+  "border-amber-500/45 bg-amber-500/10 text-amber-900 dark:text-amber-200";
+
+/**
+ * Classes for a screening run status (CimScreeningSessionStatus) chip on
+ * `Badge variant="outline"` or a bordered span.
+ */
+export function screeningRunStatusBadgeClassName(
+  status: string | undefined,
+): string {
+  if (!status) {
+    return "border-border/80 bg-muted/40 text-muted-foreground";
+  }
+  if (status === "COMPLETED") {
+    return "border-emerald-500/45 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300";
+  }
+  if (status === "FAILED") {
+    return "border-destructive/50 bg-destructive/10 text-destructive";
+  }
+  if (screeningStillRunning(status)) {
+    return inProgressStatusChipClassName;
+  }
+  return "border-border/80 bg-muted/50 text-foreground";
 }
 
 export function pipelineKindLabel(kind: string): string {

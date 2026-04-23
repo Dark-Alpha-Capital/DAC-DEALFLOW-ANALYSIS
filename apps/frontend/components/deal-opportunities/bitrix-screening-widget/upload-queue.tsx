@@ -1,10 +1,14 @@
 import { FileStack, Loader2, Upload, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   fileExtensionFromName,
   formatFileSizeBytes,
+  isSupportedUploadFile,
   pendingUploadKey,
+  SUPPORTED_UPLOAD_LABEL,
+  UPLOAD_ACCEPT_ATTR,
 } from "./utils";
 import type { ScreeningMode } from "./types";
 
@@ -37,14 +41,38 @@ export function UploadQueue({
             ? "Multi-select supported. Duplicates (same name, size, modified time) are merged. New uploads join the deal index once processed."
             : "Upload one or more files; when status is Processed, select exactly one above for monograph screening."}
         </p>
+        <p className="text-muted-foreground/80 text-[11px] leading-relaxed">
+          Supported · {SUPPORTED_UPLOAD_LABEL}
+        </p>
       </div>
       <input
         id="bitrix-widget-upload"
         type="file"
         multiple
+        accept={UPLOAD_ACCEPT_ATTR}
         onChange={(e) => {
-          onPick(Array.from(e.target.files ?? []));
+          const picked = Array.from(e.target.files ?? []);
           e.target.value = "";
+          const accepted: File[] = [];
+          const rejected: File[] = [];
+          for (const f of picked) {
+            if (isSupportedUploadFile(f)) accepted.push(f);
+            else rejected.push(f);
+          }
+          if (rejected.length > 0) {
+            const names = rejected
+              .slice(0, 3)
+              .map((f) => f.name)
+              .join(", ");
+            const extra =
+              rejected.length > 3 ? ` and ${rejected.length - 3} more` : "";
+            toast.error(
+              `Skipped ${rejected.length} unsupported file${
+                rejected.length === 1 ? "" : "s"
+              }: ${names}${extra}. Allowed: ${SUPPORTED_UPLOAD_LABEL}.`,
+            );
+          }
+          if (accepted.length > 0) onPick(accepted);
         }}
         className={cn(
           "block w-full cursor-pointer text-sm",

@@ -46,10 +46,13 @@ export function DocumentListItem({
             isProcessed && "text-emerald-700 dark:text-emerald-400",
             !isProcessed &&
               INGEST_IN_FLIGHT.has(doc.ingestionStatus) &&
-              "text-muted-foreground",
+              "text-amber-800 dark:text-amber-300",
             !isProcessed &&
               doc.ingestionStatus === "FAILED" &&
               "text-destructive",
+            !isProcessed &&
+              doc.ingestionStatus === "SKIPPED" &&
+              "text-muted-foreground",
           )}
         >
           {ingestionStatusLabel(doc.ingestionStatus)}

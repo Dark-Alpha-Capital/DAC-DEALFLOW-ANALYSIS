@@ -2741,3 +2741,10 @@ export {
   GetRankedDealOpportunitiesForKanbanColumnPaginated,
 } from "./queries/deal-opportunity";
 export type { GetRankedDealOpportunityKanbanSummaryResult } from "./queries/deal-opportunity";
+
+export {
+  listIcScorerRunsForDealOpportunity,
+  getIcScorerRunById,
+  getIcScorerRunByIdForDeal,
+  icScorerRunHasActiveStatus,
+} from "./queries/ic-scorer-runs";

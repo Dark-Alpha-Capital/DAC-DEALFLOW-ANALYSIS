@@ -19,6 +19,7 @@ import type {
   CimMonographScreeningParams,
   CimExtractionParams,
   FileUploadParams,
+  IcScorerWorkflowParams,
   RagIngestionParams,
   ScreenDealParams,
   CimScreeningParams,
@@ -40,6 +41,8 @@ function getWorkflowByKind(kind: WorkflowKind): WorkflowBinding {
       return env.CIM_SCREENING_WORKFLOW as WorkflowBinding;
     case QUEUE_NAMES.CIM_MONOGRAPH_SCREENING:
       return env.CIM_MONOGRAPH_SCREENING_WORKFLOW as WorkflowBinding;
+    case QUEUE_NAMES.IC_SCORER_SCORE:
+      return env.IC_SCORER_WORKFLOW as WorkflowBinding;
     default:
       throw new Error(`Unknown workflow kind: ${kind}`);
   }
@@ -263,6 +266,13 @@ export async function startCimMonographScreeningWorkflow(
   params: CimMonographScreeningParams,
 ) {
   await env.CIM_MONOGRAPH_SCREENING_WORKFLOW.create({ id: jobId, params });
+}
+
+export async function startIcScorerWorkflow(
+  jobId: string,
+  params: IcScorerWorkflowParams,
+) {
+  await env.IC_SCORER_WORKFLOW.create({ id: jobId, params });
 }
 
 export { insertWorkflowJob };
