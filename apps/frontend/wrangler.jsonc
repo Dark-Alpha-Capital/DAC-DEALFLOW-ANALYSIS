@@ -52,6 +52,16 @@
       "name": "cim-screening",
       "binding": "CIM_SCREENING_WORKFLOW",
       "class_name": "CimScreeningWorkflow"
+    },
+    {
+      "name": "cim-monograph-screening",
+      "binding": "CIM_MONOGRAPH_SCREENING_WORKFLOW",
+      "class_name": "CimMonographScreeningWorkflow"
+    },
+    {
+      "name": "ic-scorer",
+      "binding": "IC_SCORER_WORKFLOW",
+      "class_name": "IcScorerWorkflow"
     }
   ]
 }

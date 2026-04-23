@@ -13,6 +13,7 @@ export {
   requireBitrixWebhookBase,
   buildBitrixDealDetailUrl,
   inferPortalBaseFromWebhook,
+  injectWebhookAuthIntoCrmUrl,
   resolveBitrixPortalUrl,
   type BitrixSyncEnv,
 } from "./env";

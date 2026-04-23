@@ -17,7 +17,9 @@ export type JobType =
   | "file-upload"
   | "cim-extraction"
   | "rag-ingestion"
-  | "cim-screening";
+  | "cim-screening"
+  | "cim-monograph-screening"
+  | "ic-scorer-score";
 
 // Progress data
 export interface JobProgressData {
@@ -50,6 +52,8 @@ export const QUEUE_NAMES = {
   CIM_EXTRACTION: "cim-extraction",
   RAG_INGESTION: "rag-ingestion",
   CIM_SCREENING: "cim-screening",
+  CIM_MONOGRAPH_SCREENING: "cim-monograph-screening",
+  IC_SCORER_SCORE: "ic-scorer-score",
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -134,6 +138,10 @@ export function getJobTypeLabel(queueName: string): string {
       return "RAG Ingestion";
     case QUEUE_NAMES.CIM_SCREENING:
       return "CIM screening";
+    case QUEUE_NAMES.CIM_MONOGRAPH_SCREENING:
+      return "CIM monograph screening";
+    case QUEUE_NAMES.IC_SCORER_SCORE:
+      return "IC scorer";
     default:
       return queueName;
   }

@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn, formatNumberWithCommas, unformatNumber } from "@/lib/utils";
+import { i } from "shiki/dist/langs-bundle-full-C-zczmvu.mjs";
 
 /** Empty input for editing; formatted commas for display. */
 function commaInputValue(n: number | null | undefined): string {

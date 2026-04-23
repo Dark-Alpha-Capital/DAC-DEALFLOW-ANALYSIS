@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { getRequest } from "@tanstack/react-start/server";
 
 /** Thrown when a server function requires auth the caller does not have. */
 export class ServerFnAuthError extends Error {
@@ -12,7 +13,6 @@ export class ServerFnAuthError extends Error {
 }
 
 export async function assertAuthenticated() {
-  const { getRequest } = await import("@tanstack/react-start/server");
   const request = getRequest();
   const session = await auth.api.getSession({
     headers: request.headers,

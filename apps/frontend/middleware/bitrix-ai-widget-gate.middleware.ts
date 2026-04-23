@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import {
   BITRIX_AI_EXTRACT_API_PATH,
   BITRIX_AI_WIDGET_PAGE_PATH,
+  BITRIX_IC_SCORER_API_PATH,
   BITRIX_SCREENING_WIDGET_PAGE_PATH,
   isAiBitrixExtractRequestAllowed,
   isBitrixWidgetPageRequestAllowed,
@@ -35,7 +36,9 @@ export const bitrixAiWidgetGateRequestMiddleware = createMiddleware().server(
     const norm = pathname.replace(/\/+$/, "") || "/";
     const isExtract =
       norm === BITRIX_AI_EXTRACT_API_PATH ||
-      norm.startsWith(`${BITRIX_AI_EXTRACT_API_PATH}/`);
+      norm.startsWith(`${BITRIX_AI_EXTRACT_API_PATH}/`) ||
+      norm === BITRIX_IC_SCORER_API_PATH ||
+      norm.startsWith(`${BITRIX_IC_SCORER_API_PATH}/`);
 
     if (isExtract) {
       const allowed =

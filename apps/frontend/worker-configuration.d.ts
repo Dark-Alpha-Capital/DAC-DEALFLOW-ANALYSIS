@@ -29,6 +29,8 @@ declare namespace Cloudflare {
 		CIM_EXTRACTION_WORKFLOW: Workflow<Parameters<import("./src/server").CimExtractionWorkflow['run']>[0]['payload']>;
 		RAG_INGESTION_WORKFLOW: Workflow<Parameters<import("./src/server").RagIngestionWorkflow['run']>[0]['payload']>;
 		CIM_SCREENING_WORKFLOW: Workflow<Parameters<import("./src/server").CimScreeningWorkflow['run']>[0]['payload']>;
+		CIM_MONOGRAPH_SCREENING_WORKFLOW: Workflow<Parameters<import("./src/server").CimMonographScreeningWorkflow['run']>[0]['payload']>;
+		IC_SCORER_WORKFLOW: Workflow<Parameters<import("./src/server").IcScorerWorkflow['run']>[0]['payload']>;
 	}
 }
 interface Env extends Cloudflare.Env {}

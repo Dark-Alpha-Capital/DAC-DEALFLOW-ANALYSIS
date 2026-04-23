@@ -17,6 +17,7 @@ import { Route as AuthenticationRouteRouteImport } from './routes/_authenticatio
 import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
 import { Route as ApiTrpcRouteImport } from './routes/api/trpc'
 import { Route as ApiRevalidateRouteImport } from './routes/api/revalidate'
+import { Route as ApiIcScorerRouteImport } from './routes/api/ic-scorer'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ProtectedScreeningsRouteImport } from './routes/_protected/screenings'
 import { Route as ProtectedNewRouteImport } from './routes/_protected/new'
@@ -40,11 +41,14 @@ import { Route as ChatbotChatIndexRouteImport } from './routes/_chatbot/chat/ind
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc.$'
 import { Route as ApiLeadsIngestRouteImport } from './routes/api/leads/ingest'
 import { Route as ApiInvestorLeadsIngestRouteImport } from './routes/api/investor-leads/ingest'
+import { Route as ApiIcScorerScoreRouteImport } from './routes/api/ic-scorer/score'
+import { Route as ApiIcScorerPostTimelineRouteImport } from './routes/api/ic-scorer/post-timeline'
 import { Route as ApiHealthRedisRouteImport } from './routes/api/health/redis'
 import { Route as ApiDealOpportunitiesQuickAddRouteImport } from './routes/api/deal-opportunities/quick-add'
 import { Route as ApiDealOpportunitiesAiBitrixExtractRouteImport } from './routes/api/deal-opportunities/ai-bitrix-extract'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as PublicDealOpportunitiesScreenBitrixRouteImport } from './routes/_public/deal-opportunities/screen-bitrix'
+import { Route as PublicDealOpportunitiesIcScorerRouteImport } from './routes/_public/deal-opportunities/ic-scorer'
 import { Route as PublicDealOpportunitiesAiBitrixRouteImport } from './routes/_public/deal-opportunities/ai-bitrix'
 import { Route as ProtectedScreeningNewRunRouteImport } from './routes/_protected/screening/new-run'
 import { Route as ProtectedScreenersUidRouteImport } from './routes/_protected/screeners/$uid'
@@ -128,6 +132,11 @@ const ApiTrpcRoute = ApiTrpcRouteImport.update({
 const ApiRevalidateRoute = ApiRevalidateRouteImport.update({
   id: '/api/revalidate',
   path: '/api/revalidate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIcScorerRoute = ApiIcScorerRouteImport.update({
+  id: '/api/ic-scorer',
+  path: '/api/ic-scorer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
@@ -248,6 +257,16 @@ const ApiInvestorLeadsIngestRoute = ApiInvestorLeadsIngestRouteImport.update({
   path: '/api/investor-leads/ingest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIcScorerScoreRoute = ApiIcScorerScoreRouteImport.update({
+  id: '/score',
+  path: '/score',
+  getParentRoute: () => ApiIcScorerRoute,
+} as any)
+const ApiIcScorerPostTimelineRoute = ApiIcScorerPostTimelineRouteImport.update({
+  id: '/post-timeline',
+  path: '/post-timeline',
+  getParentRoute: () => ApiIcScorerRoute,
+} as any)
 const ApiHealthRedisRoute = ApiHealthRedisRouteImport.update({
   id: '/api/health/redis',
   path: '/api/health/redis',
@@ -274,6 +293,12 @@ const PublicDealOpportunitiesScreenBitrixRoute =
   PublicDealOpportunitiesScreenBitrixRouteImport.update({
     id: '/deal-opportunities/screen-bitrix',
     path: '/deal-opportunities/screen-bitrix',
+    getParentRoute: () => PublicRouteRoute,
+  } as any)
+const PublicDealOpportunitiesIcScorerRoute =
+  PublicDealOpportunitiesIcScorerRouteImport.update({
+    id: '/deal-opportunities/ic-scorer',
+    path: '/deal-opportunities/ic-scorer',
     getParentRoute: () => PublicRouteRoute,
   } as any)
 const PublicDealOpportunitiesAiBitrixRoute =
@@ -565,6 +590,7 @@ export interface FileRoutesByFullPath {
   '/new': typeof ProtectedNewRouteWithChildren
   '/screenings': typeof ProtectedScreeningsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/ic-scorer': typeof ApiIcScorerRouteWithChildren
   '/api/revalidate': typeof ApiRevalidateRoute
   '/api/trpc': typeof ApiTrpcRouteWithChildren
   '/auth/error': typeof AuthenticationAuthErrorRoute
@@ -600,11 +626,14 @@ export interface FileRoutesByFullPath {
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
+  '/deal-opportunities/ic-scorer': typeof PublicDealOpportunitiesIcScorerRoute
   '/deal-opportunities/screen-bitrix': typeof PublicDealOpportunitiesScreenBitrixRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/ai-bitrix-extract': typeof ApiDealOpportunitiesAiBitrixExtractRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
+  '/api/ic-scorer/post-timeline': typeof ApiIcScorerPostTimelineRoute
+  '/api/ic-scorer/score': typeof ApiIcScorerScoreRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
@@ -646,6 +675,7 @@ export interface FileRoutesByTo {
   '/new': typeof ProtectedNewRouteWithChildren
   '/screenings': typeof ProtectedScreeningsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/ic-scorer': typeof ApiIcScorerRouteWithChildren
   '/api/revalidate': typeof ApiRevalidateRoute
   '/api/trpc': typeof ApiTrpcRouteWithChildren
   '/auth/error': typeof AuthenticationAuthErrorRoute
@@ -681,11 +711,14 @@ export interface FileRoutesByTo {
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
+  '/deal-opportunities/ic-scorer': typeof PublicDealOpportunitiesIcScorerRoute
   '/deal-opportunities/screen-bitrix': typeof PublicDealOpportunitiesScreenBitrixRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/ai-bitrix-extract': typeof ApiDealOpportunitiesAiBitrixExtractRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
+  '/api/ic-scorer/post-timeline': typeof ApiIcScorerPostTimelineRoute
+  '/api/ic-scorer/score': typeof ApiIcScorerScoreRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
@@ -733,6 +766,7 @@ export interface FileRoutesById {
   '/_protected/new': typeof ProtectedNewRouteWithChildren
   '/_protected/screenings': typeof ProtectedScreeningsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/ic-scorer': typeof ApiIcScorerRouteWithChildren
   '/api/revalidate': typeof ApiRevalidateRoute
   '/api/trpc': typeof ApiTrpcRouteWithChildren
   '/_protected/': typeof ProtectedIndexRoute
@@ -769,11 +803,14 @@ export interface FileRoutesById {
   '/_protected/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/_protected/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/_public/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
+  '/_public/deal-opportunities/ic-scorer': typeof PublicDealOpportunitiesIcScorerRoute
   '/_public/deal-opportunities/screen-bitrix': typeof PublicDealOpportunitiesScreenBitrixRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/deal-opportunities/ai-bitrix-extract': typeof ApiDealOpportunitiesAiBitrixExtractRoute
   '/api/deal-opportunities/quick-add': typeof ApiDealOpportunitiesQuickAddRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
+  '/api/ic-scorer/post-timeline': typeof ApiIcScorerPostTimelineRoute
+  '/api/ic-scorer/score': typeof ApiIcScorerScoreRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
@@ -818,6 +855,7 @@ export interface FileRouteTypes {
     | '/new'
     | '/screenings'
     | '/api/chat'
+    | '/api/ic-scorer'
     | '/api/revalidate'
     | '/api/trpc'
     | '/auth/error'
@@ -853,11 +891,14 @@ export interface FileRouteTypes {
     | '/screeners/$uid'
     | '/screening/new-run'
     | '/deal-opportunities/ai-bitrix'
+    | '/deal-opportunities/ic-scorer'
     | '/deal-opportunities/screen-bitrix'
     | '/api/auth/$'
     | '/api/deal-opportunities/ai-bitrix-extract'
     | '/api/deal-opportunities/quick-add'
     | '/api/health/redis'
+    | '/api/ic-scorer/post-timeline'
+    | '/api/ic-scorer/score'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/trpc/$'
@@ -899,6 +940,7 @@ export interface FileRouteTypes {
     | '/new'
     | '/screenings'
     | '/api/chat'
+    | '/api/ic-scorer'
     | '/api/revalidate'
     | '/api/trpc'
     | '/auth/error'
@@ -934,11 +976,14 @@ export interface FileRouteTypes {
     | '/screeners/$uid'
     | '/screening/new-run'
     | '/deal-opportunities/ai-bitrix'
+    | '/deal-opportunities/ic-scorer'
     | '/deal-opportunities/screen-bitrix'
     | '/api/auth/$'
     | '/api/deal-opportunities/ai-bitrix-extract'
     | '/api/deal-opportunities/quick-add'
     | '/api/health/redis'
+    | '/api/ic-scorer/post-timeline'
+    | '/api/ic-scorer/score'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/trpc/$'
@@ -985,6 +1030,7 @@ export interface FileRouteTypes {
     | '/_protected/new'
     | '/_protected/screenings'
     | '/api/chat'
+    | '/api/ic-scorer'
     | '/api/revalidate'
     | '/api/trpc'
     | '/_protected/'
@@ -1021,11 +1067,14 @@ export interface FileRouteTypes {
     | '/_protected/screeners/$uid'
     | '/_protected/screening/new-run'
     | '/_public/deal-opportunities/ai-bitrix'
+    | '/_public/deal-opportunities/ic-scorer'
     | '/_public/deal-opportunities/screen-bitrix'
     | '/api/auth/$'
     | '/api/deal-opportunities/ai-bitrix-extract'
     | '/api/deal-opportunities/quick-add'
     | '/api/health/redis'
+    | '/api/ic-scorer/post-timeline'
+    | '/api/ic-scorer/score'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/trpc/$'
@@ -1063,6 +1112,7 @@ export interface RootRouteChildren {
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
+  ApiIcScorerRoute: typeof ApiIcScorerRouteWithChildren
   ApiRevalidateRoute: typeof ApiRevalidateRoute
   ApiTrpcRoute: typeof ApiTrpcRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -1129,6 +1179,13 @@ declare module '@tanstack/react-router' {
       path: '/api/revalidate'
       fullPath: '/api/revalidate'
       preLoaderRoute: typeof ApiRevalidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ic-scorer': {
+      id: '/api/ic-scorer'
+      path: '/api/ic-scorer'
+      fullPath: '/api/ic-scorer'
+      preLoaderRoute: typeof ApiIcScorerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -1292,6 +1349,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInvestorLeadsIngestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ic-scorer/score': {
+      id: '/api/ic-scorer/score'
+      path: '/score'
+      fullPath: '/api/ic-scorer/score'
+      preLoaderRoute: typeof ApiIcScorerScoreRouteImport
+      parentRoute: typeof ApiIcScorerRoute
+    }
+    '/api/ic-scorer/post-timeline': {
+      id: '/api/ic-scorer/post-timeline'
+      path: '/post-timeline'
+      fullPath: '/api/ic-scorer/post-timeline'
+      preLoaderRoute: typeof ApiIcScorerPostTimelineRouteImport
+      parentRoute: typeof ApiIcScorerRoute
+    }
     '/api/health/redis': {
       id: '/api/health/redis'
       path: '/api/health/redis'
@@ -1325,6 +1396,13 @@ declare module '@tanstack/react-router' {
       path: '/deal-opportunities/screen-bitrix'
       fullPath: '/deal-opportunities/screen-bitrix'
       preLoaderRoute: typeof PublicDealOpportunitiesScreenBitrixRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/deal-opportunities/ic-scorer': {
+      id: '/_public/deal-opportunities/ic-scorer'
+      path: '/deal-opportunities/ic-scorer'
+      fullPath: '/deal-opportunities/ic-scorer'
+      preLoaderRoute: typeof PublicDealOpportunitiesIcScorerRouteImport
       parentRoute: typeof PublicRouteRoute
     }
     '/_public/deal-opportunities/ai-bitrix': {
@@ -1895,17 +1973,33 @@ const ProtectedRouteRouteWithChildren = ProtectedRouteRoute._addFileChildren(
 
 interface PublicRouteRouteChildren {
   PublicDealOpportunitiesAiBitrixRoute: typeof PublicDealOpportunitiesAiBitrixRoute
+  PublicDealOpportunitiesIcScorerRoute: typeof PublicDealOpportunitiesIcScorerRoute
   PublicDealOpportunitiesScreenBitrixRoute: typeof PublicDealOpportunitiesScreenBitrixRoute
 }
 
 const PublicRouteRouteChildren: PublicRouteRouteChildren = {
   PublicDealOpportunitiesAiBitrixRoute: PublicDealOpportunitiesAiBitrixRoute,
+  PublicDealOpportunitiesIcScorerRoute: PublicDealOpportunitiesIcScorerRoute,
   PublicDealOpportunitiesScreenBitrixRoute:
     PublicDealOpportunitiesScreenBitrixRoute,
 }
 
 const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
   PublicRouteRouteChildren,
+)
+
+interface ApiIcScorerRouteChildren {
+  ApiIcScorerPostTimelineRoute: typeof ApiIcScorerPostTimelineRoute
+  ApiIcScorerScoreRoute: typeof ApiIcScorerScoreRoute
+}
+
+const ApiIcScorerRouteChildren: ApiIcScorerRouteChildren = {
+  ApiIcScorerPostTimelineRoute: ApiIcScorerPostTimelineRoute,
+  ApiIcScorerScoreRoute: ApiIcScorerScoreRoute,
+}
+
+const ApiIcScorerRouteWithChildren = ApiIcScorerRoute._addFileChildren(
+  ApiIcScorerRouteChildren,
 )
 
 interface ApiTrpcRouteChildren {
@@ -1926,6 +2020,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
   PublicRouteRoute: PublicRouteRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
+  ApiIcScorerRoute: ApiIcScorerRouteWithChildren,
   ApiRevalidateRoute: ApiRevalidateRoute,
   ApiTrpcRoute: ApiTrpcRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

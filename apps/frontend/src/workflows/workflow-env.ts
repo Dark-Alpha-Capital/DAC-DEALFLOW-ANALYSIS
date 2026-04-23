@@ -87,6 +87,31 @@ export type CimScreeningParams = {
   bitrixLiveDealListingContext?: string;
 };
 
+export type CimMonographScreeningParams = {
+  jobId: string;
+  userId: string;
+  screenerId: string;
+  sessionId: string;
+  runId: string;
+  dealOpportunityId: string;
+  targetDocumentId: string;
+  bitrixDealId?: string;
+  postBitrixComment?: boolean;
+  dealListingContextSource?: CimScreeningDealListingContextSource;
+  bitrixLiveDealListingContext?: string;
+};
+
+export type IcScorerWorkflowParams = {
+  jobId: string;
+  userId: string;
+  runId: string;
+  dealOpportunityId: string;
+  bitrixDealId: string;
+  mode: "rag" | "monograph";
+  targetDocumentId?: string;
+  bitrixLiveDealListingContext: string;
+};
+
 /** Cloudflare Worker env with workflow bindings (see wrangler.jsonc) */
 export interface WorkflowWorkerEnv {
   DOCUMENT_CHUNKS_INDEX: VectorizeIndex;
@@ -95,5 +120,7 @@ export interface WorkflowWorkerEnv {
   CIM_EXTRACTION_WORKFLOW: Workflow<CimExtractionParams>;
   RAG_INGESTION_WORKFLOW: Workflow<RagIngestionParams>;
   CIM_SCREENING_WORKFLOW: Workflow<CimScreeningParams>;
+  CIM_MONOGRAPH_SCREENING_WORKFLOW: Workflow<CimMonographScreeningParams>;
+  IC_SCORER_WORKFLOW: Workflow<IcScorerWorkflowParams>;
   RATE_LIMIT_KV?: KVNamespace;
 }

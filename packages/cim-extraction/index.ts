@@ -124,6 +124,7 @@ export async function extractPdfContent(
       mergePages: true,
     });
     const text = (typeof rawText === "string" ? rawText : "").trim();
+
     const numpages = totalPages ?? 0;
     console.log(
       `${LOG} extractPdfContent: ok pages=${numpages} textChars=${text.length}`,
