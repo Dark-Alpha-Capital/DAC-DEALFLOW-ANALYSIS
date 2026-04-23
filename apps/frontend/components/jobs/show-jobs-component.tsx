@@ -384,6 +384,9 @@ export function ShowJobsComponent({
               <SelectItem value="cim-extraction">CIM Extraction</SelectItem>
               <SelectItem value="rag-ingestion">RAG Ingestion</SelectItem>
               <SelectItem value="cim-screening">CIM screening</SelectItem>
+              <SelectItem value="cim-monograph-screening">
+                CIM monograph screening
+              </SelectItem>
             </SelectContent>
           </Select>
 

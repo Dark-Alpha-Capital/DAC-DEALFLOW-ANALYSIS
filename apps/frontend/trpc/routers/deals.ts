@@ -80,6 +80,7 @@ import {
   insertWorkflowJob,
   startCimExtractionWorkflow,
   startFileUploadWorkflow,
+  startCimMonographScreeningWorkflow,
   startRagIngestionWorkflow,
   startCimScreeningWorkflow,
 } from "@/src/lib/workflow-jobs-api";
@@ -1084,6 +1085,29 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
+      const isMonographMode = input.screeningMode === "monograph";
+      let targetDocumentId: string | null = null;
+      let targetDocumentFileName: string | null = null;
+      if (isMonographMode) {
+        const dealDocs = await listDealOpportunityDocumentsSummary(opp.id);
+        const selectedDoc = dealDocs.find((d) => d.id === input.targetDocumentId);
+        if (!selectedDoc) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected document does not belong to this deal.",
+          });
+        }
+        if (selectedDoc.ingestionStatus !== "PROCESSED") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Selected document is not indexed yet. Wait for ingestion to finish.",
+          });
+        }
+        targetDocumentId = selectedDoc.id;
+        targetDocumentFileName = selectedDoc.fileName;
+      }
+
       const session = await insertCimScreeningSession({
         userId,
         dealOpportunityId: opp.id,
@@ -1115,27 +1139,43 @@ export const dealsRouter = createTRPCRouter({
 
       await insertWorkflowJob({
         instanceId: jobId,
-        workflowKind: "cim-screening",
+        workflowKind: isMonographMode
+          ? "cim-monograph-screening"
+          : "cim-screening",
         userId,
         dealId: opp.id,
-        fileName: fileLabel,
+        fileName: targetDocumentFileName ?? fileLabel,
         screenerId: input.screenerId,
       });
 
-      await startCimScreeningWorkflow(jobId, {
-        jobId,
-        userId,
-        dealOpportunityId: opp.id,
-        screenerId: input.screenerId,
-        sessionId: session.id,
-        runId: run.id,
-      });
+      if (isMonographMode && targetDocumentId) {
+        await startCimMonographScreeningWorkflow(jobId, {
+          jobId,
+          userId,
+          dealOpportunityId: opp.id,
+          targetDocumentId,
+          screenerId: input.screenerId,
+          sessionId: session.id,
+          runId: run.id,
+        });
+      } else {
+        await startCimScreeningWorkflow(jobId, {
+          jobId,
+          userId,
+          dealOpportunityId: opp.id,
+          screenerId: input.screenerId,
+          sessionId: session.id,
+          runId: run.id,
+        });
+      }
 
       return {
         sessionId: session.id,
         runId: run.id,
         jobId,
-        queueName: QUEUE_NAMES.CIM_SCREENING,
+        queueName: isMonographMode
+          ? QUEUE_NAMES.CIM_MONOGRAPH_SCREENING
+          : QUEUE_NAMES.CIM_SCREENING,
       };
     }),
 
@@ -1806,6 +1846,26 @@ export const dealsRouter = createTRPCRouter({
       const dealDocs = await listDealOpportunityDocumentsSummary(
         dealOpportunityId,
       );
+      const isMonographMode = input.screeningMode === "monograph";
+      let selectedDocument:
+        | (typeof dealDocs)[number]
+        | undefined;
+      if (isMonographMode) {
+        selectedDocument = dealDocs.find((d) => d.id === input.targetDocumentId);
+        if (!selectedDocument) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected document does not belong to this deal.",
+          });
+        }
+        if (selectedDocument.ingestionStatus !== "PROCESSED") {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "Selected document is not indexed yet. Wait until ingestion finishes.",
+          });
+        }
+      }
       let snapshotRows = dealDocs.filter((d) => d.ingestionStatus === "PROCESSED");
       if (snapshotRows.length === 0) {
         snapshotRows = dealDocs;
@@ -1823,6 +1883,9 @@ export const dealsRouter = createTRPCRouter({
           ),
           300_000,
         ),
+        screeningMode: isMonographMode ? "monograph" : "rag",
+        focusedDocumentId: selectedDocument?.id ?? null,
+        focusedDocumentFileName: selectedDocument?.fileName ?? null,
       };
 
       const active = await db
@@ -1830,7 +1893,10 @@ export const dealsRouter = createTRPCRouter({
         .from(workflowJobs)
         .where(
           drizzleAnd(
-            eq(workflowJobs.workflowKind, "cim-screening"),
+            inArray(workflowJobs.workflowKind, [
+              "cim-screening",
+              "cim-monograph-screening",
+            ]),
             eq(workflowJobs.dealId, dealOpportunityId),
             eq(workflowJobs.screenerId, input.screenerId),
             inArray(workflowJobs.state, ["waiting", "active", "delayed"]),
@@ -1844,9 +1910,11 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, dealDocumentsSnapshot.vectorSettleMs);
-      });
+      if (!isMonographMode) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, dealDocumentsSnapshot.vectorSettleMs);
+        });
+      }
 
       const session = await insertCimScreeningSession({
         userId: actorUserId,
@@ -1875,10 +1943,16 @@ export const dealsRouter = createTRPCRouter({
 
       await insertWorkflowJob({
         instanceId: jobId,
-        workflowKind: "cim-screening",
+        workflowKind: isMonographMode
+          ? "cim-monograph-screening"
+          : "cim-screening",
         userId: actorUserId,
         dealId: dealOpportunityId,
-        fileName: opp?.title ?? opp?.dealTeaser ?? `Bitrix deal ${input.dealId}`,
+        fileName:
+          selectedDocument?.fileName ??
+          opp?.title ??
+          opp?.dealTeaser ??
+          `Bitrix deal ${input.dealId}`,
         screenerId: input.screenerId,
       });
 
@@ -1889,18 +1963,34 @@ export const dealsRouter = createTRPCRouter({
           bitrixDealId: input.dealId,
         })) ?? "";
 
-      await startCimScreeningWorkflow(jobId, {
-        jobId,
-        userId: actorUserId,
-        dealOpportunityId,
-        screenerId: input.screenerId,
-        sessionId: session.id,
-        runId: run.id,
-        bitrixDealId: input.dealId,
-        postBitrixComment: true,
-        dealListingContextSource: "bitrix_live_snapshot",
-        bitrixLiveDealListingContext,
-      });
+      if (isMonographMode && selectedDocument) {
+        await startCimMonographScreeningWorkflow(jobId, {
+          jobId,
+          userId: actorUserId,
+          dealOpportunityId,
+          targetDocumentId: selectedDocument.id,
+          screenerId: input.screenerId,
+          sessionId: session.id,
+          runId: run.id,
+          bitrixDealId: input.dealId,
+          postBitrixComment: true,
+          dealListingContextSource: "bitrix_live_snapshot",
+          bitrixLiveDealListingContext,
+        });
+      } else {
+        await startCimScreeningWorkflow(jobId, {
+          jobId,
+          userId: actorUserId,
+          dealOpportunityId,
+          screenerId: input.screenerId,
+          sessionId: session.id,
+          runId: run.id,
+          bitrixDealId: input.dealId,
+          postBitrixComment: true,
+          dealListingContextSource: "bitrix_live_snapshot",
+          bitrixLiveDealListingContext,
+        });
+      }
 
       return {
         success: true,
@@ -1908,7 +1998,9 @@ export const dealsRouter = createTRPCRouter({
         sessionId: session.id,
         runId: run.id,
         jobId,
-        queueName: QUEUE_NAMES.CIM_SCREENING,
+        queueName: isMonographMode
+          ? QUEUE_NAMES.CIM_MONOGRAPH_SCREENING
+          : QUEUE_NAMES.CIM_SCREENING,
       };
     }),
 

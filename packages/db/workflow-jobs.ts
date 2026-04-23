@@ -7,7 +7,8 @@ export type WorkflowKind =
   | "file-upload"
   | "cim-extraction"
   | "rag-ingestion"
-  | "cim-screening";
+  | "cim-screening"
+  | "cim-monograph-screening";
 
 export interface InsertWorkflowJobInput {
   instanceId: string;

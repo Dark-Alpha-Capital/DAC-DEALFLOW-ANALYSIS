@@ -161,7 +161,10 @@ async function bitrixScreeningWidgetBootstrapPayload(
       .from(workflowJobs)
       .where(
         drizzleAnd(
-          eq(workflowJobs.workflowKind, "cim-screening"),
+          inArray(workflowJobs.workflowKind, [
+            "cim-screening",
+            "cim-monograph-screening",
+          ]),
           eq(workflowJobs.dealId, dealOpportunityId),
           inArray(workflowJobs.state, ["waiting", "active", "delayed"]),
         ),

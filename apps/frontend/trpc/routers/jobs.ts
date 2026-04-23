@@ -22,6 +22,7 @@ const queueNameSchema = z.enum([
   QUEUE_NAMES.CIM_EXTRACTION,
   QUEUE_NAMES.RAG_INGESTION,
   QUEUE_NAMES.CIM_SCREENING,
+  QUEUE_NAMES.CIM_MONOGRAPH_SCREENING,
 ]);
 
 async function assertJobOwnedAndFailed(

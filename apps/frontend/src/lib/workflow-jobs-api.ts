@@ -16,6 +16,7 @@ import {
   type WorkflowKind,
 } from "@repo/db/workflow-jobs";
 import type {
+  CimMonographScreeningParams,
   CimExtractionParams,
   FileUploadParams,
   RagIngestionParams,
@@ -37,6 +38,8 @@ function getWorkflowByKind(kind: WorkflowKind): WorkflowBinding {
       return env.RAG_INGESTION_WORKFLOW as WorkflowBinding;
     case QUEUE_NAMES.CIM_SCREENING:
       return env.CIM_SCREENING_WORKFLOW as WorkflowBinding;
+    case QUEUE_NAMES.CIM_MONOGRAPH_SCREENING:
+      return env.CIM_MONOGRAPH_SCREENING_WORKFLOW as WorkflowBinding;
     default:
       throw new Error(`Unknown workflow kind: ${kind}`);
   }
@@ -253,6 +256,13 @@ export async function startCimScreeningWorkflow(
   params: CimScreeningParams,
 ) {
   await env.CIM_SCREENING_WORKFLOW.create({ id: jobId, params });
+}
+
+export async function startCimMonographScreeningWorkflow(
+  jobId: string,
+  params: CimMonographScreeningParams,
+) {
+  await env.CIM_MONOGRAPH_SCREENING_WORKFLOW.create({ id: jobId, params });
 }
 
 export { insertWorkflowJob };

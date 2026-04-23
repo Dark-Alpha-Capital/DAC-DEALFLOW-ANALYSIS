@@ -4,7 +4,6 @@ import {
   type WorkflowStep,
 } from "cloudflare:workers";
 import { generateText, Output } from "ai";
-import { z } from "zod";
 import type { AppDb } from "@repo/db";
 import db, { count, eq, runDbWithWorkerNeonPool } from "@repo/db";
 import { documents, documentChunks } from "@repo/db/schema";
@@ -40,22 +39,20 @@ import type {
   CimScreeningParams,
   WorkflowWorkerEnv,
 } from "./workflow-env";
+import {
+  buildBitrixTimelineCommentText,
+  buildExcerptsFromHits,
+  CIM_SCREENING_MODEL,
+  getInterQuestionDelayMs,
+  SCREENING_ANSWER_SCHEMA,
+  sleep,
+} from "./cim-screening-core";
 
 const openai = getOpenAIProvider();
-const CIM_SCREENING_MODEL =
-  process.env.CIM_SCREENING_MODEL?.trim() || "gpt-5.1";
 
 /** Pause between questions to avoid Vectorize/OpenAI bursts (deal RAG scans many namespaces per query). */
 function cimScreeningInterQuestionDelayMs(): number {
-  const raw = process.env.CIM_SCREENING_INTER_QUESTION_DELAY_MS?.trim();
-  if (!raw) return 350;
-  const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 0) return 350;
-  return Math.min(30_000, n);
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+  return getInterQuestionDelayMs("CIM_SCREENING_INTER_QUESTION_DELAY_MS", 350);
 }
 
 type ScreenerQuestionRow = Awaited<
@@ -65,14 +62,6 @@ type ScreenerQuestionRow = Awaited<
 const RETRIEVAL_TOP_K = 8;
 const RETRIEVAL_TOP_K_DEAL = 14;
 const QUESTION_PREVIEW_MAX = 120;
-/** Bitrix timeline comments have practical size limits; keep margin under typical API caps. */
-const BITRIX_SCREENING_COMMENT_MAX_CHARS = 62_000;
-
-/** Hoisted once — avoid recreating the schema inside the per-question loop. */
-const SCREENING_ANSWER_SCHEMA = z.object({
-  score: z.number().min(0).max(10),
-  rationale: z.string(),
-});
 
 const LOG = "[CimScreeningWorkflow]";
 
@@ -96,15 +85,6 @@ function logError(
   });
 }
 
-function screeningBandFromAverage(
-  avgScore: number | null,
-): "INCOMPLETE" | "PASS" | "FAIL" {
-  if (avgScore == null) return "INCOMPLETE";
-  if (avgScore >= 7) return "PASS";
-  if (avgScore >= 4) return "INCOMPLETE";
-  return "FAIL";
-}
-
 type LibraryScreeningDocMeta = {
   entityType: (typeof documents.$inferSelect)["entityType"];
   entityId: (typeof documents.$inferSelect)["entityId"];
@@ -112,72 +92,6 @@ type LibraryScreeningDocMeta = {
   companyId: (typeof documents.$inferSelect)["companyId"];
   themeId: (typeof documents.$inferSelect)["themeId"];
 };
-
-function buildExcerptsFromHits(
-  textHits: { chunkText: string | null }[],
-): string {
-  if (textHits.length === 0) {
-    return "No text excerpts were retrieved for this question.";
-  }
-  return textHits
-    .map((h, idx) => `[Excerpt ${idx + 1}]\n${h.chunkText!.trim()}`)
-    .join("\n\n");
-}
-
-function buildBitrixTimelineCommentText(input: {
-  runId: string;
-  screenerId: string;
-  sessionId: string;
-  qaRows: Awaited<
-    ReturnType<typeof getCimScreeningAnswersWithQuestionsByRunId>
-  >;
-}): { comment: string; truncated: boolean } {
-  const scores = input.qaRows
-    .map((r) => r.score)
-    .filter((s): s is number => s != null);
-  const avgScore =
-    scores.length > 0
-      ? scores.reduce((sum, a) => sum + a, 0) / scores.length
-      : null;
-  const status = screeningBandFromAverage(avgScore);
-
-  const qaBody = input.qaRows
-    .map((row, i) => {
-      const q = row.questionText?.trim() || "(question)";
-      const rationale = row.rationale?.trim() || "—";
-      return [
-        `${i + 1}. ${q}`,
-        `   Score: ${row.score ?? "—"}/10`,
-        "",
-        rationale,
-      ].join("\n");
-    })
-    .join("\n\n---\n\n");
-
-  const header = [
-    "AI CIM screening completed",
-    `Run ID: ${input.runId}`,
-    `Screener ID: ${input.screenerId}`,
-    avgScore == null
-      ? null
-      : `Average score: ${avgScore.toFixed(1)}/10 (${status})`,
-    `App session: /screening/${input.sessionId}`,
-    "",
-    "Questions and answers:",
-    "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const full = `${header}${qaBody}`;
-  const tail =
-    "\n\n[Truncated: comment exceeded maximum length for Bitrix timeline]";
-  if (full.length <= BITRIX_SCREENING_COMMENT_MAX_CHARS) {
-    return { comment: full, truncated: false };
-  }
-  const maxBody = BITRIX_SCREENING_COMMENT_MAX_CHARS - tail.length;
-  return { comment: full.slice(0, maxBody) + tail, truncated: true };
-}
 
 type DealListingLoadResult =
   | { kind: "bitrix_live_snapshot"; text: string | null }
