@@ -13,6 +13,7 @@ export function icScorerRagChunkLimit(): number {
 }
 
 function icScorerMonographMaxChars(): number {
+
   const raw =
     process.env.IC_SCORER_MONOGRAPH_MAX_CHARS?.trim() ??
     process.env.CIM_MONOGRAPH_MAX_CHARS?.trim();

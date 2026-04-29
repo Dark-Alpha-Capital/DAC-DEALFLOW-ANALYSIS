@@ -462,7 +462,6 @@ export function AiBitrixInjectWorkspace({
     if (synced.bitrixLink) {
       window.open(synced.bitrixLink, "_blank", "noopener,noreferrer");
     }
-    router.push(`/deal-opportunities/${dealOpportunityId}`);
   }, [createMutation, draft, router, syncMutation]);
 
   const displayObject = draft ?? object;

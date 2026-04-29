@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -35,14 +34,14 @@ export default function LLMExplanationViewer({
         : "outline";
 
   return (
-    <article className="rounded-md border bg-muted/40 p-3 text-xs">
+    <article className="bg-muted/40 rounded-md border p-3 text-xs">
       <header className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="line-clamp-1 text-[11px] font-medium text-foreground">
+          <p className="text-foreground line-clamp-1 text-[11px] font-medium">
             {title}
           </p>
           {createdAt && (
-            <p className="mt-0.5 text-[10px] text-muted-foreground">
+            <p className="text-muted-foreground mt-0.5 text-[10px]">
               {new Date(createdAt).toLocaleString()}
             </p>
           )}
@@ -58,14 +57,14 @@ export default function LLMExplanationViewer({
             {sentiment}
           </Badge>
           {typeof score === "number" && (
-            <p className="text-[10px] font-medium text-muted-foreground">
+            <p className="text-muted-foreground text-[10px] font-medium">
               Score {score}/100
             </p>
           )}
         </div>
       </header>
 
-      <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-muted-foreground text-[11px] leading-relaxed whitespace-pre-wrap">
         {expanded ? explanation : previewText}
       </p>
 
@@ -73,7 +72,7 @@ export default function LLMExplanationViewer({
         <button
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
-          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+          className="text-primary mt-2 inline-flex items-center gap-1 text-[11px] font-medium underline-offset-2 hover:underline"
         >
           {expanded ? (
             <>
@@ -91,4 +90,3 @@ export default function LLMExplanationViewer({
     </article>
   );
 }
-
