@@ -38,7 +38,7 @@ export interface JobWithMetadata {
   returnvalue: unknown;
   failedReason: string | null;
   attemptsMade: number;
-  userId: string;
+  userId: string | null;
   dealId?: string;
   companyId?: string;
   fileName?: string;
@@ -85,7 +85,7 @@ export interface FileUploadJobData {
   filePath: string;
   fileSize: number;
   mimeType: string;
-  userId: string;
+  userId: string | null;
   entityType: "DEAL" | "DEAL_OPPORTUNITY";
   entityId: string;
   entityMetadata: EntityMetadata;
@@ -119,7 +119,7 @@ export interface CIMExtractionJobData {
 export interface RagIngestionJobData {
   jobId: string;
   documentId: string;
-  userId: string;
+  userId: string | null;
   forceReingest?: boolean;
 }
 

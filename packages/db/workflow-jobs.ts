@@ -14,7 +14,7 @@ export type WorkflowKind =
 export interface InsertWorkflowJobInput {
   instanceId: string;
   workflowKind: WorkflowKind;
-  userId: string;
+  userId: string | null;
   dealId?: string | null;
   fileName?: string | null;
   screenerId?: string | null;
@@ -26,7 +26,7 @@ export async function insertWorkflowJob(row: InsertWorkflowJobInput) {
     .values({
       instanceId: row.instanceId,
       workflowKind: row.workflowKind,
-      userId: row.userId,
+      userId: row.userId ?? null,
       dealId: row.dealId ?? null,
       fileName: row.fileName ?? null,
       screenerId: row.screenerId ?? null,

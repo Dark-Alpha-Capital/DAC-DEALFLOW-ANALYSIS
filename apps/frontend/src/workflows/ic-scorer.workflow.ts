@@ -23,6 +23,15 @@ import { generateIcScorerMemoPass } from "./ic-scorer-memo-core";
 
 const LOG = "[IcScorerWorkflow]";
 
+function icScorerActorMatches(
+  runUserId: string | null | undefined,
+  payloadUserId: string | null | undefined,
+): boolean {
+  const a = runUserId?.trim() || null;
+  const b = payloadUserId?.trim() || null;
+  return a === b;
+}
+
 export class IcScorerWorkflow extends WorkflowEntrypoint<
   WorkflowWorkerEnv,
   IcScorerWorkflowParams
@@ -40,7 +49,7 @@ export class IcScorerWorkflow extends WorkflowEntrypoint<
       await step.do("score-core", async () =>
         runDbWithWorkerNeonPool(async () => {
           const existing = await getIcScorerRunById(p.runId);
-          if (!existing || existing.userId !== p.userId) {
+          if (!existing || !icScorerActorMatches(existing.userId, p.userId)) {
             throw new Error("IC scorer run not found or forbidden");
           }
 
@@ -106,7 +115,7 @@ export class IcScorerWorkflow extends WorkflowEntrypoint<
       await step.do("memo-llm", async () =>
         runDbWithWorkerNeonPool(async () => {
           const run = await getIcScorerRunById(p.runId);
-          if (!run || run.userId !== p.userId) {
+          if (!run || !icScorerActorMatches(run.userId, p.userId)) {
             throw new Error("IC scorer run not found or forbidden");
           }
           const scoreCore = run.scorePayload as IcScorerScoreCore | null;

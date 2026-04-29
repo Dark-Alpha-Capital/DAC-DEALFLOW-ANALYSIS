@@ -1,6 +1,6 @@
 export type RagIngestionParams = {
   documentId: string;
-  userId: string;
+  userId: string | null;
   forceReingest?: boolean;
 };
 
@@ -10,7 +10,7 @@ export type FileUploadParams = {
   filePath: string;
   fileSize: number;
   mimeType: string;
-  userId: string;
+  userId: string | null;
   entityType: "DEAL" | "DEAL_OPPORTUNITY";
   entityId: string;
   entityMetadata: {
@@ -63,7 +63,7 @@ export type CimScreeningDealListingContextSource =
 /** Library CIM upload: set documentId. Deal opportunity (multi-doc RAG): set dealOpportunityId. */
 export type CimScreeningParams = {
   jobId: string;
-  userId: string;
+  userId: string | null;
   screenerId: string;
   sessionId: string;
   runId: string;
@@ -89,7 +89,7 @@ export type CimScreeningParams = {
 
 export type CimMonographScreeningParams = {
   jobId: string;
-  userId: string;
+  userId: string | null;
   screenerId: string;
   sessionId: string;
   runId: string;
@@ -103,7 +103,7 @@ export type CimMonographScreeningParams = {
 
 export type IcScorerWorkflowParams = {
   jobId: string;
-  userId: string;
+  userId: string | null;
   runId: string;
   dealOpportunityId: string;
   bitrixDealId: string;

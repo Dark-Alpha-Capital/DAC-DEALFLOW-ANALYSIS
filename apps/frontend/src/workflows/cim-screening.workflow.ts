@@ -302,7 +302,11 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
                 ingestionStatus: document.ingestionStatus,
                 uploadedById: document.uploadedById,
               });
-              if (document.uploadedById !== userId) {
+              if (
+                userId?.trim() &&
+                document.uploadedById &&
+                document.uploadedById !== userId
+              ) {
                 logDetail("validate.document.forbidden_user", {
                   documentId,
                   expectedUserId: userId,

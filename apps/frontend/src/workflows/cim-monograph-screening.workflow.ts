@@ -198,7 +198,11 @@ export class CimMonographScreeningWorkflow extends WorkflowEntrypoint<
             .limit(1);
 
           if (!document) throw new Error(`Document ${targetDocumentId} not found`);
-          if (document.uploadedById !== userId) {
+          if (
+            userId?.trim() &&
+            document.uploadedById &&
+            document.uploadedById !== userId
+          ) {
             throw new Error("Document does not belong to this user");
           }
           if (document.dealOpportunityId !== dealOpportunityId) {

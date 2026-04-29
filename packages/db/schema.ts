@@ -1315,9 +1315,9 @@ export const workflowJobs = pgTable(
   {
     instanceId: text("instanceId").primaryKey(),
     workflowKind: text("workflowKind").notNull(),
-    userId: text("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    userId: text("userId").references(() => users.id, {
+      onDelete: "set null",
+    }),
     dealId: text("dealId"),
     fileName: text("fileName"),
     screenerId: text("screenerId"),
@@ -1384,9 +1384,9 @@ export const cimScreeningSessions = pgTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
-    userId: text("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    userId: text("userId").references(() => users.id, {
+      onDelete: "set null",
+    }),
     documentId: text("documentId").references(() => documents.id, {
       onDelete: "cascade",
     }),
@@ -1491,9 +1491,9 @@ export const icScorerRuns = pgTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
-    userId: text("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    userId: text("userId").references(() => users.id, {
+      onDelete: "set null",
+    }),
     dealOpportunityId: text("dealOpportunityId")
       .notNull()
       .references(() => dealOpportunities.id, { onDelete: "cascade" }),

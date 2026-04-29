@@ -559,7 +559,7 @@ export type CimScreeningSessionStatus =
   | "FAILED";
 
 export async function insertCimScreeningSession(input: {
-  userId: string;
+  userId: string | null;
   documentId?: string | null;
   dealOpportunityId?: string | null;
 }) {

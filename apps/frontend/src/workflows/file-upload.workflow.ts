@@ -76,9 +76,6 @@ function assertDealOpportunityUploadPayload(
   p: FileUploadParams,
   jobId: string,
 ): void {
-  if (!p.userId?.trim()) {
-    throw new Error(`[file-upload] ${jobId}: userId is required`);
-  }
   if (p.entityType !== "DEAL_OPPORTUNITY") {
     throw new Error(`[file-upload] ${jobId}: entityType must be "DEAL_OPPORTUNITY"`);
   }
@@ -213,7 +210,7 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
                 entityType: "DEAL_OPPORTUNITY",
                 entityId,
                 dealOpportunityId: entityId,
-                uploadedById: userId,
+                uploadedById: userId ?? null,
               })
               .returning();
 
@@ -234,14 +231,14 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
             await insertWorkflowJob({
               instanceId: ragJobId,
               workflowKind: "rag-ingestion",
-              userId,
+              userId: userId ?? null,
               dealId: entityId,
               fileName,
             });
             try {
               await this.env.RAG_INGESTION_WORKFLOW.create({
                 id: ragJobId,
-                params: { documentId: documentRecord.id, userId },
+                params: { documentId: documentRecord.id, userId: userId ?? null },
               });
               logInfo("rag-ingestion workflow.create ok", {
                 ragJobId,

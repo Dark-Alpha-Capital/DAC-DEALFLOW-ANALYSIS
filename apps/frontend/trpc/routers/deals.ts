@@ -1633,13 +1633,6 @@ export const dealsRouter = createTRPCRouter({
         fileCount: input.files.length,
       });
       const opp = await GetDealOpportunityById(dealOpportunityId);
-      const actorUserId = opp?.userId?.trim();
-      if (!actorUserId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Deal has no owner user to run ingestion workflow.",
-        });
-      }
 
       const env = getBitrixSyncEnv();
       let linkedForMeta: BitrixWidgetLinkedEntities | null = null;
@@ -1742,7 +1735,7 @@ export const dealsRouter = createTRPCRouter({
           filePath: finalPath,
           fileSize: buffer.length,
           mimeType: resolvedMime,
-          userId: actorUserId,
+          userId: null,
           entityType: "DEAL_OPPORTUNITY",
           entityId: dealOpportunityId,
           entityMetadata,
@@ -1756,7 +1749,7 @@ export const dealsRouter = createTRPCRouter({
         await insertWorkflowJob({
           instanceId: jobId,
           workflowKind: "file-upload",
-          userId: actorUserId,
+          userId: null,
           dealId: dealOpportunityId,
           fileName: file.fileName,
         });
@@ -1843,13 +1836,6 @@ export const dealsRouter = createTRPCRouter({
         input.dealId,
       );
       const opp = await GetDealOpportunityById(dealOpportunityId);
-      const actorUserId = opp?.userId?.trim();
-      if (!actorUserId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Deal has no owner user to run screening workflow.",
-        });
-      }
 
       const chunkCount =
         await countDocumentChunksByDealOpportunityId(dealOpportunityId);
@@ -1935,7 +1921,7 @@ export const dealsRouter = createTRPCRouter({
       }
 
       const session = await insertCimScreeningSession({
-        userId: actorUserId,
+        userId: null,
         dealOpportunityId,
       });
       if (!session) {
@@ -1964,7 +1950,7 @@ export const dealsRouter = createTRPCRouter({
         workflowKind: isMonographMode
           ? "cim-monograph-screening"
           : "cim-screening",
-        userId: actorUserId,
+        userId: null,
         dealId: dealOpportunityId,
         fileName:
           selectedDocument?.fileName ??
@@ -1984,7 +1970,7 @@ export const dealsRouter = createTRPCRouter({
       if (isMonographMode && selectedDocument) {
         await startCimMonographScreeningWorkflow(jobId, {
           jobId,
-          userId: actorUserId,
+          userId: null,
           dealOpportunityId,
           targetDocumentId: selectedDocument.id,
           screenerId: input.screenerId,
@@ -1998,7 +1984,7 @@ export const dealsRouter = createTRPCRouter({
       } else {
         await startCimScreeningWorkflow(jobId, {
           jobId,
-          userId: actorUserId,
+          userId: null,
           dealOpportunityId,
           screenerId: input.screenerId,
           sessionId: session.id,
@@ -2087,13 +2073,6 @@ export const dealsRouter = createTRPCRouter({
         input.dealId,
       );
       const opp = await GetDealOpportunityById(dealOpportunityId);
-      const actorUserId = opp?.userId?.trim();
-      if (!actorUserId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Deal has no owner user to run IC scorer workflow.",
-        });
-      }
 
       const chunkCount =
         await countDocumentChunksByDealOpportunityId(dealOpportunityId);
@@ -2171,7 +2150,7 @@ export const dealsRouter = createTRPCRouter({
         })) ?? "";
 
       const run = await insertIcScorerRun({
-        userId: actorUserId,
+        userId: null,
         dealOpportunityId,
         bitrixDealId: input.dealId,
         mode: isMonographMode ? "monograph" : "rag",
@@ -2190,7 +2169,7 @@ export const dealsRouter = createTRPCRouter({
       await insertWorkflowJob({
         instanceId: jobId,
         workflowKind: "ic-scorer-score",
-        userId: actorUserId,
+        userId: null,
         dealId: dealOpportunityId,
         fileName:
           selectedDocument?.fileName ??
@@ -2201,7 +2180,7 @@ export const dealsRouter = createTRPCRouter({
 
       await startIcScorerWorkflow(jobId, {
         jobId,
-        userId: actorUserId,
+        userId: null,
         runId: run.id,
         dealOpportunityId,
         bitrixDealId: input.dealId,
