@@ -1,4 +1,5 @@
 import { Loader2, Play } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -8,19 +9,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StepHeaderNav } from "./step-header-nav";
-import type { ScreeningMode, WidgetBootstrap, WizardStep } from "./types";
+import type { WidgetBootstrap, WizardStep } from "./types";
 
 type Screener = WidgetBootstrap["screeners"][number];
+
+const MODE_LABEL: Record<string, string> = {
+  monograph: "Single-file (monograph)",
+  rag: "Multi-file (RAG)",
+};
 
 export function StepScreener({
   screeners,
   effectiveScreenerId,
   onScreenerIdChange,
-  screeningMode,
+  screeningModeBadge,
   indexedCount,
   vectorWaitSec,
-  targetDocumentId,
-  monographSelectedLabel,
   canRunNow,
   runPending,
   blockedReason,
@@ -30,20 +34,15 @@ export function StepScreener({
   screeners: Screener[];
   effectiveScreenerId: string;
   onScreenerIdChange: (id: string) => void;
-  screeningMode: ScreeningMode;
+  screeningModeBadge: string | null;
   indexedCount: number;
   vectorWaitSec: number;
-  targetDocumentId: string;
-  monographSelectedLabel: string | null;
   canRunNow: boolean;
   runPending: boolean;
   blockedReason: string | null;
   onStartScreening: () => void;
   goStep: (s: WizardStep) => void;
 }) {
-  const modeLabel =
-    screeningMode === "rag" ? "Deal RAG" : "Single-file (monograph)";
-
   return (
     <section aria-labelledby="step-screener-title">
       <StepHeaderNav
@@ -61,13 +60,18 @@ export function StepScreener({
             Run screening
           </h2>
           <p className="text-muted-foreground max-w-[62ch] text-[13px] leading-relaxed">
-            Choose a screener template and start. Mode:{" "}
-            <span className="text-foreground font-medium">{modeLabel}</span>
-            {screeningMode === "rag"
-              ? ` · ${indexedCount} chunk${indexedCount === 1 ? "" : "s"} indexed. After start, the server waits ${vectorWaitSec}s for the vector index.`
-              : targetDocumentId
-                ? ` · ${monographSelectedLabel ? `"${monographSelectedLabel}" — ` : ""}full text window per question (no retrieval).`
-                : ""}
+            Choose a screener template and start.{" "}
+            {screeningModeBadge ? (
+              <>
+                Mode:{" "}
+                <Badge variant="outline" className="border-border/60 text-xs">
+                  {MODE_LABEL[screeningModeBadge] ?? screeningModeBadge}
+                </Badge>{" "}
+                ·{" "}
+              </>
+            ) : null}
+            {indexedCount} chunk{indexedCount === 1 ? "" : "s"} indexed. After
+            start, the server waits {vectorWaitSec}s for the vector index.
           </p>
         </div>
 

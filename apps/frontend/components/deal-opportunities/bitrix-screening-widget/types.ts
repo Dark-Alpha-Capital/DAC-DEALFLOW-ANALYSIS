@@ -27,6 +27,4 @@ export type DisplayIngestionPipelineRow = {
   state: string;
 };
 
-export type ScreeningMode = "rag" | "monograph";
-
 export type WizardStep = 1 | 2 | 3;

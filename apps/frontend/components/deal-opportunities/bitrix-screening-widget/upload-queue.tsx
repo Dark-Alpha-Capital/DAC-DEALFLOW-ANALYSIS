@@ -10,17 +10,13 @@ import {
   SUPPORTED_UPLOAD_LABEL,
   UPLOAD_ACCEPT_ATTR,
 } from "./utils";
-import type { ScreeningMode } from "./types";
-
 export function UploadQueue({
-  mode,
   files,
   onPick,
   onRemove,
   onUpload,
   uploading,
 }: {
-  mode: ScreeningMode;
   files: File[];
   onPick: (picked: File[]) => void;
   onRemove: (key: string) => void;
@@ -34,12 +30,11 @@ export function UploadQueue({
           htmlFor="bitrix-widget-upload"
           className="text-muted-foreground block text-[10px] font-semibold tracking-[0.16em] uppercase"
         >
-          {mode === "rag" ? "Add files to index" : "Upload a file to screen"}
+          Add files to deal
         </label>
         <p className="text-muted-foreground max-w-[62ch] text-[12px] leading-relaxed">
-          {mode === "rag"
-            ? "Multi-select supported. Duplicates (same name, size, modified time) are merged. New uploads join the deal index once processed."
-            : "Upload one or more files; when status is Processed, select exactly one above for monograph screening."}
+          Multi-select supported. Duplicates (same name, size, modified time)
+          are merged. New uploads join the deal index once processed.
         </p>
         <p className="text-muted-foreground/80 text-[11px] leading-relaxed">
           Supported · {SUPPORTED_UPLOAD_LABEL}

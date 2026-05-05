@@ -495,6 +495,10 @@ export const upsertCustomerConcentrationSystemRiskFlag = async ({
   customerConcentration: number | null;
   threshold?: number;
 }) => {
+
+
+
+
   if (customerConcentration == null || customerConcentration < threshold) {
     return null;
   }

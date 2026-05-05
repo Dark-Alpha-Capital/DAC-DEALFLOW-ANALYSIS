@@ -22,7 +22,6 @@ import { StepScreener } from "./bitrix-screening-widget/step-screener";
 import { WizardStepNav } from "./bitrix-screening-widget/wizard-step-nav";
 import type {
   DealDocumentRow,
-  ScreeningMode,
   ScreeningRunDetail,
   WidgetBootstrap,
   WizardStep,
@@ -101,8 +100,6 @@ export function BitrixScreeningWidgetWorkspace({
   ]);
 
   const [screenerId, setScreenerId] = useState("");
-  const [screeningMode, setScreeningMode] = useState<ScreeningMode>("rag");
-  const [targetDocumentId, setTargetDocumentId] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   /** `null` = follow the latest run from bootstrap. Set to a past `runId` to load that run's answers. */
   const [viewRunId, setViewRunId] = useState<string | null>(null);
@@ -210,11 +207,6 @@ export function BitrixScreeningWidgetWorkspace({
     setUploadFiles((prev) => prev.filter((f) => pendingUploadKey(f) !== key));
   }, []);
 
-  const onChangeMode = useCallback((next: ScreeningMode) => {
-    setScreeningMode(next);
-    if (next === "rag") setTargetDocumentId("");
-  }, []);
-
   const d = q.data;
   const screeners = d?.screeners ?? [];
   const latestRunId = d?.lastRun?.runId;
@@ -259,12 +251,8 @@ export function BitrixScreeningWidgetWorkspace({
     run.mutate({
       ...widgetInput,
       screenerId: effectiveScreenerId,
-      screeningMode,
-      ...(screeningMode === "monograph" && targetDocumentId
-        ? { targetDocumentId }
-        : {}),
     });
-  }, [run, widgetInput, effectiveScreenerId, screeningMode, targetDocumentId]);
+  }, [run, widgetInput, effectiveScreenerId]);
 
   const indexed = (d?.indexedCount ?? 0) > 0;
   const ingestSummary = useMemo(
@@ -276,6 +264,7 @@ export function BitrixScreeningWidgetWorkspace({
     [d?.ingestionPipelineJobs],
   );
   const pipelineBusy = (d?.ingestionPipelineJobs?.length ?? 0) > 0;
+
   const ingestBusy = useMemo(() => {
     if (!d) return false;
     return (
@@ -315,25 +304,7 @@ export function BitrixScreeningWidgetWorkspace({
     [d?.dealDocuments],
   );
 
-  const monographSelectedLabel = useMemo(() => {
-    if (!targetDocumentId || !d?.dealDocuments.length) return null;
-    return (
-      d.dealDocuments.find((doc) => doc.id === targetDocumentId)?.fileName ??
-      null
-    );
-  }, [targetDocumentId, d?.dealDocuments]);
-
-  // Auto-select the single processed doc when entering monograph mode.
-  useEffect(() => {
-    if (screeningMode !== "monograph" || processedDocs.length !== 1) return;
-    setTargetDocumentId((prev) => prev || processedDocs[0]!.id);
-  }, [screeningMode, processedDocs]);
-
-  const monographBlockedReason =
-    screeningMode === "monograph" && !targetDocumentId
-      ? "Select a processed file for monograph mode."
-      : null;
-  const effectiveRunBlocked = runBlocked ?? monographBlockedReason;
+  const effectiveRunBlocked = runBlocked;
   const canRunNow = d != null && effectiveRunBlocked === null;
 
   const orderedScreeningAnswers = useMemo(() => {
@@ -349,13 +320,14 @@ export function BitrixScreeningWidgetWorkspace({
 
   const effectiveViewRunId = viewRunId ?? latestRunId ?? null;
 
-  const canOpenStep2 =
-    screeningMode === "rag"
-      ? indexed
-      : Boolean(
-          targetDocumentId &&
-          processedDocs.some((doc) => doc.id === targetDocumentId),
-        );
+  const canOpenStep2 = indexed;
+
+  const isMonographMode = processedDocs.length === 1;
+  const resolvedTargetDocumentId = isMonographMode
+    ? processedDocs[0]?.id
+    : null;
+  const screeningModeBadge =
+    processedDocs.length === 0 ? null : isMonographMode ? "monograph" : "rag";
 
   const goWizardStep = useCallback(
     (s: WizardStep) => {
@@ -458,7 +430,7 @@ export function BitrixScreeningWidgetWorkspace({
                   <span
                     className={cn(
                       indexed
-                        ? "text-emerald-700 font-medium dark:text-emerald-400"
+                        ? "font-medium text-emerald-700 dark:text-emerald-400"
                         : "text-muted-foreground",
                     )}
                   >
@@ -511,10 +483,7 @@ export function BitrixScreeningWidgetWorkspace({
                 pendingDocs={pendingDocs}
                 pipelineRows={displayIngestionPipelineJobs}
                 ingestSummary={ingestSummary}
-                screeningMode={screeningMode}
-                onChangeMode={onChangeMode}
-                targetDocumentId={targetDocumentId}
-                setTargetDocumentId={setTargetDocumentId}
+                screeningModeBadge={screeningModeBadge}
                 canOpenStep2={canOpenStep2}
                 goStep={goWizardStep}
                 uploadFiles={uploadFiles}
@@ -532,11 +501,9 @@ export function BitrixScreeningWidgetWorkspace({
                 screeners={screeners}
                 effectiveScreenerId={effectiveScreenerId}
                 onScreenerIdChange={setScreenerId}
-                screeningMode={screeningMode}
+                screeningModeBadge={screeningModeBadge}
                 indexedCount={d.indexedCount}
                 vectorWaitSec={vectorWaitSec}
-                targetDocumentId={targetDocumentId}
-                monographSelectedLabel={monographSelectedLabel}
                 canRunNow={canRunNow}
                 runPending={run.isPending}
                 blockedReason={effectiveRunBlocked}

@@ -300,6 +300,9 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
+      
+      
+      
       const dealCim = await replaceDealCim({
         dealOpportunityId: input.dealOpportunityId,
         documentId: documentRecord.id,
@@ -1095,12 +1098,19 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      const isMonographMode = input.screeningMode === "monograph";
+      const dealDocs = await listDealOpportunityDocumentsSummary(opp.id);
+      const processedDocs = dealDocs.filter(
+        (d) => d.ingestionStatus === "PROCESSED",
+      );
+      const isMonographMode =
+        input.screeningMode === "monograph" ||
+        (input.screeningMode == null && processedDocs.length === 1);
       let targetDocumentId: string | null = null;
       let targetDocumentFileName: string | null = null;
       if (isMonographMode) {
-        const dealDocs = await listDealOpportunityDocumentsSummary(opp.id);
-        const selectedDoc = dealDocs.find((d) => d.id === input.targetDocumentId);
+        const selectedDoc = input.targetDocumentId
+          ? dealDocs.find((d) => d.id === input.targetDocumentId)
+          : processedDocs[0];
         if (!selectedDoc) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -1850,12 +1860,21 @@ export const dealsRouter = createTRPCRouter({
       const dealDocs = await listDealOpportunityDocumentsSummary(
         dealOpportunityId,
       );
-      const isMonographMode = input.screeningMode === "monograph";
+      const processedDocs = dealDocs.filter(
+        (d) => d.ingestionStatus === "PROCESSED",
+      );
+      const isMonographMode =
+        input.screeningMode === "monograph" ||
+        (input.screeningMode == null && processedDocs.length === 1);
       let selectedDocument:
         | (typeof dealDocs)[number]
         | undefined;
       if (isMonographMode) {
-        selectedDocument = dealDocs.find((d) => d.id === input.targetDocumentId);
+        if (input.targetDocumentId) {
+          selectedDocument = dealDocs.find((d) => d.id === input.targetDocumentId);
+        } else if (processedDocs.length > 0) {
+          selectedDocument = processedDocs[0];
+        }
         if (!selectedDocument) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -2087,10 +2106,19 @@ export const dealsRouter = createTRPCRouter({
       const dealDocs = await listDealOpportunityDocumentsSummary(
         dealOpportunityId,
       );
-      const isMonographMode = input.screeningMode === "monograph";
+      const processedDocs = dealDocs.filter(
+        (d) => d.ingestionStatus === "PROCESSED",
+      );
+      const isMonographMode =
+        input.screeningMode === "monograph" ||
+        (input.screeningMode == null && processedDocs.length === 1);
       let selectedDocument: (typeof dealDocs)[number] | undefined;
       if (isMonographMode) {
-        selectedDocument = dealDocs.find((d) => d.id === input.targetDocumentId);
+        if (input.targetDocumentId) {
+          selectedDocument = dealDocs.find((d) => d.id === input.targetDocumentId);
+        } else if (processedDocs.length > 0) {
+          selectedDocument = processedDocs[0];
+        }
         if (!selectedDocument) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -2106,7 +2134,9 @@ export const dealsRouter = createTRPCRouter({
         }
       }
 
-      let snapshotRows = dealDocs.filter((d) => d.ingestionStatus === "PROCESSED");
+      let snapshotRows = dealDocs.filter(
+        (d) => d.ingestionStatus === "PROCESSED",
+      );
       if (snapshotRows.length === 0) {
         snapshotRows = dealDocs;
       }

@@ -245,16 +245,8 @@ export const bitrixScreeningWidgetDeleteDocumentSchema =
 export const bitrixScreeningWidgetStartRunSchema =
   bitrixWidgetContextAuthSchema.extend({
     screenerId: z.string().min(1),
-    screeningMode: z.enum(["rag", "monograph"]).default("rag"),
+    screeningMode: z.enum(["rag", "monograph"]).optional(),
     targetDocumentId: z.string().min(1).optional(),
-  }).superRefine((value, ctx) => {
-    if (value.screeningMode === "monograph" && !value.targetDocumentId?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "targetDocumentId is required in monograph mode",
-        path: ["targetDocumentId"],
-      });
-    }
   });
 
 /** Load answers + metadata for one screening run (widget auth). */
@@ -264,20 +256,10 @@ export const bitrixScreeningWidgetRunDetailSchema =
   });
 
 export const bitrixIcScorerWidgetStartRunSchema =
-  bitrixWidgetContextAuthSchema
-    .extend({
-      screeningMode: z.enum(["rag", "monograph"]).default("rag"),
-      targetDocumentId: z.string().min(1).optional(),
-    })
-    .superRefine((value, ctx) => {
-      if (value.screeningMode === "monograph" && !value.targetDocumentId?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "targetDocumentId is required in monograph mode",
-          path: ["targetDocumentId"],
-        });
-      }
-    });
+  bitrixWidgetContextAuthSchema.extend({
+    screeningMode: z.enum(["rag", "monograph"]).optional(),
+    targetDocumentId: z.string().min(1).optional(),
+  });
 
 export const bitrixIcScorerWidgetRunDetailSchema =
   bitrixWidgetContextAuthSchema.extend({
@@ -308,16 +290,8 @@ export const dealOpportunityIdMinInputSchema = z.object({
 export const startTemplateScreeningInputSchema = z.object({
   dealOpportunityId: z.string().min(1),
   screenerId: z.string().min(1),
-  screeningMode: z.enum(["rag", "monograph"]).default("rag"),
+  screeningMode: z.enum(["rag", "monograph"]).optional(),
   targetDocumentId: z.string().min(1).optional(),
-}).superRefine((value, ctx) => {
-  if (value.screeningMode === "monograph" && !value.targetDocumentId?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "targetDocumentId is required in monograph mode",
-      path: ["targetDocumentId"],
-    });
-  }
 });
 
 export const deleteOpportunityInputSchema = z.object({ id: z.string() });

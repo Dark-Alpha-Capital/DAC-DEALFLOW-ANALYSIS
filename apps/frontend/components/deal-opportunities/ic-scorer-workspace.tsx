@@ -25,7 +25,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -36,11 +35,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ModePicker } from "./bitrix-screening-widget/mode-picker";
 import { DocumentListItem } from "./bitrix-screening-widget/document-list-item";
 import { IngestionProgressList } from "./bitrix-screening-widget/ingestion-progress-list";
 import { UploadQueue } from "./bitrix-screening-widget/upload-queue";
-import type { DealDocumentRow, ScreeningMode } from "./bitrix-screening-widget/types";
+import type { DealDocumentRow } from "./bitrix-screening-widget/types";
 import {
   INGEST_IN_FLIGHT,
   mergeIngestionPipelineJobsForDisplay,
@@ -406,8 +404,6 @@ export function IcScorerWorkspace({
   });
 
   const [step, setStep] = useState<Step>(1);
-  const [screeningMode, setScreeningMode] = useState<ScreeningMode>("rag");
-  const [targetDocumentId, setTargetDocumentId] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [viewRunId, setViewRunId] = useState<string | null>(null);
   const [editedMemo, setEditedMemo] = useState("");
@@ -483,11 +479,6 @@ export function IcScorerWorkspace({
     setUploadFiles((prev) => prev.filter((f) => pendingUploadKey(f) !== key));
   }, []);
 
-  const onChangeMode = useCallback((next: ScreeningMode) => {
-    setScreeningMode(next);
-    if (next === "rag") setTargetDocumentId("");
-  }, []);
-
   const d = q.data;
   const docs = (d?.dealDocuments ?? []) as DealDocumentRow[];
   const processedDocs = useMemo(
@@ -504,11 +495,6 @@ export function IcScorerWorkspace({
 
   const latestRunId = d?.recentIcScorerRuns[0]?.runId ?? null;
   const effectiveRunId = viewRunId ?? latestRunId;
-
-  useEffect(() => {
-    if (screeningMode !== "monograph" || processedDocs.length !== 1) return;
-    setTargetDocumentId((prev) => prev || processedDocs[0]!.id);
-  }, [screeningMode, processedDocs]);
 
   const runDetailQuery = useQuery({
     ...trpc.dealOpportunities.getIcScorerWidgetRunDetail.queryOptions({
@@ -583,12 +569,14 @@ export function IcScorerWorkspace({
       ? `${d.portalBaseUrl.replace(/\/$/, "")}/crm/deal/details/${dealId}/`
       : null;
 
-  const canStart =
-    indexed &&
-    (screeningMode === "rag" ||
-      (screeningMode === "monograph" &&
-        Boolean(targetDocumentId) &&
-        processedDocs.some((x) => x.id === targetDocumentId)));
+  const canStart = indexed;
+
+  const isMonographMode = processedDocs.length === 1;
+  const screeningModeBadge = processedDocs.length === 0
+    ? null
+    : isMonographMode
+      ? "monograph"
+      : "rag";
 
   const cc = scoreColors(output?.color);
   const scoreNum = typeof output?.score === "number" ? output.score : null;
@@ -709,7 +697,16 @@ export function IcScorerWorkspace({
             </Alert>
           ) : null}
 
-          <ModePicker value={screeningMode} onChange={onChangeMode} />
+          {screeningModeBadge ? (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground text-xs">Mode:</span>
+              <Badge variant="outline" className="border-border/60 text-xs">
+                {screeningModeBadge === "monograph"
+                  ? "Single-file (monograph)"
+                  : "Multi-file (RAG)"}
+              </Badge>
+            </div>
+          ) : null}
 
           {pipelineRows.length > 0 ? (
             <div className="space-y-3">
@@ -722,7 +719,6 @@ export function IcScorerWorkspace({
 
           {ingestSummary &&
           ingestSummary.total > 0 &&
-          screeningMode === "rag" &&
           (ingestSummary.inFlight > 0 || ingestSummary.failed > 0) ? (
             <div className="space-y-2">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs">
@@ -740,67 +736,37 @@ export function IcScorerWorkspace({
             </div>
           ) : null}
 
-          {screeningMode === "monograph" ? (
-            <div className="space-y-3">
-              <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase">
-                Monograph document
+          <div className="space-y-3">
+            <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase">
+              Indexed documents ({indexedCount} chunks)
+            </p>
+            {processedDocs.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Upload files below. Indexed files are used automatically for
+                scoring (server waits {vectorWaitSec}s after starting a run for
+                the vector index to settle).
               </p>
-              {processedDocs.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  No processed files yet. Upload and wait for indexing.
-                </p>
-              ) : (
-                <RadioGroup
-                  value={targetDocumentId}
-                  onValueChange={setTargetDocumentId}
-                  className="space-y-1"
-                >
-                  {processedDocs.map((doc) => (
-                    <label
-                      key={doc.id}
-                      className="flex cursor-pointer items-center gap-2 py-1 text-sm"
-                    >
-                      <RadioGroupItem value={doc.id} id={`ic-mono-${doc.id}`} />
-                      <span className="truncate">{doc.fileName}</span>
-                    </label>
-                  ))}
-                </RadioGroup>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase">
-                Indexed documents ({indexedCount} chunks)
-              </p>
-              {processedDocs.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  Upload files below. RAG mode uses a deterministic slice of
-                  chunks across processed files (server waits {vectorWaitSec}s
-                  after starting a run for the vector index to settle).
-                </p>
-              ) : (
-                <ul className="divide-border/60 divide-y">
-                  {processedDocs.map((doc) => (
-                    <DocumentListItem
-                      key={doc.id}
-                      doc={doc}
-                      variant="processed"
-                      deletingDisabled={deleteDealDocument.isPending}
-                      onDelete={(x) =>
-                        deleteDealDocument.mutate({
-                          ...widgetInput,
-                          documentId: x.id,
-                        })
-                      }
-                    />
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+            ) : (
+              <ul className="divide-border/60 divide-y">
+                {processedDocs.map((doc) => (
+                  <DocumentListItem
+                    key={doc.id}
+                    doc={doc}
+                    variant="processed"
+                    deletingDisabled={deleteDealDocument.isPending}
+                    onDelete={(x) =>
+                      deleteDealDocument.mutate({
+                        ...widgetInput,
+                        documentId: x.id,
+                      })
+                    }
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
 
           <UploadQueue
-            mode={screeningMode}
             files={uploadFiles}
             onPick={onPickFiles}
             onRemove={onRemovePendingUpload}
@@ -813,14 +779,7 @@ export function IcScorerWorkspace({
               type="button"
               disabled={!canStart || startRun.isPending}
               onClick={() =>
-                startRun.mutate({
-                  ...widgetInput,
-                  screeningMode,
-                  targetDocumentId:
-                    screeningMode === "monograph"
-                      ? targetDocumentId
-                      : undefined,
-                })
+                startRun.mutate({ ...widgetInput })
               }
             >
               {startRun.isPending ? (
@@ -838,9 +797,7 @@ export function IcScorerWorkspace({
             {!canStart ? (
               <p className="text-muted-foreground max-w-md text-xs">
                 {indexed
-                  ? screeningMode === "monograph"
-                    ? "Select one processed document."
-                    : "Need indexed chunks — ensure files are processed."
+                  ? "Need indexed chunks — ensure files are processed."
                   : "Index at least one document first."}
               </p>
             ) : null}

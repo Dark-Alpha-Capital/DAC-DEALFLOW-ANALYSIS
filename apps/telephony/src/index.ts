@@ -36,6 +36,17 @@ function routeParamString(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : value;
 }
 
+function logXaiProtocolError(scope: string, callId: string, message: Record<string, unknown>) {
+  const err = message.error;
+  const detail =
+    err && typeof err === "object"
+      ? JSON.stringify(err)
+      : err != null
+        ? String(err)
+        : JSON.stringify(message);
+  console.error(`[XAI][${scope}][${callId}] error: ${detail}`);
+}
+
 // ========================================
 // Tool Handlers
 // ========================================
@@ -73,6 +84,14 @@ app.get("/health", (req, res) => {
 // Twilio Voice Webhook Endpoints
 // ========================================
 app.post("/twiml", async (req, res) => {
+  const body = req.body as Record<string, string | undefined>;
+  const callSid = body?.CallSid ?? "";
+  const from = body?.From ?? "";
+  const to = body?.To ?? "";
+  console.log(
+    `[INBOUND] webhook /twiml: Twilio CallSid=${callSid || "(missing)"} From=${from || "?"} To=${to || "?"}`
+  );
+
   try {
     const callId = generateSecureId('call');
 
@@ -87,6 +106,10 @@ app.post("/twiml", async (req, res) => {
     const hostname = process.env.HOSTNAME.replace(/^https?:\/\//, '');
     const streamUrl = `wss://${hostname}/media-stream/${callId}`;
 
+    console.log(
+      `[INBOUND] returning TwiML for internalCallId=${callId} media stream=${streamUrl}`
+    );
+
     const twimlResponse = `\
 <Response>
   <Connect>
@@ -96,6 +119,7 @@ app.post("/twiml", async (req, res) => {
 `;
     res.end(twimlResponse);
   } catch (error) {
+    console.error("[INBOUND] /twiml failed:", error);
     res.status(500).send();
   }
 });
@@ -110,7 +134,7 @@ app.post("/call-status", async (req, res) => {
 app.ws("/media-stream/:callId", async (ws, req) => {
   const callId = routeParamString(req.params.callId);
 
-  console.log(`\n[${callId}] === CALL STARTED ===`);
+  console.log(`\n[${callId}] === INBOUND media stream WebSocket open (Twilio connecting) ===`);
 
   const tw = new TwilioMediaStreamWebsocket(ws);
 
@@ -118,10 +142,15 @@ app.ws("/media-stream/:callId", async (ws, req) => {
   tw.on("start", (msg) => {
     tw.streamSid = msg.start.streamSid;
     logEvent(callId, 'twilio.start');
+    const sid = msg.start.callSid ?? "";
+    console.log(
+      `[INBOUND][${callId}] Twilio media stream started (CallSid=${sid || "?"} streamSid=${msg.start.streamSid})`
+    );
   });
 
-  // Create raw WebSocket connection to x.ai
   const WebSocket = require('ws');
+  console.log(`[INBOUND][${callId}] opening XAI realtime WebSocket…`);
+
   const xaiWs = new WebSocket(API_URL, {
     headers: {
       'Authorization': `Bearer ${XAI_API_KEY}`,
@@ -129,24 +158,30 @@ app.ws("/media-stream/:callId", async (ws, req) => {
     }
   });
 
-  // Wait for x.ai WebSocket to be ready
-  await new Promise((resolve, reject) => {
-    const wsTimeout = setTimeout(() => {
-      xaiWs.close();
-      reject(new Error("x.ai WebSocket connection timeout"));
-    }, 10000);
+  try {
+    await new Promise((resolve, reject) => {
+      const wsTimeout = setTimeout(() => {
+        xaiWs.close();
+        reject(new Error("x.ai WebSocket connection timeout"));
+      }, 10000);
 
-    xaiWs.on('open', () => {
-      clearTimeout(wsTimeout);
-      logEvent(callId, 'websocket.open');
-      resolve(null);
-    });
+      xaiWs.on('open', () => {
+        clearTimeout(wsTimeout);
+        logEvent(callId, 'websocket.open');
+        console.log(`[INBOUND][${callId}] XAI WebSocket connected; waiting for conversation/session…`);
+        resolve(null);
+      });
 
-    xaiWs.on('error', (error: any) => {
-      clearTimeout(wsTimeout);
-      reject(error);
+      xaiWs.on('error', (error: any) => {
+        clearTimeout(wsTimeout);
+        reject(error);
+      });
     });
-  });
+  } catch (err) {
+    console.error(`[INBOUND][${callId}] failed to connect to XAI:`, err);
+    ws.close();
+    return;
+  }
 
   // Flag to track when session is configured - DO NOT send audio until this is true
   let sessionReady = false;
@@ -223,6 +258,7 @@ app.ws("/media-stream/:callId", async (ws, req) => {
       } else if (message.type === 'session.updated') {
         // Session is now configured with correct audio format - safe to send audio
         sessionReady = true;
+        console.log(`[INBOUND][${callId}] XAI session.updated — pipeline ready (sending buffered audio if any)`);
 
         if (pendingAudioChunks.length > 0) {
           for (const audio of pendingAudioChunks) {
@@ -256,6 +292,7 @@ app.ws("/media-stream/:callId", async (ws, req) => {
         }
       } else if (message.type === 'conversation.created') {
         console.log(`  conversation_id: ${message.conversation?.id || 'unknown'}`);
+        console.log(`[INBOUND][${callId}] XAI conversation created — sending session.update to model`);
 
         // Send session configuration
         const sessionConfig = {
@@ -284,7 +321,7 @@ app.ws("/media-stream/:callId", async (ws, req) => {
         }
 
       } else if (message.type === 'error') {
-        console.log(`  ERROR: ${message.error?.message || JSON.stringify(message)}`);
+        logXaiProtocolError("inbound", callId, message as Record<string, unknown>);
       } else if (message.type === 'conversation.item.added') {
         // Silently handle - conversation item added (same as created)
       } else if (message.type === 'response.output_item.added') {
@@ -355,6 +392,7 @@ app.ws("/media-stream/:callId", async (ws, req) => {
 
   // Handle x.ai WebSocket errors
   xaiWs.on('error', (error: any) => {
+    console.error(`[XAI][inbound][${callId}] WebSocket error:`, error?.message || error);
     logEvent(callId, 'websocket.error', error?.message || String(error));
   });
 
@@ -434,8 +472,12 @@ app.ws("/outbound-stream", (ws: any, req: any) => {
           },
         });
 
+        xaiWs.on("error", (err: unknown) => {
+          console.error(`[XAI][outbound][${callSid}] WebSocket error:`, err);
+        });
+
         xaiWs.on("open", () => {
-          console.log(`[OUTBOUND] [${callSid}] websocket.open`);
+          console.log(`[OUTBOUND] [${callSid}] XAI WebSocket connected`);
 
           // Send session configuration
           const sessionConfig = {
@@ -465,6 +507,7 @@ app.ws("/outbound-stream", (ws: any, req: any) => {
 
             if (message.type === "session.updated") {
               sessionReady = true;
+              console.log(`[OUTBOUND] [${callSid}] XAI session.updated — pipeline ready`);
 
               // Trigger the agent to speak first (outbound call)
               const responseCreate = { type: "response.create" };
@@ -507,7 +550,7 @@ app.ws("/outbound-stream", (ws: any, req: any) => {
                 }, 10000);
               }
             } else if (message.type === "error") {
-              console.log(`[OUTBOUND] [${callSid}] ERROR: ${message.error?.message || JSON.stringify(message)}`);
+              logXaiProtocolError("outbound", callSid || "?", message as Record<string, unknown>);
             }
           } catch (e) {
             // Ignore parse errors
