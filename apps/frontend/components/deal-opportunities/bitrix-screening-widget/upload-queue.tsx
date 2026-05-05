@@ -1,4 +1,4 @@
-import { FileStack, Loader2, Upload, X } from "lucide-react";
+import { FileStack, Loader2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import {
   SUPPORTED_UPLOAD_LABEL,
   UPLOAD_ACCEPT_ATTR,
 } from "./utils";
+
 export function UploadQueue({
   files,
   onPick,
@@ -23,64 +24,76 @@ export function UploadQueue({
   onUpload: () => void;
   uploading: boolean;
 }) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const accepted: File[] = [];
+    const rejected: File[] = [];
+    for (const f of picked) {
+      if (isSupportedUploadFile(f)) accepted.push(f);
+      else rejected.push(f);
+    }
+    if (rejected.length > 0) {
+      const names = rejected
+        .slice(0, 3)
+        .map((f) => f.name)
+        .join(", ");
+      const extra =
+        rejected.length > 3 ? ` and ${rejected.length - 3} more` : "";
+      toast.error(
+        `Skipped ${rejected.length} unsupported file${
+          rejected.length === 1 ? "" : "s"
+        }: ${names}${extra}. Allowed: ${SUPPORTED_UPLOAD_LABEL}.`,
+      );
+    }
+    if (accepted.length > 0) onPick(accepted);
+  }
+
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <label
-          htmlFor="bitrix-widget-upload"
-          className="text-muted-foreground block text-[10px] font-semibold tracking-[0.16em] uppercase"
-        >
-          Add files to deal
-        </label>
-        <p className="text-muted-foreground max-w-[62ch] text-[12px] leading-relaxed">
-          Multi-select supported. Duplicates (same name, size, modified time)
-          are merged. New uploads join the deal index once processed.
+      <div className="space-y-2">
+        <p className="text-foreground text-xs font-medium tracking-tight">
+          Add files
         </p>
-        <p className="text-muted-foreground/80 text-[11px] leading-relaxed">
-          Supported · {SUPPORTED_UPLOAD_LABEL}
+        <p className="text-muted-foreground max-w-[56ch] text-xs leading-relaxed">
+          Multi-select supported. Duplicates (same name, size, modified time)
+          are merged. {SUPPORTED_UPLOAD_LABEL}.
         </p>
       </div>
-      <input
-        id="bitrix-widget-upload"
-        type="file"
-        multiple
-        accept={UPLOAD_ACCEPT_ATTR}
-        onChange={(e) => {
-          const picked = Array.from(e.target.files ?? []);
-          e.target.value = "";
-          const accepted: File[] = [];
-          const rejected: File[] = [];
-          for (const f of picked) {
-            if (isSupportedUploadFile(f)) accepted.push(f);
-            else rejected.push(f);
-          }
-          if (rejected.length > 0) {
-            const names = rejected
-              .slice(0, 3)
-              .map((f) => f.name)
-              .join(", ");
-            const extra =
-              rejected.length > 3 ? ` and ${rejected.length - 3} more` : "";
-            toast.error(
-              `Skipped ${rejected.length} unsupported file${
-                rejected.length === 1 ? "" : "s"
-              }: ${names}${extra}. Allowed: ${SUPPORTED_UPLOAD_LABEL}.`,
-            );
-          }
-          if (accepted.length > 0) onPick(accepted);
-        }}
+
+      <label
+        htmlFor="bitrix-widget-upload"
         className={cn(
-          "block w-full cursor-pointer text-sm",
-          "file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:px-3 file:py-1.5 file:text-xs file:font-medium",
-          "file:bg-secondary file:text-secondary-foreground hover:file:bg-secondary/80",
+          "border-border/20 bg-muted/20 hover:bg-muted/30 flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed p-6 transition-colors",
+          uploading && "pointer-events-none opacity-60",
         )}
-      />
+      >
+        <Paperclip className="text-muted-foreground size-5" aria-hidden />
+        <div className="text-center space-y-1">
+          <p className="text-foreground text-sm font-medium">
+            Drop files here or click to browse
+          </p>
+          <p className="text-muted-foreground text-[11px]">
+            {SUPPORTED_UPLOAD_LABEL}
+          </p>
+        </div>
+        <input
+          id="bitrix-widget-upload"
+          type="file"
+          multiple
+          accept={UPLOAD_ACCEPT_ATTR}
+          onChange={handleFileChange}
+          disabled={uploading}
+          className="sr-only"
+        />
+      </label>
+
       {files.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase">
-            Ready to upload ({files.length})
+          <p className="text-muted-foreground text-[11px] font-medium tracking-wide">
+            Queued ({files.length})
           </p>
-          <ul className="divide-border/60 border-border/60 divide-y border-y">
+          <ul className="divide-border/20 divide-y">
             {files.map((file) => {
               const key = pendingUploadKey(file);
               const ext = fileExtensionFromName(file.name);
@@ -100,12 +113,11 @@ export function UploadQueue({
                           {file.name}
                         </span>
                         <span className="text-muted-foreground font-mono text-[10px]">
-                          {ext === "—" ? "no ext" : `.${ext}`}
+                          {ext === "—" ? "" : `.${ext}`}
                         </span>
                       </div>
                       <p className="text-muted-foreground font-mono text-[10px] tabular-nums">
                         {formatFileSizeBytes(file.size)}
-                        {file.type ? <> · {file.type}</> : null}
                       </p>
                     </div>
                   </div>
@@ -116,7 +128,7 @@ export function UploadQueue({
                     className="text-muted-foreground hover:text-destructive size-7 shrink-0 cursor-pointer"
                     disabled={uploading}
                     onClick={() => onRemove(key)}
-                    aria-label={`Remove ${file.name} from upload list`}
+                    aria-label={`Remove ${file.name}`}
                   >
                     <X className="size-3.5" aria-hidden />
                   </Button>
@@ -126,21 +138,24 @@ export function UploadQueue({
           </ul>
         </div>
       ) : null}
-      <Button
-        type="button"
-        size="sm"
-        variant="secondary"
-        disabled={files.length === 0 || uploading}
-        className="cursor-pointer"
-        onClick={onUpload}
-      >
-        {uploading ? (
-          <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" />
-        ) : (
-          <Upload className="mr-2 size-4" />
-        )}
-        Upload{files.length > 0 ? ` (${files.length})` : ""}
-      </Button>
+
+      {files.length > 0 ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={uploading}
+          className="cursor-pointer transition-transform active:scale-[0.98]"
+          onClick={onUpload}
+        >
+          {uploading ? (
+            <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" />
+          ) : (
+            <Paperclip className="mr-2 size-4" />
+          )}
+          Upload {files.length} file{files.length === 1 ? "" : "s"}
+        </Button>
+      ) : null}
     </div>
   );
 }

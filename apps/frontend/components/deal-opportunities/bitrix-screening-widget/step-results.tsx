@@ -63,25 +63,21 @@ export function StepResults({
         back={{ label: "Screener", onClick: () => goStep(2) }}
       />
 
-      <div className="space-y-8">
-        <div className="space-y-2">
+      <div className="space-y-5">
+        <div className="space-y-1">
           <h2
             id="step-results-title"
-            className="text-lg font-semibold tracking-tight"
+            className="text-lg font-semibold tracking-[-0.01em]"
           >
             Results
           </h2>
-          <p className="text-muted-foreground max-w-[62ch] text-[13px] leading-relaxed">
-            Choose a screening run to review scores and rationale. Latest run
-            loads by default.
-          </p>
         </div>
 
         {activeJobsCount > 0 ? (
           <div className="flex items-center gap-2 text-sm text-amber-900 dark:text-amber-200">
             <Loader2 className="size-4 shrink-0 animate-spin motion-reduce:animate-none" />
             Workflow running ({activeJobsCount} job
-            {activeJobsCount > 1 ? "s" : ""})…
+            {activeJobsCount > 1 ? "s" : ""})
           </div>
         ) : null}
 
@@ -92,13 +88,10 @@ export function StepResults({
         ) : (
           <div className="space-y-6">
             {recentRuns.length > 1 ? (
-              <div className="space-y-2">
-                <label
-                  htmlFor="bitrix-widget-view-run"
-                  className="text-muted-foreground block text-[10px] font-semibold tracking-[0.16em] uppercase"
-                >
-                  Screening run
-                </label>
+              <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
+                <p className="text-foreground text-xs font-medium tracking-tight">
+                  Run history
+                </p>
                 <Select
                   value={effectiveViewRunId ?? ""}
                   onValueChange={onSelectRun}
@@ -182,69 +175,70 @@ function RunDetailView({
   onRetry: () => void;
 }) {
   return (
-    <div className="space-y-6">
-      <div className="border-border/60 flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase">
-              Status
-            </span>
-            <Badge
-              variant="outline"
-              className={cn(
-                "border font-medium",
-                screeningRunStatusBadgeClassName(run.status),
-              )}
-            >
-              {run.status}
-            </Badge>
-          </div>
-          {run.screenerName ? (
-            <p className="text-[13px]">
-              <span className="text-muted-foreground">Screener · </span>
-              <span className="text-foreground font-medium">
-                {run.screenerName}
+    <div className="space-y-4">
+      <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="text-muted-foreground text-[11px] font-medium tracking-wide">
+                Status
               </span>
-            </p>
-          ) : null}
-          <p className="text-muted-foreground font-mono text-[11px] tabular-nums">
-            {new Date(run.createdAt).toLocaleString()}
-          </p>
-          {run.errorMessage ? (
-            <p className="text-destructive pt-1 text-xs whitespace-pre-wrap">
-              {run.errorMessage}
-            </p>
-          ) : null}
-          {screeningFailed(run.status) ? (
-            <div className="flex flex-col gap-1.5 pt-2 sm:flex-row sm:flex-wrap sm:items-center">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="cursor-pointer"
-                disabled={!canRunNow || runPending}
-                onClick={onRetry}
-              >
-                {runPending ? (
-                  <Loader2 className="mr-2 size-3.5 animate-spin motion-reduce:animate-none" />
-                ) : (
-                  <RefreshCw className="mr-2 size-3.5" aria-hidden />
+              <Badge
+                variant="outline"
+                className={cn(
+                  "border font-medium",
+                  screeningRunStatusBadgeClassName(run.status),
                 )}
-                Retry screening
-              </Button>
-              <p className="text-muted-foreground max-w-md text-[11px] leading-relaxed">
-                Starts a new run from step 2. Change the screener there if
-                needed.
-              </p>
+              >
+                {run.status}
+              </Badge>
             </div>
+            {run.screenerName ? (
+              <p className="text-sm">
+                <span className="text-muted-foreground">Screener · </span>
+                <span className="text-foreground font-medium">
+                  {run.screenerName}
+                </span>
+              </p>
+            ) : null}
+            <p className="text-muted-foreground font-mono text-[11px] tabular-nums">
+              {new Date(run.createdAt).toLocaleString()}
+            </p>
+            {run.errorMessage ? (
+              <p className="text-destructive pt-1 text-xs whitespace-pre-wrap">
+                {run.errorMessage}
+              </p>
+            ) : null}
+            {screeningFailed(run.status) ? (
+              <div className="flex flex-col gap-1.5 pt-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="cursor-pointer transition-transform active:scale-[0.98]"
+                  disabled={!canRunNow || runPending}
+                  onClick={onRetry}
+                >
+                  {runPending ? (
+                    <Loader2 className="mr-2 size-3.5 animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <RefreshCw className="mr-2 size-3.5" aria-hidden />
+                  )}
+                  Retry screening
+                </Button>
+                <p className="text-muted-foreground max-w-md text-[11px] leading-relaxed">
+                  Starts a new run from step 2.
+                </p>
+              </div>
+            ) : null}
+          </div>
+          {orderedAnswers.length > 0 ? (
+            <span className="text-muted-foreground shrink-0 font-mono text-[11px] tabular-nums">
+              {orderedAnswers.length} question
+              {orderedAnswers.length === 1 ? "" : "s"}
+            </span>
           ) : null}
         </div>
-        {orderedAnswers.length > 0 ? (
-          <span className="text-muted-foreground shrink-0 font-mono text-[11px] tabular-nums">
-            {orderedAnswers.length} question
-            {orderedAnswers.length === 1 ? "" : "s"}
-          </span>
-        ) : null}
       </div>
 
       {orderedAnswers.length === 0 ? (

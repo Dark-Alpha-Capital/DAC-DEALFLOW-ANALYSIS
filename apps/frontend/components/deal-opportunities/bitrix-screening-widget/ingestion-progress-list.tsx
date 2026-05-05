@@ -10,9 +10,9 @@ export function IngestionProgressList({
   if (rows.length === 0) return null;
 
   return (
-    <ul className="divide-border/60 border-border/60 divide-y border-y">
+    <ul className="divide-border/20 divide-y">
       {rows.map((row) => (
-        <li key={row.key} className="space-y-1.5 py-2.5 text-xs">
+        <li key={row.key} className="space-y-1 py-2 text-xs">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-foreground min-w-0 truncate font-medium">
               {row.fileName ?? "—"}
@@ -33,7 +33,7 @@ export function IngestionProgressList({
           </div>
           <Progress
             value={Math.min(100, Math.max(0, row.progressPercent))}
-            className="h-[3px]"
+            className="h-1"
             aria-label={`${row.fileName ?? "file"} ${row.phaseLabel}`}
           />
         </li>

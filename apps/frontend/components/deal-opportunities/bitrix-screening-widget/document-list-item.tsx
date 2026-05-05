@@ -23,7 +23,7 @@ export function DocumentListItem({
 }) {
   const isProcessed = variant === "processed";
   return (
-    <li className="group/row flex flex-wrap items-start justify-between gap-2 py-2.5 text-[13px]">
+    <li className="group/row hover:bg-muted/30 flex flex-wrap items-start justify-between gap-2 rounded-md px-2 py-2 text-[13px] transition-colors">
       <div className="flex min-w-0 flex-1 items-start gap-2.5">
         <span className="mt-0.5">
           <DocumentStatusIcon status={doc.ingestionStatus} />

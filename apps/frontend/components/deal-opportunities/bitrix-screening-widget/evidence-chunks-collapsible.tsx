@@ -23,45 +23,44 @@ export function EvidenceChunksCollapsible({
       <CollapsibleTrigger
         type="button"
         className={cn(
-          "group border-border/70 bg-muted/30 flex min-h-9 w-full cursor-pointer items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-left transition-colors duration-200",
-          "hover:bg-muted/45 focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-          "motion-reduce:transition-none",
+          "group border-border/20 bg-muted/10 flex min-h-9 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition-colors",
+          "hover:bg-muted/20 focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         )}
       >
         <span className="flex min-w-0 flex-1 items-center gap-2.5">
-          <BookMarked className="text-primary/80 size-4 shrink-0" aria-hidden />
+          <BookMarked className="text-foreground/60 size-4 shrink-0" aria-hidden />
           <span className="min-w-0">
-            <span className="text-foreground text-sm font-semibold tracking-tight">
+            <span className="text-foreground text-sm font-medium">
               Evidence
             </span>
-            <span className="text-muted-foreground text-sm font-normal">
+            <span className="text-muted-foreground text-sm">
               {" · "}
               {hitCount} chunk hit{hitCount === 1 ? "" : "s"}
             </span>
           </span>
         </span>
         <ChevronDown
-          className="text-muted-foreground size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180 motion-reduce:transition-none"
+          className="text-muted-foreground size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180"
           aria-hidden
         />
       </CollapsibleTrigger>
       <CollapsibleContent
         className={cn(
-          "data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-1 data-[state=open]:slide-in-from-top-1 outline-none",
+          "data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-1 data-[state=open]:slide-in-from-top-1",
         )}
       >
-        <div className="border-border/60 bg-background/70 mt-1.5 max-h-72 overflow-y-auto rounded-md border p-2 shadow-inner">
+        <div className="border-border/20 bg-muted/5 mt-1.5 max-h-72 overflow-y-auto rounded-lg border p-3">
           {citations.length > 0 ? (
-            <ol className="marker:text-muted-foreground list-decimal space-y-3 pl-3 text-xs leading-relaxed wrap-anywhere">
+            <ol className="marker:text-muted-foreground list-decimal space-y-3 pl-3 text-xs leading-relaxed">
               {citations.map((c, idx) => (
                 <li key={`${c.chunkId}-${idx}`} className="pl-1">
-                  <div className="text-muted-foreground mb-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] font-medium tracking-wide uppercase">
+                  <div className="text-muted-foreground mb-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] font-medium tracking-wide">
                     <span>
                       {c.pageNumber != null
                         ? `Page ${c.pageNumber}`
                         : "Excerpt"}
                     </span>
-                    <code className="bg-muted/90 text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[0.65rem] font-normal tracking-normal normal-case">
+                    <code className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[0.65rem] font-normal tracking-normal normal-case">
                       {formatChunkIdForUi(c.chunkId)}
                     </code>
                   </div>

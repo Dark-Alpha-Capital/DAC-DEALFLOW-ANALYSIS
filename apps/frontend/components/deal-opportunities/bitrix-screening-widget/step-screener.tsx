@@ -51,37 +51,38 @@ export function StepScreener({
         next={{ label: "View results", onClick: () => goStep(3) }}
       />
 
-      <div className="space-y-10">
-        <div className="space-y-2">
+      <div className="space-y-5">
+        <div className="space-y-1">
           <h2
             id="step-screener-title"
-            className="text-lg font-semibold tracking-tight"
+            className="text-lg font-semibold tracking-[-0.01em]"
           >
             Run screening
           </h2>
-          <p className="text-muted-foreground max-w-[62ch] text-[13px] leading-relaxed">
+          <p className="text-muted-foreground max-w-[56ch] text-sm leading-relaxed">
             Choose a screener template and start.{" "}
             {screeningModeBadge ? (
               <>
-                Mode:{" "}
-                <Badge variant="outline" className="border-border/60 text-xs">
+                <Badge variant="outline" className="border-border/20 text-xs font-medium">
                   {MODE_LABEL[screeningModeBadge] ?? screeningModeBadge}
                 </Badge>{" "}
-                ·{" "}
+                · {indexedCount} chunk{indexedCount === 1 ? "" : "s"} indexed.
+                Server waits {vectorWaitSec}s for the vector index.
               </>
-            ) : null}
-            {indexedCount} chunk{indexedCount === 1 ? "" : "s"} indexed. After
-            start, the server waits {vectorWaitSec}s for the vector index.
+            ) : (
+              <>
+                {indexedCount} chunk{indexedCount === 1 ? "" : "s"} indexed.
+                After start, the server waits {vectorWaitSec}s for the vector
+                index.
+              </>
+            )}
           </p>
         </div>
 
-        <div className="space-y-2">
-          <label
-            htmlFor="bitrix-widget-screener"
-            className="text-muted-foreground block text-[10px] font-semibold tracking-[0.16em] uppercase"
-          >
-            Screener
-          </label>
+        <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
+          <p className="text-foreground text-xs font-medium tracking-tight">
+            Screener template
+          </p>
           <Select value={effectiveScreenerId} onValueChange={onScreenerIdChange}>
             <SelectTrigger
               id="bitrix-widget-screener"
@@ -99,11 +100,11 @@ export function StepScreener({
           </Select>
         </div>
 
-        <div className="space-y-2">
+        <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
           <Button
             type="button"
             disabled={!canRunNow}
-            className="cursor-pointer"
+            className="cursor-pointer transition-transform active:scale-[0.98]"
             onClick={onStartScreening}
           >
             {runPending ? (

@@ -32,7 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { DocumentListItem } from "./bitrix-screening-widget/document-list-item";
@@ -489,9 +488,7 @@ export function IcScorerWorkspace({
     d?.ingestionPipelineJobs ?? [],
   );
   const ingestSummary = summarizeIngestion(docs);
-  const indexedCount = d?.indexedCount ?? 0;
-  const indexed = indexedCount > 0;
-  const vectorWaitSec = Math.round((d?.vectorSettleMsAfterIngest ?? 12_000) / 1000);
+  const indexed = (d?.indexedCount ?? 0) > 0;
 
   const latestRunId = d?.recentIcScorerRuns[0]?.runId ?? null;
   const effectiveRunId = viewRunId ?? latestRunId;
@@ -606,15 +603,12 @@ export function IcScorerWorkspace({
   }
 
   return (
-    <div className="bg-background text-foreground mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-8">
+    <div className="bg-background text-foreground mx-auto max-w-5xl px-5 py-5 md:px-10 md:py-7">
       {d.recentIcScorerRuns.length > 0 && latestRunId ? (
-        <div className="mb-6 space-y-2">
-          <label
-            htmlFor="ic-scorer-run-history"
-            className="text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase"
-          >
+        <div className="border-border/20 bg-muted/10 mb-4 rounded-lg border p-3 space-y-2">
+          <p className="text-foreground text-xs font-medium tracking-tight">
             Run history
-          </label>
+          </p>
           <Select
             value={effectiveRunId ?? latestRunId}
             onValueChange={(runId) => {
@@ -661,11 +655,11 @@ export function IcScorerWorkspace({
         </Alert>
       ) : null}
 
-      <header className="mb-6 space-y-4">
+      <header className="mb-4 space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-              <Sparkles className="text-primary size-6" aria-hidden />
+            <h1 className="flex items-center gap-2 text-[26px] font-semibold tracking-[-0.02em]">
+              <Sparkles className="text-foreground/50 size-6" aria-hidden />
               IC Readiness scorer
             </h1>
             <p className="text-muted-foreground mt-1 text-xs tabular-nums">
@@ -687,7 +681,7 @@ export function IcScorerWorkspace({
       </header>
 
       {step === 1 ? (
-        <div className="space-y-8">
+        <div className="space-y-5">
           {!d.webhookConfigured ? (
             <Alert variant="destructive">
               <AlertTitle>Bitrix webhook not configured</AlertTitle>
@@ -698,73 +692,52 @@ export function IcScorerWorkspace({
           ) : null}
 
           {screeningModeBadge ? (
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground text-xs">Mode:</span>
-              <Badge variant="outline" className="border-border/60 text-xs">
-                {screeningModeBadge === "monograph"
-                  ? "Single-file (monograph)"
-                  : "Multi-file (RAG)"}
-              </Badge>
-            </div>
+            <Badge variant="outline" className="border-border/20 text-xs font-medium w-fit">
+              {screeningModeBadge === "monograph"
+                ? "Single-file (monograph)"
+                : "Multi-file (RAG)"}
+            </Badge>
           ) : null}
 
           {pipelineRows.length > 0 ? (
-            <div className="space-y-3">
-              <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase">
-                In progress
+            <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
+              <p className="text-foreground text-xs font-medium tracking-tight">
+                Indexing files
               </p>
               <IngestionProgressList rows={pipelineRows} />
             </div>
-          ) : null}
-
-          {ingestSummary &&
-          ingestSummary.total > 0 &&
-          (ingestSummary.inFlight > 0 || ingestSummary.failed > 0) ? (
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs">
+          ) : ingestSummary &&
+            ingestSummary.total > 0 &&
+            (ingestSummary.inFlight > 0 || ingestSummary.failed > 0) ? (
+            <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs">
                 <span className="text-foreground font-medium">File indexing</span>
                 <span className="text-muted-foreground tabular-nums">
-                  {ingestSummary.finishedPipeline} of {ingestSummary.total}{" "}
-                  finished
+                  {ingestSummary.finishedPipeline} of {ingestSummary.total} finished
                 </span>
               </div>
-              <Progress
-                value={ingestSummary.pct}
-                className="h-[3px]"
-                aria-label="Document indexing progress"
-              />
+              <Progress value={ingestSummary.pct} className="h-1" aria-label="Document indexing progress" />
             </div>
           ) : null}
 
-          <div className="space-y-3">
-            <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase">
-              Indexed documents ({indexedCount} chunks)
-            </p>
-            {processedDocs.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                Upload files below. Indexed files are used automatically for
-                scoring (server waits {vectorWaitSec}s after starting a run for
-                the vector index to settle).
-              </p>
-            ) : (
-              <ul className="divide-border/60 divide-y">
-                {processedDocs.map((doc) => (
-                  <DocumentListItem
-                    key={doc.id}
-                    doc={doc}
-                    variant="processed"
-                    deletingDisabled={deleteDealDocument.isPending}
-                    onDelete={(x) =>
-                      deleteDealDocument.mutate({
-                        ...widgetInput,
-                        documentId: x.id,
-                      })
-                    }
-                  />
-                ))}
-              </ul>
-            )}
-          </div>
+          {processedDocs.length > 0 ? (
+            <ul className="divide-border/20 divide-y">
+              {processedDocs.map((doc) => (
+                <DocumentListItem
+                  key={doc.id}
+                  doc={doc}
+                  variant="processed"
+                  deletingDisabled={deleteDealDocument.isPending}
+                  onDelete={(x) =>
+                    deleteDealDocument.mutate({
+                      ...widgetInput,
+                      documentId: x.id,
+                    })
+                  }
+                />
+              ))}
+            </ul>
+          ) : null}
 
           <UploadQueue
             files={uploadFiles}
@@ -777,10 +750,9 @@ export function IcScorerWorkspace({
           <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
             <Button
               type="button"
+              className="transition-transform active:scale-[0.98]"
               disabled={!canStart || startRun.isPending}
-              onClick={() =>
-                startRun.mutate({ ...widgetInput })
-              }
+              onClick={() => startRun.mutate({ ...widgetInput })}
             >
               {startRun.isPending ? (
                 <>
@@ -803,14 +775,12 @@ export function IcScorerWorkspace({
             ) : null}
           </div>
 
-          <Separator />
-
-          <div>
-            <h3 className="text-sm font-semibold">CRM fields</h3>
-            <ul className="mt-2 max-h-[280px] space-y-1 overflow-y-auto text-xs">
+          <div className="border-border/20 bg-muted/10 rounded-lg border p-3">
+            <p className="text-xs font-medium tracking-tight mb-2">CRM fields</p>
+            <ul className="grid gap-x-6 gap-y-1 text-xs md:grid-cols-2 max-h-[320px] overflow-y-auto">
               {sortedFields.map((f) => (
-                <li key={f.key} className="flex gap-2">
-                  <span className="text-muted-foreground w-[38%] shrink-0 truncate">
+                <li key={f.key} className="flex gap-2 min-w-0">
+                  <span className="text-muted-foreground w-[42%] shrink-0 truncate">
                     {f.label}
                   </span>
                   <span className="min-w-0 flex-1 break-words">{f.value}</span>
@@ -822,7 +792,7 @@ export function IcScorerWorkspace({
       ) : null}
 
       {step === 2 ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {runDetailQuery.isLoading && effectiveRunId ? (
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <Loader2 className="size-4 animate-spin" />
@@ -845,11 +815,11 @@ export function IcScorerWorkspace({
           {output ? (
             <>
               <div
-                className={cn(
-                  "rounded-2xl border p-6 ring-2 md:p-8",
-                  cc.ring,
-                  cc.bg,
-                )}
+                  className={cn(
+                    "animate-in fade-in zoom-in-95 rounded-2xl border p-4 ring-2 duration-500 md:p-5",
+                    cc.ring,
+                    cc.bg,
+                  )}
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
                   <p className={cn("text-5xl font-semibold tabular-nums", cc.text)}>
@@ -892,6 +862,7 @@ export function IcScorerWorkspace({
             </Button>
             <Button
               type="button"
+              className="transition-transform active:scale-[0.98]"
               disabled={!hasMemo}
               onClick={() => setStep(3)}
             >
@@ -926,6 +897,7 @@ export function IcScorerWorkspace({
             </Button>
             <Button
               type="button"
+              className="transition-transform active:scale-[0.98]"
               disabled={postTimeline.isPending || !editedMemo.trim()}
               onClick={() =>
                 postTimeline.mutate({

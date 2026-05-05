@@ -32,7 +32,7 @@ export const ScreeningResultQuestionItem = memo(
           <div className="min-w-0 flex-1 space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-1">
-                <p className="text-muted-foreground font-mono text-[9px] font-semibold tracking-[0.16em] uppercase">
+                <p className="text-muted-foreground text-[11px] font-medium tracking-wide">
                   Question {displayIndex} of {totalQuestions}
                 </p>
                 <h3 className="text-foreground max-w-[60ch] text-[15px] leading-snug font-semibold tracking-tight text-pretty">
@@ -44,10 +44,10 @@ export const ScreeningResultQuestionItem = memo(
                 aria-label={
                   answer.score != null && Number.isFinite(answer.score)
                     ? `Score ${answer.score} out of 10`
-                    : "Score not available (scale out of 10)"
+                    : "Score not available"
                 }
               >
-                <span className="text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase">
+                <span className="text-muted-foreground text-[11px] font-medium tracking-wide">
                   Score
                 </span>
                 <span
@@ -60,11 +60,11 @@ export const ScreeningResultQuestionItem = memo(
               </div>
             </div>
 
-            <div className="border-border/60 border-l-2 pl-3">
-              <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-[0.16em] uppercase">
+            <div className="border-border/20 border-l-2 pl-3">
+              <p className="text-muted-foreground mb-1 text-[11px] font-medium tracking-wide">
                 Rationale
               </p>
-              <p className="text-foreground max-w-[68ch] text-[13px] leading-relaxed whitespace-pre-wrap">
+              <p className="text-foreground max-w-[68ch] text-sm leading-relaxed whitespace-pre-wrap">
                 {answer.rationale?.trim() ? answer.rationale : "—"}
               </p>
             </div>

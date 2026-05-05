@@ -412,14 +412,14 @@ export function BitrixScreeningWidgetWorkspace({
       />
 
       <Dialog>
-        <div className="bg-background text-foreground mx-auto max-w-5xl px-5 py-8 md:px-10 md:py-10">
-          <header className="space-y-6">
+        <div className="bg-background text-foreground mx-auto max-w-5xl px-5 py-5 md:px-10 md:py-7">
+          <header className="space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
-                <p className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">
+                <p className="text-muted-foreground text-[11px] font-medium tracking-[0.08em] uppercase">
                   Opportunity screening
                 </p>
-                <h1 className="text-2xl font-semibold tracking-tight md:text-[1.75rem]">
+                <h1 className="text-[26px] font-semibold tracking-[-0.02em]">
                   Deal screening
                 </h1>
                 <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] tabular-nums">
@@ -472,13 +472,10 @@ export function BitrixScreeningWidgetWorkspace({
             />
           </header>
 
-          <div className="pt-10 md:pt-12">
+          <div className="pt-5">
             {wizardStep === 1 ? (
               <StepDocuments
-                dealDocuments={d.dealDocuments}
-                indexedCount={d.indexedCount}
                 indexed={indexed}
-                vectorWaitSec={vectorWaitSec}
                 processedDocs={processedDocs}
                 pendingDocs={pendingDocs}
                 pipelineRows={displayIngestionPipelineJobs}
