@@ -51,65 +51,16 @@ async function getOpenAIEmbedding(input: string): Promise<number[]> {
 }
 
 export async function getEmbedding(input: string | MultimodalPart[]): Promise<number[] | null> {
-  try {
-    return await getGeminiEmbedding(input);
-  } catch (geminiError) {
-    const geminiMessage =
-      geminiError instanceof Error ? geminiError.message : String(geminiError);
-    console.warn("Gemini embedding failed, trying OpenAI fallback", {
-      model: EMBEDDING_MODEL,
-      message: geminiMessage,
-    });
-
-    if (typeof input !== "string") {
-      throw new Error(
-        `Embedding failed on Gemini (${geminiMessage}) and OpenAI fallback is unavailable for multimodal input`,
-      );
-    }
-
-    try {
-      return await getOpenAIEmbedding(input);
-    } catch (openAIError) {
-      const openAIMessage =
-        openAIError instanceof Error ? openAIError.message : String(openAIError);
-      console.error("Embedding failed on Gemini and OpenAI", {
-        geminiModel: EMBEDDING_MODEL,
-        openAIModel: OPENAI_EMBEDDING_MODEL,
-        geminiError: geminiMessage,
-        openAIError: openAIMessage,
-      });
-      throw new Error(
-        `Embedding failed on Gemini and OpenAI. Gemini: ${geminiMessage}. OpenAI: ${openAIMessage}`,
-      );
-    }
+  if (typeof input !== "string") {
+    throw new Error(
+      "OpenAI-only embedding mode does not support multimodal input",
+    );
   }
+  return getOpenAIEmbedding(input);
 }
 
 export async function getBatchEmbeddings(inputs: (string | MultimodalPart[])[]) {
-  try {
-    const response = await getGoogleGenAI().models.embedContent({
-      model: EMBEDDING_MODEL,
-      contents: inputs.map((input) => {
-        return { parts: toGeminiParts(input) };
-      }),
-      config: { outputDimensionality: EMBEDDING_DIMENSION },
-    });
-
-    if (!response.embeddings) {
-      throw new Error("Gemini returned no embeddings");
-    }
-    return response.embeddings.map((e) => e.values || null);
-  } catch (geminiError) {
-    const geminiMessage =
-      geminiError instanceof Error ? geminiError.message : String(geminiError);
-    console.warn("Batch Gemini embedding failed, falling back per item", {
-      model: EMBEDDING_MODEL,
-      message: geminiMessage,
-      inputCount: inputs.length,
-    });
-
-    return Promise.all(inputs.map((input) => getEmbedding(input)));
-  }
+  return Promise.all(inputs.map((input) => getEmbedding(input)));
 }
 
 export function cosineSimilarity(
