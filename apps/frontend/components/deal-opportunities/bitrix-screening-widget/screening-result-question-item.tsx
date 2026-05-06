@@ -3,6 +3,18 @@ import { cn } from "@/lib/utils";
 import { EvidenceChunksCollapsible } from "./evidence-chunks-collapsible";
 import type { LastRunAnswer } from "./types";
 
+/** Out of 10: below 4 → red, 4–6.99 → orange, 7–10 → green. */
+function scoreDisplayClass(score: number): string {
+  const s = Math.max(0, Math.min(10, score));
+  if (s < 4) {
+    return "text-red-600 dark:text-red-400";
+  }
+  if (s < 7) {
+    return "text-orange-600 dark:text-orange-400";
+  }
+  return "text-emerald-600 dark:text-emerald-400";
+}
+
 export const ScreeningResultQuestionItem = memo(
   function ScreeningResultQuestionItem({
     answer,
@@ -13,10 +25,8 @@ export const ScreeningResultQuestionItem = memo(
     displayIndex: number;
     totalQuestions: number;
   }) {
-    const scoreDisplay =
-      answer.score != null && Number.isFinite(answer.score)
-        ? `${answer.score}/10`
-        : "—/10";
+    const hasScore = answer.score != null && Number.isFinite(answer.score);
+    const scoreDisplay = hasScore ? `${answer.score}/10` : "—/10";
 
     return (
       <li className="mb-10 last:mb-0">
@@ -42,7 +52,7 @@ export const ScreeningResultQuestionItem = memo(
               <div
                 className="flex shrink-0 flex-col items-end"
                 aria-label={
-                  answer.score != null && Number.isFinite(answer.score)
+                  hasScore
                     ? `Score ${answer.score} out of 10`
                     : "Score not available"
                 }
@@ -52,7 +62,10 @@ export const ScreeningResultQuestionItem = memo(
                 </span>
                 <span
                   className={cn(
-                    "text-foreground font-mono text-lg leading-none font-semibold tabular-nums",
+                    "font-mono text-lg leading-none font-semibold tabular-nums",
+                    hasScore
+                      ? scoreDisplayClass(Number(answer.score))
+                      : "text-muted-foreground",
                   )}
                 >
                   {scoreDisplay}

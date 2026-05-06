@@ -302,12 +302,18 @@ export async function listDealOpportunityScreeningChunks(
   db: AppDb,
   dealOpportunityId: string,
   limit: number,
+  documentIds?: string[],
 ): Promise<DocumentChunk[]> {
   const cap = Math.min(Math.max(1, limit), 100);
+  const parts = [eq(documentChunks.dealOpportunityId, dealOpportunityId)];
+  if (documentIds?.length) {
+    parts.push(inArray(documentChunks.documentId, documentIds));
+  }
+  const whereExpr = parts.length === 1 ? parts[0]! : and(...parts);
   return db
     .select()
     .from(documentChunks)
-    .where(eq(documentChunks.dealOpportunityId, dealOpportunityId))
+    .where(whereExpr)
     .orderBy(asc(documentChunks.documentId), asc(documentChunks.createdAt))
     .limit(cap);
 }

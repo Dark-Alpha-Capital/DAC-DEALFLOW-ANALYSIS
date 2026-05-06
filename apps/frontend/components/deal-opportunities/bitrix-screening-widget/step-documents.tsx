@@ -1,7 +1,6 @@
-import { AlertCircle, ArrowRight } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { DocumentListItem } from "./document-list-item";
 import { IngestionProgressList } from "./ingestion-progress-list";
@@ -9,7 +8,6 @@ import { UploadQueue } from "./upload-queue";
 import type {
   DealDocumentRow,
   DisplayIngestionPipelineRow,
-  WizardStep,
 } from "./types";
 import type { IngestionSummary } from "./utils";
 
@@ -20,8 +18,6 @@ type StepDocumentsProps = {
   pipelineRows: DisplayIngestionPipelineRow[];
   ingestSummary: IngestionSummary | null;
   screeningModeBadge: string | null;
-  canOpenStep2: boolean;
-  goStep: (s: WizardStep) => void;
   uploadFiles: File[];
   onPickFiles: (picked: File[]) => void;
   onRemovePending: (key: string) => void;
@@ -46,8 +42,6 @@ export function StepDocuments(props: StepDocumentsProps) {
     pipelineRows,
     ingestSummary,
     screeningModeBadge,
-    canOpenStep2,
-    goStep,
     uploadFiles,
     onPickFiles,
     onRemovePending,
@@ -167,28 +161,6 @@ export function StepDocuments(props: StepDocumentsProps) {
         onUpload={onUpload}
         uploading={uploading}
       />
-
-      <div className="border-border/20 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
-        <span className="text-muted-foreground text-[11px] font-medium tracking-wide">
-          Step 1 of 3
-        </span>
-        <div className="flex flex-col items-end gap-1">
-          <Button
-            type="button"
-            className="cursor-pointer gap-1.5 transition-transform active:scale-[0.98]"
-            disabled={!canOpenStep2}
-            onClick={() => goStep(2)}
-          >
-            Next: Screener
-            <ArrowRight className="size-3.5" aria-hidden />
-          </Button>
-          {!canOpenStep2 ? (
-            <p className="text-muted-foreground max-w-[32ch] text-right text-[11px] leading-snug">
-              At least one chunk must be indexed.
-            </p>
-          ) : null}
-        </div>
-      </div>
     </section>
   );
 }

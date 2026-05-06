@@ -331,8 +331,19 @@ export function startScreeningBlockedReason(args: {
   indexed: boolean;
   runPending: boolean;
   ingestBusy: boolean;
+  /** When true, user must pick at least one processed file (multi-file RAG). */
+  multiFileRag: boolean;
+  selectedDocumentIdsForScreeningCount: number;
 }): string | null {
-  const { data, effectiveScreenerId, indexed, runPending, ingestBusy } = args;
+  const {
+    data,
+    effectiveScreenerId,
+    indexed,
+    runPending,
+    ingestBusy,
+    multiFileRag,
+    selectedDocumentIdsForScreeningCount,
+  } = args;
   if (runPending) return "Starting screening…";
   if (data.activeJobs.length > 0) {
     return "Screening is already running for this deal (workflow job in progress). Wait for it to finish.";
@@ -351,6 +362,9 @@ export function startScreeningBlockedReason(args: {
   }
   if (!indexed) {
     return "Upload at least one document below and wait until it is indexed (chunks > 0).";
+  }
+  if (multiFileRag && selectedDocumentIdsForScreeningCount === 0) {
+    return "Select at least one file to include in screening.";
   }
   return null;
 }

@@ -2097,6 +2097,39 @@ export const dealsRouter = createTRPCRouter({
       const isMonographMode =
         input.screeningMode === "monograph" ||
         (input.screeningMode == null && processedDocs.length === 1);
+      const processedIdSet = new Set(processedDocs.map((d) => d.id));
+
+      let ragScreeningDocumentIds: string[] | undefined;
+      if (!isMonographMode) {
+        const requested = input.documentIdsForScreening;
+        if (requested != null) {
+          if (requested.length === 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Select at least one document for screening.",
+            });
+          }
+          for (const id of requested) {
+            if (!processedIdSet.has(id)) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message:
+                  "One or more selected documents are not indexed on this deal.",
+              });
+            }
+          }
+          ragScreeningDocumentIds = requested;
+        } else {
+          ragScreeningDocumentIds = processedDocs.map((d) => d.id);
+        }
+        if (ragScreeningDocumentIds.length === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "No processed documents available for screening.",
+          });
+        }
+      }
+
       let selectedDocument:
         | (typeof dealDocs)[number]
         | undefined;
@@ -2120,9 +2153,24 @@ export const dealsRouter = createTRPCRouter({
           });
         }
       }
-      let snapshotRows = dealDocs.filter((d) => d.ingestionStatus === "PROCESSED");
-      if (snapshotRows.length === 0) {
-        snapshotRows = dealDocs;
+
+      let snapshotRows: typeof dealDocs;
+      if (isMonographMode) {
+        snapshotRows = dealDocs.filter((d) => d.ingestionStatus === "PROCESSED");
+        if (snapshotRows.length === 0) {
+          snapshotRows = dealDocs;
+        }
+      } else {
+        snapshotRows = ragScreeningDocumentIds!.map((id) => {
+          const row = dealDocs.find((d) => d.id === id);
+          if (!row) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to build document snapshot for screening.",
+            });
+          }
+          return row;
+        });
       }
       const dealDocumentsSnapshot = {
         documents: snapshotRows.map((d) => ({
@@ -2232,6 +2280,12 @@ export const dealsRouter = createTRPCRouter({
           bitrixLiveDealListingContext,
         });
       } else {
+        if (!ragScreeningDocumentIds?.length) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "RAG screening document selection missing.",
+          });
+        }
         await startCimScreeningWorkflow(jobId, {
           jobId,
           userId: null,
@@ -2243,6 +2297,7 @@ export const dealsRouter = createTRPCRouter({
           postBitrixComment: true,
           dealListingContextSource: "bitrix_live_snapshot",
           bitrixLiveDealListingContext,
+          dealScreeningDocumentIds: ragScreeningDocumentIds,
         });
       }
 

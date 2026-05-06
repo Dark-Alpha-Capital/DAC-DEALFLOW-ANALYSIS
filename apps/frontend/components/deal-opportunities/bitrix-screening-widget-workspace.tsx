@@ -102,6 +102,10 @@ export function BitrixScreeningWidgetWorkspace({
 
   const [screenerId, setScreenerId] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  /** Multi-file RAG: which processed documents to include (defaults to all). */
+  const [screeningDocumentIds, setScreeningDocumentIds] = useState<string[]>(
+    [],
+  );
   /** `null` = follow the latest run from bootstrap. Set to a past `runId` to load that run's answers. */
   const [viewRunId, setViewRunId] = useState<string | null>(null);
   const [wizardStep, setWizardStep] = useState<WizardStep>(1);
@@ -263,13 +267,6 @@ export function BitrixScreeningWidgetWorkspace({
     [screenerId, screeners],
   );
 
-  const handleStartScreening = useCallback(() => {
-    run.mutate({
-      ...widgetInput,
-      screenerId: effectiveScreenerId,
-    });
-  }, [run, widgetInput, effectiveScreenerId]);
-
   const indexed = (d?.indexedCount ?? 0) > 0;
   const ingestSummary = useMemo(
     () => (d ? summarizeIngestion(d.dealDocuments) : null),
@@ -293,17 +290,6 @@ export function BitrixScreeningWidgetWorkspace({
     );
   }, [d, pipelineBusy]);
 
-  const runBlocked = useMemo(() => {
-    if (d == null) return null;
-    return startScreeningBlockedReason({
-      data: d,
-      effectiveScreenerId,
-      indexed,
-      runPending: run.isPending,
-      ingestBusy,
-    });
-  }, [d, effectiveScreenerId, indexed, run.isPending, ingestBusy]);
-
   const processedDocs = useMemo(
     () =>
       (d?.dealDocuments ?? []).filter(
@@ -312,6 +298,18 @@ export function BitrixScreeningWidgetWorkspace({
     [d?.dealDocuments],
   );
 
+  const processedDocIdsKey = useMemo(
+    () =>
+      [...processedDocs.map((doc) => doc.id)]
+        .sort((a, b) => a.localeCompare(b))
+        .join("\0"),
+    [processedDocs],
+  );
+
+  useEffect(() => {
+    setScreeningDocumentIds(processedDocs.map((doc) => doc.id));
+  }, [processedDocIdsKey]);
+
   const pendingDocs = useMemo(
     () =>
       (d?.dealDocuments ?? []).filter(
@@ -319,9 +317,6 @@ export function BitrixScreeningWidgetWorkspace({
       ),
     [d?.dealDocuments],
   );
-
-  const effectiveRunBlocked = runBlocked;
-  const canRunNow = d != null && effectiveRunBlocked === null;
 
   const orderedScreeningAnswers = useMemo(() => {
     const list = displayRun?.answers;
@@ -344,6 +339,61 @@ export function BitrixScreeningWidgetWorkspace({
     : null;
   const screeningModeBadge =
     processedDocs.length === 0 ? null : isMonographMode ? "monograph" : "rag";
+
+  const multiFileRag = processedDocs.length > 1;
+
+  const runBlocked = useMemo(() => {
+    if (d == null) return null;
+    return startScreeningBlockedReason({
+      data: d,
+      effectiveScreenerId,
+      indexed,
+      runPending: run.isPending,
+      ingestBusy,
+      multiFileRag,
+      selectedDocumentIdsForScreeningCount: screeningDocumentIds.length,
+    });
+  }, [
+    d,
+    effectiveScreenerId,
+    indexed,
+    run.isPending,
+    ingestBusy,
+    multiFileRag,
+    screeningDocumentIds.length,
+  ]);
+
+  const effectiveRunBlocked = runBlocked;
+  const canRunNow = d != null && effectiveRunBlocked === null;
+
+  const handleStartScreening = useCallback(() => {
+    run.mutate({
+      ...widgetInput,
+      screenerId: effectiveScreenerId,
+      ...(multiFileRag
+        ? { documentIdsForScreening: screeningDocumentIds }
+        : {}),
+    });
+  }, [
+    run,
+    widgetInput,
+    effectiveScreenerId,
+    multiFileRag,
+    screeningDocumentIds,
+  ]);
+
+  const onToggleScreeningDocument = useCallback(
+    (documentId: string, checked: boolean) => {
+      setScreeningDocumentIds((prev) =>
+        checked
+          ? prev.includes(documentId)
+            ? prev
+            : [...prev, documentId]
+          : prev.filter((id) => id !== documentId),
+      );
+    },
+    [],
+  );
 
   const goWizardStep = useCallback(
     (s: WizardStep) => {
@@ -521,8 +571,6 @@ export function BitrixScreeningWidgetWorkspace({
                 pipelineRows={displayIngestionPipelineJobs}
                 ingestSummary={ingestSummary}
                 screeningModeBadge={screeningModeBadge}
-                canOpenStep2={canOpenStep2}
-                goStep={goWizardStep}
                 uploadFiles={uploadFiles}
                 onPickFiles={onPickFiles}
                 onRemovePending={onRemovePendingUpload}
@@ -543,11 +591,13 @@ export function BitrixScreeningWidgetWorkspace({
                 screeningModeBadge={screeningModeBadge}
                 indexedCount={d.indexedCount}
                 vectorWaitSec={vectorWaitSec}
+                ragDocuments={multiFileRag ? processedDocs : null}
+                selectedDocumentIdsForScreening={screeningDocumentIds}
+                onToggleScreeningDocument={onToggleScreeningDocument}
                 canRunNow={canRunNow}
                 runPending={run.isPending}
                 blockedReason={effectiveRunBlocked}
                 onStartScreening={handleStartScreening}
-                goStep={goWizardStep}
               />
             ) : null}
 
@@ -571,7 +621,6 @@ export function BitrixScreeningWidgetWorkspace({
                 canRunNow={canRunNow}
                 runPending={run.isPending}
                 onRetry={handleStartScreening}
-                goStep={goWizardStep}
               />
             ) : null}
           </div>

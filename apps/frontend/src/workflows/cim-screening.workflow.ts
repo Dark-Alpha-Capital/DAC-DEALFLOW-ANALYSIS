@@ -129,6 +129,7 @@ async function searchChunksForQuestion(input: {
   dealOppId: string | null;
   libraryDocumentId: string | null;
   screeningDoc: LibraryScreeningDocMeta | null;
+  dealScreeningDocumentIds?: string[];
 }): Promise<Awaited<ReturnType<typeof searchDocumentChunksVector>>> {
   // Deal scope: Postgres only (same chunk slice per question — avoids Vectorize query API issues).
   if (input.isDealScope && input.dealOppId) {
@@ -136,6 +137,7 @@ async function searchChunksForQuestion(input: {
       input.db,
       input.dealOppId,
       RETRIEVAL_TOP_K_DEAL,
+      input.dealScreeningDocumentIds,
     );
   }
   if (!input.vectorIndex) {
@@ -185,7 +187,16 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
       postBitrixComment,
       dealListingContextSource: payloadListingSource,
       bitrixLiveDealListingContext,
+      dealScreeningDocumentIds: payloadDealScreeningDocumentIds,
     } = event.payload;
+
+    const dealScreeningDocumentIdsForSql =
+      payloadDealScreeningDocumentIds?.filter((id) => id.trim().length > 0)
+        .map((id) => id.trim()) ?? [];
+    const dealScreeningDocumentIdsArg =
+      dealScreeningDocumentIdsForSql.length > 0
+        ? dealScreeningDocumentIdsForSql
+        : undefined;
 
     const dealOppId = payloadDealOppId?.trim();
     const libraryDocumentId = payloadDocumentId?.trim();
@@ -214,6 +225,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
       scope: isDealScope ? "deal_opportunity" : "library_document",
       dealListingContextSource: effectiveListingSource ?? null,
       bitrixLiveContextChars: bitrixLiveDealListingContext?.length ?? 0,
+      dealScreeningDocumentIds: dealScreeningDocumentIdsArg ?? null,
       bitrixWidgetDealScreening,
       /** RAG excerpts still come from ingested deal documents (Vectorize); this flag is only about listing/deal metadata in the LLM prompt. */
       promptDealListingSource:
@@ -538,6 +550,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
                 total,
                 dealOpportunityId: dealOppId ?? null,
                 limit: RETRIEVAL_TOP_K_DEAL,
+                documentIdFilterCount: dealScreeningDocumentIdsArg?.length ?? 0,
               });
             } else {
               logDetail("screen.question.vector_query_start", {
@@ -560,6 +573,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
                 dealOppId: dealOppId ?? null,
                 libraryDocumentId: libraryDocumentId ?? null,
                 screeningDoc,
+                dealScreeningDocumentIds: dealScreeningDocumentIdsArg,
               });
             } catch (ragErr) {
               logError("screen.question.retrieval_failed", ragErr, {

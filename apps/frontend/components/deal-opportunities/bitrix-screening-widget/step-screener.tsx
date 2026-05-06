@@ -1,6 +1,7 @@
 import { Loader2, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -8,10 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { StepHeaderNav } from "./step-header-nav";
-import type { WidgetBootstrap, WizardStep } from "./types";
+import type { WidgetBootstrap } from "./types";
 
 type Screener = WidgetBootstrap["screeners"][number];
+type RagDocRow = WidgetBootstrap["dealDocuments"][number];
 
 const MODE_LABEL: Record<string, string> = {
   monograph: "Single-file (monograph)",
@@ -25,11 +26,13 @@ export function StepScreener({
   screeningModeBadge,
   indexedCount,
   vectorWaitSec,
+  ragDocuments,
+  selectedDocumentIdsForScreening,
+  onToggleScreeningDocument,
   canRunNow,
   runPending,
   blockedReason,
   onStartScreening,
-  goStep,
 }: {
   screeners: Screener[];
   effectiveScreenerId: string;
@@ -37,20 +40,23 @@ export function StepScreener({
   screeningModeBadge: string | null;
   indexedCount: number;
   vectorWaitSec: number;
+  ragDocuments: RagDocRow[] | null;
+  selectedDocumentIdsForScreening: string[];
+  onToggleScreeningDocument: (documentId: string, checked: boolean) => void;
   canRunNow: boolean;
   runPending: boolean;
   blockedReason: string | null;
   onStartScreening: () => void;
-  goStep: (s: WizardStep) => void;
 }) {
+  const showRagPicker =
+    ragDocuments != null &&
+    ragDocuments.length > 0 &&
+    screeningModeBadge === "rag";
+
+  const selectedCount = selectedDocumentIdsForScreening.length;
+
   return (
     <section aria-labelledby="step-screener-title">
-      <StepHeaderNav
-        stepLabel="Step 2 of 3 · Screener"
-        back={{ label: "Documents", onClick: () => goStep(1) }}
-        next={{ label: "View results", onClick: () => goStep(3) }}
-      />
-
       <div className="space-y-5">
         <div className="space-y-1">
           <h2
@@ -63,7 +69,10 @@ export function StepScreener({
             Choose a screener template and start.{" "}
             {screeningModeBadge ? (
               <>
-                <Badge variant="outline" className="border-border/20 text-xs font-medium">
+                <Badge
+                  variant="outline"
+                  className="border-border/20 text-xs font-medium"
+                >
                   {MODE_LABEL[screeningModeBadge] ?? screeningModeBadge}
                 </Badge>{" "}
                 · {indexedCount} chunk{indexedCount === 1 ? "" : "s"} indexed.
@@ -99,6 +108,46 @@ export function StepScreener({
             </SelectContent>
           </Select>
         </div>
+
+        {showRagPicker ? (
+          <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-3">
+            <div className="space-y-0.5">
+              <p className="text-foreground text-xs font-medium tracking-tight">
+                Documents to screen
+              </p>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                Chunks from selected files only are sent to the screener ({selectedCount}{" "}
+                of {ragDocuments.length} file{ragDocuments.length === 1 ? "" : "s"}
+                ).
+              </p>
+            </div>
+            <ul className="max-h-48 space-y-2 overflow-y-auto pr-1" role="list">
+              {ragDocuments.map((doc) => {
+                const checked = selectedDocumentIdsForScreening.includes(doc.id);
+                return (
+                  <li key={doc.id}>
+                    <label className="hover:bg-muted/30 flex cursor-pointer items-start gap-2 rounded-md border border-transparent px-1 py-1.5">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) =>
+                          onToggleScreeningDocument(doc.id, v === true)
+                        }
+                        className="mt-0.5"
+                        aria-describedby={`bitrix-screen-doc-${doc.id}-name`}
+                      />
+                      <span
+                        id={`bitrix-screen-doc-${doc.id}-name`}
+                        className="text-foreground min-w-0 flex-1 text-[13px] leading-snug wrap-break-word"
+                      >
+                        {doc.fileName}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
           <Button

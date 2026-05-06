@@ -265,6 +265,8 @@ export const bitrixScreeningWidgetStartRunSchema =
     screenerId: z.string().min(1),
     screeningMode: z.enum(["rag", "monograph"]).optional(),
     targetDocumentId: z.string().min(1).optional(),
+    /** RAG only: subset of processed deal documents to screen against. Omit = all processed. */
+    documentIdsForScreening: z.array(z.string().min(1)).optional(),
   });
 
 /** Load answers + metadata for one screening run (widget auth). */

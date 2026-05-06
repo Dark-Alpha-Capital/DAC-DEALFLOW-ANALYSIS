@@ -11,12 +11,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScreeningResultQuestionItem } from "./screening-result-question-item";
-import { StepHeaderNav } from "./step-header-nav";
 import type {
   LastRunAnswer,
   ScreeningRunDetail,
   WidgetBootstrap,
-  WizardStep,
 } from "./types";
 import { cn } from "@/lib/utils";
 import {
@@ -54,15 +52,9 @@ export function StepResults({
   canRunNow: boolean;
   runPending: boolean;
   onRetry: () => void;
-  goStep: (s: WizardStep) => void;
 }) {
   return (
     <section aria-labelledby="step-results-title">
-      <StepHeaderNav
-        stepLabel="Step 3 of 3 · Results"
-        back={{ label: "Screener", onClick: () => goStep(2) }}
-      />
-
       <div className="space-y-5">
         <div className="space-y-1">
           <h2
