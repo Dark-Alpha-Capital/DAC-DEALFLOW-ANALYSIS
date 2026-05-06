@@ -29,6 +29,8 @@ type StepDocumentsProps = {
   uploading: boolean;
   deleteDisabled: boolean;
   onRequestDelete: (doc: DealDocumentRow) => void;
+  onCancelPipelineRow?: (row: DisplayIngestionPipelineRow) => void;
+  cancellingPipelineKeys?: ReadonlySet<string>;
 };
 
 const MODE_LABEL: Record<string, string> = {
@@ -53,6 +55,8 @@ export function StepDocuments(props: StepDocumentsProps) {
     uploading,
     deleteDisabled,
     onRequestDelete,
+    onCancelPipelineRow,
+    cancellingPipelineKeys,
   } = props;
 
   const showIngestSummary = Boolean(
@@ -90,7 +94,11 @@ export function StepDocuments(props: StepDocumentsProps) {
           <p className="text-foreground text-xs font-medium tracking-tight">
             Indexing files
           </p>
-          <IngestionProgressList rows={pipelineRows} />
+          <IngestionProgressList
+            rows={pipelineRows}
+            onCancelRow={onCancelPipelineRow}
+            cancellingKeys={cancellingPipelineKeys}
+          />
         </div>
       ) : showIngestSummary && ingestSummary ? (
         <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">

@@ -21,6 +21,8 @@ export type IngestionPipelineJobRow = NonNullable<
 export type DisplayIngestionPipelineRow = {
   key: string;
   fileName: string | null;
+  /** file-upload workflow instance id (terminates paired rag-ingestion too). */
+  cancelInstanceId: string | null;
   phaseLabel: string;
   progressStep: string;
   progressPercent: number;

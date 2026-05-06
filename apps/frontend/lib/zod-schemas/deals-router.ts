@@ -242,6 +242,24 @@ export const bitrixScreeningWidgetDeleteDocumentSchema =
     documentId: z.string().min(1),
   });
 
+export const bitrixScreeningWidgetCancelIngestionSchema =
+  bitrixWidgetContextAuthSchema
+    .extend({
+      fileName: z.string().optional(),
+      pipelineInstanceId: z.string().optional(),
+    })
+    .superRefine((val, ctx) => {
+      const fn = val.fileName?.trim();
+      const pid = val.pipelineInstanceId?.trim();
+      if (!fn && !pid) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Provide fileName or pipelineInstanceId",
+          path: ["fileName"],
+        });
+      }
+    });
+
 export const bitrixScreeningWidgetStartRunSchema =
   bitrixWidgetContextAuthSchema.extend({
     screenerId: z.string().min(1),

@@ -37,7 +37,10 @@ import { cn } from "@/lib/utils";
 import { DocumentListItem } from "./bitrix-screening-widget/document-list-item";
 import { IngestionProgressList } from "./bitrix-screening-widget/ingestion-progress-list";
 import { UploadQueue } from "./bitrix-screening-widget/upload-queue";
-import type { DealDocumentRow } from "./bitrix-screening-widget/types";
+import type {
+  DealDocumentRow,
+  DisplayIngestionPipelineRow,
+} from "./bitrix-screening-widget/types";
 import {
   INGEST_IN_FLIGHT,
   mergeIngestionPipelineJobsForDisplay,
@@ -436,6 +439,44 @@ export function IcScorerWorkspace({
     }),
   );
 
+  const [cancellingPipelineKeys, setCancellingPipelineKeys] = useState<
+    Set<string>
+  >(() => new Set());
+
+  const cancelIngestion = useMutation(
+    trpc.dealOpportunities.cancelBitrixScreeningWidgetIngestion.mutationOptions({
+      onSuccess: () => {
+        toast.success("Indexing stopped and partial files removed");
+        void q.refetch();
+      },
+      onError: (e) => toast.error(e.message ?? "Could not stop indexing"),
+    }),
+  );
+
+  const handleCancelPipelineRow = useCallback(
+    (row: DisplayIngestionPipelineRow) => {
+      if (!row.cancelInstanceId && !row.fileName) return;
+      setCancellingPipelineKeys((prev) => new Set(prev).add(row.key));
+      cancelIngestion.mutate(
+        {
+          ...widgetInput,
+          fileName: row.fileName ?? undefined,
+          pipelineInstanceId: row.cancelInstanceId ?? undefined,
+        },
+        {
+          onSettled: () => {
+            setCancellingPipelineKeys((prev) => {
+              const next = new Set(prev);
+              next.delete(row.key);
+              return next;
+            });
+          },
+        },
+      );
+    },
+    [cancelIngestion, widgetInput],
+  );
+
   const startRun = useMutation(
     trpc.dealOpportunities.startIcScorerWidgetRun.mutationOptions({
       onSuccess: () => {
@@ -704,7 +745,11 @@ export function IcScorerWorkspace({
               <p className="text-foreground text-xs font-medium tracking-tight">
                 Indexing files
               </p>
-              <IngestionProgressList rows={pipelineRows} />
+              <IngestionProgressList
+                rows={pipelineRows}
+                onCancelRow={handleCancelPipelineRow}
+                cancellingKeys={cancellingPipelineKeys}
+              />
             </div>
           ) : ingestSummary &&
             ingestSummary.total > 0 &&

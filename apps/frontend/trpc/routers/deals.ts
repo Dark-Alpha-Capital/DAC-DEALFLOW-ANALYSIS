@@ -13,6 +13,7 @@ import {
   bitrixWidgetContextAuthSchema,
   bitrixScreeningWidgetUploadBatchSchema,
   bitrixScreeningWidgetDeleteDocumentSchema,
+  bitrixScreeningWidgetCancelIngestionSchema,
   bitrixScreeningWidgetStartRunSchema,
   bitrixScreeningWidgetRetryCommentSchema,
   bitrixScreeningWidgetRunDetailSchema,
@@ -88,8 +89,14 @@ import {
   startRagIngestionWorkflow,
   startCimScreeningWorkflow,
   startIcScorerWorkflow,
+  terminateWorkflowInstance,
 } from "@/src/lib/workflow-jobs-api";
-import { setWorkflowJobState } from "@repo/db/workflow-jobs";
+import {
+  deleteWorkflowJobRow,
+  getWorkflowJobRow,
+  setWorkflowJobState,
+  type WorkflowKind,
+} from "@repo/db/workflow-jobs";
 import { createHash, randomUUID } from "crypto";
 import {
   GetDealById,
@@ -181,7 +188,172 @@ import {
   fetchBitrixWidgetLinkedEntities,
   type BitrixWidgetLinkedEntities,
 } from "@/lib/server/bitrix-widget-linked-entities";
-import db, { workflowJobs, and as drizzleAnd, inArray, eq } from "@repo/db";
+import db, {
+  workflowJobs,
+  documents,
+  and as drizzleAnd,
+  inArray,
+  eq,
+} from "@repo/db";
+
+const INGESTION_ACTIVE_STATES = ["waiting", "active", "delayed"] as const;
+const INGESTION_PIPELINE_KINDS: WorkflowKind[] = [
+  "file-upload",
+  "rag-ingestion",
+];
+
+function collectPairedIngestionInstanceIds(
+  rows: { instanceId: string; workflowKind: string }[],
+): Set<string> {
+  const ids = new Set<string>();
+  for (const r of rows) {
+    ids.add(r.instanceId);
+    if (r.workflowKind === "file-upload") {
+      ids.add(`${r.instanceId}-rag`);
+    }
+    if (r.instanceId.endsWith("-rag")) {
+      ids.add(r.instanceId.slice(0, -"-rag".length));
+    }
+  }
+  return ids;
+}
+
+async function terminateAndDeleteIngestionJobInstances(
+  instanceIds: Iterable<string>,
+): Promise<void> {
+  for (const id of instanceIds) {
+    const row = await getWorkflowJobRow(id);
+    if (!row) continue;
+    if (
+      row.workflowKind !== "file-upload" &&
+      row.workflowKind !== "rag-ingestion"
+    ) {
+      continue;
+    }
+    try {
+      await terminateWorkflowInstance(row.workflowKind as WorkflowKind, id);
+    } catch {
+      /* already complete / missing on CF */
+    }
+  }
+  for (const id of instanceIds) {
+    try {
+      await deleteWorkflowJobRow(id);
+    } catch {
+      /* no row */
+    }
+  }
+}
+
+async function terminateBitrixWidgetIngestionPipelineForDealFile(
+  dealOpportunityId: string,
+  fileName: string,
+): Promise<void> {
+  const trimmed = fileName.trim();
+  if (!trimmed) return;
+
+  const rows = await db
+    .select({
+      instanceId: workflowJobs.instanceId,
+      workflowKind: workflowJobs.workflowKind,
+    })
+    .from(workflowJobs)
+    .where(
+      drizzleAnd(
+        eq(workflowJobs.dealId, dealOpportunityId),
+        eq(workflowJobs.fileName, trimmed),
+        inArray(workflowJobs.workflowKind, INGESTION_PIPELINE_KINDS),
+        inArray(workflowJobs.state, [...INGESTION_ACTIVE_STATES]),
+      ),
+    );
+
+  await terminateAndDeleteIngestionJobInstances(
+    collectPairedIngestionInstanceIds(rows),
+  );
+}
+
+async function terminateBitrixWidgetIngestionFromPipelineInstanceId(
+  dealOpportunityId: string,
+  pipelineInstanceId: string,
+): Promise<void> {
+  const row = await getWorkflowJobRow(pipelineInstanceId);
+  if (
+    !row ||
+    row.dealId !== dealOpportunityId ||
+    (row.workflowKind !== "file-upload" &&
+      row.workflowKind !== "rag-ingestion")
+  ) {
+    return;
+  }
+
+  const pair: { instanceId: string; workflowKind: string }[] = [
+    { instanceId: row.instanceId, workflowKind: row.workflowKind },
+  ];
+  if (row.workflowKind === "file-upload") {
+    const ragRow = await getWorkflowJobRow(`${row.instanceId}-rag`);
+    if (ragRow) {
+      pair.push({
+        instanceId: ragRow.instanceId,
+        workflowKind: ragRow.workflowKind,
+      });
+    }
+  } else if (row.instanceId.endsWith("-rag")) {
+    const base = row.instanceId.slice(0, -"-rag".length);
+    const upRow = await getWorkflowJobRow(base);
+    if (upRow) {
+      pair.push({
+        instanceId: upRow.instanceId,
+        workflowKind: upRow.workflowKind,
+      });
+    }
+  }
+
+  await terminateAndDeleteIngestionJobInstances(
+    collectPairedIngestionInstanceIds(pair),
+  );
+}
+
+async function removeBitrixWidgetIngestingDocumentsByFileName(
+  dealOpportunityId: string,
+  fileName: string,
+): Promise<void> {
+  const trimmed = fileName.trim();
+  if (!trimmed) return;
+
+  const docRows = await db
+    .select({ id: documents.id, fileUrl: documents.fileUrl })
+    .from(documents)
+    .where(
+      drizzleAnd(
+        eq(documents.dealOpportunityId, dealOpportunityId),
+        eq(documents.fileName, trimmed),
+        inArray(documents.ingestionStatus, ["PENDING", "PROCESSING"]),
+      ),
+    );
+
+  for (const doc of docRows) {
+    try {
+      const vectorIndex = getDocumentChunksVectorIndex();
+      if (vectorIndex) {
+        await deleteChunkVectorsForDocument(db, vectorIndex, doc.id);
+      }
+    } catch (err) {
+      console.error(
+        "[bitrix-widget-cancel-ingestion] Vectorize cleanup failed",
+        err,
+      );
+    }
+    try {
+      await deleteFile(doc.fileUrl);
+    } catch (err) {
+      console.error(
+        "[bitrix-widget-cancel-ingestion] Nextcloud delete failed",
+        err,
+      );
+    }
+    await deleteDocumentById(doc.id);
+  }
+}
 
 function defaultDealOpportunityStage(): string {
   return getDefaultBitrixStageId(getBitrixDealStages());
@@ -1813,6 +1985,18 @@ export const dealsRouter = createTRPCRouter({
           message: "Document does not belong to this deal",
         });
       }
+      if (
+        doc.ingestionStatus === "PENDING" ||
+        doc.ingestionStatus === "PROCESSING"
+      ) {
+        const fn = doc.fileName?.trim();
+        if (fn) {
+          await terminateBitrixWidgetIngestionPipelineForDealFile(
+            dealOpportunityId,
+            fn,
+          );
+        }
+      }
       try {
         const vectorIndex = getDocumentChunksVectorIndex();
         if (vectorIndex) {
@@ -1834,6 +2018,53 @@ export const dealsRouter = createTRPCRouter({
         bitrixDealId: input.dealId,
         dealOpportunityId,
         documentId: input.documentId,
+      });
+      return { success: true as const };
+    }),
+
+  cancelBitrixScreeningWidgetIngestion: publicProcedure
+    .input(bitrixScreeningWidgetCancelIngestionSchema)
+    .mutation(async ({ input }) => {
+      await assertValidBitrixWidgetContext(input);
+      const dealOpportunityId = await resolveDealOpportunityForBitrixDeal(
+        input.dealId,
+      );
+      const fileNameIn = input.fileName?.trim() ?? "";
+      const pipelineInstanceId = input.pipelineInstanceId?.trim() ?? "";
+      let resolvedFileName = fileNameIn;
+
+      if (!resolvedFileName && pipelineInstanceId) {
+        const jobRow = await getWorkflowJobRow(pipelineInstanceId);
+        if (!jobRow || jobRow.dealId !== dealOpportunityId) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Ingestion job not found for this deal.",
+          });
+        }
+        resolvedFileName = jobRow.fileName?.trim() ?? "";
+        await terminateBitrixWidgetIngestionFromPipelineInstanceId(
+          dealOpportunityId,
+          pipelineInstanceId,
+        );
+      } else if (resolvedFileName) {
+        await terminateBitrixWidgetIngestionPipelineForDealFile(
+          dealOpportunityId,
+          resolvedFileName,
+        );
+      }
+
+      if (resolvedFileName) {
+        await removeBitrixWidgetIngestingDocumentsByFileName(
+          dealOpportunityId,
+          resolvedFileName,
+        );
+      }
+
+      console.info("[bitrix-widget-cancel-ingestion]", {
+        bitrixDealId: input.dealId,
+        dealOpportunityId,
+        resolvedFileName: resolvedFileName || null,
+        pipelineInstanceId: pipelineInstanceId || null,
       });
       return { success: true as const };
     }),

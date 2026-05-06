@@ -92,6 +92,8 @@ export async function getDocumentFileMetaForDelete(documentId: string) {
   const [doc] = await db
     .select({
       fileUrl: documents.fileUrl,
+      fileName: documents.fileName,
+      ingestionStatus: documents.ingestionStatus,
       entityType: documents.entityType,
       entityId: documents.entityId,
       companyId: documents.companyId,

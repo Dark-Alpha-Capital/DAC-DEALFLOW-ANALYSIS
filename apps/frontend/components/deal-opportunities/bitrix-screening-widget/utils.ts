@@ -115,14 +115,14 @@ export function fileExtensionFromName(fileName: string): string {
 export function formatFileSizeBytes(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "—";
   if (n < 1024) return `${n} B`;
-  const units = ["KB", "MB", "GB"] as const;
-  let v = n;
+  const units = ["KB", "MB", "GB", "TB"] as const;
+  let v = n / 1024;
   let u = 0;
   while (v >= 1024 && u < units.length - 1) {
     v /= 1024;
     u += 1;
   }
-  const rounded = u === 0 || v >= 10 ? Math.round(v) : Math.round(v * 10) / 10;
+  const rounded = v >= 10 ? Math.round(v) : Math.round(v * 10) / 10;
   return `${rounded} ${units[u]}`;
 }
 
@@ -211,6 +211,7 @@ export function mergeIngestionPipelineJobsForDisplay(
         rows.push({
           key: job.instanceId,
           fileName: job.fileName ?? null,
+          cancelInstanceId: job.instanceId,
           phaseLabel: pipelineKindLabel(job.workflowKind),
           progressStep: pipelineProgressCaption(job),
           progressPercent: job.progressPercent,
@@ -229,6 +230,7 @@ export function mergeIngestionPipelineJobsForDisplay(
     rows.push({
       key: groupKey(upload),
       fileName: upload.fileName ?? rag.fileName ?? null,
+      cancelInstanceId: upload.instanceId,
       phaseLabel: "Upload & indexing",
       progressStep: pipelineProgressCaption(primary),
       progressPercent: primary.progressPercent,

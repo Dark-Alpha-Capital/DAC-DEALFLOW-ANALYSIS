@@ -22,6 +22,7 @@ import { StepScreener } from "./bitrix-screening-widget/step-screener";
 import { WizardStepNav } from "./bitrix-screening-widget/wizard-step-nav";
 import type {
   DealDocumentRow,
+  DisplayIngestionPipelineRow,
   ScreeningRunDetail,
   WidgetBootstrap,
   WizardStep,
@@ -106,6 +107,9 @@ export function BitrixScreeningWidgetWorkspace({
   const [wizardStep, setWizardStep] = useState<WizardStep>(1);
   const [documentToDelete, setDocumentToDelete] =
     useState<DealDocumentRow | null>(null);
+  const [cancellingPipelineKeys, setCancellingPipelineKeys] = useState<
+    Set<string>
+  >(() => new Set());
 
   const q = useQuery({
     queryKey: ["bitrix-screening-widget-bootstrap", widgetInput],
@@ -175,6 +179,18 @@ export function BitrixScreeningWidgetWorkspace({
       },
       onError: (e) => toast.error(e.message ?? "Could not delete document"),
     }),
+  );
+
+  const cancelIngestion = useMutation(
+    trpc.dealOpportunities.cancelBitrixScreeningWidgetIngestion.mutationOptions(
+      {
+        onSuccess: () => {
+          toast.success("Indexing stopped and partial files removed");
+          void q.refetch();
+        },
+        onError: (e) => toast.error(e.message ?? "Could not stop indexing"),
+      },
+    ),
   );
 
   const handleUpload = useCallback(async () => {
@@ -352,6 +368,30 @@ export function BitrixScreeningWidgetWorkspace({
     [deleteDealDocument, widgetInput],
   );
 
+  const handleCancelPipelineRow = useCallback(
+    (row: DisplayIngestionPipelineRow) => {
+      if (!row.cancelInstanceId && !row.fileName) return;
+      setCancellingPipelineKeys((prev) => new Set(prev).add(row.key));
+      cancelIngestion.mutate(
+        {
+          ...widgetInput,
+          fileName: row.fileName ?? undefined,
+          pipelineInstanceId: row.cancelInstanceId ?? undefined,
+        },
+        {
+          onSettled: () => {
+            setCancellingPipelineKeys((prev) => {
+              const next = new Set(prev);
+              next.delete(row.key);
+              return next;
+            });
+          },
+        },
+      );
+    },
+    [cancelIngestion, widgetInput],
+  );
+
   useEffect(() => {
     if (!d) return;
     if (import.meta.env.DEV) {
@@ -490,6 +530,8 @@ export function BitrixScreeningWidgetWorkspace({
                 uploading={upload.isPending}
                 deleteDisabled={deleteDealDocument.isPending}
                 onRequestDelete={setDocumentToDelete}
+                onCancelPipelineRow={handleCancelPipelineRow}
+                cancellingPipelineKeys={cancellingPipelineKeys}
               />
             ) : null}
 
