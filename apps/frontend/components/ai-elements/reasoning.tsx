@@ -224,7 +224,7 @@ export const ReasoningContent = memo(
           </div>
         }
       >
-        <Streamdown plugins={streamdownPlugins} {...props}>
+        <Streamdown plugins={streamdownPlugins as any}>
           {children}
         </Streamdown>
       </ClientOnly>

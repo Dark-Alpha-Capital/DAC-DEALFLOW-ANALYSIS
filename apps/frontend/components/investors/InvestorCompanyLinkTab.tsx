@@ -75,7 +75,8 @@ function LinkCard({
         <div className="flex shrink-0 flex-col gap-2 sm:items-end">
           <Button asChild variant="default">
             <Link
-              href={`/companies/${company.id}`}
+              to="/companies/$uid"
+              params={{ uid: company.id }}
               className="inline-flex gap-2"
             >
               <ExternalLink className="h-4 w-4" />

@@ -24,7 +24,8 @@ export const Route = createFileRoute("/_protected/deal-opportunities/$uid/")({
 
 function DealOpportunityDetailRoute() {
   const { uid } = Route.useParams();
-  const { dealData, cimAnalysis, error } = Route.useLoaderData();
+  const data = Route.useLoaderData() as any;
+  const { dealData, cimAnalysis, error } = data;
   return (
     <DealOpportunityDetailView
       uid={uid}
@@ -35,14 +36,10 @@ function DealOpportunityDetailRoute() {
   );
 }
 
-type DealOppDetailLoader = Awaited<
-  ReturnType<typeof loadDealOpportunityDetailData>
->;
-
 function DealOpportunityDetailView(props: {
   uid: string;
-  dealData: DealOppDetailLoader["dealData"];
-  cimAnalysis: DealOppDetailLoader["cimAnalysis"];
+  dealData: any;
+  cimAnalysis: any;
   error: string | null;
 }) {
   const { uid, dealData, cimAnalysis, error } = props;

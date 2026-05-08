@@ -59,7 +59,7 @@ function EditInvestorRoute() {
     <section className="big-container block-space min-h-screen">
       <div className="mb-6">
         <Button variant="ghost" asChild className="gap-2 pl-0">
-          <Link to={`/investors/${uid}`}>
+          <Link to="/investors/$uid" params={{ uid }}>
             <ArrowLeft className="h-4 w-4" />
             Back to Investor
           </Link>

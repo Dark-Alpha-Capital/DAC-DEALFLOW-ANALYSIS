@@ -31,7 +31,7 @@ export default function ScreeningScoreCard({ items }: ScreeningScoreCardProps) {
         scoredCount += 1;
       }
       if (sentimentCounts[s.sentiment] != null) {
-        sentimentCounts[sentiment] += 1;
+        sentimentCounts[s.sentiment] += 1;
       }
     }
   }

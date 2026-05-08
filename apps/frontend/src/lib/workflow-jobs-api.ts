@@ -100,7 +100,7 @@ export async function restartWorkflowInstance(
 ): Promise<void> {
   const w = getWorkflowByKind(kind);
   const instance = await w.get(instanceId);
-  await instance.restart();
+  await (instance as unknown as { restart: () => Promise<void> }).restart();
 }
 
 function rowToMetadata(

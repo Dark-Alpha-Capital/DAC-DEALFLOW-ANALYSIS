@@ -48,7 +48,8 @@ export function DealActionsCell({
         <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuItem asChild>
             <Link
-              to={`/deal-opportunities/${dealOpportunityId}`}
+              to="/deal-opportunities/$uid"
+              params={{ uid: dealOpportunityId }}
               className="flex items-center"
             >
               <Eye className="mr-2 h-4 w-4" />
@@ -57,7 +58,8 @@ export function DealActionsCell({
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link
-              to={`/deal-opportunities/${dealOpportunityId}/edit`}
+              to="/deal-opportunities/$uid/edit"
+              params={{ uid: dealOpportunityId }}
               className="flex items-center"
             >
               <Pencil className="mr-2 h-4 w-4" />

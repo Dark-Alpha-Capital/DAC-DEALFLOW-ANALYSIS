@@ -36,8 +36,6 @@ export default function CompanyCard({ company }: { company: CompanyWithTheme }) 
       },
     }),
   );
-  const detailLink = `/companies/${company.id}`;
-
   return (
     <div className="flex flex-col border-b border-border bg-background py-5 transition-colors hover:bg-muted/40">
       <div className="flex items-start justify-between gap-3">
@@ -101,13 +99,13 @@ export default function CompanyCard({ company }: { company: CompanyWithTheme }) 
 
       <div className="mt-4 flex gap-2 border-t border-border pt-4">
         <Button size="sm" className="flex-1 gap-1.5" asChild>
-          <Link to={detailLink}>
+          <Link to="/companies/$uid" params={{ uid: company.id }}>
             <Eye className="h-3.5 w-3.5" />
             View
           </Link>
         </Button>
         <Button size="sm" variant="outline" className="gap-1.5" asChild>
-          <Link to={`/companies/${company.id}/edit`}>
+          <Link to="/companies/$uid/edit" params={{ uid: company.id }}>
             <Pencil className="h-3.5 w-3.5" />
             Edit
           </Link>

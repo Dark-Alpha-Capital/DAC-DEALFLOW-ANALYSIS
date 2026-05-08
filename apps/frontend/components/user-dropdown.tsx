@@ -53,7 +53,7 @@ export function UserDropdown({ session, userInitials }: UserDropdownProps) {
       >
         {session.user?.id && (
           <DropdownMenuItem asChild>
-            <Link to={`/profile/${session.user.id}`}>
+            <Link to="/profile/$uid" params={{ uid: session.user.id }}>
               <User2 />
               <span>Profile</span>
             </Link>

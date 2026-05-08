@@ -47,7 +47,8 @@ export function KanbanDealOpportunityActions({
       >
         <Button variant="ghost" size="icon" className={iconBtn} asChild>
           <Link
-            to={`/deal-opportunities/${dealOpportunityId}`}
+            to="/deal-opportunities/$uid"
+            params={{ uid: dealOpportunityId }}
             aria-label="View deal"
           >
             <Eye className="h-4 w-4" />
@@ -55,7 +56,8 @@ export function KanbanDealOpportunityActions({
         </Button>
         <Button variant="ghost" size="icon" className={iconBtn} asChild>
           <Link
-            to={`/deal-opportunities/${dealOpportunityId}/edit`}
+            to="/deal-opportunities/$uid/edit"
+            params={{ uid: dealOpportunityId }}
             aria-label="Edit deal"
           >
             <Pencil className="h-4 w-4" />

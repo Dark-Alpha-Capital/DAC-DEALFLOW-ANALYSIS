@@ -18,10 +18,10 @@ const FetchDealDocuments = ({
             key={document.id}
             title={document.title}
             description={document.description || ""}
-            caption={document.caption}
+            caption={(document as any).caption}
             category={document.category}
             fileUrl={document.fileUrl}
-            tags={document.tags || []}
+            tags={(document as any).tags || []}
             fileName={document.fileName}
             fileType={document.mimeType}
           />

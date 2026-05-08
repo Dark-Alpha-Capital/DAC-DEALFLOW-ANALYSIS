@@ -65,7 +65,6 @@ export default function DealOppCard({ opp, deal, company }: DealOppCardProps) {
     return null;
   }
 
-  const detailLink = `/deal-opportunities/${resolvedOpp.id}`;
   const title = company?.name ?? resolvedOpp.dealTeaser ?? "Deal";
 
   return (
@@ -136,13 +135,13 @@ export default function DealOppCard({ opp, deal, company }: DealOppCardProps) {
 
       <div className="mt-4 flex gap-2 border-t border-border pt-4">
         <Button size="sm" className="flex-1 gap-1.5" asChild>
-          <Link to={detailLink}>
+          <Link to="/deal-opportunities/$uid" params={{ uid: resolvedOpp.id }}>
             <Eye className="h-3.5 w-3.5" />
             View
           </Link>
         </Button>
         <Button size="sm" variant="outline" className="gap-1.5" asChild>
-          <Link to={`/deal-opportunities/${resolvedOpp.id}/edit`}>
+          <Link to="/deal-opportunities/$uid/edit" params={{ uid: resolvedOpp.id }}>
             <Pencil className="h-3.5 w-3.5" />
             Edit
           </Link>

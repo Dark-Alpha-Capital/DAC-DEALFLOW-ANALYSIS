@@ -93,7 +93,7 @@ export function ChatSidebarItem({ chat }: { chat: Chat }) {
     <>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={pathname === `/chat/${chat.id}`}>
-          <Link to={`/chat/${chat.id}`}>
+          <Link to="/chat/$id" params={{ id: chat.id }}>
             <span className="truncate">{chat.title}</span>
           </Link>
         </SidebarMenuButton>
@@ -105,10 +105,10 @@ export function ChatSidebarItem({ chat }: { chat: Chat }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link to={`/chat/${chat.id}`}>
-                <ExternalLink className="size-4" />
-                View
-              </Link>
+            <Link to="/chat/$id" params={{ id: chat.id }}>
+              <ExternalLink className="size-4" />
+              View
+            </Link>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleEdit}>
               <Pencil className="size-4" />

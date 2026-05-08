@@ -43,7 +43,7 @@ export default function CreateNewCompanyForm() {
         toast.success("Company added successfully");
         form.reset();
         void router.invalidate();
-        router.push(`/companies/${data.company?.id}`);
+        router.push(`/companies/${data.companyId}`);
       },
       onError: (error) => {
         toast.error(error.message || "Failed to add company");
@@ -70,14 +70,11 @@ export default function CreateNewCompanyForm() {
   function onSubmit(values: AddCompanyFormSchemaType) {
     createCompany({
       name: values.name,
-      website: values.website,
-      sector: values.sector,
-      stage: values.stage,
-      headquarters: values.headquarters,
-      description: values.description,
-      revenue: values.revenue,
-      ebitda: values.ebitda,
-      growthRate: values.growthRate,
+      normalizedName: values.name.toLowerCase().replace(/\s+/g, "_"),
+      industry: values.sector,
+      location: values.headquarters,
+      revenueEstimate: values.revenue,
+      ebitdaEstimate: values.ebitda,
       employees: values.employees,
     });
   }

@@ -154,7 +154,7 @@ export const loadRankedDealOpportunitiesKanbanStagePage = createServerFn({
 
 export const loadDealOpportunityDetailData = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
-  .handler(async ({ data }) => {
+  .handler((async ({ data }: { data: { uid: string } }) => {
     await assertAuthenticated();
     try {
       const [dealData, activeCim, extraction] = await Promise.all([
@@ -196,7 +196,7 @@ export const loadDealOpportunityDetailData = createServerFn({ method: "GET" })
         error: err instanceof Error ? err.message : String(err),
       };
     }
-  });
+  }) as any);
 
 export const loadDealOpportunityForEditData = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => uidParamSchema.parse(raw))

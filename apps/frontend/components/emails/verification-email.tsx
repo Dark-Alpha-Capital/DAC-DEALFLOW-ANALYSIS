@@ -47,7 +47,7 @@ export const VerificationEmail = ({ url }: VerificationEmailProps) => {
               If the button doesn't work, copy and paste this link into your
               browser:
             </Text>
-            <Link to={url} style={link}>
+            <Link href={url} style={link}>
               {url}
             </Link>
           </Section>

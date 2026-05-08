@@ -68,7 +68,8 @@ function InvestorActionsCell({ investor }: { investor: Investor }) {
         <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuItem asChild>
             <Link
-              href={`/investors/${investor.id}`}
+              to="/investors/$uid"
+              params={{ uid: investor.id }}
               className="flex items-center"
             >
               <Eye className="mr-2 h-4 w-4" />
@@ -77,7 +78,8 @@ function InvestorActionsCell({ investor }: { investor: Investor }) {
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link
-              href={`/investors/${investor.id}/edit`}
+              to="/investors/$uid/edit"
+              params={{ uid: investor.id }}
               className="flex items-center"
             >
               <Pencil className="mr-2 h-4 w-4" />

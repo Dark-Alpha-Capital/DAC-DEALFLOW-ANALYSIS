@@ -103,7 +103,7 @@ function LeadDetailRoute() {
 
         <div className="flex flex-wrap items-center gap-3">
           <Button asChild variant="outline" size="sm">
-            <Link to={`/leads/${lead.id}/edit`}>Edit Lead</Link>
+            <Link to="/leads/$uid/edit" params={{ uid: lead.id }}>Edit Lead</Link>
           </Button>
           {convertedCompany ? (
             <>
@@ -116,7 +116,7 @@ function LeadDetailRoute() {
                 Convert to company
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link to={`/companies/${convertedCompany.id}`}>
+                <Link to="/companies/$uid" params={{ uid: convertedCompany.id }}>
                   View company
                 </Link>
               </Button>
@@ -132,14 +132,14 @@ function LeadDetailRoute() {
                 Convert to company
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link to={`/companies/${duplicateCompany.id}`}>
+                <Link to="/companies/$uid" params={{ uid: duplicateCompany.id }}>
                   View duplicate company
                 </Link>
               </Button>
             </>
           ) : (
             <Button asChild size="sm">
-              <Link to={`/leads/${lead.id}/convert`}>Convert to company</Link>
+              <Link to="/leads/$uid/convert" params={{ uid: lead.id }}>Convert to company</Link>
             </Button>
           )}
           {lead.sourceWebsite && (

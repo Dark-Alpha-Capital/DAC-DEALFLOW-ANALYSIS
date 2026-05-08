@@ -99,7 +99,7 @@ export function InvestorCompanyLinkSection({
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button asChild variant="ghost" size="sm">
-                  <Link to={`/companies/${row.company.id}`} className="gap-1">
+                  <Link to="/companies/$uid" params={{ uid: row.company.id }} className="gap-1">
                     <ExternalLink className="h-3.5 w-3.5" />
                     View
                   </Link>

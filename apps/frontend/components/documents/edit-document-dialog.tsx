@@ -39,7 +39,7 @@ export function EditDocumentDialog({
   const [description, setDescription] = React.useState(
     doc.description ?? ""
   );
-  const [category, setCategory] = React.useState(doc.category ?? "OTHER");
+  const [category, setCategory] = React.useState<string>(doc.category ?? "OTHER");
 
   React.useEffect(() => {
     if (open) {
@@ -74,7 +74,7 @@ export function EditDocumentDialog({
       documentId: doc.id,
       title: title.trim(),
       description: description.trim() || null,
-      category: category as (typeof DOCUMENT_CATEGORIES)[number]["value"],
+      category: category as any,
     });
   };
 

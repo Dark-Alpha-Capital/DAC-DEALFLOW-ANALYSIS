@@ -32,7 +32,7 @@ function EditLeadRoute() {
             Error loading lead
           </h1>
           <Button asChild>
-            <BackButton href="/leads" label="Back to Leads" />
+            <Link to="/leads">Back to Leads</Link>
           </Button>
         </div>
       </section>

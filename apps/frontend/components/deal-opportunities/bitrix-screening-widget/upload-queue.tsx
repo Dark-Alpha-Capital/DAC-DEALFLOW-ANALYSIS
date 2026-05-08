@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { FileStack, Loader2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,9 +25,15 @@ export function UploadQueue({
   onUpload: () => void;
   uploading: boolean;
 }) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
+    processFiles(picked);
+  }
+
+  function processFiles(picked: File[]) {
     const accepted: File[] = [];
     const rejected: File[] = [];
     for (const f of picked) {
@@ -49,6 +56,26 @@ export function UploadQueue({
     if (accepted.length > 0) onPick(accepted);
   }
 
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const dropped = Array.from(e.dataTransfer.files);
+    if (dropped.length > 0) processFiles(dropped);
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -63,9 +90,13 @@ export function UploadQueue({
 
       <label
         htmlFor="bitrix-widget-upload"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         className={cn(
           "border-border/20 bg-muted/20 hover:bg-muted/30 flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed p-6 transition-colors",
           uploading && "pointer-events-none opacity-60",
+          isDragOver && "border-primary bg-primary/10",
         )}
       >
         <Paperclip className="text-muted-foreground size-5" aria-hidden />

@@ -4,6 +4,8 @@ import {
   AlertCircle,
   ArrowRight,
   ExternalLink,
+  Info,
+  Layers,
   Loader2,
   Sparkles,
   TriangleAlert,
@@ -33,6 +35,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { DocumentListItem } from "./bitrix-screening-widget/document-list-item";
 import { IngestionProgressList } from "./bitrix-screening-widget/ingestion-progress-list";
@@ -303,6 +314,40 @@ function icRunIsTerminal(status: string): boolean {
   return status === "COMPLETED" || status === "FAILED";
 }
 
+type MemoDraft = {
+  headline: string;
+  investmentThesis: string;
+  alignmentMemos: { pillar: string; memo: string }[];
+  strengthBullets: string[];
+  riskAndGapsMemo: { risk: string; suggestedAction: string }[];
+  recommendation: string;
+};
+
+function formatMemoDraftToPlainText(d: MemoDraft): string {
+  return [
+    "IC READINESS",
+    d.headline.trim(),
+    "",
+    "Investment thesis",
+    d.investmentThesis.trim(),
+    "",
+    "Alignment",
+    ...d.alignmentMemos.map((row) => `• ${row.pillar}: ${row.memo.trim()}`),
+    "",
+    "Strengths",
+    ...d.strengthBullets.map((s) => `• ${s.trim()}`),
+    "",
+    "Risks & gaps",
+    ...d.riskAndGapsMemo.map(
+      (r) =>
+        `• ${r.risk.trim()}${r.suggestedAction.trim() ? ` — ${r.suggestedAction.trim()}` : ""}`,
+    ),
+    "",
+    "Recommendation",
+    d.recommendation.trim(),
+  ].join("\n");
+}
+
 function StepTabs({ step, onStep }: { step: Step; onStep: (s: Step) => void }) {
   const tabs: { s: Step; label: string }[] = [
     { s: 1, label: "Documents & mode" },
@@ -410,6 +455,7 @@ export function IcScorerWorkspace({
   const [viewRunId, setViewRunId] = useState<string | null>(null);
   const [editedMemo, setEditedMemo] = useState("");
   const [memoDirty, setMemoDirty] = useState(false);
+  const [memoDraft, setMemoDraft] = useState<MemoDraft | null>(null);
 
   const upload = useMutation(
     trpc.dealOpportunities.uploadBitrixScreeningWidgetDocuments.mutationOptions({
@@ -560,7 +606,25 @@ export function IcScorerWorkspace({
     } else {
       setEditedMemo("");
     }
+    setMemoDraft({
+      headline: output.headline ?? output.memo?.scoreHeadline ?? "",
+      investmentThesis:
+        output.investmentThesis ?? output.memo?.investmentThesisMemo ?? "",
+      alignmentMemos:
+        output.memo?.alignmentMemos ??
+        output.alignment?.map((a) => ({ pillar: a.pillar, memo: a.note })) ??
+        [],
+      strengthBullets: output.memo?.strengthBullets ?? output.strengths ?? [],
+      riskAndGapsMemo: output.memo?.riskAndGapsMemo ?? output.risksAndGaps ?? [],
+      recommendation:
+        output.recommendation ?? output.memo?.recommendationMemo ?? "",
+    });
   }, [output?.memo, output?.memoHtml, memoDirty]);
+
+  useEffect(() => {
+    if (!memoDraft || !memoDirty) return;
+    setEditedMemo(formatMemoDraftToPlainText(memoDraft));
+  }, [memoDraft]);
 
   const postTimeline = useMutation({
     mutationFn: async (args: { comment: string; score: number | null }) => {
@@ -644,321 +708,551 @@ export function IcScorerWorkspace({
   }
 
   return (
-    <div className="bg-background text-foreground mx-auto max-w-5xl px-5 py-5 md:px-10 md:py-7">
-      {d.recentIcScorerRuns.length > 0 && latestRunId ? (
-        <div className="border-border/20 bg-muted/10 mb-4 rounded-lg border p-3 space-y-2">
-          <p className="text-foreground text-xs font-medium tracking-tight">
-            Run history
-          </p>
-          <Select
-            value={effectiveRunId ?? latestRunId}
-            onValueChange={(runId) => {
-              setMemoDirty(false);
-              setViewRunId(runId === latestRunId ? null : runId);
-              setStep(2);
-            }}
-          >
-            <SelectTrigger
-              id="ic-scorer-run-history"
-              className="h-10 w-full max-w-xl text-left font-normal"
-              aria-label="Select IC scorer run"
-            >
-              <SelectValue placeholder="Select a run" />
-            </SelectTrigger>
-            <SelectContent>
-              {d.recentIcScorerRuns.map((r, i) => (
-                <SelectItem key={r.runId} value={r.runId}>
-                  {r.mode} · {r.status}
-                  {i === 0 ? " · latest" : ""} ·{" "}
-                  {new Date(r.createdAt).toLocaleString()}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : null}
+    <Dialog>
+      <div className="bg-background text-foreground mx-auto max-w-5xl px-5 py-5 md:px-10 md:py-7">
+        {bootstrapPrefetchHint.kind === "error" ? (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTitle>Prefetch failed</AlertTitle>
+            <AlertDescription>{bootstrapPrefetchHint.message}</AlertDescription>
+          </Alert>
+        ) : null}
 
-      {bootstrapPrefetchHint.kind === "error" ? (
-        <Alert variant="destructive" className="mb-4">
-          <AlertTitle>Prefetch failed</AlertTitle>
-          <AlertDescription>{bootstrapPrefetchHint.message}</AlertDescription>
-        </Alert>
-      ) : null}
+        {runBusy ? (
+          <Alert className="border-primary/30 bg-primary/5 mb-4">
+            <Loader2 className="text-primary size-4 animate-spin" aria-hidden />
+            <AlertTitle>IC scorer running</AlertTitle>
+            <AlertDescription>
+              Status: {runStatus}. This page refreshes every few seconds until the
+              run finishes.
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
-      {runBusy ? (
-        <Alert className="border-primary/30 bg-primary/5 mb-4">
-          <Loader2 className="text-primary size-4 animate-spin" aria-hidden />
-          <AlertTitle>IC scorer running</AlertTitle>
-          <AlertDescription>
-            Status: {runStatus}. This page refreshes every few seconds until the
-            run finishes.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <header className="mb-4 space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="flex items-center gap-2 text-[26px] font-semibold tracking-[-0.02em]">
-              <Sparkles className="text-foreground/50 size-6" aria-hidden />
-              IC Readiness scorer
-            </h1>
-            <p className="text-muted-foreground mt-1 text-xs tabular-nums">
-              Bitrix #{d.dealId}
-              {d.title ? ` · ${d.title}` : ""}
-              {d.stageId ? ` · ${d.stageId}` : ""}
-            </p>
-          </div>
-          {bitrixUrl ? (
-            <Button variant="ghost" size="sm" asChild>
-              <a href={bitrixUrl} target="_blank" rel="noopener noreferrer">
-                Open in Bitrix
-                <ExternalLink className="size-3.5" />
-              </a>
-            </Button>
-          ) : null}
-        </div>
-        <StepTabs step={step} onStep={setStep} />
-      </header>
-
-      {step === 1 ? (
-        <div className="space-y-5">
-          {!d.webhookConfigured ? (
-            <Alert variant="destructive">
-              <AlertTitle>Bitrix webhook not configured</AlertTitle>
-              <AlertDescription>
-                CRM fields cannot load until BITRIX24_WEBHOOK is set.
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {screeningModeBadge ? (
-            <Badge variant="outline" className="border-border/20 text-xs font-medium w-fit">
-              {screeningModeBadge === "monograph"
-                ? "Single-file (monograph)"
-                : "Multi-file (RAG)"}
-            </Badge>
-          ) : null}
-
-          {pipelineRows.length > 0 ? (
-            <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
-              <p className="text-foreground text-xs font-medium tracking-tight">
-                Indexing files
+        <header className="mb-4 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 className="flex items-center gap-2 text-[26px] font-semibold tracking-[-0.02em]">
+                <Sparkles className="text-foreground/50 size-6" aria-hidden />
+                IC Readiness scorer
+              </h1>
+              <p className="text-muted-foreground mt-1 text-xs tabular-nums">
+                Bitrix #{d.dealId}
+                {d.title ? ` · ${d.title}` : ""}
+                {d.stageId ? ` · ${d.stageId}` : ""}
               </p>
-              <IngestionProgressList
-                rows={pipelineRows}
-                onCancelRow={handleCancelPipelineRow}
-                cancellingKeys={cancellingPipelineKeys}
-              />
             </div>
-          ) : ingestSummary &&
-            ingestSummary.total > 0 &&
-            (ingestSummary.inFlight > 0 || ingestSummary.failed > 0) ? (
-            <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs">
-                <span className="text-foreground font-medium">File indexing</span>
-                <span className="text-muted-foreground tabular-nums">
-                  {ingestSummary.finishedPipeline} of {ingestSummary.total} finished
-                </span>
-              </div>
-              <Progress value={ingestSummary.pct} className="h-1" aria-label="Document indexing progress" />
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              <DialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground h-8 cursor-pointer gap-1.5 text-[13px]"
+                >
+                  <Info className="size-3.5 shrink-0" aria-hidden />
+                  Deal context
+                </Button>
+              </DialogTrigger>
+              {bitrixUrl ? (
+                <Button variant="ghost" size="sm" asChild>
+                  <a href={bitrixUrl} target="_blank" rel="noopener noreferrer">
+                    Open in Bitrix
+                    <ExternalLink className="size-3.5" />
+                  </a>
+                </Button>
+              ) : null}
             </div>
-          ) : null}
+          </div>
+          <StepTabs step={step} onStep={setStep} />
+        </header>
 
-          {processedDocs.length > 0 ? (
-            <ul className="divide-border/20 divide-y">
-              {processedDocs.map((doc) => (
-                <DocumentListItem
-                  key={doc.id}
-                  doc={doc}
-                  variant="processed"
-                  deletingDisabled={deleteDealDocument.isPending}
-                  onDelete={(x) =>
-                    deleteDealDocument.mutate({
-                      ...widgetInput,
-                      documentId: x.id,
-                    })
-                  }
+        {step === 1 ? (
+          <div className="space-y-5">
+            {!d.webhookConfigured ? (
+              <Alert variant="destructive">
+                <AlertTitle>Bitrix webhook not configured</AlertTitle>
+                <AlertDescription>
+                  CRM fields cannot load until BITRIX24_WEBHOOK is set.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            {screeningModeBadge ? (
+              <Badge variant="outline" className="border-border/20 text-xs font-medium w-fit">
+                {screeningModeBadge === "monograph"
+                  ? "Single-file (monograph)"
+                  : "Multi-file (RAG)"}
+              </Badge>
+            ) : null}
+
+            {pipelineRows.length > 0 ? (
+              <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
+                <p className="text-foreground text-xs font-medium tracking-tight">
+                  Indexing files
+                </p>
+                <IngestionProgressList
+                  rows={pipelineRows}
+                  onCancelRow={handleCancelPipelineRow}
+                  cancellingKeys={cancellingPipelineKeys}
                 />
-              ))}
-            </ul>
-          ) : null}
+              </div>
+            ) : ingestSummary &&
+              ingestSummary.total > 0 &&
+              (ingestSummary.inFlight > 0 || ingestSummary.failed > 0) ? (
+              <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs">
+                  <span className="text-foreground font-medium">File indexing</span>
+                  <span className="text-muted-foreground tabular-nums">
+                    {ingestSummary.finishedPipeline} of {ingestSummary.total} finished
+                  </span>
+                </div>
+                <Progress value={ingestSummary.pct} className="h-1" aria-label="Document indexing progress" />
+              </div>
+            ) : null}
 
-          <UploadQueue
-            files={uploadFiles}
-            onPick={onPickFiles}
-            onRemove={onRemovePendingUpload}
-            onUpload={handleUpload}
-            uploading={upload.isPending}
-          />
+            {processedDocs.length > 0 ? (
+              <ul className="divide-border/20 divide-y">
+                {processedDocs.map((doc) => (
+                  <DocumentListItem
+                    key={doc.id}
+                    doc={doc}
+                    variant="processed"
+                    deletingDisabled={deleteDealDocument.isPending}
+                    onDelete={(x) =>
+                      deleteDealDocument.mutate({
+                        ...widgetInput,
+                        documentId: x.id,
+                      })
+                    }
+                  />
+                ))}
+              </ul>
+            ) : null}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-            <Button
-              type="button"
-              className="transition-transform active:scale-[0.98]"
-              disabled={!canStart || startRun.isPending}
-              onClick={() => startRun.mutate({ ...widgetInput })}
-            >
-              {startRun.isPending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Starting…
-                </>
-              ) : (
-                <>
-                  Run IC scorer
-                  <ArrowRight className="size-4" />
-                </>
-              )}
-            </Button>
-            {!canStart ? (
-              <p className="text-muted-foreground max-w-md text-xs">
-                {indexed
-                  ? "Need indexed chunks — ensure files are processed."
-                  : "Index at least one document first."}
+            {d.recentIcScorerRuns.length > 0 && latestRunId ? (
+              <div className="border-border/20 bg-muted/10 rounded-lg border p-3 space-y-2">
+                <p className="text-foreground text-xs font-medium tracking-tight">
+                  Run history
+                </p>
+                <Select
+                  value={effectiveRunId ?? latestRunId}
+                  onValueChange={(runId) => {
+                    setMemoDirty(false);
+                    setViewRunId(runId === latestRunId ? null : runId);
+                    setStep(2);
+                  }}
+                >
+                  <SelectTrigger
+                    id="ic-scorer-run-history"
+                    className="h-10 w-full max-w-xl text-left font-normal"
+                    aria-label="Select IC scorer run"
+                  >
+                    <SelectValue placeholder="Select a run" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {d.recentIcScorerRuns.map((r, i) => (
+                      <SelectItem key={r.runId} value={r.runId}>
+                        {r.mode} · {r.status}
+                        {i === 0 ? " · latest" : ""} ·{" "}
+                        {new Date(r.createdAt).toLocaleString()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
+            <UploadQueue
+              files={uploadFiles}
+              onPick={onPickFiles}
+              onRemove={onRemovePendingUpload}
+              onUpload={handleUpload}
+              uploading={upload.isPending}
+            />
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+              <Button
+                type="button"
+                className="transition-transform active:scale-[0.98]"
+                disabled={!canStart || startRun.isPending}
+                onClick={() => startRun.mutate({ ...widgetInput })}
+              >
+                {startRun.isPending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Starting…
+                  </>
+                ) : (
+                  <>
+                    Run IC scorer
+                    <ArrowRight className="size-4" />
+                  </>
+                )}
+              </Button>
+              {!canStart ? (
+                <p className="text-muted-foreground max-w-md text-xs">
+                  {indexed
+                    ? "Need indexed chunks — ensure files are processed."
+                    : "Index at least one document first."}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {step === 2 ? (
+          <div className="space-y-5">
+            {runDetailQuery.isLoading && effectiveRunId ? (
+              <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                <Loader2 className="size-4 animate-spin" />
+                Loading run…
+              </div>
+            ) : null}
+            {displayRun?.status === "FAILED" ? (
+              <Alert variant="destructive">
+                <AlertTitle>Run failed</AlertTitle>
+                <AlertDescription>
+                  {displayRun.errorMessage ?? "Unknown error"}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {!output && runBusy ? (
+              <p className="text-muted-foreground text-sm">
+                Generating score and memo…
               </p>
             ) : null}
-          </div>
-
-          <div className="border-border/20 bg-muted/10 rounded-lg border p-3">
-            <p className="text-xs font-medium tracking-tight mb-2">CRM fields</p>
-            <ul className="grid gap-x-6 gap-y-1 text-xs md:grid-cols-2 max-h-[320px] overflow-y-auto">
-              {sortedFields.map((f) => (
-                <li key={f.key} className="flex gap-2 min-w-0">
-                  <span className="text-muted-foreground w-[42%] shrink-0 truncate">
-                    {f.label}
-                  </span>
-                  <span className="min-w-0 flex-1 break-words">{f.value}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      ) : null}
-
-      {step === 2 ? (
-        <div className="space-y-4">
-          {runDetailQuery.isLoading && effectiveRunId ? (
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
-              <Loader2 className="size-4 animate-spin" />
-              Loading run…
-            </div>
-          ) : null}
-          {displayRun?.status === "FAILED" ? (
-            <Alert variant="destructive">
-              <AlertTitle>Run failed</AlertTitle>
-              <AlertDescription>
-                {displayRun.errorMessage ?? "Unknown error"}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-          {!output && runBusy ? (
-            <p className="text-muted-foreground text-sm">
-              Generating score and memo…
-            </p>
-          ) : null}
-          {output ? (
-            <>
-              <div
-                  className={cn(
-                    "animate-in fade-in zoom-in-95 rounded-2xl border p-4 ring-2 duration-500 md:p-5",
-                    cc.ring,
-                    cc.bg,
-                  )}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-3">
-                  <p className={cn("text-5xl font-semibold tabular-nums", cc.text)}>
-                    {output.score}
-                    <span className="text-muted-foreground text-2xl font-normal">
-                      /100
-                    </span>
-                  </p>
-                  <Badge variant="outline" className={cn("border", cc.badge)}>
-                    {output.color}
-                  </Badge>
+            {output || memoDraft ? (
+              <>
+                <div
+                    className={cn(
+                      "animate-in fade-in zoom-in-95 rounded-2xl border p-4 ring-2 duration-500 md:p-5",
+                      cc.ring,
+                      cc.bg,
+                    )}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
+                    <p className={cn("text-5xl font-semibold tabular-nums", cc.text)}>
+                      {output?.score ?? "—"}
+                      <span className="text-muted-foreground text-2xl font-normal">
+                        /100
+                      </span>
+                    </p>
+                    <Badge variant="outline" className={cn("border", cc.badge)}>
+                      {output?.color ?? "—"}
+                    </Badge>
+                  </div>
                 </div>
-                <p className="text-foreground mt-3 text-lg font-medium leading-snug">
-                  {output.headline}
-                </p>
-              </div>
-              <RunOutputPreview o={output} />
-              {output.memo ? <MemoStructuredPreview memo={output.memo} /> : null}
-              {output.missingFields?.length ? (
-                <Alert>
-                  <AlertTitle>Missing fields</AlertTitle>
-                  <AlertDescription>
-                    <ul className="mt-1 list-disc pl-5">
-                      {output.missingFields.map((m, i) => (
-                        <li key={i}>{m}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-            </>
-          ) : !runBusy && effectiveRunId ? (
-            <p className="text-muted-foreground text-sm">
-              No output for this run yet.
-            </p>
-          ) : null}
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setStep(1)}>
-              Back
-            </Button>
-            <Button
-              type="button"
-              className="transition-transform active:scale-[0.98]"
-              disabled={!hasMemo}
-              onClick={() => setStep(3)}
-            >
-              Continue to post
-              <ArrowRight className="size-4" />
-            </Button>
-          </div>
-        </div>
-      ) : null}
 
-      {step === 3 ? (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Bitrix timeline comment</p>
-            <p className="text-muted-foreground text-xs">
-              Plain text (prefilled from structured memo). Edit before posting.
-            </p>
-            <Textarea
-              value={editedMemo}
-              onChange={(e) => {
-                setMemoDirty(true);
-                setEditedMemo(e.target.value);
-              }}
-              className="min-h-[220px] font-mono text-xs"
-              placeholder="Runs with a memo fill this automatically…"
-              disabled={!hasMemo}
-            />
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium">Headline</p>
+                  <Input
+                    value={memoDraft?.headline ?? ""}
+                    onChange={(e) => {
+                      setMemoDraft((prev) =>
+                        prev ? { ...prev, headline: e.target.value } : prev,
+                      );
+                      setMemoDirty(true);
+                    }}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium">Investment thesis</p>
+                  <Textarea
+                    value={memoDraft?.investmentThesis ?? ""}
+                    onChange={(e) => {
+                      setMemoDraft((prev) =>
+                        prev
+                          ? { ...prev, investmentThesis: e.target.value }
+                          : prev,
+                      );
+                      setMemoDirty(true);
+                    }}
+                    className="min-h-[100px]"
+                  />
+                </div>
+
+                {memoDraft?.alignmentMemos.length ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium">Alignment</p>
+                    {memoDraft.alignmentMemos.map((row, i) => (
+                      <div key={`al-${i}`} className="space-y-1">
+                        <p className="text-muted-foreground text-xs font-medium">
+                          {row.pillar}
+                        </p>
+                        <Textarea
+                          value={row.memo}
+                          onChange={(e) => {
+                            setMemoDraft((prev) => {
+                              if (!prev) return prev;
+                              const updated = [...prev.alignmentMemos];
+                              updated[i] = {
+                                ...updated[i],
+                                memo: e.target.value,
+                              };
+                              return { ...prev, alignmentMemos: updated };
+                            });
+                            setMemoDirty(true);
+                          }}
+                          className="min-h-[60px]"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {memoDraft?.strengthBullets.length ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium">Strengths</p>
+                    {memoDraft.strengthBullets.map((s, i) => (
+                      <div key={`st-${i}`} className="space-y-1">
+                        <p className="text-muted-foreground text-xs">
+                          #{i + 1}
+                        </p>
+                        <Input
+                          value={s}
+                          onChange={(e) => {
+                            setMemoDraft((prev) => {
+                              if (!prev) return prev;
+                              const updated = [...prev.strengthBullets];
+                              updated[i] = e.target.value;
+                              return { ...prev, strengthBullets: updated };
+                            });
+                            setMemoDirty(true);
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {memoDraft?.riskAndGapsMemo.length ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium">Risks &amp; gaps</p>
+                    {memoDraft.riskAndGapsMemo.map((r, i) => (
+                      <div
+                        key={`rg-${i}`}
+                        className="border-border/60 space-y-1.5 rounded-lg border p-3"
+                      >
+                        <p className="text-muted-foreground text-xs font-medium">
+                          Risk #{i + 1}
+                        </p>
+                        <Textarea
+                          value={r.risk}
+                          onChange={(e) => {
+                            setMemoDraft((prev) => {
+                              if (!prev) return prev;
+                              const updated = [...prev.riskAndGapsMemo];
+                              updated[i] = {
+                                ...updated[i],
+                                risk: e.target.value,
+                              };
+                              return { ...prev, riskAndGapsMemo: updated };
+                            });
+                            setMemoDirty(true);
+                          }}
+                          className="min-h-[60px]"
+                        />
+                        <Input
+                          value={r.suggestedAction}
+                          onChange={(e) => {
+                            setMemoDraft((prev) => {
+                              if (!prev) return prev;
+                              const updated = [...prev.riskAndGapsMemo];
+                              updated[i] = {
+                                ...updated[i],
+                                suggestedAction: e.target.value,
+                              };
+                              return { ...prev, riskAndGapsMemo: updated };
+                            });
+                            setMemoDirty(true);
+                          }}
+                          placeholder="Suggested action"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium">Recommendation</p>
+                  <Textarea
+                    value={memoDraft?.recommendation ?? ""}
+                    onChange={(e) => {
+                      setMemoDraft((prev) =>
+                        prev
+                          ? { ...prev, recommendation: e.target.value }
+                          : prev,
+                      );
+                      setMemoDirty(true);
+                    }}
+                    className="min-h-[80px]"
+                  />
+                </div>
+
+                {output?.missingFields?.length ? (
+                  <Alert className="border-amber-500/40 bg-amber-500/5">
+                    <TriangleAlert className="size-4 text-amber-600" aria-hidden />
+                    <AlertTitle>Information gaps</AlertTitle>
+                    <AlertDescription>
+                      <p className="mb-2 text-xs leading-relaxed">
+                        The IC scorer couldn't determine values for these CRM
+                        fields from your current documents. Adding documents with
+                        this information could improve the score.
+                      </p>
+                      <ul className="mt-1 list-disc pl-5">
+                        {output.missingFields.map((m, i) => (
+                          <li key={i}>{m}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+              </>
+            ) : !runBusy && effectiveRunId ? (
+              <p className="text-muted-foreground text-sm">
+                No output for this run yet.
+              </p>
+            ) : null}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                Back
+              </Button>
+              <Button
+                type="button"
+                className="transition-transform active:scale-[0.98]"
+                disabled={!memoDraft}
+                onClick={() => setStep(3)}
+              >
+                Continue to post
+                <ArrowRight className="size-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={() => setStep(2)}>
-              Back
-            </Button>
-            <Button
-              type="button"
-              className="transition-transform active:scale-[0.98]"
-              disabled={postTimeline.isPending || !editedMemo.trim()}
-              onClick={() =>
-                postTimeline.mutate({
-                  comment: editedMemo,
-                  score: scoreNum,
-                })
-              }
-            >
-              {postTimeline.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : null}
-              Post to Bitrix timeline
-            </Button>
+        ) : null}
+
+        {step === 3 ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Bitrix timeline comment</p>
+              <p className="text-muted-foreground text-xs">
+                Plain text (prefilled from structured memo). Edit before posting.
+              </p>
+              <Textarea
+                value={editedMemo}
+                onChange={(e) => {
+                  setMemoDirty(true);
+                  setEditedMemo(e.target.value);
+                }}
+                className="min-h-[220px] font-mono text-xs"
+                placeholder="Runs with a memo fill this automatically…"
+                disabled={!editedMemo.trim() && !hasMemo}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={() => setStep(2)}>
+                Back
+              </Button>
+              <Button
+                type="button"
+                className="transition-transform active:scale-[0.98]"
+                disabled={postTimeline.isPending || !editedMemo.trim()}
+                onClick={() =>
+                  postTimeline.mutate({
+                    comment: editedMemo,
+                    score: scoreNum,
+                  })
+                }
+              >
+                {postTimeline.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : null}
+                Post to Bitrix timeline
+              </Button>
+            </div>
           </div>
+        ) : null}
+      </div>
+
+      <DialogContent className="flex max-h-[88vh] max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="border-border/80 shrink-0 space-y-1 border-b px-6 py-4 text-left">
+          <DialogTitle className="text-base">Deal context</DialogTitle>
+          <DialogDescription className="text-xs leading-snug">
+            Workspace summary and non-empty deal fields from Bitrix.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+          <section className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Layers className="text-muted-foreground size-4" aria-hidden />
+              <h3 className="text-sm font-semibold">Workspace</h3>
+            </div>
+            <div className="grid gap-1.5 text-sm">
+              <div className="grid grid-cols-[88px_1fr] gap-2 text-sm">
+                <span className="text-muted-foreground">Title</span>
+                <span className="min-w-0 font-medium break-words">
+                  {d.title ?? "—"}
+                </span>
+              </div>
+              <div className="grid grid-cols-[88px_1fr] gap-2 text-sm">
+                <span className="text-muted-foreground">Stage</span>
+                <span className="min-w-0 font-medium break-words">
+                  {d.stageId ?? "—"}
+                </span>
+              </div>
+              <div className="grid grid-cols-[88px_1fr] gap-2 text-sm">
+                <span className="text-muted-foreground">Deal ID</span>
+                <span className="min-w-0 font-medium break-words">
+                  #{d.dealId}
+                </span>
+              </div>
+            </div>
+          </section>
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold">Bitrix deal fields</h3>
+            <div className="border-border max-h-[min(40vh,360px)] overflow-auto border">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-muted/50 sticky top-0">
+                  <tr>
+                    <th className="border-border border-b px-2 py-1.5 font-semibold">
+                      Label
+                    </th>
+                    <th className="border-border border-b px-2 py-1.5 font-semibold">
+                      Value
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedFields.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={2}
+                        className="text-muted-foreground px-2 py-3 text-center"
+                      >
+                        No Bitrix payload.
+                      </td>
+                    </tr>
+                  ) : (
+                    sortedFields.map((f) => (
+                      <tr
+                        key={f.key}
+                        className="border-border/60 border-b last:border-0"
+                      >
+                        <td className="text-foreground w-[min(40%,200px)] px-2 py-1.5 align-top font-medium">
+                          {f.label}
+                        </td>
+                        <td className="max-w-[min(55vw,320px)] px-2 py-1.5 break-words whitespace-pre-wrap">
+                          {f.value || "—"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
-      ) : null}
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

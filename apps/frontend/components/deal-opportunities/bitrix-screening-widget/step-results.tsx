@@ -37,7 +37,6 @@ export function StepResults({
   canRunNow,
   runPending,
   onRetry,
-  goStep,
 }: {
   activeJobsCount: number;
   lastRun: WidgetBootstrap["lastRun"];

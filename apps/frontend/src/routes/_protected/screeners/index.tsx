@@ -101,7 +101,7 @@ function ScreenersRoute() {
 
                   <div className="flex items-center justify-between gap-3 lg:justify-end">
                     <Button asChild variant="outline" size="sm">
-                      <Link to={`/screeners/${screener.id}`}>Manage</Link>
+                      <Link to="/screeners/$uid" params={{ uid: screener.id }}>Manage</Link>
                     </Button>
                     <DeleteScreenerButton screenerId={screener.id} />
                   </div>

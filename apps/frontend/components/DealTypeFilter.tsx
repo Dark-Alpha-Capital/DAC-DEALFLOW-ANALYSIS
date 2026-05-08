@@ -32,9 +32,7 @@ const DealTypeFilter = () => {
       newSelectedTypes.forEach((type) => params.append("dealType", type));
       setSelectedDealTypes(newSelectedTypes);
 
-      router.push(`?${params.toString()}`, {
-        scroll: false,
-      });
+      router.push(`?${params.toString()}`);
     });
   };
 

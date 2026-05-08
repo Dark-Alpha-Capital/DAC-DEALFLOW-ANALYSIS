@@ -116,7 +116,7 @@ function DocsOverviewPage() {
           {sections.map((section) => (
             <Link
               key={section.href}
-              href={section.href}
+              to={section.href}
               className="rounded-lg border bg-card p-4 text-sm hover:bg-accent hover:text-accent-foreground"
             >
               <h4 className="font-semibold">{section.title}</h4>

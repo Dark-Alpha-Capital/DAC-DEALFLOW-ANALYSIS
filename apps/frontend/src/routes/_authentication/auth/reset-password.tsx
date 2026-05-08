@@ -106,7 +106,7 @@ function ResetPasswordContent() {
 
         <footer className="text-center text-sm text-muted-foreground">
           <Link
-            href="/auth/login"
+            to="/auth/login"
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
             Back to login
@@ -214,7 +214,7 @@ function ResetPasswordContent() {
 
       <footer className="text-center text-sm text-muted-foreground">
         <Link
-          href="/auth/login"
+          to="/auth/login"
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
           Back to login

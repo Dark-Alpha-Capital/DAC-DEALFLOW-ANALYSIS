@@ -9,8 +9,8 @@ export function RedisConnectionStatus() {
 
   useEffect(() => {
     fetch("/api/health/redis")
-      .then((res) => res.json())
-      .then((data: { ok?: boolean; error?: string }) => {
+      .then((res) => res.json() as Promise<{ ok?: boolean; error?: string }>)
+      .then((data) => {
         setStatus(data.ok ? "connected" : "disconnected");
         if (!data.ok) setError(data.error ?? "Connection failed");
       })

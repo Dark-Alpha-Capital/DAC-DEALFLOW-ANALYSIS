@@ -313,7 +313,8 @@ export function CompanyLinkedInvestors({
                 <div className="flex shrink-0 flex-col gap-2 sm:items-end">
                   <Button asChild variant="default">
                     <Link
-                      href={`/investors/${row.investor.id}`}
+                      to="/investors/$uid"
+                      params={{ uid: row.investor.id }}
                       className="inline-flex gap-2"
                     >
                       <ExternalLink className="h-4 w-4" />

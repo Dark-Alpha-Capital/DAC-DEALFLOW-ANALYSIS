@@ -24,7 +24,7 @@ export default function DeleteThemeFiltersButton() {
     startTransition(() => {
       const params = new URLSearchParams(searchParams);
       THEME_FILTER_KEYS.forEach((key) => params.delete(key));
-      router.push(`?${params.toString()}`, { scroll: false });
+      router.push(`?${params.toString()}`);
     });
   };
 

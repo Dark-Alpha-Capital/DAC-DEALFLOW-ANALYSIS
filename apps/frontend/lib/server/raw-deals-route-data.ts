@@ -46,7 +46,7 @@ export const loadRawDealsPageData = createServerFn({ method: "GET" })
 
 export const loadRawDealDetailData = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
-  .handler(async ({ data }) => {
+  .handler((async ({ data }: { data: { uid: string } }) => {
     await assertAuthenticated();
     try {
       const dealData = await GetDealWithAllRelations(data.uid);
@@ -58,7 +58,7 @@ export const loadRawDealDetailData = createServerFn({ method: "GET" })
         error: err instanceof Error ? err.message : String(err),
       };
     }
-  });
+  }) as any);
 
 export const loadRawDealForEditData = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => uidParamSchema.parse(raw))

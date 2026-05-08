@@ -149,7 +149,7 @@ export function DealRelationshipLinksSection({
                 </div>
                 <div className="flex items-center gap-1">
                   <Button asChild size="icon" variant="ghost">
-                    <Link to={`/companies/${row.company.id}`} aria-label="Open company">
+                    <Link to="/companies/$uid" params={{ uid: row.company.id }} aria-label="Open company">
                       <ExternalLink className="h-4 w-4" />
                     </Link>
                   </Button>
@@ -229,7 +229,7 @@ export function DealRelationshipLinksSection({
                 </div>
                 <div className="flex items-center gap-1">
                   <Button asChild size="icon" variant="ghost">
-                    <Link to={`/investors/${row.investor.id}`} aria-label="Open investor">
+                    <Link to="/investors/$uid" params={{ uid: row.investor.id }} aria-label="Open investor">
                       <ExternalLink className="h-4 w-4" />
                     </Link>
                   </Button>

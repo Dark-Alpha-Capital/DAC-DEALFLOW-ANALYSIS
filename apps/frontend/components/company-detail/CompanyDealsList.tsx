@@ -65,13 +65,13 @@ export function CompanyDealsList({
           </thead>
           <tbody>
             {dealOpportunities.map((opp) => {
-              const href = `/deal-opportunities/${opp.id}`;
               const title = dealTitle(opp, company.name);
               return (
                 <tr key={opp.id} className="border-t">
                   <td className="max-w-[14rem] px-3 py-2">
                     <Link
-                      href={href}
+                      to="/deal-opportunities/$uid"
+                      params={{ uid: opp.id }}
                       className="text-foreground hover:text-primary line-clamp-2 font-medium underline-offset-4 hover:underline"
                     >
                       {title}
@@ -103,7 +103,8 @@ export function CompanyDealsList({
                   </td>
                   <td className="px-2 py-2">
                     <Link
-                      href={href}
+                      to="/deal-opportunities/$uid"
+                      params={{ uid: opp.id }}
                       className="text-muted-foreground hover:text-foreground inline-flex p-1"
                       aria-label={`Open deal ${title}`}
                     >

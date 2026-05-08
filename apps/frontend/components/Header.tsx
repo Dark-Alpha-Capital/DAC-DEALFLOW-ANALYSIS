@@ -119,7 +119,7 @@ export default Header;
 function NameLogo() {
   return (
     <Link
-      href="/"
+      to="/"
       aria-label="Home page"
       className="text-xl font-bold tracking-tight text-primary transition-all duration-200 hover:scale-105 hover:text-primary/80 sm:text-2xl"
     >
@@ -141,7 +141,7 @@ function DesktopMenu({
         const isActive = pathname === item.navlink;
         return (
           <Link
-            href={item.navlink}
+            to={item.navlink}
             key={`${item.navlink}-${index}`}
             className={clsx(
               "group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
@@ -229,7 +229,7 @@ function MobileMenu({
               return (
                 <li key={`${item.navlink}-${index}`}>
                   <Link
-                    href={item.navlink}
+                    to={item.navlink}
                     onClick={() => setIsOpen(false)}
                     className={clsx(
                       "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",

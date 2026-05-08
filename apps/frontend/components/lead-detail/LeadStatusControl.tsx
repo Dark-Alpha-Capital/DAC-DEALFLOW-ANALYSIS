@@ -146,7 +146,8 @@ export default function LeadStatusControl({
           <p className="text-muted-foreground text-xs">
             Duplicate linked to{" "}
             <Link
-              href={`/companies/${duplicateCompany.id}`}
+              to="/companies/$uid"
+              params={{ uid: duplicateCompany.id }}
               className="underline"
             >
               {duplicateCompany.name}

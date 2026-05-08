@@ -105,7 +105,7 @@ function ForgotPasswordPage() {
 
         <footer className="text-center text-sm text-muted-foreground">
           <Link
-            href="/auth/login"
+            to="/auth/login"
             className="inline-flex items-center justify-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
           >
             <ArrowLeft className="size-4" />
@@ -162,7 +162,7 @@ function ForgotPasswordPage() {
       <footer className="text-center text-sm text-muted-foreground">
         Remember your password?{" "}
         <Link
-          href="/auth/login"
+          to="/auth/login"
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
           Sign in

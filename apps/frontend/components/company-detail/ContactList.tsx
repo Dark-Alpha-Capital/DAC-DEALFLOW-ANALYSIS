@@ -40,14 +40,14 @@ export function ContactList({ contacts }: ContactListProps) {
             )}
             {contact.linkedinUrl &&
               (safeLinkedinUrl ? (
-                <Link
+                <a
                   href={safeLinkedinUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary mt-1 inline-flex items-center gap-1 hover:underline"
                 >
                   LinkedIn <ExternalLink className="h-3 w-3" />
-                </Link>
+                </a>
               ) : (
                 <p className="text-muted-foreground mt-1 break-all">
                   LinkedIn: {contact.linkedinUrl}

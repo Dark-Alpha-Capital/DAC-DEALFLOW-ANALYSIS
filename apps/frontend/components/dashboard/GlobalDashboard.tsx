@@ -109,7 +109,7 @@ function TopDeals({ data }: { data: TopDeal[] }) {
               <TableRow key={row.dealOpportunityId}>
                 <TableCell className="font-medium">#{index + 1}</TableCell>
                 <TableCell>
-                  <Link to={`/deal-opportunities/${row.dealOpportunityId}`} className="hover:underline">
+                  <Link to="/deal-opportunities/$uid" params={{ uid: row.dealOpportunityId }} className="hover:underline">
                     {row.companyName}
                   </Link>
                 </TableCell>

@@ -104,7 +104,7 @@ function InvestorDetailRoute() {
           Investors
         </Link>
         <Button asChild size="sm" variant="ghost" className="shrink-0">
-          <Link to={`/investors/${investor.id}/edit`} className="gap-2">
+          <Link to="/investors/$uid/edit" params={{ uid: investor.id }} className="gap-2">
             <Pencil className="h-4 w-4" />
             Edit
           </Link>

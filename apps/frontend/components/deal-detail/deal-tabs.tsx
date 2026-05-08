@@ -178,13 +178,13 @@ export function DealTabs({
             </h2>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" asChild>
-                <Link to={`/raw-deals/${uid}/reasonings`}>View all</Link>
+                <a href={`/raw-deals/${uid}/reasonings`}>View all</a>
               </Button>
               <Button size="sm" asChild>
-                <Link to={`/raw-deals/${uid}/screen`}>
+                <a href={`/raw-deals/${uid}/screen`}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add analysis
-                </Link>
+                </a>
               </Button>
             </div>
           </div>

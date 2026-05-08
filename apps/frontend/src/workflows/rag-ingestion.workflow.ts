@@ -244,7 +244,9 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               themeId: document.themeId,
             };
 
-            const buf = Buffer.from(fileBuffer);
+            const buf = fileBuffer instanceof ArrayBuffer
+              ? Buffer.from(new Uint8Array(fileBuffer))
+              : Buffer.from(fileBuffer);
             const extractT0 = Date.now();
             ragDebug("processContent.start", {
               documentId,

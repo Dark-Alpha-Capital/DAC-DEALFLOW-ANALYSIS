@@ -33,7 +33,7 @@ const DeleteFiltersButton = () => {
       params.delete("page");
 
       // Navigate to the clean URL
-      router.push(`?${params.toString()}`, { scroll: false });
+      router.push(`?${params.toString()}`);
     });
   };
 

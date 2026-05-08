@@ -50,7 +50,8 @@ function CompanyActionsCell({ company }: { company: CompanyWithTheme }) {
         <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuItem asChild>
             <Link
-              href={`/companies/${company.id}`}
+              to="/companies/$uid"
+              params={{ uid: company.id }}
               className="flex items-center"
             >
               <Eye className="mr-2 h-4 w-4" />
@@ -59,7 +60,8 @@ function CompanyActionsCell({ company }: { company: CompanyWithTheme }) {
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link
-              href={`/companies/${company.id}/edit`}
+              to="/companies/$uid/edit"
+              params={{ uid: company.id }}
               className="flex items-center"
             >
               <Pencil className="mr-2 h-4 w-4" />

@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { usePathname } from "@/lib/navigation-shim";
-import { DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
 import {
   FiUserPlus,
   FiTrendingUp,
@@ -71,12 +70,7 @@ function SimpleNavItems({ items }: { items: NavItem[] }) {
         return (
           <SidebarMenuItem key={item.title}>
             <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-              <Link
-                to={item.url}
-                {...(item.url === "/deal-opportunities"
-                  ? { search: DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH }
-                  : {})}
-              >
+              <Link to={item.url as any}>
                 <item.icon className="size-4" />
                 <span>{item.title}</span>
               </Link>

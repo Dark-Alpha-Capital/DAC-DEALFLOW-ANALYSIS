@@ -68,7 +68,7 @@ export default function LeadActionsMenu({
             View
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to={`/leads/${lead.id}/edit`}>
+            <Link to="/leads/$uid/edit" params={{ uid: lead.id }}>
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Link>

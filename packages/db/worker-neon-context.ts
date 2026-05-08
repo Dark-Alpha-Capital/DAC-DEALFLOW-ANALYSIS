@@ -18,7 +18,7 @@ export function ensureNeonConfiguredForCloudflareWorkers(): void {
   if (neonConfiguredForWorkers || !isCloudflareWorkersRuntime()) return;
   neonConfiguredForWorkers = true;
   neonConfig.webSocketConstructor = WebSocket;
-  neonConfig.fetch = fetch;
+  (neonConfig as unknown as Record<string, unknown>).fetch = fetch;
 }
 
 export function isCloudflareWorkersRuntime(): boolean {

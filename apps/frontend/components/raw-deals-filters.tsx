@@ -992,9 +992,7 @@ export function SearchTagsDeals() {
       newSelectedTags.forEach((tag) => params.append("tags", tag));
       setSelectedTags(newSelectedTags);
 
-      router.push(`?${params.toString()}`, {
-        scroll: false,
-      });
+      router.push(`?${params.toString()}`);
     });
   };
 

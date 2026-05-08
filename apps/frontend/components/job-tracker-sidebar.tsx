@@ -71,7 +71,7 @@ export function JobTrackerSidebar() {
       <div className="flex items-center justify-between px-2">
         <SidebarGroupLabel>Recent Jobs</SidebarGroupLabel>
         <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" asChild>
-          <Link to="/jobs" search={{}}>
+          <Link to="/jobs" search={{ jobId: undefined }}>
             View All
             <ChevronRight className="ml-1 h-3 w-3" />
           </Link>

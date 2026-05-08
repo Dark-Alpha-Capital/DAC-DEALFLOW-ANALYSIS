@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertCircle, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-
 import { DealContextDialogBody } from "./bitrix-screening-widget/deal-context-dialog-body";
 import { DeleteDocumentDialog } from "./bitrix-screening-widget/delete-document-dialog";
 import { StepDocuments } from "./bitrix-screening-widget/step-documents";
@@ -114,6 +113,7 @@ export function BitrixScreeningWidgetWorkspace({
   const [cancellingPipelineKeys, setCancellingPipelineKeys] = useState<
     Set<string>
   >(() => new Set());
+  const prevRunStatusRef = useRef<string | undefined>(undefined);
 
   const q = useQuery({
     queryKey: ["bitrix-screening-widget-bootstrap", widgetInput],
@@ -454,6 +454,21 @@ export function BitrixScreeningWidgetWorkspace({
     }
   }, [d]);
 
+  useEffect(() => {
+    const currentStatus = d?.lastRun?.status;
+    const prevStatus = prevRunStatusRef.current;
+    prevRunStatusRef.current = currentStatus;
+
+    if (
+      currentStatus === "COMPLETED" &&
+      prevStatus &&
+      prevStatus !== "COMPLETED" &&
+      d?.webhookConfigured
+    ) {
+      toast.success("Results pushed to Bitrix comments");
+    }
+  }, [d?.lastRun?.status, d?.webhookConfigured]);
+
   /** After a failed run, default the screener dropdown to the same screener until the user picks another. */
   useEffect(() => {
     if (!d?.lastRun || !screeningFailed(d.lastRun.status)) return;
@@ -514,8 +529,6 @@ export function BitrixScreeningWidgetWorkspace({
                 </h1>
                 <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] tabular-nums">
                   <span>Bitrix #{d.bitrixDealId}</span>
-                  <span aria-hidden>·</span>
-                  <span>App {d.appDeal.id}</span>
                   <span aria-hidden>·</span>
                   <span
                     className={cn(

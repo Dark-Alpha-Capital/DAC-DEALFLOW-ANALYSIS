@@ -216,7 +216,7 @@ export default function ConvertLeadToCompanyForm({
           <div className="mt-6 flex flex-wrap items-center gap-3">
             {!compact && (
               <Button type="button" variant="outline" size="sm" asChild>
-                <Link to={`/leads/${lead.id}`} className="gap-2">
+                <Link to="/leads/$uid" params={{ uid: lead.id }} className="gap-2">
                   <ArrowLeft className="h-4 w-4" />
                   Back to Lead
                 </Link>

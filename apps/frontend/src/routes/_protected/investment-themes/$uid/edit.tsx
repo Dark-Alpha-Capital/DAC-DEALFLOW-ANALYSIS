@@ -61,7 +61,7 @@ function EditThemeRoute() {
     <section className="big-container block-space min-h-screen">
       <div className="mb-6">
         <Button variant="ghost" asChild className="gap-2 pl-0">
-          <Link to={`/investment-themes/${uid}`}>
+          <Link to="/investment-themes/$uid" params={{ uid }}>
             <ArrowLeft className="h-4 w-4" />
             Back to Investment theme
           </Link>

@@ -75,7 +75,8 @@ export default function ThemeCard({ theme }: { theme: Theme }) {
       )}
     >
       <Link
-        href={`/investment-themes/${theme.id}`}
+        to="/investment-themes/$uid"
+        params={{ uid: theme.id }}
         className="absolute inset-0 z-0"
         aria-hidden
       />
@@ -136,7 +137,8 @@ export default function ThemeCard({ theme }: { theme: Theme }) {
         <div className="mt-4 flex gap-2 border-t border-border pt-4">
           <Button size="sm" className="flex-1 gap-1.5" asChild>
             <Link
-              href={`/investment-themes/${theme.id}`}
+              to="/investment-themes/$uid"
+              params={{ uid: theme.id }}
               onClick={(e) => e.stopPropagation()}
             >
               <Eye className="h-3.5 w-3.5" />
@@ -148,7 +150,8 @@ export default function ThemeCard({ theme }: { theme: Theme }) {
               <TooltipTrigger asChild>
                 <Button size="sm" variant="outline" className="gap-1.5" asChild>
                   <Link
-                    href={`/investment-themes/${theme.id}/edit`}
+                    to="/investment-themes/$uid/edit"
+                    params={{ uid: theme.id }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Pencil className="h-3.5 w-3.5" />

@@ -45,6 +45,9 @@ export const ScreeningResultQuestionItem = memo(
                 <p className="text-muted-foreground text-[11px] font-medium tracking-wide">
                   Question {displayIndex} of {totalQuestions}
                 </p>
+                <p className="text-muted-foreground text-[11px] font-medium tracking-wide mt-1">
+                  Question
+                </p>
                 <h3 className="text-foreground max-w-[60ch] text-[15px] leading-snug font-semibold tracking-tight text-pretty">
                   {answer.question}
                 </h3>
@@ -75,7 +78,7 @@ export const ScreeningResultQuestionItem = memo(
 
             <div className="border-border/20 border-l-2 pl-3">
               <p className="text-muted-foreground mb-1 text-[11px] font-medium tracking-wide">
-                Rationale
+                Answer
               </p>
               <p className="text-foreground max-w-[68ch] text-sm leading-relaxed whitespace-pre-wrap">
                 {answer.rationale?.trim() ? answer.rationale : "—"}

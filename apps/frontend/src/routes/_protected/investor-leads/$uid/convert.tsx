@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_protected/investor-leads/$uid/convert")(
         data: { uid: params.uid },
       });
       if (result.outcome === "redirect") {
-        throw redirect({ to: result.to, replace: result.replace });
+        throw redirect({ to: result.to as never, replace: result.replace });
       }
       if (result.outcome === "error") {
         return { lead: null, error: result.message };
@@ -74,7 +74,7 @@ function ConvertInvestorLeadRoute() {
     <section className="big-container">
       <div className="mb-6">
         <Button variant="ghost" asChild className="gap-2 pl-0">
-          <Link to={`/investor-leads/${uid}`}>
+          <Link to="/investor-leads/$uid" params={{ uid }}>
             <ArrowLeft className="h-4 w-4" />
             Back to Investor Lead
           </Link>

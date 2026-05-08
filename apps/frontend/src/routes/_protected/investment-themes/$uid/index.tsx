@@ -119,7 +119,7 @@ function ThemeDetailRoute() {
             </p>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link to={`/investment-themes/${theme.id}/edit`} className="gap-2">
+            <Link to="/investment-themes/$uid/edit" params={{ uid: theme.id }} className="gap-2">
               <Pencil className="h-4 w-4" />
               Edit Theme
             </Link>

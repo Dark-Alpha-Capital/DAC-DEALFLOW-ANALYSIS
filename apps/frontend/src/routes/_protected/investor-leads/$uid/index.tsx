@@ -100,7 +100,7 @@ function InvestorLeadDetailRoute() {
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild size="sm" variant="ghost" className="shrink-0">
-            <Link to={`/investor-leads/${lead.id}/edit`} className="gap-2">
+            <Link to="/investor-leads/$uid/edit" params={{ uid: lead.id }} className="gap-2">
               <Pencil className="h-4 w-4" />
               Edit
             </Link>
@@ -116,14 +116,14 @@ function InvestorLeadDetailRoute() {
                 Convert to Investor
               </Button>
               <Button asChild size="sm" variant="outline">
-                <Link to={`/investors/${existingInvestor.id}`}>
+                <Link to="/investors/$uid" params={{ uid: existingInvestor.id }}>
                   View Investor
                 </Link>
               </Button>
             </>
           ) : (
             <Button asChild size="sm">
-              <Link to={`/investor-leads/${lead.id}/convert`}>
+              <Link to="/investor-leads/$uid/convert" params={{ uid: lead.id }}>
                 Convert to Investor
               </Link>
             </Button>

@@ -72,7 +72,7 @@ function EditDealOpportunityRoute() {
     <section className="big-container block-space min-h-screen">
       <div className="mb-6">
         <Button variant="ghost" asChild className="gap-2 pl-0">
-          <Link to={`/deal-opportunities/${uid}`}>
+          <Link to="/deal-opportunities/$uid" params={{ uid }}>
             <ArrowLeft className="h-4 w-4" />
             Back to deal opportunity
           </Link>

@@ -6,7 +6,7 @@ export const Route = createFileRoute("/api/revalidate")({
     handlers: {
       POST: async ({ request }) => {
         try {
-          const body = await request.json();
+          const body = (await request.json()) as { tags?: unknown };
           const { tags } = body;
 
           if (!tags || !Array.isArray(tags)) {

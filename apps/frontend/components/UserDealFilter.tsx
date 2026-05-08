@@ -38,9 +38,7 @@ const UserDealFilter = () => {
             }
             // Update optimistic state with the array of selected values
             setUserIdSelected(value);
-            router.push(`?${params.toString()}`, {
-              scroll: false,
-            });
+            router.push(`?${params.toString()}`);
           });
         }}
         defaultValue={userIdSelected}

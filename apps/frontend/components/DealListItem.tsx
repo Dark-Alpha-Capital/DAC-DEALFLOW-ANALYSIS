@@ -134,10 +134,10 @@ export default function DealListItem({ deal, selected, onToggle }: Props) {
 
       <div className="shrink-0">
         <Button variant="ghost" size="sm" className="gap-1.5 text-xs" asChild>
-          <Link to={`/raw-deals/${deal.id}`}>
+          <a href={`/raw-deals/${deal.id}`}>
             View
             <ExternalLink className="h-3 w-3" />
-          </Link>
+          </a>
         </Button>
       </div>
     </div>
