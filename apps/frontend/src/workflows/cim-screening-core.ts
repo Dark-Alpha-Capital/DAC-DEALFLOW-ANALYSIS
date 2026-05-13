@@ -7,7 +7,7 @@ export const CIM_SCREENING_MODEL =
 
 export const SCREENING_ANSWER_SCHEMA = z.object({
   score: z.number().min(0).max(10),
-  rationale: z.string(),
+  rationale: z.string().max(500),
 });
 
 export function getInterQuestionDelayMs(
@@ -45,6 +45,14 @@ function screeningBandFromAverage(
   return "FAIL";
 }
 
+function compactTimelineRationale(value: string | null | undefined): string {
+  const text = value?.trim();
+  if (!text) return "—";
+  const firstSentence = text.match(/^[\s\S]*?[.!?](?:\s|$)/)?.[0]?.trim();
+  const compact = firstSentence || text;
+  return compact.length <= 240 ? compact : `${compact.slice(0, 237).trim()}...`;
+}
+
 export function buildBitrixTimelineCommentText(input: {
   runId: string;
   screenerId: string;
@@ -67,7 +75,7 @@ export function buildBitrixTimelineCommentText(input: {
   const qaBody = input.qaRows
     .map((row, i) => {
       const q = row.questionText?.trim() || "(question)";
-      const rationale = row.rationale?.trim() || "—";
+      const rationale = compactTimelineRationale(row.rationale);
       return [`${i + 1}. ${q}`, `   Score: ${row.score ?? "—"}/10`, "", rationale].join(
         "\n",
       );

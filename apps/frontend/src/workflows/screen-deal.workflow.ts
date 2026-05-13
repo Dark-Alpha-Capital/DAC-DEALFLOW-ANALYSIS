@@ -254,10 +254,10 @@ export class ScreenDealWorkflow extends WorkflowEntrypoint<
             model: openai("gpt-4o-mini"),
             prompt: buildScreenDealSummaryPrompt(combinedSummary),
             schema: z.object({
-              title: z.string(),
+              title: z.string().max(120),
               score: z.number(),
               sentiment: z.enum(["POSITIVE", "NEGATIVE", "NEUTRAL"]),
-              explanation: z.string(),
+              explanation: z.string().max(600),
             }),
           });
 

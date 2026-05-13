@@ -24,5 +24,10 @@ ${params.excerpts}
 Screening question:
 ${params.question}
 
-Respond with a score from 0–10 (10 = evidence in the excerpts strongly supports a positive answer; 0 = clear negative or no usable evidence) and a concise rationale. Reference which excerpt supports the answer when possible.`;
+Respond with a score from 0–10 (10 = evidence in the excerpts strongly supports a positive answer; 0 = clear negative or no usable evidence) and a concise rationale.
+
+Rationale rules:
+- Maximum 3 short sentences or 500 characters.
+- Start with the answer, then cite the strongest excerpt evidence.
+- Do not write a long paragraph, preamble, or generic caveat.`;
 }

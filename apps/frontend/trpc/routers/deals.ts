@@ -2597,6 +2597,7 @@ export const dealsRouter = createTRPCRouter({
         revenue: input.revenue ?? null,
         teaser: input.teaser ?? null,
         description: input.description ?? null,
+        assignedByUserId: input.assignedByUserId,
       });
 
       const { bitrixId } = await upsertBitrixCrmDeal(opp, fields);
@@ -2694,6 +2695,7 @@ export const dealsRouter = createTRPCRouter({
         revenue: input.revenue ?? null,
         teaser: input.teaser ?? null,
         description: input.description ?? null,
+        assignedByUserId: input.assignedByUserId,
       });
 
       const { bitrixId } = await upsertBitrixCrmDeal(opp, fields);

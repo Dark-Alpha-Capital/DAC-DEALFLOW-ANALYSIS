@@ -42,6 +42,8 @@ export type OpportunitySyncPayload = {
   teaser?: string | null;
   /** Longer narrative; combined into `SOURCE_DESCRIPTION` (and optional teaser UF). */
   description?: string | null;
+  /** Bitrix user id to set as deal responsible person (`ASSIGNED_BY_ID`). */
+  assignedByUserId?: number | string | null;
 };
 
 /** Bitrix `OPPORTUNITY`: explicit value, else asking price, else revenue, else 0. */
@@ -169,6 +171,8 @@ export function buildCrmDealFieldsFromOpportunitySync(
     input.revenue != null && !Number.isNaN(Number(input.revenue))
       ? Number(input.revenue)
       : opportunityValue;
+  const assignedByUserId =
+    input.assignedByUserId != null ? Number(input.assignedByUserId) : null;
 
   const rawFields: Record<string, unknown> = {
     TITLE: input.title,
@@ -179,6 +183,13 @@ export function buildCrmDealFieldsFromOpportunitySync(
     ORIGINATOR_ID: BITRIX_ORIGINATOR_ID,
     ORIGIN_ID: input.dealOpportunityId,
   };
+  if (
+    assignedByUserId != null &&
+    Number.isFinite(assignedByUserId) &&
+    assignedByUserId > 0
+  ) {
+    rawFields.ASSIGNED_BY_ID = assignedByUserId;
+  }
 
   setUf(rawFields, uf.revenue, revenueForUf, currencyId);
   setUf(rawFields, uf.sourceWebsite, input.sourceWebsite ?? undefined, currencyId);

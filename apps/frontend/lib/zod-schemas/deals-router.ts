@@ -202,6 +202,7 @@ export const bitrixSyncDealOpportunitySchema = z.object({
   revenue: z.number().nullable().optional(),
   teaser: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
+  assignedByUserId: z.coerce.number().int().positive().optional(),
 });
 
 export const bitrixSyncScreeningRunToDealSchema =

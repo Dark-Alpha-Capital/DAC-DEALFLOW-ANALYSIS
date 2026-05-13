@@ -51,13 +51,15 @@ const icScorerScoreFieldsSchema = z.object({
   ),
   headline: z
     .string()
+    .max(180)
     .describe(
       "Single-sentence verdict, e.g. 'Strong fit; minor data gaps on customer concentration.'",
     ),
   investmentThesis: z
     .string()
+    .max(500)
     .describe(
-      "One paragraph — pull or enhance the thesis from the deal data; cite evidence. If missing, say so and infer cautiously.",
+      "One compact paragraph, 2-4 short sentences. Pull or enhance the thesis from the deal data; cite evidence. If missing, say so and infer cautiously.",
     ),
   alignment: z
     .array(icScorerAlignmentRowSchema)
@@ -66,12 +68,13 @@ const icScorerScoreFieldsSchema = z.object({
     ),
   strengths: z
     .array(z.string())
-    .describe("Bulleted strengths tied to evidence in the deal record."),
+    .describe("Short bulleted strengths tied to evidence in the deal record."),
   risksAndGaps: z
     .array(icScorerRiskRowSchema)
     .describe("Risks and data gaps with a concrete suggested action for each."),
   recommendation: z
     .string()
+    .max(220)
     .describe(
       "Final recommendation: 'Ready for IC', 'Ready for IC with follow-ups', 'Not yet IC-ready', or 'Do not present'.",
     ),
@@ -101,8 +104,9 @@ export const icScorerMemoStructuredSchema = z.object({
     ),
   investmentThesisMemo: z
     .string()
+    .max(650)
     .describe(
-      "1–3 short paragraphs, plain text only; must align with core investmentThesis.",
+      "1-2 short paragraphs, plain text only; must align with core investmentThesis.",
     ),
   alignmentMemos: z
     .array(
@@ -110,8 +114,9 @@ export const icScorerMemoStructuredSchema = z.object({
         pillar: z.string(),
         memo: z
           .string()
+          .max(240)
           .describe(
-            "Plain sentences for this pillar; must match core alignment status and note.",
+            "1-2 plain sentences for this pillar; must match core alignment status and note.",
           ),
       }),
     )
@@ -131,6 +136,7 @@ export const icScorerMemoStructuredSchema = z.object({
     .describe("Echo core risksAndGaps; plain text only."),
   recommendationMemo: z
     .string()
+    .max(300)
     .describe("Plain paragraph echoing core recommendation."),
 });
 
@@ -193,5 +199,27 @@ export function formatIcScorerMemoPlainText(m: IcScorerMemoStructured): string {
     "",
     "Recommendation",
     m.recommendationMemo.trim(),
+  ].join("\n");
+}
+
+/** Short Bitrix timeline body; the full memo can live in the attached PDF. */
+export function formatIcScorerTimelineSummary(m: IcScorerMemoStructured): string {
+  return [
+    "IC READINESS SUMMARY",
+    m.scoreHeadline.trim(),
+    "",
+    "Recommendation",
+    m.recommendationMemo.trim(),
+    "",
+    "Top strengths",
+    ...m.strengthBullets.slice(0, 3).map((s) => `• ${s.trim()}`),
+    "",
+    "Top risks & gaps",
+    ...m.riskAndGapsMemo
+      .slice(0, 3)
+      .map(
+        (r) =>
+          `• ${r.risk.trim()}${r.suggestedAction.trim() ? ` — ${r.suggestedAction.trim()}` : ""}`,
+      ),
   ].join("\n");
 }

@@ -4,6 +4,7 @@ import {
   AlertCircle,
   ArrowRight,
   ExternalLink,
+  FileText,
   Info,
   Layers,
   Loader2,
@@ -348,6 +349,17 @@ function formatMemoDraftToPlainText(d: MemoDraft): string {
   ].join("\n");
 }
 
+function memoDraftToStructured(d: MemoDraft): IcScorerMemoStructured {
+  return {
+    scoreHeadline: d.headline,
+    investmentThesisMemo: d.investmentThesis,
+    alignmentMemos: d.alignmentMemos,
+    strengthBullets: d.strengthBullets,
+    riskAndGapsMemo: d.riskAndGapsMemo,
+    recommendationMemo: d.recommendation,
+  };
+}
+
 function StepTabs({ step, onStep }: { step: Step; onStep: (s: Step) => void }) {
   const tabs: { s: Step; label: string }[] = [
     { s: 1, label: "Documents & mode" },
@@ -627,7 +639,13 @@ export function IcScorerWorkspace({
   }, [memoDraft]);
 
   const postTimeline = useMutation({
-    mutationFn: async (args: { comment: string; score: number | null }) => {
+    mutationFn: async (args: {
+      comment: string;
+      score: number | null;
+      memo?: IcScorerMemoStructured;
+      postPdf?: boolean;
+      fileName?: string;
+    }) => {
       const res = await fetch("/api/ic-scorer/post-timeline", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -635,6 +653,9 @@ export function IcScorerWorkspace({
         body: JSON.stringify({
           dealId,
           comment: args.comment,
+          memo: args.memo,
+          postPdf: args.postPdf,
+          fileName: args.fileName,
           score: args.score,
         }),
       });
@@ -642,6 +663,7 @@ export function IcScorerWorkspace({
         ok?: boolean;
         error?: string;
         truncated?: boolean;
+        pdfUrl?: string | null;
       } | null;
       if (!res.ok || !data?.ok) {
         throw new Error(data?.error ?? `HTTP ${res.status}`);
@@ -650,7 +672,11 @@ export function IcScorerWorkspace({
     },
     onSuccess: (data) => {
       toast.success(
-        data.truncated ? "Posted (truncated)" : "Posted to Bitrix timeline",
+        data.pdfUrl
+          ? "Posted PDF report to Bitrix timeline"
+          : data.truncated
+            ? "Posted (truncated)"
+            : "Posted to Bitrix timeline",
       );
     },
     onError: (e: Error) => toast.error(e.message || "Post failed"),
@@ -1168,6 +1194,29 @@ export function IcScorerWorkspace({
                   <Loader2 className="size-4 animate-spin" />
                 ) : null}
                 Post to Bitrix timeline
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="gap-2 transition-transform active:scale-[0.98]"
+                disabled={postTimeline.isPending || !memoDraft || !editedMemo.trim()}
+                onClick={() => {
+                  if (!memoDraft) return;
+                  postTimeline.mutate({
+                    comment: editedMemo,
+                    score: scoreNum,
+                    memo: memoDraftToStructured(memoDraft),
+                    postPdf: true,
+                    fileName: `ic-readiness-report-deal-${dealId}.pdf`,
+                  });
+                }}
+              >
+                {postTimeline.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <FileText className="size-4" />
+                )}
+                Post PDF to timeline
               </Button>
             </div>
           </div>

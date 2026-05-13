@@ -17,6 +17,7 @@ export {
   icScorerAlignmentStatusSchema,
   icScorerColorSchema,
   formatIcScorerMemoPlainText,
+  formatIcScorerTimelineSummary,
   icScorerMemoPassSchema,
   icScorerMemoStructuredSchema,
   icScorerOutputLooseSchema,

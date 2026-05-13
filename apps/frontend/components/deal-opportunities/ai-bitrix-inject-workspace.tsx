@@ -123,12 +123,6 @@ function collectStep2ValidationMessages(d: ReviewDraft): string[] {
   if (!d.companyLocation.trim()) {
     msgs.push("Please enter company location.");
   }
-  if (!d.brokerFirstName.trim()) {
-    msgs.push("Please enter broker first name.");
-  }
-  if (!d.brokerLastName.trim()) {
-    msgs.push("Please enter broker last name.");
-  }
   if (!d.stageId.trim()) {
     msgs.push("Please select or enter a Bitrix stage.");
   }
@@ -334,8 +328,10 @@ export type BitrixAiInjectContext =
 
 export function AiBitrixInjectWorkspace({
   bitrixAiInjectContext: bx,
+  assignedByUserId,
 }: {
   bitrixAiInjectContext: BitrixAiInjectContext;
+  assignedByUserId?: number;
 }) {
   const trpc = useTRPC();
   const router = useRouter();
@@ -455,6 +451,7 @@ export function AiBitrixInjectWorkspace({
       revenue: d.revenue,
       teaser: narrative,
       description: null,
+      assignedByUserId,
     });
 
     toast.success("Deal created and synced to Bitrix24");
@@ -927,7 +924,7 @@ export function AiBitrixInjectWorkspace({
                   <Separator className="my-1.5 sm:col-span-2" />
 
                   <div className="space-y-1">
-                    <FieldLabel required>
+                    <FieldLabel>
                       {fm?.brokerFirstName.label ?? "Broker first name"}
                     </FieldLabel>
                     {step === 2 && draft ? (
@@ -938,12 +935,6 @@ export function AiBitrixInjectWorkspace({
                             d ? { ...d, brokerFirstName: e.target.value } : d,
                           )
                         }
-                        className={cn(
-                          step2InvalidFieldRing(
-                            step2HighlightInvalidFields,
-                            !draft.brokerFirstName.trim(),
-                          ),
-                        )}
                       />
                     ) : (
                       <p className="text-foreground text-sm">
@@ -954,7 +945,7 @@ export function AiBitrixInjectWorkspace({
                   </div>
 
                   <div className="space-y-1">
-                    <FieldLabel required>
+                    <FieldLabel>
                       {fm?.brokerLastName.label ?? "Broker last name"}
                     </FieldLabel>
                     {step === 2 && draft ? (
@@ -965,12 +956,6 @@ export function AiBitrixInjectWorkspace({
                             d ? { ...d, brokerLastName: e.target.value } : d,
                           )
                         }
-                        className={cn(
-                          step2InvalidFieldRing(
-                            step2HighlightInvalidFields,
-                            !draft.brokerLastName.trim(),
-                          ),
-                        )}
                       />
                     ) : (
                       <p className="text-foreground text-sm">

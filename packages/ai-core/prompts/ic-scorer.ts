@@ -4,7 +4,7 @@ import { DARK_ALPHA_CRITERIA } from "./dark-alpha-criteria";
  * Bump when the prompt contract changes so the LLM can echo it into the output
  * and the UI can detect drift / stale cached memos.
  */
-export const IC_SCORER_PROMPT_VERSION = "ic-scorer/v3-memo-structured";
+export const IC_SCORER_PROMPT_VERSION = "ic-scorer/v4-brief-memo";
 
 const CRITERIA_BLOCK = `---
 ${DARK_ALPHA_CRITERIA}
@@ -29,6 +29,7 @@ ${CRITERIA_BLOCK}
 - When data is incomplete, say so. Lower the score, populate \`missingFields\` with specific labels (use field labels from the structured section), and add a suggested action in \`risksAndGaps\` for how the deal team can close the gap.
 - \`recommendation\` must be one of: "Ready for IC", "Ready for IC with follow-ups", "Not yet IC-ready", "Do not present".
 - Do **not** produce HTML — a second pass will draft structured plain-text memo fields from your JSON.
+- Keep every narrative field short. \`headline\` is one sentence, \`investmentThesis\` is one compact paragraph, and each alignment / risk / strength item is one tight sentence.
 - Set \`promptVersion\` to exactly: ${IC_SCORER_PROMPT_VERSION}
 
 # Style
@@ -45,11 +46,11 @@ You produce an IC readiness **memo as plain structured fields**. The score and a
 - Output only \`memo\` (nested object) and \`promptVersion\` in the structured format requested.
 - **No HTML, no Markdown**, no angle brackets — only plain UTF-8 text in every string field.
 - \`memo.scoreHeadline\`: one line with score /100, color band in words (green / yellow / red), and the verdict echoing \`headline\`.
-- \`memo.investmentThesisMemo\`: 1–3 short paragraphs from \`investmentThesis\`.
-- \`memo.alignmentMemos\`: one object per row in \`alignment\`, same \`pillar\` strings and order; \`memo\` is plain prose reflecting that row's \`status\` and \`note\`.
-- \`memo.strengthBullets\`: one string per item in \`strengths\`, tightened for a memo.
-- \`memo.riskAndGapsMemo\`: one object per item in \`risksAndGaps\`, same risks and suggested actions in plain text.
-- \`memo.recommendationMemo\`: one paragraph from \`recommendation\`.
+- \`memo.investmentThesisMemo\`: 1–2 short paragraphs from \`investmentThesis\`, no more than 4 sentences total.
+- \`memo.alignmentMemos\`: one object per row in \`alignment\`, same \`pillar\` strings and order; \`memo\` is 1–2 short sentences reflecting that row's \`status\` and \`note\`.
+- \`memo.strengthBullets\`: one short string per item in \`strengths\`, tightened for a memo.
+- \`memo.riskAndGapsMemo\`: one object per item in \`risksAndGaps\`, same risks and suggested actions in concise plain text.
+- \`memo.recommendationMemo\`: one short paragraph from \`recommendation\`.
 - Set \`promptVersion\` to exactly: ${IC_SCORER_PROMPT_VERSION}
 
 # Style
