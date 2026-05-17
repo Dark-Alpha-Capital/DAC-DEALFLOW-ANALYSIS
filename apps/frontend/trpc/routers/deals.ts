@@ -2178,13 +2178,6 @@ export const dealsRouter = createTRPCRouter({
           fileName: d.fileName,
           contentHash: d.contentHash,
         })),
-        vectorSettleMs: Math.min(
-          Math.max(
-            Number(process.env.BITRIX_WIDGET_VECTOR_SETTLE_MS ?? 12_000),
-            2_000,
-          ),
-          300_000,
-        ),
         screeningMode: isMonographMode ? "monograph" : "rag",
         focusedDocumentId: selectedDocument?.id ?? null,
         focusedDocumentFileName: selectedDocument?.fileName ?? null,
@@ -2209,12 +2202,6 @@ export const dealsRouter = createTRPCRouter({
         throw new TRPCError({
           code: "CONFLICT",
           message: "A screening run is already active for this deal and screener.",
-        });
-      }
-
-      if (!isMonographMode) {
-        await new Promise<void>((resolve) => {
-          setTimeout(resolve, dealDocumentsSnapshot.vectorSettleMs);
         });
       }
 
@@ -2432,13 +2419,6 @@ export const dealsRouter = createTRPCRouter({
           fileName: d.fileName,
           contentHash: d.contentHash,
         })),
-        vectorSettleMs: Math.min(
-          Math.max(
-            Number(process.env.BITRIX_WIDGET_VECTOR_SETTLE_MS ?? 12_000),
-            2_000,
-          ),
-          300_000,
-        ),
         screeningMode: isMonographMode ? "monograph" : "rag",
         focusedDocumentId: selectedDocument?.id ?? null,
         focusedDocumentFileName: selectedDocument?.fileName ?? null,
@@ -2448,12 +2428,6 @@ export const dealsRouter = createTRPCRouter({
         throw new TRPCError({
           code: "CONFLICT",
           message: "An IC scorer run is already in progress for this deal.",
-        });
-      }
-
-      if (!isMonographMode) {
-        await new Promise<void>((resolve) => {
-          setTimeout(resolve, dealDocumentsSnapshot.vectorSettleMs);
         });
       }
 

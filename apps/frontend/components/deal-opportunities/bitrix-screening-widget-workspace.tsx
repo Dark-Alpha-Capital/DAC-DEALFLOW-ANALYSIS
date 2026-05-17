@@ -166,7 +166,7 @@ export function BitrixScreeningWidgetWorkspace({
         toast.success(
           isMonographRun
             ? "Monograph screening started."
-            : `Screening started (waited ${Math.round((q.data?.vectorSettleMsAfterIngest ?? 12_000) / 1000)}s for vector index)`,
+            : "Screening started.",
         );
         void q.refetch();
       },
@@ -505,8 +505,6 @@ export function BitrixScreeningWidgetWorkspace({
     );
   }
 
-  const vectorWaitSec = Math.round(d.vectorSettleMsAfterIngest / 1000);
-
   return (
     <>
       <DeleteDocumentDialog
@@ -603,7 +601,6 @@ export function BitrixScreeningWidgetWorkspace({
                 onScreenerIdChange={setScreenerId}
                 screeningModeBadge={screeningModeBadge}
                 indexedCount={d.indexedCount}
-                vectorWaitSec={vectorWaitSec}
                 ragDocuments={multiFileRag ? processedDocs : null}
                 selectedDocumentIdsForScreening={screeningDocumentIds}
                 onToggleScreeningDocument={onToggleScreeningDocument}

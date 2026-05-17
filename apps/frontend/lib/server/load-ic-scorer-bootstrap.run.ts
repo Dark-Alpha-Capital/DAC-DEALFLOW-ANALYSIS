@@ -130,14 +130,6 @@ export async function runIcScorerBootstrapPayload(
     });
   }
 
-  const vectorSettleMsAfterIngest = Math.min(
-    Math.max(
-      Number(process.env.BITRIX_WIDGET_VECTOR_SETTLE_MS ?? 12_000),
-      2_000,
-    ),
-    300_000,
-  );
-
   if (!title && appOpp?.title) title = appOpp.title;
   if (!stageId && appOpp?.stage) stageId = appOpp.stage;
 
@@ -153,7 +145,6 @@ export async function runIcScorerBootstrapPayload(
     dealDocuments,
     ingestionPipelineJobs,
     indexedCount,
-    vectorSettleMsAfterIngest,
     recentIcScorerRuns: recentRuns.map((r: IcScorerRun) => ({
       runId: r.id,
       status: r.status,

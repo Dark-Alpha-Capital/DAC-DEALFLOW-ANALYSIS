@@ -25,7 +25,6 @@ export function StepScreener({
   onScreenerIdChange,
   screeningModeBadge,
   indexedCount,
-  vectorWaitSec,
   ragDocuments,
   selectedDocumentIdsForScreening,
   onToggleScreeningDocument,
@@ -39,7 +38,6 @@ export function StepScreener({
   onScreenerIdChange: (id: string) => void;
   screeningModeBadge: string | null;
   indexedCount: number;
-  vectorWaitSec: number;
   ragDocuments: RagDocRow[] | null;
   selectedDocumentIdsForScreening: string[];
   onToggleScreeningDocument: (documentId: string, checked: boolean) => void;
@@ -76,13 +74,10 @@ export function StepScreener({
                   {MODE_LABEL[screeningModeBadge] ?? screeningModeBadge}
                 </Badge>{" "}
                 · {indexedCount} chunk{indexedCount === 1 ? "" : "s"} indexed.
-                Server waits {vectorWaitSec}s for the vector index.
               </>
             ) : (
               <>
                 {indexedCount} chunk{indexedCount === 1 ? "" : "s"} indexed.
-                After start, the server waits {vectorWaitSec}s for the vector
-                index.
               </>
             )}
           </p>

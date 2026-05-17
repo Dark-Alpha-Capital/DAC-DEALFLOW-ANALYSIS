@@ -15,9 +15,12 @@ import {
   type BitrixScreenWidgetPostContext,
 } from "@/lib/server/bitrix-screen-widget-post";
 
+
 export type AiBitrixInjectRouteLoaderData = BitrixScreenWidgetPostContext & {
   bitrixAiInjectContext: BitrixAiInjectContext;
 };
+
+
 
 export const Route = createFileRoute("/_public/deal-opportunities/ai-bitrix")({
   validateSearch: (search: Record<string, unknown>) =>

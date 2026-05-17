@@ -207,14 +207,6 @@ async function bitrixScreeningWidgetBootstrapPayload(
       listActiveIngestionPipelineJobsForDeal(dealOpportunityId),
     ]);
 
-  const vectorSettleMsAfterIngest = Math.min(
-    Math.max(
-      Number(process.env.BITRIX_WIDGET_VECTOR_SETTLE_MS ?? 12_000),
-      2_000,
-    ),
-    300_000,
-  );
-
   const latestRun = latestRunRows[0] ?? null;
   const lastRunAnswers = latestRun
     ? await getCimScreeningAnswersWithQuestionsByRunId(latestRun.runId)
@@ -246,7 +238,6 @@ async function bitrixScreeningWidgetBootstrapPayload(
     dealDocuments,
     ingestionPipelineJobs,
     indexedCount,
-    vectorSettleMsAfterIngest,
     recentScreeningRuns: latestRunRows.slice(0, 20).map((r) => ({
       runId: r.runId,
       sessionId: r.sessionId,

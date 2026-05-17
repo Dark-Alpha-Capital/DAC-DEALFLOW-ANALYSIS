@@ -70,6 +70,5 @@ export type IcScorerBootstrapPayload = {
   dealDocuments: IcScorerDealDocumentRow[];
   ingestionPipelineJobs: IcScorerIngestionPipelineJobRow[];
   indexedCount: number;
-  vectorSettleMsAfterIngest: number;
   recentIcScorerRuns: IcScorerRecentRunRow[];
 };
