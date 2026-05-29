@@ -31,6 +31,7 @@ import { Route as DocumentationDocsRouteImport } from './routes/_documentation/d
 import { Route as ChatbotChatRouteImport } from './routes/_chatbot/chat'
 import { Route as ProtectedScreeningIndexRouteImport } from './routes/_protected/screening/index'
 import { Route as ProtectedScreenersIndexRouteImport } from './routes/_protected/screeners/index'
+import { Route as ProtectedProjectKickoffIndexRouteImport } from './routes/_protected/project-kickoff/index'
 import { Route as ProtectedLeadsIndexRouteImport } from './routes/_protected/leads/index'
 import { Route as ProtectedInvestorsIndexRouteImport } from './routes/_protected/investors/index'
 import { Route as ProtectedInvestorLeadsIndexRouteImport } from './routes/_protected/investor-leads/index'
@@ -39,6 +40,7 @@ import { Route as ProtectedDealOpportunitiesIndexRouteImport } from './routes/_p
 import { Route as ProtectedCompaniesIndexRouteImport } from './routes/_protected/companies/index'
 import { Route as ChatbotChatIndexRouteImport } from './routes/_chatbot/chat/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc.$'
+import { Route as ApiProjectKickoffExtractRouteImport } from './routes/api/project-kickoff/extract'
 import { Route as ApiLeadsIngestRouteImport } from './routes/api/leads/ingest'
 import { Route as ApiInvestorLeadsIngestRouteImport } from './routes/api/investor-leads/ingest'
 import { Route as ApiIcScorerScoreRouteImport } from './routes/api/ic-scorer/score'
@@ -204,6 +206,12 @@ const ProtectedScreenersIndexRoute = ProtectedScreenersIndexRouteImport.update({
   path: '/screeners/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedProjectKickoffIndexRoute =
+  ProtectedProjectKickoffIndexRouteImport.update({
+    id: '/project-kickoff/',
+    path: '/project-kickoff/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedLeadsIndexRoute = ProtectedLeadsIndexRouteImport.update({
   id: '/leads/',
   path: '/leads/',
@@ -247,6 +255,12 @@ const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   path: '/$',
   getParentRoute: () => ApiTrpcRoute,
 } as any)
+const ApiProjectKickoffExtractRoute =
+  ApiProjectKickoffExtractRouteImport.update({
+    id: '/api/project-kickoff/extract',
+    path: '/api/project-kickoff/extract',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiLeadsIngestRoute = ApiLeadsIngestRouteImport.update({
   id: '/api/leads/ingest',
   path: '/api/leads/ingest',
@@ -636,6 +650,7 @@ export interface FileRoutesByFullPath {
   '/api/ic-scorer/score': typeof ApiIcScorerScoreRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
+  '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat/': typeof ChatbotChatIndexRoute
   '/companies/': typeof ProtectedCompaniesIndexRoute
@@ -644,6 +659,7 @@ export interface FileRoutesByFullPath {
   '/investor-leads/': typeof ProtectedInvestorLeadsIndexRoute
   '/investors/': typeof ProtectedInvestorsIndexRoute
   '/leads/': typeof ProtectedLeadsIndexRoute
+  '/project-kickoff/': typeof ProtectedProjectKickoffIndexRoute
   '/screeners/': typeof ProtectedScreenersIndexRoute
   '/screening/': typeof ProtectedScreeningIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
@@ -721,6 +737,7 @@ export interface FileRoutesByTo {
   '/api/ic-scorer/score': typeof ApiIcScorerScoreRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
+  '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat': typeof ChatbotChatIndexRoute
   '/companies': typeof ProtectedCompaniesIndexRoute
@@ -729,6 +746,7 @@ export interface FileRoutesByTo {
   '/investor-leads': typeof ProtectedInvestorLeadsIndexRoute
   '/investors': typeof ProtectedInvestorsIndexRoute
   '/leads': typeof ProtectedLeadsIndexRoute
+  '/project-kickoff': typeof ProtectedProjectKickoffIndexRoute
   '/screeners': typeof ProtectedScreenersIndexRoute
   '/screening': typeof ProtectedScreeningIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
@@ -813,6 +831,7 @@ export interface FileRoutesById {
   '/api/ic-scorer/score': typeof ApiIcScorerScoreRoute
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
+  '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/_chatbot/chat/': typeof ChatbotChatIndexRoute
   '/_protected/companies/': typeof ProtectedCompaniesIndexRoute
@@ -821,6 +840,7 @@ export interface FileRoutesById {
   '/_protected/investor-leads/': typeof ProtectedInvestorLeadsIndexRoute
   '/_protected/investors/': typeof ProtectedInvestorsIndexRoute
   '/_protected/leads/': typeof ProtectedLeadsIndexRoute
+  '/_protected/project-kickoff/': typeof ProtectedProjectKickoffIndexRoute
   '/_protected/screeners/': typeof ProtectedScreenersIndexRoute
   '/_protected/screening/': typeof ProtectedScreeningIndexRoute
   '/_protected/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
@@ -901,6 +921,7 @@ export interface FileRouteTypes {
     | '/api/ic-scorer/score'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
+    | '/api/project-kickoff/extract'
     | '/api/trpc/$'
     | '/chat/'
     | '/companies/'
@@ -909,6 +930,7 @@ export interface FileRouteTypes {
     | '/investor-leads/'
     | '/investors/'
     | '/leads/'
+    | '/project-kickoff/'
     | '/screeners/'
     | '/screening/'
     | '/companies/$uid/edit'
@@ -986,6 +1008,7 @@ export interface FileRouteTypes {
     | '/api/ic-scorer/score'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
+    | '/api/project-kickoff/extract'
     | '/api/trpc/$'
     | '/chat'
     | '/companies'
@@ -994,6 +1017,7 @@ export interface FileRouteTypes {
     | '/investor-leads'
     | '/investors'
     | '/leads'
+    | '/project-kickoff'
     | '/screeners'
     | '/screening'
     | '/companies/$uid/edit'
@@ -1077,6 +1101,7 @@ export interface FileRouteTypes {
     | '/api/ic-scorer/score'
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
+    | '/api/project-kickoff/extract'
     | '/api/trpc/$'
     | '/_chatbot/chat/'
     | '/_protected/companies/'
@@ -1085,6 +1110,7 @@ export interface FileRouteTypes {
     | '/_protected/investor-leads/'
     | '/_protected/investors/'
     | '/_protected/leads/'
+    | '/_protected/project-kickoff/'
     | '/_protected/screeners/'
     | '/_protected/screening/'
     | '/_protected/companies/$uid/edit'
@@ -1121,6 +1147,7 @@ export interface RootRouteChildren {
   ApiHealthRedisRoute: typeof ApiHealthRedisRoute
   ApiInvestorLeadsIngestRoute: typeof ApiInvestorLeadsIngestRoute
   ApiLeadsIngestRoute: typeof ApiLeadsIngestRoute
+  ApiProjectKickoffExtractRoute: typeof ApiProjectKickoffExtractRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1279,6 +1306,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedScreenersIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/project-kickoff/': {
+      id: '/_protected/project-kickoff/'
+      path: '/project-kickoff'
+      fullPath: '/project-kickoff/'
+      preLoaderRoute: typeof ProtectedProjectKickoffIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/leads/': {
       id: '/_protected/leads/'
       path: '/leads'
@@ -1334,6 +1368,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/trpc/$'
       preLoaderRoute: typeof ApiTrpcSplatRouteImport
       parentRoute: typeof ApiTrpcRoute
+    }
+    '/api/project-kickoff/extract': {
+      id: '/api/project-kickoff/extract'
+      path: '/api/project-kickoff/extract'
+      fullPath: '/api/project-kickoff/extract'
+      preLoaderRoute: typeof ApiProjectKickoffExtractRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/leads/ingest': {
       id: '/api/leads/ingest'
@@ -1896,6 +1937,7 @@ interface ProtectedRouteRouteChildren {
   ProtectedInvestorLeadsIndexRoute: typeof ProtectedInvestorLeadsIndexRoute
   ProtectedInvestorsIndexRoute: typeof ProtectedInvestorsIndexRoute
   ProtectedLeadsIndexRoute: typeof ProtectedLeadsIndexRoute
+  ProtectedProjectKickoffIndexRoute: typeof ProtectedProjectKickoffIndexRoute
   ProtectedScreenersIndexRoute: typeof ProtectedScreenersIndexRoute
   ProtectedScreeningIndexRoute: typeof ProtectedScreeningIndexRoute
   ProtectedDealOpportunitiesUidEditRoute: typeof ProtectedDealOpportunitiesUidEditRoute
@@ -1943,6 +1985,7 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedInvestorLeadsIndexRoute: ProtectedInvestorLeadsIndexRoute,
   ProtectedInvestorsIndexRoute: ProtectedInvestorsIndexRoute,
   ProtectedLeadsIndexRoute: ProtectedLeadsIndexRoute,
+  ProtectedProjectKickoffIndexRoute: ProtectedProjectKickoffIndexRoute,
   ProtectedScreenersIndexRoute: ProtectedScreenersIndexRoute,
   ProtectedScreeningIndexRoute: ProtectedScreeningIndexRoute,
   ProtectedDealOpportunitiesUidEditRoute:
@@ -2030,6 +2073,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRedisRoute: ApiHealthRedisRoute,
   ApiInvestorLeadsIngestRoute: ApiInvestorLeadsIngestRoute,
   ApiLeadsIngestRoute: ApiLeadsIngestRoute,
+  ApiProjectKickoffExtractRoute: ApiProjectKickoffExtractRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

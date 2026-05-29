@@ -13,6 +13,10 @@ export {
   type ScreenerTemplateFormValues,
 } from "./screener";
 export {
+  projectKickoffExtractionSchema,
+  type ProjectKickoffExtraction,
+} from "./project-kickoff-extraction";
+export {
   icScorerAlignmentRowSchema,
   icScorerAlignmentStatusSchema,
   icScorerColorSchema,
