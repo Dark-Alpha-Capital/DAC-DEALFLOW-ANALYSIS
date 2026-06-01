@@ -240,6 +240,8 @@ export const Route = createFileRoute("/api/ic-scorer/post-timeline")({
           );
         }
 
+        let icPostStep: "disk-upload" | "crm-timeline-comment" =
+          "crm-timeline-comment";
         try {
           let pdfFile: BitrixDiskFile | null = null;
           if (parsed.postPdf) {
@@ -249,12 +251,17 @@ export const Route = createFileRoute("/api/ic-scorer/post-timeline")({
                 { status: 400 },
               );
             }
+            icPostStep = "disk-upload";
+            console.info("[ic-scorer/post-timeline] step: disk upload (PDF)");
             pdfFile = await uploadIcReportPdf({
               dealId: parsed.dealId,
               score: parsed.score,
               memo: parsed.memo,
               fileName: safePdfFileName(parsed.fileName, parsed.dealId),
               webhookBaseUrl: env.webhookBaseUrl,
+            });
+            console.info("[ic-scorer/post-timeline] step ok: disk upload", {
+              pdfFileId: pdfFile?.ID,
             });
           }
 
@@ -276,6 +283,8 @@ export const Route = createFileRoute("/api/ic-scorer/post-timeline")({
               : commentBody;
           const truncated = trimmed.length < commentBody.length;
 
+          icPostStep = "crm-timeline-comment";
+          console.info("[ic-scorer/post-timeline] step: crm.timeline.comment.add");
           const commentId = await callBitrix<number | string>(
             "crm.timeline.comment.add",
             {
@@ -304,7 +313,10 @@ export const Route = createFileRoute("/api/ic-scorer/post-timeline")({
           });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          console.error("[ic-scorer/post-timeline] failed", msg);
+          console.error("[ic-scorer/post-timeline] failed", {
+            message: msg,
+            step: icPostStep,
+          });
           return Response.json({ error: msg }, { status: 502 });
         }
       },

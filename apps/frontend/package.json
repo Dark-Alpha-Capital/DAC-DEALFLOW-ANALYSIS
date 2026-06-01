@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "ic-scorer-pdf-test": "bun run ./scripts/ic-scorer-bitrix-pdf-test.ts",
     "dev": "vite dev",
     "build": "NODE_OPTIONS='--max-old-space-size=8192' vite build",
     "preview": "vite preview",
