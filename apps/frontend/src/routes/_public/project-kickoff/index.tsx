@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ProjectKickoffWorkspace } from "@/components/project-kickoff/project-kickoff-workspace";
 
-export const Route = createFileRoute("/_protected/project-kickoff/")({
+export const Route = createFileRoute("/_public/project-kickoff/")({
   head: () => ({
     meta: [{ title: "AI → Project Kickoff — Dark Alpha Capital" }],
   }),
@@ -15,5 +15,3 @@ function ProjectKickoffPage() {
     </section>
   );
 }
-
-///since we're storing this in _protected rather than public, so the file gets simplified.

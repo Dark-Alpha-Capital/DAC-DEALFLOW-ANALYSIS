@@ -16,12 +16,19 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { projectKickoffExtractionSchema } from "@repo/schemas";
+import { PROJECT_DEPARTMENTS, projectKickoffExtractionSchema } from "@repo/schemas";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -73,6 +80,7 @@ function dodToText(v: unknown): string {
 
 type ReviewDraft = {
   projectName: string;
+  department: string;
   projectOwners: string;
   productDirection: string;
   engineeringLead: string;
@@ -98,6 +106,7 @@ function extractionToDraft(o: Record<string, unknown>): ReviewDraft | null {
   if (!projectName) return null;
   return {
     projectName,
+    department: str(o.department),
     projectOwners: arrToLines(o.projectOwners),
     productDirection: arrToLines(o.productDirection),
     engineeringLead: str(o.engineeringLead),
@@ -513,6 +522,28 @@ export function ProjectKickoffWorkspace() {
                     />
                   </div>
 
+                  {/* Department */}
+                  <div className="space-y-1 sm:col-span-2">
+                    <FieldLabel>Department</FieldLabel>
+                    <Select
+                      value={draft.department || ""}
+                      onValueChange={(v) =>
+                        setDraft((d) => (d ? { ...d, department: v } : d))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select department…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PROJECT_DEPARTMENTS.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   {/* Project owners */}
                   <div className="space-y-1">
                     <FieldLabel>Project owners</FieldLabel>
@@ -796,6 +827,9 @@ export function ProjectKickoffWorkspace() {
             <div className="flex max-h-[min(75dvh,640px)] flex-col gap-3 overflow-y-auto overscroll-contain p-3 sm:p-4">
               <div className="border-border/50 rounded-lg border px-2 sm:px-3">
                 <SummaryRow label="Project name">{draft.projectName}</SummaryRow>
+                <SummaryRow label="Department">
+                  {draft.department || "—"}
+                </SummaryRow>
                 <SummaryRow label="Project owners">
                   {draft.projectOwners || "—"}
                 </SummaryRow>
