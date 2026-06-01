@@ -62,6 +62,11 @@
       "name": "ic-scorer",
       "binding": "IC_SCORER_WORKFLOW",
       "class_name": "IcScorerWorkflow"
+    },
+    {
+      "name": "project-kickoff-screen",
+      "binding": "PROJECT_KICKOFF_SCREEN_WORKFLOW",
+      "class_name": "ProjectKickoffScreenWorkflow"
     }
   ]
 }

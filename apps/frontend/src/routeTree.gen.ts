@@ -41,6 +41,8 @@ import { Route as ProtectedCompaniesIndexRouteImport } from './routes/_protected
 import { Route as ChatbotChatIndexRouteImport } from './routes/_chatbot/chat/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc.$'
 import { Route as ApiProjectKickoffExtractRouteImport } from './routes/api/project-kickoff/extract'
+import { Route as ApiProjectKickoffSaveRouteImport } from './routes/api/project-kickoff/save'
+import { Route as ApiProjectKickoffStatusJobIdRouteImport } from './routes/api/project-kickoff/status.$jobId'
 import { Route as ApiLeadsIngestRouteImport } from './routes/api/leads/ingest'
 import { Route as ApiInvestorLeadsIngestRouteImport } from './routes/api/investor-leads/ingest'
 import { Route as ApiIcScorerScoreRouteImport } from './routes/api/ic-scorer/score'
@@ -259,6 +261,17 @@ const ApiProjectKickoffExtractRoute =
   ApiProjectKickoffExtractRouteImport.update({
     id: '/api/project-kickoff/extract',
     path: '/api/project-kickoff/extract',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiProjectKickoffSaveRoute = ApiProjectKickoffSaveRouteImport.update({
+  id: '/api/project-kickoff/save',
+  path: '/api/project-kickoff/save',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProjectKickoffStatusJobIdRoute =
+  ApiProjectKickoffStatusJobIdRouteImport.update({
+    id: '/api/project-kickoff/status/$jobId',
+    path: '/api/project-kickoff/status/$jobId',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiLeadsIngestRoute = ApiLeadsIngestRouteImport.update({
@@ -651,6 +664,8 @@ export interface FileRoutesByFullPath {
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
+  '/api/project-kickoff/save': typeof ApiProjectKickoffSaveRoute
+  '/api/project-kickoff/status/$jobId': typeof ApiProjectKickoffStatusJobIdRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat/': typeof ChatbotChatIndexRoute
   '/companies/': typeof ProtectedCompaniesIndexRoute
@@ -738,6 +753,8 @@ export interface FileRoutesByTo {
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
+  '/api/project-kickoff/save': typeof ApiProjectKickoffSaveRoute
+  '/api/project-kickoff/status/$jobId': typeof ApiProjectKickoffStatusJobIdRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat': typeof ChatbotChatIndexRoute
   '/companies': typeof ProtectedCompaniesIndexRoute
@@ -832,6 +849,8 @@ export interface FileRoutesById {
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
+  '/api/project-kickoff/save': typeof ApiProjectKickoffSaveRoute
+  '/api/project-kickoff/status/$jobId': typeof ApiProjectKickoffStatusJobIdRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/_chatbot/chat/': typeof ChatbotChatIndexRoute
   '/_protected/companies/': typeof ProtectedCompaniesIndexRoute
@@ -922,6 +941,8 @@ export interface FileRouteTypes {
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/project-kickoff/extract'
+    | '/api/project-kickoff/save'
+    | '/api/project-kickoff/status/$jobId'
     | '/api/trpc/$'
     | '/chat/'
     | '/companies/'
@@ -1009,6 +1030,8 @@ export interface FileRouteTypes {
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/project-kickoff/extract'
+    | '/api/project-kickoff/save'
+    | '/api/project-kickoff/status/$jobId'
     | '/api/trpc/$'
     | '/chat'
     | '/companies'
@@ -1102,6 +1125,8 @@ export interface FileRouteTypes {
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/project-kickoff/extract'
+    | '/api/project-kickoff/save'
+    | '/api/project-kickoff/status/$jobId'
     | '/api/trpc/$'
     | '/_chatbot/chat/'
     | '/_protected/companies/'
@@ -1148,6 +1173,8 @@ export interface RootRouteChildren {
   ApiInvestorLeadsIngestRoute: typeof ApiInvestorLeadsIngestRoute
   ApiLeadsIngestRoute: typeof ApiLeadsIngestRoute
   ApiProjectKickoffExtractRoute: typeof ApiProjectKickoffExtractRoute
+  ApiProjectKickoffSaveRoute: typeof ApiProjectKickoffSaveRoute
+  ApiProjectKickoffStatusJobIdRoute: typeof ApiProjectKickoffStatusJobIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1374,6 +1401,20 @@ declare module '@tanstack/react-router' {
       path: '/api/project-kickoff/extract'
       fullPath: '/api/project-kickoff/extract'
       preLoaderRoute: typeof ApiProjectKickoffExtractRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/project-kickoff/save': {
+      id: '/api/project-kickoff/save'
+      path: '/api/project-kickoff/save'
+      fullPath: '/api/project-kickoff/save'
+      preLoaderRoute: typeof ApiProjectKickoffSaveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/project-kickoff/status/$jobId': {
+      id: '/api/project-kickoff/status/$jobId'
+      path: '/api/project-kickoff/status/$jobId'
+      fullPath: '/api/project-kickoff/status/$jobId'
+      preLoaderRoute: typeof ApiProjectKickoffStatusJobIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/leads/ingest': {
@@ -2074,6 +2115,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInvestorLeadsIngestRoute: ApiInvestorLeadsIngestRoute,
   ApiLeadsIngestRoute: ApiLeadsIngestRoute,
   ApiProjectKickoffExtractRoute: ApiProjectKickoffExtractRoute,
+  ApiProjectKickoffSaveRoute: ApiProjectKickoffSaveRoute,
+  ApiProjectKickoffStatusJobIdRoute: ApiProjectKickoffStatusJobIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

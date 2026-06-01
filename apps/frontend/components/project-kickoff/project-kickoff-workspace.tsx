@@ -7,6 +7,7 @@ import {
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { toast } from "sonner";
 import {
+  BarChart2,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -96,7 +97,7 @@ type ReviewDraft = {
   additionalNotes: string;
 };
 
-type WorkflowStep = 1 | 2 | 3;
+type WorkflowStep = 1 | 2 | 3 | 4;
 
 // ─── draft conversion ────────────────────────────────────────────────────────
 
@@ -211,6 +212,12 @@ const WORKFLOW_STEPS: {
     description: "Confirm & save",
     icon: ShieldCheck,
   },
+  {
+    step: 4,
+    label: "Project screening",
+    description: "AI evaluation",
+    icon: BarChart2,
+  },
 ];
 
 function WorkflowStepper({
@@ -235,7 +242,8 @@ function WorkflowStepper({
             const canClick =
               wizardStep === 1 ||
               (wizardStep === 2 && hasDraft) ||
-              (wizardStep === 3 && current === 3);
+              (wizardStep === 3 && current === 3) ||
+              (wizardStep === 4 && current === 4);
             return (
               <li
                 key={wizardStep}
@@ -306,6 +314,18 @@ export function ProjectKickoffWorkspace() {
   const [step, setStep] = useState<WorkflowStep>(1);
   const [step2ContinueAttempted, setStep2ContinueAttempted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [screeningState, setScreeningState] = useState<
+    "idle" | "polling" | "completed" | "failed"
+  >("idle");
+  const [screeningProgress, setScreeningProgress] = useState<{
+    step: string;
+    percentage: number;
+  } | null>(null);
+  const [screeningResult, setScreeningResult] = useState<{
+    score: number;
+    analysis: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!draft && step !== 1) setStep(1);
@@ -339,6 +359,44 @@ export function ProjectKickoffWorkspace() {
     },
   });
 
+  // Poll the screening job status every 5 s while in "polling" state.
+  // Stops automatically when screeningState changes to "completed" or "failed".
+  useEffect(() => {
+    if (!jobId || screeningState !== "polling") return;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/project-kickoff/status/${jobId}`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          state: "waiting" | "active" | "completed" | "failed";
+          progress: { step: string; percentage: number } | null;
+          result: { score: number; analysis: string } | null;
+        };
+
+        if (data.progress) setScreeningProgress(data.progress);
+
+        if (data.state === "completed" && data.result) {
+          setScreeningResult(data.result);
+          setScreeningState("completed");
+        } else if (data.state === "failed") {
+          setScreeningState("failed");
+          toast.error(
+            "AI screening failed. Your project was saved — go back to retry.",
+          );
+        }
+      } catch {
+        // network hiccup — silently retry next interval
+      }
+    };
+
+    poll(); // fire immediately so the user doesn't wait 5 s for the first update
+    const interval = setInterval(poll, 5000);
+    return () => clearInterval(interval);
+  }, [jobId, screeningState]);
+
   const canExtract = rawText.trim().length > 0 && !isLoading;
   const draftReady = draft != null && isDraftReady(draft);
   const step2HighlightInvalidFields =
@@ -351,13 +409,31 @@ export function ProjectKickoffWorkspace() {
     if (!draft || !isDraftReady(draft)) return;
     setIsSaving(true);
     try {
-      //havent added the mechanism to save to database?
-      await new Promise((r) => setTimeout(r, 400));
-      toast.success("Project kickoff saved successfully");
+      const res = await fetch("/api/project-kickoff/save", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft, rawText }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(
+          (err as { error?: string }).error ?? "Failed to save project",
+        );
+        return;
+      }
+      const { jobId: newJobId } = (await res.json()) as {
+        projectId: string;
+        jobId: string;
+      };
+      setJobId(newJobId);
+      setScreeningState("polling");
+      setStep(4);
+      toast.success("Project saved — AI screening in progress");
     } finally {
       setIsSaving(false);
     }
-  }, [draft]);
+  }, [draft, rawText]);
 
   const showFieldGrid = step === 2 && !!draft;
 
@@ -913,6 +989,118 @@ export function ProjectKickoffWorkspace() {
                   Save project kickoff
                 </Button>
               </div>
+            </div>
+          </section>
+        ) : null}
+
+        {/* ── Step 4: AI screening results ── */}
+        {step === 4 ? (
+          <section className="bg-card/40 ring-border/60 flex min-h-0 flex-col overflow-hidden rounded-xl ring-1">
+            <div className="border-border/50 space-y-0.5 border-b px-3 py-2 sm:px-4">
+              <h2 className="text-foreground text-sm font-semibold tracking-tight">
+                Project screening
+              </h2>
+              <p className="text-muted-foreground text-[11px] leading-snug sm:text-xs sm:leading-relaxed">
+                AI is evaluating your project against department criteria.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-4 p-3 sm:p-4">
+              {/* ── Polling: spinner + progress bar ── */}
+              {screeningState === "polling" && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Loader2
+                      className="text-primary size-4 animate-spin"
+                      aria-hidden
+                    />
+                    <span>Screening in progress…</span>
+                  </div>
+                  {screeningProgress ? (
+                    <div className="space-y-1.5">
+                      <div className="text-muted-foreground flex justify-between text-xs">
+                        <span>{screeningProgress.step}</span>
+                        <span>{screeningProgress.percentage}%</span>
+                      </div>
+                      <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+                        <div
+                          className="bg-primary h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${screeningProgress.percentage}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              {/* ── Completed: score + analysis ── */}
+              {screeningState === "completed" && screeningResult ? (
+                <div className="flex flex-col gap-4">
+                  {/* Score number */}
+                  <div className="flex items-baseline gap-2">
+                    <span
+                      className={cn(
+                        "tabular-nums text-5xl font-bold",
+                        screeningResult.score >= 3.5
+                          ? "text-green-600"
+                          : screeningResult.score >= 2
+                            ? "text-amber-500"
+                            : "text-red-500",
+                      )}
+                    >
+                      {screeningResult.score.toFixed(1)}
+                    </span>
+                    <span className="text-muted-foreground text-xl">/ 5</span>
+                  </div>
+
+                  {/* Verdict badge */}
+                  <span
+                    className={cn(
+                      "inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                      screeningResult.score >= 3.5
+                        ? "bg-green-100 text-green-800"
+                        : screeningResult.score >= 2
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-red-100 text-red-800",
+                    )}
+                  >
+                    {screeningResult.score >= 3.5
+                      ? "Worth taking"
+                      : screeningResult.score >= 2
+                        ? "Review needed"
+                        : "Not recommended"}
+                  </span>
+
+                  {/* Analysis text */}
+                  <p className="text-foreground text-sm leading-relaxed">
+                    {screeningResult.analysis}
+                  </p>
+                </div>
+              ) : null}
+
+              {/* ── Failed: error + back button ── */}
+              {screeningState === "failed" && (
+                <div className="space-y-3">
+                  <p className="text-destructive text-sm">
+                    Screening failed. Your project was saved but evaluation did
+                    not complete.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setScreeningState("idle");
+                      setStep(3);
+                    }}
+                  >
+                    <ChevronLeft className="size-4" aria-hidden />
+                    Go back and retry
+                  </Button>
+                </div>
+              )}
             </div>
           </section>
         ) : null}

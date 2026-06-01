@@ -24,6 +24,7 @@ const queueNameSchema = z.enum([
   QUEUE_NAMES.CIM_SCREENING,
   QUEUE_NAMES.CIM_MONOGRAPH_SCREENING,
   QUEUE_NAMES.IC_SCORER_SCORE,
+  QUEUE_NAMES.PROJECT_KICKOFF_SCREEN,
 ]);
 
 async function assertJobOwnedAndFailed(

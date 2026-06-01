@@ -9,7 +9,8 @@ export type WorkflowKind =
   | "rag-ingestion"
   | "cim-screening"
   | "cim-monograph-screening"
-  | "ic-scorer-score";
+  | "ic-scorer-score"
+  | "project-kickoff-screen";
 
 export interface InsertWorkflowJobInput {
   instanceId: string;

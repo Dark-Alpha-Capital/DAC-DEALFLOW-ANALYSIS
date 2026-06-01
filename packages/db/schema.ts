@@ -1339,6 +1339,55 @@ export const workflowJobs = pgTable(
   }),
 );
 
+/** Stores saved project kickoff records and their AI screening results */
+export const projectKickoffs = pgTable(
+  "ProjectKickoff",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    projectName: text("projectName").notNull(),
+    department: text("department"),
+    projectOwners: text("projectOwners"),
+    productDirection: text("productDirection"),
+    engineeringLead: text("engineeringLead"),
+    objectives: text("objectives").notNull(),
+    platformEnables: text("platformEnables"),
+    keyDeliverables: text("keyDeliverables"),
+    risksAndBlockers: text("risksAndBlockers"),
+    raciMatrix: text("raciMatrix"),
+    timeline: text("timeline"),
+    chosenTool: text("chosenTool"),
+    techStack: text("techStack"),
+    definitionOfDone: text("definitionOfDone"),
+    additionalNotes: text("additionalNotes"),
+    /** Original paste from step 1 — preserved for reference */
+    rawText: text("rawText"),
+    /** pending | running | completed | failed — updated by CF workflow */
+    screeningStatus: text("screeningStatus").notNull().default("pending"),
+    /** AI score 0–5 in 0.5 increments; null until workflow completes */
+    screeningScore: doublePrecision("screeningScore"),
+    /** 50–60 word AI analysis; null until workflow completes */
+    screeningAnalysis: text("screeningAnalysis"),
+    /** CF workflow instance ID — links to workflowJobs.instanceId */
+    screeningJobId: text("screeningJobId"),
+    userId: text("userId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    projectKickoffUserCreatedIdx: index("project_kickoff_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+  }),
+);
+
 /**
  * Bitrix CRM file attachment → app Document + RAG (widget auto-ingest).
  * Keyed by Bitrix deal id + disk file id (not internal deal opportunity id alone).
@@ -2501,3 +2550,6 @@ export type NewInvestorDealOpportunityLink =
 
 export type WorkflowJob = typeof workflowJobs.$inferSelect;
 export type NewWorkflowJob = typeof workflowJobs.$inferInsert;
+
+export type ProjectKickoff = typeof projectKickoffs.$inferSelect;
+export type NewProjectKickoff = typeof projectKickoffs.$inferInsert;

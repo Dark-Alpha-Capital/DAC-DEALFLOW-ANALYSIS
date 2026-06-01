@@ -18,6 +18,12 @@ export { buildCimScreeningQuestionPrompt } from "./cim-screening";
 export { BITRIX_DEAL_OPPORTUNITY_EXTRACTION_SYSTEM } from "./bitrix-deal-extraction";
 export { PROJECT_KICKOFF_EXTRACTION_SYSTEM } from "./project-kickoff-extraction";
 export {
+  PROJECT_KICKOFF_SCREENING_SYSTEM,
+  buildProjectKickoffScreeningPrompt,
+  type ProjectKickoffScreeningInput,
+  type DepartmentScreenerInput,
+} from "./project-kickoff-screening";
+export {
   DARK_ALPHA_CRITERIA,
 } from "./dark-alpha-criteria";
 export {
