@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { useRouter } from "@/lib/navigation-shim";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useTRPC } from "@/trpc/client";
+import {
+  screenerTemplateSchema,
+  type ScreenerTemplateFormValues,
+} from "@repo/schemas";
+import { DEPARTMENT_VALUES, SCREENER_CATEGORY_VALUES } from "@repo/db/enums";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,16 +29,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-
-const createScreenerTemplateSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  category: z.string().min(1, "Category is required"),
-  description: z.string().optional(),
-});
-
-type CreateScreenerTemplateValues = z.infer<
-  typeof createScreenerTemplateSchema
->;
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function AddScreenerDialog() {
   const [open, setOpen] = useState(false);
@@ -42,12 +43,14 @@ export default function AddScreenerDialog() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  const form = useForm<CreateScreenerTemplateValues>({
-    resolver: zodResolver(createScreenerTemplateSchema),
+  const form = useForm<ScreenerTemplateFormValues>({
+    resolver: zodResolver(screenerTemplateSchema),
     defaultValues: {
       name: "",
-      category: "",
+      category: "Deal Screener",
       description: "",
+      content: "",
+      department: null,
     },
   });
 
@@ -72,9 +75,8 @@ export default function AddScreenerDialog() {
     }),
   );
 
-  function onSubmit(values: CreateScreenerTemplateValues) {
-    createTemplate(values);
-  }
+
+  const watchedCategory = form.watch("category");
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -90,7 +92,12 @@ export default function AddScreenerDialog() {
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              void form.handleSubmit((values) => createTemplate(values))(e);
+            }}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="name"
@@ -99,7 +106,7 @@ export default function AddScreenerDialog() {
                   <FormLabel>Name</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Financial Quality Screener"
+                      placeholder="Capital Markets Project Screener"
                       {...field}
                     />
                   </FormControl>
@@ -114,16 +121,59 @@ export default function AddScreenerDialog() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Financial / Market / Management"
-                      {...field}
-                    />
-                  </FormControl>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type…" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {SCREENER_CATEGORY_VALUES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {watchedCategory === "Project Screener" && (
+              <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <Select
+                      value={field.value ?? ""}
+                      onValueChange={(v) =>
+                        field.onChange(v === "" ? null : v)
+                      }
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select department…" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {DEPARTMENT_VALUES.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
@@ -133,7 +183,8 @@ export default function AddScreenerDialog() {
                   <FormLabel>Description</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="What this screener is designed to assess."
+                      placeholder="One or two sentences describing what this screener evaluates."
+                      rows={2}
                       {...field}
                     />
                   </FormControl>

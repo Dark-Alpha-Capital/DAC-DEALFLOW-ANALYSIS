@@ -17,7 +17,8 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { PROJECT_DEPARTMENTS, projectKickoffExtractionSchema } from "@repo/schemas";
+import { projectKickoffExtractionSchema } from "@repo/schemas";
+import { DEPARTMENT_VALUES } from "@repo/db/enums";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -611,7 +612,7 @@ export function ProjectKickoffWorkspace() {
                         <SelectValue placeholder="Select department…" />
                       </SelectTrigger>
                       <SelectContent>
-                        {PROJECT_DEPARTMENTS.map((dept) => (
+                        {DEPARTMENT_VALUES.map((dept) => (
                           <SelectItem key={dept} value={dept}>
                             {dept}
                           </SelectItem>

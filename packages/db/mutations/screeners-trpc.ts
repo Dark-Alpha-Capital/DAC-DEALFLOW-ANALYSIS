@@ -1,5 +1,6 @@
 import { db } from "..";
 import { screeners, screenerQuestions } from "../schema";
+import type { ScreenerCategoryValue, DepartmentValue } from "../schema";
 import { and, asc, eq } from "drizzle-orm";
 
 export async function insertScreenerTemplate(
@@ -13,8 +14,10 @@ export async function updateScreenerTemplateById(
   screenerId: string,
   values: {
     name: string;
-    category: string;
+    category: ScreenerCategoryValue;
     description: string | null;
+    content: string | null;
+    department: DepartmentValue | null;
   },
 ) {
   await db

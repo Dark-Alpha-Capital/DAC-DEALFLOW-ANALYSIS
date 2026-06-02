@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createId } from "@paralleldrive/cuid2";
 import db, { projectKickoffs } from "@repo/db";
+import type { DepartmentValue } from "@repo/db";
 import {
   insertWorkflowJob,
   startProjectKickoffScreenWorkflow,
@@ -9,7 +10,7 @@ import {
 /** Shape of the draft sent from the frontend step-3 confirmation */
 interface ReviewDraft {
   projectName: string;
-  department: string;
+  department: DepartmentValue | "";
   projectOwners: string;
   productDirection: string;
   engineeringLead: string;
@@ -73,7 +74,7 @@ export const Route = createFileRoute("/api/project-kickoff/save")({
         await db.insert(projectKickoffs).values({
           id: projectId,
           projectName: draft.projectName.trim(),
-          department: draft.department?.trim() || null,
+          department: draft.department || null,
           projectOwners: draft.projectOwners?.trim() || null,
           productDirection: draft.productDirection?.trim() || null,
           engineeringLead: draft.engineeringLead?.trim() || null,

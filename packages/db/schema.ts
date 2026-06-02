@@ -206,6 +206,26 @@ export const investorCompanyLinkStatusEnum = pgEnum(
   ["ACTIVE", "ARCHIVED"],
 );
 
+export const screenerCategoryEnum = pgEnum("ScreenerCategory", [
+  "Deal Screener",
+  "Project Screener",
+]);
+
+export const departmentEnum = pgEnum("Department", [
+  "Capital Markets",
+  "Deal Team",
+  "Legal and Compliance",
+  "Operations",
+  "M&A Origination",
+  "Technology",
+  "Investor Relations",
+  "Public Markets/Hedge Fund",
+  "Investment Team",
+  "Due Diligence",
+  "Talent Acquisition",
+  "Operating Partner",
+]);
+
 // ============================================================================
 // TABLES
 // ============================================================================
@@ -948,8 +968,10 @@ export const screenerTemplates = pgTable(
       .primaryKey()
       .$defaultFn(() => createId()),
     name: text("name").notNull(),
-    category: text("category").notNull(),
+    category: screenerCategoryEnum("category").notNull().default("Deal Screener"),
     description: text("description"),
+    content: text("content"),
+    department: departmentEnum("department"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()
@@ -1347,7 +1369,7 @@ export const projectKickoffs = pgTable(
       .primaryKey()
       .$defaultFn(() => createId()),
     projectName: text("projectName").notNull(),
-    department: text("department"),
+    department: departmentEnum("department"),
     projectOwners: text("projectOwners"),
     productDirection: text("productDirection"),
     engineeringLead: text("engineeringLead"),
@@ -2553,3 +2575,7 @@ export type NewWorkflowJob = typeof workflowJobs.$inferInsert;
 
 export type ProjectKickoff = typeof projectKickoffs.$inferSelect;
 export type NewProjectKickoff = typeof projectKickoffs.$inferInsert;
+
+export type ScreenerCategoryValue =
+  (typeof screenerCategoryEnum.enumValues)[number];
+export type DepartmentValue = (typeof departmentEnum.enumValues)[number];

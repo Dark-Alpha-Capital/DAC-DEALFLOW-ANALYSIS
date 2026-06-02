@@ -48,7 +48,7 @@ export interface ProjectKickoffScreeningInput {
 
 export interface DepartmentScreenerInput {
   name: string;
-  description: string | null;
+  content: string | null;
 }
 
 export function buildProjectKickoffScreeningPrompt(
@@ -102,8 +102,8 @@ export function buildProjectKickoffScreeningPrompt(
 
   if (screener) {
     lines.push(`\n=== DEPARTMENT SCREENING CRITERIA (${screener.name}) ===`);
-    if (screener.description?.trim()) {
-      lines.push(screener.description);
+    if (screener.content?.trim()) {
+      lines.push(screener.content);
     } else {
       lines.push("No specific criteria provided for this department.");
     }

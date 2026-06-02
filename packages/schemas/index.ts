@@ -13,9 +13,7 @@ export {
   type ScreenerTemplateFormValues,
 } from "./screener";
 export {
-  PROJECT_DEPARTMENTS,
   projectKickoffExtractionSchema,
-  type ProjectDepartment,
   type ProjectKickoffExtraction,
 } from "./project-kickoff-extraction";
 export {

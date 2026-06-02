@@ -26,6 +26,7 @@ export async function getAllScreeners() {
         name: screeners.name,
         category: screeners.category,
         description: screeners.description,
+        department: screeners.department,
         createdAt: screeners.createdAt,
         updatedAt: screeners.updatedAt,
         questionCount: sql<number>`count(${screenerQuestions.id})`
@@ -45,6 +46,7 @@ export async function getAllScreeners() {
         screeners.name,
         screeners.category,
         screeners.description,
+        screeners.department,
         screeners.createdAt,
         screeners.updatedAt,
       )
@@ -71,6 +73,8 @@ export async function getScreenerById(screenerId: string) {
         name: screeners.name,
         category: screeners.category,
         description: screeners.description,
+        content: screeners.content,
+        department: screeners.department,
         createdAt: screeners.createdAt,
         updatedAt: screeners.updatedAt,
       })

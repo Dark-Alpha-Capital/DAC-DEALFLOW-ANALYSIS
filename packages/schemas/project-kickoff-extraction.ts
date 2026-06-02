@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEPARTMENT_VALUES } from "@repo/db/enums";
 
 /**
  * OpenAI structured-output mode requires `required` to list every property.
@@ -6,30 +7,13 @@ import { z } from "zod";
  * present and unknown values are JSON `null`.
  */
 
-export const PROJECT_DEPARTMENTS = [
-  "Capital Markets",
-  "Deal Team",
-  "Legal and Compliance",
-  "Operations",
-  "M&A Origination",
-  "Technology",
-  "Investor Relations",
-  "Public Markets/Hedge Fund",
-  "Investment Team",
-  "Due Diligence",
-  "Talent Acquisition",
-  "Operating Partner",
-] as const;
-
-export type ProjectDepartment = (typeof PROJECT_DEPARTMENTS)[number];
-
 export const projectKickoffExtractionSchema = z.object({
   projectName: z
     .string()
     .describe("Short name of the project, suitable as a title."),
 
   department: z
-    .enum(PROJECT_DEPARTMENTS)
+    .enum(DEPARTMENT_VALUES)
     .nullable()
     .describe(
       "The department this project belongs to, chosen from the fixed list; null if it cannot be determined.",

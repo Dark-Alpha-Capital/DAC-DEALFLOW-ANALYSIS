@@ -9,6 +9,7 @@ import db, {
   runDbWithWorkerNeonPool,
   projectKickoffs,
   screeners,
+  and,
   eq,
 } from "@repo/db";
 import {
@@ -89,16 +90,21 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
             percentage: 20,
           });
 
-          // Find a screener template whose category matches the project department
-          let screener: { name: string; description: string | null } | null = null;
+          // Find a Project Screener whose department matches the project department
+          let screener: { name: string; content: string | null } | null = null;
           if (project.department) {
             const [row] = await db
               .select({
                 name: screeners.name,
-                description: screeners.description,
+                content: screeners.content,
               })
               .from(screeners)
-              .where(eq(screeners.category, project.department))
+              .where(
+                and(
+                  eq(screeners.category, "Project Screener"),
+                  eq(screeners.department, project.department),
+                ),
+              )
               .limit(1);
             screener = row ?? null;
           }
@@ -130,7 +136,9 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
               definitionOfDone: fetchPack.project.definitionOfDone ?? null,
               additionalNotes: fetchPack.project.additionalNotes ?? null,
             },
-            fetchPack.screener,
+            fetchPack.screener
+              ? { name: fetchPack.screener.name, content: fetchPack.screener.content }
+              : null,
           );
 
           const { object } = await generateObject({

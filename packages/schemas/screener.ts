@@ -2,8 +2,28 @@ import { z } from "zod";
 
 export const screenerTemplateSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  category: z.string().min(1, "Category is required"),
+  category: z.enum(["Deal Screener", "Project Screener"], {
+    error: "Please select a screener type",
+  }),
   description: z.string().optional(),
+  content: z.string().optional(),
+  department: z
+    .enum([
+      "Capital Markets",
+      "Deal Team",
+      "Legal and Compliance",
+      "Operations",
+      "M&A Origination",
+      "Technology",
+      "Investor Relations",
+      "Public Markets/Hedge Fund",
+      "Investment Team",
+      "Due Diligence",
+      "Talent Acquisition",
+      "Operating Partner",
+    ])
+    .nullable()
+    .optional(),
 });
 
 export const screenerQuestionFieldsSchema = z.object({
