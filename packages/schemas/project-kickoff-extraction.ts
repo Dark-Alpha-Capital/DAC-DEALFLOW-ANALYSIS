@@ -129,6 +129,22 @@ export const projectKickoffExtractionSchema = z.object({
     ),
 });
 
-export type ProjectKickoffExtraction = z.infer<
-  typeof projectKickoffExtractionSchema
->;
+export type ProjectKickoffExtraction = z.infer<typeof projectKickoffExtractionSchema>;
+
+export const editProjectKickoffSchema = z.object({
+  projectName: z.string().min(1, "Project name is required"),
+  department: z.enum(DEPARTMENT_VALUES).nullable(),
+  projectOwners: z.string().nullable(),
+  engineeringLead: z.string().nullable(),
+  productDirection: z.string().nullable(),
+  objectives: z.string().min(1, "Objectives are required"),
+  platformEnables: z.string().nullable(),
+  keyDeliverables: z.string().nullable(),
+  risksAndBlockers: z.string().nullable(),
+  timeline: z.string().nullable(),
+  chosenTool: z.string().nullable(),
+  techStack: z.string().nullable(),
+  definitionOfDone: z.string().nullable(),
+  additionalNotes: z.string().nullable(),
+});
+export type EditProjectKickoffValues = z.infer<typeof editProjectKickoffSchema>;

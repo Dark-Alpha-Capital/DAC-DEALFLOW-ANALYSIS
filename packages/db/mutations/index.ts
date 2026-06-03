@@ -15,3 +15,4 @@ export * from "./companies-trpc";
 export * from "./investor-leads-trpc";
 export * from "./deal-trpc";
 export * from "./ic-scorer-runs";
+export * from "./project-trackers";

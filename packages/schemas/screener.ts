@@ -1,29 +1,18 @@
 import { z } from "zod";
+import { DEPARTMENT_VALUES, SCREENER_CATEGORY_VALUES } from "@repo/db/enums";
+
+export const screenerCategorySchema = z.enum(SCREENER_CATEGORY_VALUES);
+export type ScreenerCategoryFormValue = z.infer<typeof screenerCategorySchema>;
+
+export const screenerDepartmentSchema = z.enum(DEPARTMENT_VALUES);
+export type ScreenerDepartmentFormValue = z.infer<typeof screenerDepartmentSchema>;
 
 export const screenerTemplateSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  category: z.enum(["Deal Screener", "Project Screener"], {
-    error: "Please select a screener type",
-  }),
+  category: screenerCategorySchema,
   description: z.string().optional(),
   content: z.string().optional(),
-  department: z
-    .enum([
-      "Capital Markets",
-      "Deal Team",
-      "Legal and Compliance",
-      "Operations",
-      "M&A Origination",
-      "Technology",
-      "Investor Relations",
-      "Public Markets/Hedge Fund",
-      "Investment Team",
-      "Due Diligence",
-      "Talent Acquisition",
-      "Operating Partner",
-    ])
-    .nullable()
-    .optional(),
+  department: screenerDepartmentSchema.nullable().optional(),
 });
 
 export const screenerQuestionFieldsSchema = z.object({
@@ -32,6 +21,4 @@ export const screenerQuestionFieldsSchema = z.object({
 });
 
 export type ScreenerTemplateFormValues = z.infer<typeof screenerTemplateSchema>;
-export type ScreenerQuestionFieldsValues = z.infer<
-  typeof screenerQuestionFieldsSchema
->;
+export type ScreenerQuestionFieldsValues = z.infer<typeof screenerQuestionFieldsSchema>;

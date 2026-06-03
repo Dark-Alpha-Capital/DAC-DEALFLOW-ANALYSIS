@@ -13,6 +13,7 @@ import {
   FiMessageSquare,
   FiClipboard,
   FiShield,
+  FiLayers,
 } from "react-icons/fi";
 import { FaPalette, FaScrewdriver } from "react-icons/fa";
 import {
@@ -49,6 +50,7 @@ const workspaceItems: NavItem[] = [
   { title: "Docs", url: "/docs", icon: FiBookOpen },
   { title: "Documents", url: "/documents", icon: FiFileText },
   { title: "Chat", url: "/chat", icon: FiMessageSquare },
+  { title: "Project Trackers", url: "/project-trackers", icon: FiLayers },
 ];
 
 const adminNavItems: NavItem[] = [

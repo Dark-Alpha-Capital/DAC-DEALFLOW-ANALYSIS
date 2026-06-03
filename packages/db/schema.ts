@@ -210,6 +210,8 @@ export const screenerCategoryEnum = pgEnum("ScreenerCategory", [
   "Deal Screener",
   "Project Screener",
 ]);
+export type ScreenerCategoryValue =
+  (typeof screenerCategoryEnum.enumValues)[number];
 
 export const departmentEnum = pgEnum("Department", [
   "Capital Markets",
@@ -225,6 +227,7 @@ export const departmentEnum = pgEnum("Department", [
   "Talent Acquisition",
   "Operating Partner",
 ]);
+export type DepartmentValue = (typeof departmentEnum.enumValues)[number];
 
 // ============================================================================
 // TABLES
@@ -1410,6 +1413,23 @@ export const projectKickoffs = pgTable(
   }),
 );
 
+/** Registry of all projects across types — one row per project, populated on save */
+export const projectTrackers = pgTable("ProjectTracker", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  name: text("name").notNull(),
+  /** JSON: { type: "project-kickoff", sourceId: "<projectKickoffs.id>" } */
+  content: text("content"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdBy: text("createdBy").references(() => users.id, {
+    onDelete: "set null",
+  }),
+});
+
+export type ProjectTracker = typeof projectTrackers.$inferSelect;
+export type NewProjectTracker = typeof projectTrackers.$inferInsert;
+
 /**
  * Bitrix CRM file attachment → app Document + RAG (widget auto-ingest).
  * Keyed by Bitrix deal id + disk file id (not internal deal opportunity id alone).
@@ -2575,7 +2595,3 @@ export type NewWorkflowJob = typeof workflowJobs.$inferInsert;
 
 export type ProjectKickoff = typeof projectKickoffs.$inferSelect;
 export type NewProjectKickoff = typeof projectKickoffs.$inferInsert;
-
-export type ScreenerCategoryValue =
-  (typeof screenerCategoryEnum.enumValues)[number];
-export type DepartmentValue = (typeof departmentEnum.enumValues)[number];

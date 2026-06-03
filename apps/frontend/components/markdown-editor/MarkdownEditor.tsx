@@ -55,10 +55,8 @@ export function MarkdownEditor({
         onChange={onChange}
         placeholder={placeholder}
         readOnly={readOnly}
-        className={cn(
-          "bg-background rounded-md border",
-          rows ? `min-h-[${rows * 24}px]` : "min-h-[260px]",
-        )}
+        className={cn("bg-background rounded-md border")}
+        style={{ minHeight: rows ? `${rows * 24}px` : "260px" }}
         plugins={[
           toolbarPlugin({
             toolbarClassName:

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,15 +10,27 @@ import {
 } from "@/components/ui/select";
 import { loadScreenersPageData } from "@/lib/server/screeners-route-data";
 import { Badge } from "@/components/ui/badge";
-import AddScreenerDialog from "@/components/Dialogs/create-screener-dialog";
+import { Plus } from "lucide-react";
 import DeleteScreenerButton from "@/components/screeners/delete-screener-button";
 import ScreenersListPageSkeleton from "@/components/skeletons/screeners-list-page-skeleton";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
 } from "@/lib/route-loader-cache";
+import {
+  asString,
+  looseValidateSearch,
+  type LooseSearch,
+} from "@/lib/route-search";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "@/lib/navigation-shim";
 
 export const Route = createFileRoute("/_protected/screeners/")({
+  validateSearch: (search: Record<string, unknown>): LooseSearch =>
+    looseValidateSearch(search),
   staleTime: ROUTE_DATA_STALE_TIME_MS,
   gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
@@ -32,10 +43,35 @@ export const Route = createFileRoute("/_protected/screeners/")({
 
 function ScreenersRoute() {
   const { screeners, totalQuestions, totalWeight } = Route.useLoaderData();
-  const [query, setQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<
-    "all" | "Deal Screener" | "Project Screener"
-  >("all");
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
+
+  const query = searchParams.get("q") ?? "";
+  const categoryFilter = (searchParams.get("category") ?? "all") as
+    | "all"
+    | "Deal Screener"
+    | "Project Screener";
+
+  function setQuery(value: string) {
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("q", value);
+    } else {
+      params.delete("q");
+    }
+    replace(`${pathname}?${params.toString()}`);
+  }
+
+  function setCategory(value: string) {
+    const params = new URLSearchParams(searchParams);
+    if (value && value !== "all") {
+      params.set("category", value);
+    } else {
+      params.delete("category");
+    }
+    replace(`${pathname}?${params.toString()}`);
+  }
 
   const filtered = screeners.filter((s) => {
     const matchesName = s.name.toLowerCase().includes(query.toLowerCase());
@@ -53,7 +89,12 @@ function ScreenersRoute() {
             Manage structured screener templates and weighted questions.
           </p>
         </div>
-        <AddScreenerDialog />
+        <Button asChild size="sm">
+          <Link to="/screeners/new">
+            <Plus className="mr-2 size-4" />
+            Add Screener
+          </Link>
+        </Button>
       </div>
 
       <div className="space-y-6">
@@ -73,9 +114,7 @@ function ScreenersRoute() {
           />
           <Select
             value={categoryFilter}
-            onValueChange={(v) =>
-              setCategoryFilter(v as typeof categoryFilter)
-            }
+            onValueChange={(v) => setCategory(v)}
           >
             <SelectTrigger className="sm:w-48">
               <SelectValue />
@@ -96,7 +135,12 @@ function ScreenersRoute() {
               questions.
             </p>
             <div className="mt-6 flex justify-center">
-              <AddScreenerDialog />
+              <Button asChild size="sm">
+                <Link to="/screeners/new">
+                  <Plus className="mr-2 size-4" />
+                  Add Screener
+                </Link>
+              </Button>
             </div>
           </div>
         ) : filtered.length === 0 ? (

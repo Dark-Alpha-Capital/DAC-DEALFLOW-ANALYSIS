@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createId } from "@paralleldrive/cuid2";
-import db, { projectKickoffs } from "@repo/db";
+import db, { projectKickoffs, projectTrackers } from "@repo/db";
 import type { DepartmentValue } from "@repo/db";
 import {
   insertWorkflowJob,
@@ -91,6 +91,14 @@ export const Route = createFileRoute("/api/project-kickoff/save")({
           rawText: typeof rawText === "string" ? rawText.trim() || null : null,
           screeningStatus: "pending",
           screeningJobId: jobId,
+        });
+
+        // Register in project trackers registry
+        await db.insert(projectTrackers).values({
+          id: createId(),
+          name: draft.projectName.trim(),
+          content: JSON.stringify({ type: "project-kickoff", sourceId: projectId }),
+          createdBy: null,
         });
 
         // Register the workflow job row (state = "waiting")
