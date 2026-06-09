@@ -25,6 +25,8 @@ export const Route = createFileRoute("/_protected/screeners/$uid")({
 function ScreenerDetailRoute() {
   const { uid } = Route.useParams();
   const { screener } = Route.useLoaderData();
+
+  
   return (
     <section className="block-space-mini big-container">
       <Suspense fallback={<ScreenerPageSkeleton />}>

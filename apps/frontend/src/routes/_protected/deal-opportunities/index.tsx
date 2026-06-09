@@ -9,6 +9,7 @@ import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
 } from "@/lib/route-loader-cache";
+
 import {
   dealOpportunitiesListLoaderDeps,
   looseValidateSearch,
@@ -26,9 +27,11 @@ export const Route = createFileRoute("/_protected/deal-opportunities/")({
   loader: async ({ deps }) => {
     const { page, limit, q } = deps;
     const offset = (page - 1) * limit;
+
     const result = await loadRankedDealOpportunitiesPageData({
       data: { offset, limit, query: q },
     });
+
     return {
       ...result,
       currentPage: page,
@@ -42,6 +45,7 @@ export const Route = createFileRoute("/_protected/deal-opportunities/")({
 function DealOpportunitiesRoute() {
   const { q } = Route.useSearch();
   const loaderData = Route.useLoaderData();
+
   const {
     deals,
     pipelineStages,
@@ -50,7 +54,9 @@ function DealOpportunitiesRoute() {
     currentPage,
     pageSize,
   } = loaderData;
+
   const hasSearch = q.trim().length > 0;
+
   const dealsSummary =
     totalCount === 0
       ? hasSearch
@@ -64,7 +70,7 @@ function DealOpportunitiesRoute() {
           ? `${totalCount} deals match your search.`
           : `${totalCount} deals total.`;
   return (
-    <section className="block-space-mini group container min-w-0 max-w-full overflow-x-hidden">
+    <section className="block-space-mini group container max-w-full min-w-0 overflow-x-hidden">
       <div className="mb-8 flex min-w-0 flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
         <div className="min-w-0 shrink space-y-1">
           <h1 className="text-4xl font-bold md:text-5xl">Deal opportunities</h1>
