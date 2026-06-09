@@ -8,6 +8,10 @@ import {
   type ScreenerQuestionFieldsValues,
   type ScreenerTemplateFormValues,
 } from "@repo/schemas";
+import {
+  DEPARTMENT_VALUES,
+  SCREENER_CATEGORY_VALUES,
+} from "@repo/db/enums";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
@@ -48,7 +52,15 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { MarkdownEditor } from "@/components/markdown-editor/MarkdownEditor";
 
 type ScreenerWithQuestions = NonNullable<
   Awaited<
@@ -81,8 +93,10 @@ export default function ScreenerEditor({
     resolver: zodResolver(screenerTemplateSchema),
     defaultValues: {
       name: "",
-      category: "",
+      category: "Deal Screener",
       description: "",
+      content: "",
+      department: null,
     },
   });
 
@@ -101,6 +115,8 @@ export default function ScreenerEditor({
       name: screenerQuery.data.name,
       category: screenerQuery.data.category,
       description: screenerQuery.data.description ?? "",
+      content: screenerQuery.data.content ?? "",
+      department: screenerQuery.data.department ?? null,
     });
   }, [screenerQuery.data, templateForm]);
 
@@ -324,13 +340,60 @@ export default function ScreenerEditor({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type…" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SCREENER_CATEGORY_VALUES.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {templateForm.watch("category") === "Project Screener" && (
+                <FormField
+                  control={templateForm.control}
+                  name="department"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Department</FormLabel>
+                      <Select
+                        value={field.value ?? ""}
+                        onValueChange={(v) =>
+                          field.onChange(v === "" ? null : v)
+                        }
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select department…" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {DEPARTMENT_VALUES.map((dept) => (
+                            <SelectItem key={dept} value={dept}>
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
               <div className="md:col-span-2">
                 <FormField
                   control={templateForm.control}
@@ -339,13 +402,39 @@ export default function ScreenerEditor({
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea {...field} />
+                        <Textarea
+                          {...field}
+                          placeholder="One or two sentences describing what this screener evaluates."
+                          rows={2}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              <div className="md:col-span-2">
+                <FormField
+                  control={templateForm.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Screening criteria</FormLabel>
+                      <FormControl>
+                        <MarkdownEditor
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          placeholder="Write the detailed evaluation criteria, scoring rubric, key questions…"
+                          rows={16}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <div className="md:col-span-2">
                 <Button type="submit" disabled={updateTemplate.isPending}>
                   <Save className="mr-2 h-4 w-4" />

@@ -206,6 +206,38 @@ export const investorCompanyLinkStatusEnum = pgEnum(
   ["ACTIVE", "ARCHIVED"],
 );
 
+export const screenerCategoryEnum = pgEnum("ScreenerCategory", [
+  "Deal Screener",
+  "Project Screener",
+]);
+export type ScreenerCategoryValue =
+  (typeof screenerCategoryEnum.enumValues)[number];
+
+export const projectTrackerSourceTypeEnum = pgEnum("ProjectTrackerSourceType", [
+  "PROJECT_KICKOFF",
+]);
+
+export const projectKickoffScreeningStatusEnum = pgEnum(
+  "ProjectKickoffScreeningStatus",
+  ["pending", "running", "completed", "failed"],
+);
+
+export const departmentEnum = pgEnum("Department", [
+  "Capital Markets",
+  "Deal Team",
+  "Legal and Compliance",
+  "Operations",
+  "M&A Origination",
+  "Technology",
+  "Investor Relations",
+  "Public Markets/Hedge Fund",
+  "Investment Team",
+  "Due Diligence",
+  "Talent Acquisition",
+  "Operating Partner",
+]);
+export type DepartmentValue = (typeof departmentEnum.enumValues)[number];
+
 // ============================================================================
 // TABLES
 // ============================================================================
@@ -950,8 +982,10 @@ export const screenerTemplates = pgTable(
       .primaryKey()
       .$defaultFn(() => createId()),
     name: text("name").notNull(),
-    category: text("category").notNull(),
+    category: screenerCategoryEnum("category").notNull().default("Deal Screener"),
     description: text("description"),
+    content: text("content"),
+    department: departmentEnum("department"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()
@@ -1340,6 +1374,119 @@ export const workflowJobs = pgTable(
     ),
   }),
 );
+
+/** Stores saved project kickoff form data */
+export const projectKickoffs = pgTable(
+  "ProjectKickoff",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    projectName: text("projectName").notNull(),
+    department: departmentEnum("department"),
+    projectOwners: text("projectOwners"),
+    productDirection: text("productDirection"),
+    engineeringLead: text("engineeringLead"),
+    objectives: text("objectives").notNull(),
+    platformEnables: text("platformEnables"),
+    keyDeliverables: text("keyDeliverables"),
+    risksAndBlockers: text("risksAndBlockers"),
+    raciMatrix: text("raciMatrix"),
+    timeline: text("timeline"),
+    chosenTool: text("chosenTool"),
+    techStack: text("techStack"),
+    definitionOfDone: text("definitionOfDone"),
+    additionalNotes: text("additionalNotes"),
+    /** Original paste from step 1 — preserved for reference */
+    rawText: text("rawText"),
+    /** Structured extraction shape (arrays/objects preserved) */
+    structuredData: jsonb("structuredData"),
+    userId: text("userId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    projectKickoffUserCreatedIdx: index("project_kickoff_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+  }),
+);
+
+/** AI screening runs for a project kickoff (history + current) */
+export const projectKickoffScreenings = pgTable(
+  "ProjectKickoffScreening",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    kickoffId: text("kickoffId")
+      .notNull()
+      .references(() => projectKickoffs.id, { onDelete: "cascade" }),
+    workflowInstanceId: text("workflowInstanceId").references(
+      () => workflowJobs.instanceId,
+      { onDelete: "set null" },
+    ),
+    status: projectKickoffScreeningStatusEnum("status")
+      .notNull()
+      .default("pending"),
+    score: doublePrecision("score"),
+    analysis: text("analysis"),
+    screenedAt: timestamp("screenedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    projectKickoffScreeningKickoffCreatedIdx: index(
+      "project_kickoff_screening_kickoff_created_idx",
+    ).on(table.kickoffId, table.createdAt),
+    projectKickoffScreeningWorkflowUniqueIdx: uniqueIndex(
+      "project_kickoff_screening_workflow_unique_idx",
+    ).on(table.workflowInstanceId),
+  }),
+);
+
+/** Registry of all projects across types — one row per project, populated on save */
+export const projectTrackers = pgTable(
+  "ProjectTracker",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    name: text("name").notNull(),
+    sourceType: projectTrackerSourceTypeEnum("sourceType")
+      .notNull()
+      .default("PROJECT_KICKOFF"),
+    kickoffId: text("kickoffId")
+      .notNull()
+      .references(() => projectKickoffs.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdBy: text("createdBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (table) => ({
+    projectTrackerKickoffUniqueIdx: uniqueIndex(
+      "project_tracker_kickoff_unique_idx",
+    ).on(table.kickoffId),
+  }),
+);
+
+export type ProjectTracker = typeof projectTrackers.$inferSelect;
+export type NewProjectTracker = typeof projectTrackers.$inferInsert;
+
+export type ProjectKickoffScreening =
+  typeof projectKickoffScreenings.$inferSelect;
+export type NewProjectKickoffScreening =
+  typeof projectKickoffScreenings.$inferInsert;
 
 /**
  * Bitrix CRM file attachment → app Document + RAG (widget auto-ingest).
@@ -2174,6 +2321,49 @@ export const icScorerRunsRelations = relations(icScorerRuns, ({ one }) => ({
   }),
 }));
 
+export const projectKickoffsRelations = relations(
+  projectKickoffs,
+  ({ one, many }) => ({
+    user: one(users, {
+      fields: [projectKickoffs.userId],
+      references: [users.id],
+    }),
+    tracker: one(projectTrackers, {
+      fields: [projectKickoffs.id],
+      references: [projectTrackers.kickoffId],
+    }),
+    screenings: many(projectKickoffScreenings),
+  }),
+);
+
+export const projectTrackersRelations = relations(
+  projectTrackers,
+  ({ one }) => ({
+    kickoff: one(projectKickoffs, {
+      fields: [projectTrackers.kickoffId],
+      references: [projectKickoffs.id],
+    }),
+    createdByUser: one(users, {
+      fields: [projectTrackers.createdBy],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const projectKickoffScreeningsRelations = relations(
+  projectKickoffScreenings,
+  ({ one }) => ({
+    kickoff: one(projectKickoffs, {
+      fields: [projectKickoffScreenings.kickoffId],
+      references: [projectKickoffs.id],
+    }),
+    workflowJob: one(workflowJobs, {
+      fields: [projectKickoffScreenings.workflowInstanceId],
+      references: [workflowJobs.instanceId],
+    }),
+  }),
+);
+
 export const screenerResponsesRelations = relations(
   screenerResponses,
   ({ one }) => ({
@@ -2503,3 +2693,6 @@ export type NewInvestorDealOpportunityLink =
 
 export type WorkflowJob = typeof workflowJobs.$inferSelect;
 export type NewWorkflowJob = typeof workflowJobs.$inferInsert;
+
+export type ProjectKickoff = typeof projectKickoffs.$inferSelect;
+export type NewProjectKickoff = typeof projectKickoffs.$inferInsert;

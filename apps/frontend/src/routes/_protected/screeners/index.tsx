@@ -1,16 +1,36 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { loadScreenersPageData } from "@/lib/server/screeners-route-data";
 import { Badge } from "@/components/ui/badge";
-import AddScreenerDialog from "@/components/Dialogs/create-screener-dialog";
+import { Plus } from "lucide-react";
 import DeleteScreenerButton from "@/components/screeners/delete-screener-button";
 import ScreenersListPageSkeleton from "@/components/skeletons/screeners-list-page-skeleton";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
 } from "@/lib/route-loader-cache";
+import {
+  asString,
+  looseValidateSearch,
+  type LooseSearch,
+} from "@/lib/route-search";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "@/lib/navigation-shim";
 
 export const Route = createFileRoute("/_protected/screeners/")({
+  validateSearch: (search: Record<string, unknown>): LooseSearch =>
+    looseValidateSearch(search),
   staleTime: ROUTE_DATA_STALE_TIME_MS,
   gcTime: ROUTE_DATA_GC_TIME_MS,
   head: () => ({
@@ -23,6 +43,43 @@ export const Route = createFileRoute("/_protected/screeners/")({
 
 function ScreenersRoute() {
   const { screeners, totalQuestions, totalWeight } = Route.useLoaderData();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
+
+  const query = searchParams.get("q") ?? "";
+  const categoryFilter = (searchParams.get("category") ?? "all") as
+    | "all"
+    | "Deal Screener"
+    | "Project Screener";
+
+  function setQuery(value: string) {
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("q", value);
+    } else {
+      params.delete("q");
+    }
+    replace(`${pathname}?${params.toString()}`);
+  }
+
+  function setCategory(value: string) {
+    const params = new URLSearchParams(searchParams);
+    if (value && value !== "all") {
+      params.set("category", value);
+    } else {
+      params.delete("category");
+    }
+    replace(`${pathname}?${params.toString()}`);
+  }
+
+  const filtered = screeners.filter((s) => {
+    const matchesName = s.name.toLowerCase().includes(query.toLowerCase());
+    const matchesCategory =
+      categoryFilter === "all" || s.category === categoryFilter;
+    return matchesName && matchesCategory;
+  });
+
   return (
     <section className="block-space-mini container">
       <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -32,7 +89,12 @@ function ScreenersRoute() {
             Manage structured screener templates and weighted questions.
           </p>
         </div>
-        <AddScreenerDialog />
+        <Button asChild size="sm">
+          <Link to="/screeners/new">
+            <Plus className="mr-2 size-4" />
+            Add Screener
+          </Link>
+        </Button>
       </div>
 
       <div className="space-y-6">
@@ -40,6 +102,29 @@ function ScreenersRoute() {
           <StatBlock label="Templates" value={screeners.length} />
           <StatBlock label="Questions" value={totalQuestions} />
           <StatBlock label="Total Weight" value={totalWeight} />
+        </div>
+
+        {/* Filter bar */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            placeholder="Search by name…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="sm:max-w-xs"
+          />
+          <Select
+            value={categoryFilter}
+            onValueChange={(v) => setCategory(v)}
+          >
+            <SelectTrigger className="sm:w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              <SelectItem value="Deal Screener">Deal Screener</SelectItem>
+              <SelectItem value="Project Screener">Project Screener</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {screeners.length === 0 ? (
@@ -50,8 +135,19 @@ function ScreenersRoute() {
               questions.
             </p>
             <div className="mt-6 flex justify-center">
-              <AddScreenerDialog />
+              <Button asChild size="sm">
+                <Link to="/screeners/new">
+                  <Plus className="mr-2 size-4" />
+                  Add Screener
+                </Link>
+              </Button>
             </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-10 text-center">
+            <p className="text-muted-foreground text-sm">
+              No screeners match your filters.
+            </p>
           </div>
         ) : (
           <div className="overflow-hidden rounded-lg border">
@@ -65,25 +161,36 @@ function ScreenersRoute() {
             </div>
 
             <div className="divide-y">
-              {screeners.map((screener) => (
+              {filtered.map((screener) => (
                 <div
                   key={screener.id}
                   className="flex flex-col gap-4 px-5 py-5 lg:grid lg:grid-cols-[minmax(0,2fr)_1fr_120px_120px_140px_auto] lg:items-center lg:gap-4 lg:px-6"
                 >
                   <div className="min-w-0">
-                    <h2 className="truncate text-base font-semibold">
+                    <Link
+                      to="/screeners/$uid"
+                      params={{ uid: screener.id }}
+                      className="hover:text-primary truncate text-base font-semibold transition-colors"
+                    >
                       {screener.name}
-                    </h2>
+                    </Link>
                     <p className="text-muted-foreground mt-1 text-sm">
                       {screener.description || "No description provided."}
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between gap-3 lg:block">
-                    <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase lg:hidden">
-                      Category
-                    </span>
-                    <Badge variant="secondary">{screener.category}</Badge>
+                  <div className="flex flex-col items-start gap-1 lg:block">
+                    <div className="flex items-center justify-between gap-3 lg:block">
+                      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase lg:hidden">
+                        Category
+                      </span>
+                      <Badge variant="secondary">{screener.category}</Badge>
+                    </div>
+                    {screener.department && (
+                      <Badge variant="outline" className="mt-1 text-xs">
+                        {screener.department}
+                      </Badge>
+                    )}
                   </div>
 
                   <InlineMeta

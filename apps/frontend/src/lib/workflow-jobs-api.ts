@@ -20,6 +20,7 @@ import type {
   CimExtractionParams,
   FileUploadParams,
   IcScorerWorkflowParams,
+  ProjectKickoffScreenParams,
   RagIngestionParams,
   ScreenDealParams,
   CimScreeningParams,
@@ -273,6 +274,13 @@ export async function startIcScorerWorkflow(
   params: IcScorerWorkflowParams,
 ) {
   await env.IC_SCORER_WORKFLOW.create({ id: jobId, params });
+}
+
+export async function startProjectKickoffScreenWorkflow(
+  jobId: string,
+  params: ProjectKickoffScreenParams,
+) {
+  await env.PROJECT_KICKOFF_SCREEN_WORKFLOW.create({ id: jobId, params });
 }
 
 export { insertWorkflowJob };

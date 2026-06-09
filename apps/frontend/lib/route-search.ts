@@ -40,6 +40,38 @@ export const DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH = {
   q: "",
 } as const;
 
+export type ProjectTrackerSortBy = "createdAt" | "department" | "createdBy";
+export type ProjectTrackerSortDir = "asc" | "desc";
+
+/** Default URL search for `/_protected/project-trackers/`. */
+export const PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH = {
+  sortBy: "createdAt",
+  sortDir: "desc",
+  department: "",
+} as const;
+
+const PROJECT_TRACKER_SORT_BY = new Set<ProjectTrackerSortBy>([
+  "createdAt",
+  "department",
+  "createdBy",
+]);
+
+/** Project trackers index: sort + department filter (passed to route loader). */
+export function projectTrackersListLoaderDeps(search: Record<string, unknown>) {
+  const s = search as LooseSearch;
+  const sortByRaw = asString(s.sortBy) ?? PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH.sortBy;
+  const sortBy: ProjectTrackerSortBy = PROJECT_TRACKER_SORT_BY.has(
+    sortByRaw as ProjectTrackerSortBy,
+  )
+    ? (sortByRaw as ProjectTrackerSortBy)
+    : PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH.sortBy;
+  const sortDirRaw = asString(s.sortDir) ?? PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH.sortDir;
+  const sortDir: ProjectTrackerSortDir =
+    sortDirRaw === "asc" ? "asc" : PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH.sortDir;
+  const department = (asString(s.department) ?? "").trim();
+  return { sortBy, sortDir, department };
+}
+
 /** Deal opportunities index: page, page size, and server-side search query. */
 export function dealOpportunitiesListLoaderDeps(search: Record<string, unknown>) {
   const s = search as LooseSearch;

@@ -79,6 +79,8 @@ export const screenersRouter = createTRPCRouter({
         name: input.name,
         category: input.category,
         description: input.description || null,
+        content: input.content || null,
+        department: input.department || null,
       });
 
       scheduleRevalidateScreenerPaths(created?.id);
@@ -96,6 +98,8 @@ export const screenersRouter = createTRPCRouter({
         name: input.name,
         category: input.category,
         description: input.description || null,
+        content: input.content || null,
+        department: input.department || null,
       });
 
       scheduleRevalidateScreenerPaths(input.screenerId);

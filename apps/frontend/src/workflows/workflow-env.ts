@@ -117,6 +117,13 @@ export type IcScorerWorkflowParams = {
   bitrixLiveDealListingContext: string;
 };
 
+export type ProjectKickoffScreenParams = {
+  jobId: string;
+  kickoffId: string;
+  screeningId: string;
+  userId: string | null;
+};
+
 /** Cloudflare Worker env with workflow bindings (see wrangler.jsonc) */
 export interface WorkflowWorkerEnv {
   DOCUMENT_CHUNKS_INDEX: VectorizeIndex;
@@ -127,5 +134,6 @@ export interface WorkflowWorkerEnv {
   CIM_SCREENING_WORKFLOW: Workflow<CimScreeningParams>;
   CIM_MONOGRAPH_SCREENING_WORKFLOW: Workflow<CimMonographScreeningParams>;
   IC_SCORER_WORKFLOW: Workflow<IcScorerWorkflowParams>;
+  PROJECT_KICKOFF_SCREEN_WORKFLOW: Workflow<ProjectKickoffScreenParams>;
   RATE_LIMIT_KV?: KVNamespace;
 }
