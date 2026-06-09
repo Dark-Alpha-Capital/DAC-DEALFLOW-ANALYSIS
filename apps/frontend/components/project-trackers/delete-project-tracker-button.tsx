@@ -57,8 +57,8 @@ export default function DeleteProjectTrackerButton({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete this project?</AlertDialogTitle>
           <AlertDialogDescription>
-            This permanently deletes the project and all its extracted data,
-            AI score, and analysis. This cannot be undone.
+            This permanently deletes the project and all its extracted data, AI
+            score, and analysis. This cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
