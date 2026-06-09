@@ -213,6 +213,15 @@ export const screenerCategoryEnum = pgEnum("ScreenerCategory", [
 export type ScreenerCategoryValue =
   (typeof screenerCategoryEnum.enumValues)[number];
 
+export const projectTrackerSourceTypeEnum = pgEnum("ProjectTrackerSourceType", [
+  "PROJECT_KICKOFF",
+]);
+
+export const projectKickoffScreeningStatusEnum = pgEnum(
+  "ProjectKickoffScreeningStatus",
+  ["pending", "running", "completed", "failed"],
+);
+
 export const departmentEnum = pgEnum("Department", [
   "Capital Markets",
   "Deal Team",
@@ -1364,7 +1373,7 @@ export const workflowJobs = pgTable(
   }),
 );
 
-/** Stores saved project kickoff records and their AI screening results */
+/** Stores saved project kickoff form data */
 export const projectKickoffs = pgTable(
   "ProjectKickoff",
   {
@@ -1388,14 +1397,8 @@ export const projectKickoffs = pgTable(
     additionalNotes: text("additionalNotes"),
     /** Original paste from step 1 — preserved for reference */
     rawText: text("rawText"),
-    /** pending | running | completed | failed — updated by CF workflow */
-    screeningStatus: text("screeningStatus").notNull().default("pending"),
-    /** AI score 0–5 in 0.5 increments; null until workflow completes */
-    screeningScore: doublePrecision("screeningScore"),
-    /** 50–60 word AI analysis; null until workflow completes */
-    screeningAnalysis: text("screeningAnalysis"),
-    /** CF workflow instance ID — links to workflowJobs.instanceId */
-    screeningJobId: text("screeningJobId"),
+    /** Structured extraction shape (arrays/objects preserved) */
+    structuredData: jsonb("structuredData"),
     userId: text("userId").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -1413,22 +1416,75 @@ export const projectKickoffs = pgTable(
   }),
 );
 
-/** Registry of all projects across types — one row per project, populated on save */
-export const projectTrackers = pgTable("ProjectTracker", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  name: text("name").notNull(),
-  /** JSON: { type: "project-kickoff", sourceId: "<projectKickoffs.id>" } */
-  content: text("content"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  createdBy: text("createdBy").references(() => users.id, {
-    onDelete: "set null",
+/** AI screening runs for a project kickoff (history + current) */
+export const projectKickoffScreenings = pgTable(
+  "ProjectKickoffScreening",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    kickoffId: text("kickoffId")
+      .notNull()
+      .references(() => projectKickoffs.id, { onDelete: "cascade" }),
+    workflowInstanceId: text("workflowInstanceId").references(
+      () => workflowJobs.instanceId,
+      { onDelete: "set null" },
+    ),
+    status: projectKickoffScreeningStatusEnum("status")
+      .notNull()
+      .default("pending"),
+    score: doublePrecision("score"),
+    analysis: text("analysis"),
+    screenedAt: timestamp("screenedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    projectKickoffScreeningKickoffCreatedIdx: index(
+      "project_kickoff_screening_kickoff_created_idx",
+    ).on(table.kickoffId, table.createdAt),
+    projectKickoffScreeningWorkflowUniqueIdx: uniqueIndex(
+      "project_kickoff_screening_workflow_unique_idx",
+    ).on(table.workflowInstanceId),
   }),
-});
+);
+
+/** Registry of all projects across types — one row per project, populated on save */
+export const projectTrackers = pgTable(
+  "ProjectTracker",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    name: text("name").notNull(),
+    sourceType: projectTrackerSourceTypeEnum("sourceType")
+      .notNull()
+      .default("PROJECT_KICKOFF"),
+    kickoffId: text("kickoffId")
+      .notNull()
+      .references(() => projectKickoffs.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdBy: text("createdBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (table) => ({
+    projectTrackerKickoffUniqueIdx: uniqueIndex(
+      "project_tracker_kickoff_unique_idx",
+    ).on(table.kickoffId),
+  }),
+);
 
 export type ProjectTracker = typeof projectTrackers.$inferSelect;
 export type NewProjectTracker = typeof projectTrackers.$inferInsert;
+
+export type ProjectKickoffScreening =
+  typeof projectKickoffScreenings.$inferSelect;
+export type NewProjectKickoffScreening =
+  typeof projectKickoffScreenings.$inferInsert;
 
 /**
  * Bitrix CRM file attachment → app Document + RAG (widget auto-ingest).
@@ -2262,6 +2318,49 @@ export const icScorerRunsRelations = relations(icScorerRuns, ({ one }) => ({
     references: [documents.id],
   }),
 }));
+
+export const projectKickoffsRelations = relations(
+  projectKickoffs,
+  ({ one, many }) => ({
+    user: one(users, {
+      fields: [projectKickoffs.userId],
+      references: [users.id],
+    }),
+    tracker: one(projectTrackers, {
+      fields: [projectKickoffs.id],
+      references: [projectTrackers.kickoffId],
+    }),
+    screenings: many(projectKickoffScreenings),
+  }),
+);
+
+export const projectTrackersRelations = relations(
+  projectTrackers,
+  ({ one }) => ({
+    kickoff: one(projectKickoffs, {
+      fields: [projectTrackers.kickoffId],
+      references: [projectKickoffs.id],
+    }),
+    createdByUser: one(users, {
+      fields: [projectTrackers.createdBy],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const projectKickoffScreeningsRelations = relations(
+  projectKickoffScreenings,
+  ({ one }) => ({
+    kickoff: one(projectKickoffs, {
+      fields: [projectKickoffScreenings.kickoffId],
+      references: [projectKickoffs.id],
+    }),
+    workflowJob: one(workflowJobs, {
+      fields: [projectKickoffScreenings.workflowInstanceId],
+      references: [workflowJobs.instanceId],
+    }),
+  }),
+);
 
 export const screenerResponsesRelations = relations(
   screenerResponses,

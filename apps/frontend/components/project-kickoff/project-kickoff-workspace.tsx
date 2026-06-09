@@ -1,11 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useTRPC } from "@/trpc/client";
+import { useProjectKickoffScreeningPoll } from "@/hooks/use-project-kickoff-screening-poll";
 import {
   BarChart2,
   Check,
@@ -17,7 +15,10 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { projectKickoffExtractionSchema } from "@repo/schemas";
+import {
+  projectKickoffExtractionSchema,
+  type ProjectKickoffDraft,
+} from "@repo/schemas";
 import { DEPARTMENT_VALUES } from "@repo/db/enums";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -310,23 +311,38 @@ function WorkflowStepper({
 // ─── main component ───────────────────────────────────────────────────────────
 
 export function ProjectKickoffWorkspace() {
+  const trpc = useTRPC();
   const [rawText, setRawText] = useState("");
   const [draft, setDraft] = useState<ReviewDraft | null>(null);
   const [step, setStep] = useState<WorkflowStep>(1);
   const [step2ContinueAttempted, setStep2ContinueAttempted] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [screeningState, setScreeningState] = useState<
     "idle" | "polling" | "completed" | "failed"
   >("idle");
-  const [screeningProgress, setScreeningProgress] = useState<{
-    step: string;
-    percentage: number;
-  } | null>(null);
-  const [screeningResult, setScreeningResult] = useState<{
-    score: number;
-    analysis: string;
-  } | null>(null);
+
+  const {
+    progress: screeningProgress,
+    result: polledResult,
+    terminalState: pollTerminalState,
+  } = useProjectKickoffScreeningPoll(jobId, screeningState === "polling");
+
+  const screeningResult = polledResult;
+
+  useEffect(() => {
+    if (pollTerminalState === "completed") {
+      setScreeningState("completed");
+    } else if (pollTerminalState === "failed") {
+      setScreeningState("failed");
+      toast.error(
+        "AI screening failed. Your project was saved — retry from project trackers.",
+      );
+    }
+  }, [pollTerminalState]);
+
+  const { mutateAsync: createKickoff, isPending: isSaving } = useMutation(
+    trpc.projectKickoffs.create.mutationOptions(),
+  );
 
   useEffect(() => {
     if (!draft && step !== 1) setStep(1);
@@ -360,44 +376,6 @@ export function ProjectKickoffWorkspace() {
     },
   });
 
-  // Poll the screening job status every 5 s while in "polling" state.
-  // Stops automatically when screeningState changes to "completed" or "failed".
-  useEffect(() => {
-    if (!jobId || screeningState !== "polling") return;
-
-    const poll = async () => {
-      try {
-        const res = await fetch(`/api/project-kickoff/status/${jobId}`, {
-          credentials: "include",
-        });
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          state: "waiting" | "active" | "completed" | "failed";
-          progress: { step: string; percentage: number } | null;
-          result: { score: number; analysis: string } | null;
-        };
-
-        if (data.progress) setScreeningProgress(data.progress);
-
-        if (data.state === "completed" && data.result) {
-          setScreeningResult(data.result);
-          setScreeningState("completed");
-        } else if (data.state === "failed") {
-          setScreeningState("failed");
-          toast.error(
-            "AI screening failed. Your project was saved — go back to retry.",
-          );
-        }
-      } catch {
-        // network hiccup — silently retry next interval
-      }
-    };
-
-    poll(); // fire immediately so the user doesn't wait 5 s for the first update
-    const interval = setInterval(poll, 5000);
-    return () => clearInterval(interval);
-  }, [jobId, screeningState]);
-
   const canExtract = rawText.trim().length > 0 && !isLoading;
   const draftReady = draft != null && isDraftReady(draft);
   const step2HighlightInvalidFields =
@@ -408,33 +386,21 @@ export function ProjectKickoffWorkspace() {
 
   const onConfirm = useCallback(async () => {
     if (!draft || !isDraftReady(draft)) return;
-    setIsSaving(true);
     try {
-      const res = await fetch("/api/project-kickoff/save", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draft, rawText }),
+      const created = await createKickoff({
+        draft: draft as ProjectKickoffDraft,
+        rawText,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(
-          (err as { error?: string }).error ?? "Failed to save project",
-        );
-        return;
-      }
-      const { jobId: newJobId } = (await res.json()) as {
-        projectId: string;
-        jobId: string;
-      };
-      setJobId(newJobId);
+      setJobId(created.jobId);
       setScreeningState("polling");
       setStep(4);
       toast.success("Project saved — AI screening in progress");
-    } finally {
-      setIsSaving(false);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save project",
+      );
     }
-  }, [draft, rawText]);
+  }, [createKickoff, draft, rawText]);
 
   const showFieldGrid = step === 2 && !!draft;
 
@@ -579,7 +545,6 @@ export function ProjectKickoffWorkspace() {
               {/* ── Step 2: field grid ── */}
               {showFieldGrid && (
                 <div className="grid w-full gap-2.5 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-2.5">
-
                   {/* Project name */}
                   <div className="space-y-1 sm:col-span-2">
                     <FieldLabel required>Project name</FieldLabel>
@@ -903,7 +868,9 @@ export function ProjectKickoffWorkspace() {
             </div>
             <div className="flex max-h-[min(75dvh,640px)] flex-col gap-3 overflow-y-auto overscroll-contain p-3 sm:p-4">
               <div className="border-border/50 rounded-lg border px-2 sm:px-3">
-                <SummaryRow label="Project name">{draft.projectName}</SummaryRow>
+                <SummaryRow label="Project name">
+                  {draft.projectName}
+                </SummaryRow>
                 <SummaryRow label="Department">
                   {draft.department || "—"}
                 </SummaryRow>
@@ -938,7 +905,7 @@ export function ProjectKickoffWorkspace() {
                   </span>
                 </SummaryRow>
                 <SummaryRow label="RACI matrix">
-                  <span className="whitespace-pre-wrap font-mono text-xs">
+                  <span className="font-mono text-xs whitespace-pre-wrap">
                     {draft.raciMatrix || "—"}
                   </span>
                 </SummaryRow>
@@ -948,7 +915,7 @@ export function ProjectKickoffWorkspace() {
                   </span>
                 </SummaryRow>
                 <SummaryRow label="Timeline">
-                  <span className="whitespace-pre-wrap font-mono text-xs">
+                  <span className="font-mono text-xs whitespace-pre-wrap">
                     {draft.timeline || "—"}
                   </span>
                 </SummaryRow>
@@ -1043,7 +1010,7 @@ export function ProjectKickoffWorkspace() {
                   <div className="flex items-baseline gap-2">
                     <span
                       className={cn(
-                        "tabular-nums text-5xl font-bold",
+                        "text-5xl font-bold tabular-nums",
                         screeningResult.score >= 3.5
                           ? "text-green-600"
                           : screeningResult.score >= 2

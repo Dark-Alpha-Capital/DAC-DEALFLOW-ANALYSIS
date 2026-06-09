@@ -18,6 +18,7 @@ import { investorsRouter } from "./investors";
 import { investorLeadsRouter } from "./investorLeads";
 import { cimScreeningRouter } from "./cim-screening";
 import { projectTrackersRouter } from "./project-trackers";
+import { projectKickoffsRouter } from "./project-kickoffs";
 
 export const appRouter = createTRPCRouter({
   companies: companiesRouter,
@@ -40,6 +41,7 @@ export const appRouter = createTRPCRouter({
   chats: chatsRouter,
   cimScreening: cimScreeningRouter,
   projectTrackers: projectTrackersRouter,
+  projectKickoffs: projectKickoffsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -141,6 +141,7 @@ export const editProjectKickoffSchema = z.object({
   platformEnables: z.string().nullable(),
   keyDeliverables: z.string().nullable(),
   risksAndBlockers: z.string().nullable(),
+  raciMatrix: z.string().nullable(),
   timeline: z.string().nullable(),
   chosenTool: z.string().nullable(),
   techStack: z.string().nullable(),

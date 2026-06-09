@@ -1,6 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useTRPC } from "@/trpc/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,30 +9,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { ArrowUpDown, Loader2 } from "lucide-react";
+import { ArrowUpDown, Plus } from "lucide-react";
 import { DEPARTMENT_VALUES } from "@repo/db/enums";
+import { loadProjectTrackersPageData } from "@/lib/server/project-trackers-route-data";
+import ProjectTrackersPageSkeleton from "@/components/skeletons/ProjectTrackersPageSkeleton";
 import {
-  asString,
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
+import {
   looseValidateSearch,
-  type LooseSearch,
+  projectTrackersListLoaderDeps,
 } from "@/lib/route-search";
-import {
-  usePathname,
-  useRouter,
-  useSearchParams,
-} from "@/lib/navigation-shim";
 
 export const Route = createFileRoute("/_protected/project-trackers/")({
-  validateSearch: (search: Record<string, unknown>): LooseSearch =>
-    looseValidateSearch(search),
+  validateSearch: (input: Record<string, unknown>) =>
+    projectTrackersListLoaderDeps(looseValidateSearch(input)),
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
+  loaderDeps: ({ search }) => search,
   head: () => ({
     meta: [{ title: "Project Trackers — Dark Alpha Capital" }],
   }),
+  loader: async ({ deps }) => loadProjectTrackersPageData({ data: deps }),
+  pendingComponent: ProjectTrackersPageSkeleton,
   component: ProjectTrackersPage,
 });
-
-type SortBy = "createdAt" | "department" | "createdBy";
-type SortDir = "asc" | "desc";
 
 function scoreColor(score: number | null) {
   if (score === null) return "";
@@ -51,55 +51,26 @@ function statusBadgeVariant(status: string | null) {
 }
 
 function ProjectTrackersPage() {
-  const trpc = useTRPC();
-  const { data: trackers, isLoading } = useQuery(
-    trpc.projectTrackers.getAll.queryOptions(),
-  );
+  const navigate = Route.useNavigate();
+  const { sortBy, sortDir, department: departmentFilter } = Route.useSearch();
+  const { trackers, totalCount, filteredCount } = Route.useLoaderData();
 
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
-
-  const sortBy = (asString(searchParams.get("sortBy") ?? undefined) ?? "createdAt") as SortBy;
-  const sortDir = (asString(searchParams.get("sortDir") ?? undefined) ?? "desc") as SortDir;
-  const departmentFilter = asString(searchParams.get("department") ?? undefined) ?? "";
-
-  function setParam(key: string, value: string | null) {
-    const params = new URLSearchParams(searchParams);
-    if (value) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
-    replace(`${pathname}?${params.toString()}`);
+  function setSearch(
+    patch: Partial<{
+      sortBy: typeof sortBy;
+      sortDir: typeof sortDir;
+      department: string;
+    }>,
+  ) {
+    navigate({
+      search: (prev) => ({ ...prev, ...patch }),
+      replace: true,
+    });
   }
 
   function toggleSortDir() {
-    setParam("sortDir", sortDir === "desc" ? "asc" : "desc");
+    setSearch({ sortDir: sortDir === "desc" ? "asc" : "desc" });
   }
-
-  const sorted = [...(trackers ?? [])].sort((a, b) => {
-    let aVal = "";
-    let bVal = "";
-
-    if (sortBy === "createdAt") {
-      aVal = new Date(a.createdAt).toISOString();
-      bVal = new Date(b.createdAt).toISOString();
-    } else if (sortBy === "department") {
-      aVal = a.department ?? "";
-      bVal = b.department ?? "";
-    } else if (sortBy === "createdBy") {
-      aVal = a.createdBy ?? "";
-      bVal = b.createdBy ?? "";
-    }
-
-    const cmp = aVal.localeCompare(bVal);
-    return sortDir === "asc" ? cmp : -cmp;
-  });
-
-  const filtered = departmentFilter
-    ? sorted.filter((t) => t.department === departmentFilter)
-    : sorted;
 
   return (
     <section className="block-space-mini container">
@@ -110,13 +81,18 @@ function ProjectTrackersPage() {
             All projects across the firm, with AI screening scores and analysis.
           </p>
         </div>
+        <Button asChild size="sm">
+          <Link to="/project-kickoff" className="gap-2">
+            <Plus className="size-4" />
+            New Project Kickoff
+          </Link>
+        </Button>
       </div>
 
-      {/* Sort / filter bar */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Select
           value={sortBy}
-          onValueChange={(v) => setParam("sortBy", v)}
+          onValueChange={(v) => setSearch({ sortBy: v as typeof sortBy })}
         >
           <SelectTrigger className="w-44">
             <SelectValue />
@@ -140,7 +116,7 @@ function ProjectTrackersPage() {
 
         <Select
           value={departmentFilter || "all"}
-          onValueChange={(v) => setParam("department", v === "all" ? null : v)}
+          onValueChange={(v) => setSearch({ department: v === "all" ? "" : v })}
         >
           <SelectTrigger className="w-52">
             <SelectValue />
@@ -156,16 +132,17 @@ function ProjectTrackersPage() {
         </Select>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center gap-2 py-12 text-sm">
-          <Loader2 className="text-primary size-4 animate-spin" />
-          <span>Loading projects…</span>
+      {totalCount === 0 ? (
+        <div className="text-muted-foreground flex flex-col items-center gap-3 py-12 text-center text-sm">
+          <p>No projects yet. Start a Project Kickoff to see it here.</p>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/project-kickoff" className="gap-2">
+              <Plus className="size-4" />
+              New Project Kickoff
+            </Link>
+          </Button>
         </div>
-      ) : !trackers || trackers.length === 0 ? (
-        <div className="text-muted-foreground py-12 text-center text-sm">
-          No projects yet. Complete a Project Kickoff to see it here.
-        </div>
-      ) : filtered.length === 0 ? (
+      ) : filteredCount === 0 ? (
         <div className="text-muted-foreground py-12 text-center text-sm">
           No projects match the selected department.
         </div>
@@ -195,7 +172,7 @@ function ProjectTrackersPage() {
               </tr>
             </thead>
             <tbody className="divide-border/40 divide-y">
-              {filtered.map((t) => (
+              {trackers.map((t) => (
                 <tr key={t.id} className="hover:bg-muted/20 transition-colors">
                   <td className="px-4 py-3 font-medium">
                     <Link
@@ -209,7 +186,7 @@ function ProjectTrackersPage() {
                   <td className="px-4 py-3">
                     {t.sourceType ? (
                       <Badge variant="outline" className="text-xs">
-                        {t.sourceType === "project-kickoff"
+                        {t.sourceType === "PROJECT_KICKOFF"
                           ? "Project Kickoff"
                           : t.sourceType}
                       </Badge>

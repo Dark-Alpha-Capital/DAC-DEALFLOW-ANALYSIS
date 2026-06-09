@@ -81,6 +81,12 @@ export const rawDealsListFilterSchema = z.object({
   tags: z.array(z.string()),
 });
 
+export const projectTrackersPageInputSchema = z.object({
+  sortBy: z.enum(["createdAt", "department", "createdBy"]),
+  sortDir: z.enum(["asc", "desc"]),
+  department: z.string().max(100),
+});
+
 export const investmentThemesListFilterSchema = z.object({
   offset: z.number().int().nonnegative(),
   limit: z.number().int().positive().max(500),

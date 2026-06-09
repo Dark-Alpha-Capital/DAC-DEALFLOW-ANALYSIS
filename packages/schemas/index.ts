@@ -23,6 +23,15 @@ export {
   type EditProjectKickoffValues,
 } from "./project-kickoff-extraction";
 export {
+  projectKickoffDraftSchema,
+  draftToStructured,
+  draftToDbFields,
+  structuredToDraft,
+  hasMaterialKickoffChanges,
+  MATERIAL_KICKOFF_FIELDS,
+  type ProjectKickoffDraft,
+} from "./project-kickoff-draft";
+export {
   icScorerAlignmentRowSchema,
   icScorerAlignmentStatusSchema,
   icScorerColorSchema,

@@ -1,100 +1,156 @@
 import { db } from "../index";
-import { projectTrackers, projectKickoffs } from "../schema";
+import {
+  projectTrackers,
+  projectKickoffs,
+  projectKickoffScreenings,
+} from "../schema";
 import { desc, eq, inArray } from "drizzle-orm";
 
-type TrackerContent = { type: string; sourceId: string };
+export type ProjectKickoffScreeningSummary = {
+  id: string;
+  status: "pending" | "running" | "completed" | "failed";
+  score: number | null;
+  analysis: string | null;
+  workflowInstanceId: string | null;
+  screenedAt: Date | null;
+  createdAt: Date;
+};
 
-function parseContent(raw: string | null): TrackerContent | null {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as TrackerContent;
-  } catch {
-    return null;
-  }
-}
+async function loadLatestScreeningsByKickoffIds(
+  kickoffIds: string[],
+): Promise<Map<string, ProjectKickoffScreeningSummary>> {
+  const map = new Map<string, ProjectKickoffScreeningSummary>();
+  if (kickoffIds.length === 0) return map;
 
-export async function getAllProjectTrackers() {
-  const trackers = await db
-    .select()
-    .from(projectTrackers)
-    .orderBy(desc(projectTrackers.createdAt));
+  const rows = await db
+    .select({
+      id: projectKickoffScreenings.id,
+      kickoffId: projectKickoffScreenings.kickoffId,
+      status: projectKickoffScreenings.status,
+      score: projectKickoffScreenings.score,
+      analysis: projectKickoffScreenings.analysis,
+      workflowInstanceId: projectKickoffScreenings.workflowInstanceId,
+      screenedAt: projectKickoffScreenings.screenedAt,
+      createdAt: projectKickoffScreenings.createdAt,
+    })
+    .from(projectKickoffScreenings)
+    .where(inArray(projectKickoffScreenings.kickoffId, kickoffIds))
+    .orderBy(
+      projectKickoffScreenings.kickoffId,
+      desc(projectKickoffScreenings.createdAt),
+    );
 
-  if (trackers.length === 0) return [];
-
-  // Collect kickoff IDs from content JSON
-  const kickoffIds: string[] = [];
-  for (const t of trackers) {
-    const parsed = parseContent(t.content);
-    if (parsed?.type === "project-kickoff" && parsed.sourceId) {
-      kickoffIds.push(parsed.sourceId);
-    }
-  }
-
-  const kickoffMap = new Map<
-    string,
-    {
-      department: string | null;
-      screeningStatus: string;
-      screeningScore: number | null;
-    }
-  >();
-
-  if (kickoffIds.length > 0) {
-    const kickoffs = await db
-      .select({
-        id: projectKickoffs.id,
-        department: projectKickoffs.department,
-        screeningStatus: projectKickoffs.screeningStatus,
-        screeningScore: projectKickoffs.screeningScore,
-      })
-      .from(projectKickoffs)
-      .where(inArray(projectKickoffs.id, kickoffIds));
-
-    for (const k of kickoffs) {
-      kickoffMap.set(k.id, {
-        department: k.department,
-        screeningStatus: k.screeningStatus,
-        screeningScore: k.screeningScore,
+  for (const row of rows) {
+    if (!map.has(row.kickoffId)) {
+      map.set(row.kickoffId, {
+        id: row.id,
+        status: row.status,
+        score: row.score,
+        analysis: row.analysis,
+        workflowInstanceId: row.workflowInstanceId,
+        screenedAt: row.screenedAt,
+        createdAt: row.createdAt,
       });
     }
   }
 
+  return map;
+}
+
+export async function getProjectKickoffById(kickoffId: string) {
+  const [kickoff] = await db
+    .select()
+    .from(projectKickoffs)
+    .where(eq(projectKickoffs.id, kickoffId))
+    .limit(1);
+
+  if (!kickoff) return null;
+
+  const screeningMap = await loadLatestScreeningsByKickoffIds([kickoffId]);
+  return {
+    kickoff,
+    latestScreening: screeningMap.get(kickoffId) ?? null,
+  };
+}
+
+export async function getProjectKickoffScreeningByJobId(jobId: string) {
+  const [row] = await db
+    .select({
+      id: projectKickoffScreenings.id,
+      kickoffId: projectKickoffScreenings.kickoffId,
+      status: projectKickoffScreenings.status,
+      score: projectKickoffScreenings.score,
+      analysis: projectKickoffScreenings.analysis,
+      workflowInstanceId: projectKickoffScreenings.workflowInstanceId,
+      screenedAt: projectKickoffScreenings.screenedAt,
+      createdAt: projectKickoffScreenings.createdAt,
+    })
+    .from(projectKickoffScreenings)
+    .where(eq(projectKickoffScreenings.workflowInstanceId, jobId))
+    .limit(1);
+
+  return row ?? null;
+}
+
+export async function getAllProjectTrackers() {
+  const trackers = await db
+    .select({
+      id: projectTrackers.id,
+      name: projectTrackers.name,
+      sourceType: projectTrackers.sourceType,
+      kickoffId: projectTrackers.kickoffId,
+      createdAt: projectTrackers.createdAt,
+      createdBy: projectTrackers.createdBy,
+      department: projectKickoffs.department,
+    })
+    .from(projectTrackers)
+    .leftJoin(projectKickoffs, eq(projectTrackers.kickoffId, projectKickoffs.id))
+    .orderBy(desc(projectTrackers.createdAt));
+
+  const kickoffIds = trackers.map((t) => t.kickoffId);
+  const screeningMap = await loadLatestScreeningsByKickoffIds(kickoffIds);
+
   return trackers.map((t) => {
-    const parsed = parseContent(t.content);
-    const sourceId = parsed?.sourceId ?? null;
-    const kickoff = sourceId ? kickoffMap.get(sourceId) : undefined;
+    const screening = screeningMap.get(t.kickoffId);
     return {
       id: t.id,
       name: t.name,
-      content: t.content,
+      sourceType: t.sourceType,
+      kickoffId: t.kickoffId,
       createdAt: t.createdAt,
       createdBy: t.createdBy,
-      sourceType: parsed?.type ?? null,
-      sourceId,
-      department: kickoff?.department ?? null,
-      screeningStatus: kickoff?.screeningStatus ?? null,
-      screeningScore: kickoff?.screeningScore ?? null,
+      department: t.department ?? null,
+      screeningStatus: screening?.status ?? null,
+      screeningScore: screening?.score ?? null,
+      latestScreening: screening ?? null,
     };
   });
 }
 
 export async function getProjectTrackerById(trackerId: string) {
-  const [tracker] = await db
-    .select()
+  const [row] = await db
+    .select({
+      tracker: projectTrackers,
+      kickoff: projectKickoffs,
+    })
     .from(projectTrackers)
-    .where(eq(projectTrackers.id, trackerId));
+    .leftJoin(projectKickoffs, eq(projectTrackers.kickoffId, projectKickoffs.id))
+    .where(eq(projectTrackers.id, trackerId))
+    .limit(1);
 
-  if (!tracker) return null;
+  if (!row) return null;
 
-  const parsed = parseContent(tracker.content);
-  if (!parsed || parsed.type !== "project-kickoff" || !parsed.sourceId) {
-    return { tracker, kickoff: null };
-  }
+  const screeningMap = row.kickoff
+    ? await loadLatestScreeningsByKickoffIds([row.kickoff.id])
+    : new Map();
 
-  const [kickoff] = await db
-    .select()
-    .from(projectKickoffs)
-    .where(eq(projectKickoffs.id, parsed.sourceId));
+  const latestScreening = row.kickoff
+    ? (screeningMap.get(row.kickoff.id) ?? null)
+    : null;
 
-  return { tracker, kickoff: kickoff ?? null };
+  return {
+    tracker: row.tracker,
+    kickoff: row.kickoff,
+    latestScreening,
+  };
 }

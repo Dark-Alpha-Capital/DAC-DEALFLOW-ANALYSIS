@@ -21,24 +21,39 @@ export interface InsertWorkflowJobInput {
   screenerId?: string | null;
 }
 
+function workflowJobInsertValues(row: InsertWorkflowJobInput) {
+  return {
+    instanceId: row.instanceId,
+    workflowKind: row.workflowKind,
+    userId: row.userId ?? null,
+    dealId: row.dealId ?? null,
+    fileName: row.fileName ?? null,
+    screenerId: row.screenerId ?? null,
+    state: "waiting" as const,
+    progressPercent: 0,
+    progressStep: null,
+    failedReason: null,
+    returnValue: null,
+    attemptsMade: 0,
+    updatedAt: new Date(),
+  };
+}
+
 export async function insertWorkflowJob(row: InsertWorkflowJobInput) {
   await db
     .insert(workflowJobs)
-    .values({
-      instanceId: row.instanceId,
-      workflowKind: row.workflowKind,
-      userId: row.userId ?? null,
-      dealId: row.dealId ?? null,
-      fileName: row.fileName ?? null,
-      screenerId: row.screenerId ?? null,
-      state: "waiting",
-      progressPercent: 0,
-      progressStep: null,
-      failedReason: null,
-      returnValue: null,
-      attemptsMade: 0,
-      updatedAt: new Date(),
-    })
+    .values(workflowJobInsertValues(row))
+    .onConflictDoNothing({ target: workflowJobs.instanceId });
+}
+
+/** Transaction-safe variant for atomic create flows */
+export async function insertWorkflowJobTx(
+  tx: Pick<typeof db, "insert">,
+  row: InsertWorkflowJobInput,
+) {
+  await tx
+    .insert(workflowJobs)
+    .values(workflowJobInsertValues(row))
     .onConflictDoNothing({ target: workflowJobs.instanceId });
 }
 

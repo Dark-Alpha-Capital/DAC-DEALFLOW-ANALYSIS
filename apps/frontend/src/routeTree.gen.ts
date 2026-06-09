@@ -29,9 +29,10 @@ import { Route as ProtectedAnalyticsRouteImport } from './routes/_protected/anal
 import { Route as ProtectedAdminRouteImport } from './routes/_protected/admin'
 import { Route as DocumentationDocsRouteImport } from './routes/_documentation/docs'
 import { Route as ChatbotChatRouteImport } from './routes/_chatbot/chat'
-import { Route as PublicProjectKickoffIndexRouteImport } from './routes/_public/project-kickoff/index'
 import { Route as ProtectedScreeningIndexRouteImport } from './routes/_protected/screening/index'
 import { Route as ProtectedScreenersIndexRouteImport } from './routes/_protected/screeners/index'
+import { Route as ProtectedProjectTrackersIndexRouteImport } from './routes/_protected/project-trackers/index'
+import { Route as ProtectedProjectKickoffIndexRouteImport } from './routes/_protected/project-kickoff/index'
 import { Route as ProtectedLeadsIndexRouteImport } from './routes/_protected/leads/index'
 import { Route as ProtectedInvestorsIndexRouteImport } from './routes/_protected/investors/index'
 import { Route as ProtectedInvestorLeadsIndexRouteImport } from './routes/_protected/investor-leads/index'
@@ -41,8 +42,6 @@ import { Route as ProtectedCompaniesIndexRouteImport } from './routes/_protected
 import { Route as ChatbotChatIndexRouteImport } from './routes/_chatbot/chat/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc.$'
 import { Route as ApiProjectKickoffExtractRouteImport } from './routes/api/project-kickoff/extract'
-import { Route as ApiProjectKickoffSaveRouteImport } from './routes/api/project-kickoff/save'
-import { Route as ApiProjectKickoffStatusJobIdRouteImport } from './routes/api/project-kickoff/status.$jobId'
 import { Route as ApiLeadsIngestRouteImport } from './routes/api/leads/ingest'
 import { Route as ApiInvestorLeadsIngestRouteImport } from './routes/api/investor-leads/ingest'
 import { Route as ApiIcScorerScoreRouteImport } from './routes/api/ic-scorer/score'
@@ -55,7 +54,9 @@ import { Route as PublicDealOpportunitiesScreenBitrixRouteImport } from './route
 import { Route as PublicDealOpportunitiesIcScorerRouteImport } from './routes/_public/deal-opportunities/ic-scorer'
 import { Route as PublicDealOpportunitiesAiBitrixRouteImport } from './routes/_public/deal-opportunities/ai-bitrix'
 import { Route as ProtectedScreeningNewRunRouteImport } from './routes/_protected/screening/new-run'
+import { Route as ProtectedScreenersNewRouteImport } from './routes/_protected/screeners/new'
 import { Route as ProtectedScreenersUidRouteImport } from './routes/_protected/screeners/$uid'
+import { Route as ProtectedProjectTrackersTrackerIdRouteImport } from './routes/_protected/project-trackers/$trackerId'
 import { Route as ProtectedProfileUidRouteImport } from './routes/_protected/profile/$uid'
 import { Route as ProtectedNewDocumentRouteImport } from './routes/_protected/new/document'
 import { Route as ProtectedLeadsNewRouteImport } from './routes/_protected/leads/new'
@@ -198,12 +199,6 @@ const ChatbotChatRoute = ChatbotChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => ChatbotRouteRoute,
 } as any)
-const PublicProjectKickoffIndexRoute =
-  PublicProjectKickoffIndexRouteImport.update({
-    id: '/project-kickoff/',
-    path: '/project-kickoff/',
-    getParentRoute: () => PublicRouteRoute,
-  } as any)
 const ProtectedScreeningIndexRoute = ProtectedScreeningIndexRouteImport.update({
   id: '/screening/',
   path: '/screening/',
@@ -214,6 +209,18 @@ const ProtectedScreenersIndexRoute = ProtectedScreenersIndexRouteImport.update({
   path: '/screeners/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedProjectTrackersIndexRoute =
+  ProtectedProjectTrackersIndexRouteImport.update({
+    id: '/project-trackers/',
+    path: '/project-trackers/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedProjectKickoffIndexRoute =
+  ProtectedProjectKickoffIndexRouteImport.update({
+    id: '/project-kickoff/',
+    path: '/project-kickoff/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedLeadsIndexRoute = ProtectedLeadsIndexRouteImport.update({
   id: '/leads/',
   path: '/leads/',
@@ -261,17 +268,6 @@ const ApiProjectKickoffExtractRoute =
   ApiProjectKickoffExtractRouteImport.update({
     id: '/api/project-kickoff/extract',
     path: '/api/project-kickoff/extract',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiProjectKickoffSaveRoute = ApiProjectKickoffSaveRouteImport.update({
-  id: '/api/project-kickoff/save',
-  path: '/api/project-kickoff/save',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiProjectKickoffStatusJobIdRoute =
-  ApiProjectKickoffStatusJobIdRouteImport.update({
-    id: '/api/project-kickoff/status/$jobId',
-    path: '/api/project-kickoff/status/$jobId',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiLeadsIngestRoute = ApiLeadsIngestRouteImport.update({
@@ -340,11 +336,22 @@ const ProtectedScreeningNewRunRoute =
     path: '/screening/new-run',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ProtectedScreenersNewRoute = ProtectedScreenersNewRouteImport.update({
+  id: '/screeners/new',
+  path: '/screeners/new',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ProtectedScreenersUidRoute = ProtectedScreenersUidRouteImport.update({
   id: '/screeners/$uid',
   path: '/screeners/$uid',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedProjectTrackersTrackerIdRoute =
+  ProtectedProjectTrackersTrackerIdRouteImport.update({
+    id: '/project-trackers/$trackerId',
+    path: '/project-trackers/$trackerId',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedProfileUidRoute = ProtectedProfileUidRouteImport.update({
   id: '/profile/$uid',
   path: '/profile/$uid',
@@ -650,7 +657,9 @@ export interface FileRoutesByFullPath {
   '/leads/new': typeof ProtectedLeadsNewRoute
   '/new/document': typeof ProtectedNewDocumentRoute
   '/profile/$uid': typeof ProtectedProfileUidRoute
+  '/project-trackers/$trackerId': typeof ProtectedProjectTrackersTrackerIdRoute
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
+  '/screeners/new': typeof ProtectedScreenersNewRoute
   '/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
   '/deal-opportunities/ic-scorer': typeof PublicDealOpportunitiesIcScorerRoute
@@ -664,8 +673,6 @@ export interface FileRoutesByFullPath {
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
-  '/api/project-kickoff/save': typeof ApiProjectKickoffSaveRoute
-  '/api/project-kickoff/status/$jobId': typeof ApiProjectKickoffStatusJobIdRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat/': typeof ChatbotChatIndexRoute
   '/companies/': typeof ProtectedCompaniesIndexRoute
@@ -674,9 +681,10 @@ export interface FileRoutesByFullPath {
   '/investor-leads/': typeof ProtectedInvestorLeadsIndexRoute
   '/investors/': typeof ProtectedInvestorsIndexRoute
   '/leads/': typeof ProtectedLeadsIndexRoute
+  '/project-kickoff/': typeof ProtectedProjectKickoffIndexRoute
+  '/project-trackers/': typeof ProtectedProjectTrackersIndexRoute
   '/screeners/': typeof ProtectedScreenersIndexRoute
   '/screening/': typeof ProtectedScreeningIndexRoute
-  '/project-kickoff/': typeof PublicProjectKickoffIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
@@ -739,7 +747,9 @@ export interface FileRoutesByTo {
   '/leads/new': typeof ProtectedLeadsNewRoute
   '/new/document': typeof ProtectedNewDocumentRoute
   '/profile/$uid': typeof ProtectedProfileUidRoute
+  '/project-trackers/$trackerId': typeof ProtectedProjectTrackersTrackerIdRoute
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
+  '/screeners/new': typeof ProtectedScreenersNewRoute
   '/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
   '/deal-opportunities/ic-scorer': typeof PublicDealOpportunitiesIcScorerRoute
@@ -753,8 +763,6 @@ export interface FileRoutesByTo {
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
-  '/api/project-kickoff/save': typeof ApiProjectKickoffSaveRoute
-  '/api/project-kickoff/status/$jobId': typeof ApiProjectKickoffStatusJobIdRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat': typeof ChatbotChatIndexRoute
   '/companies': typeof ProtectedCompaniesIndexRoute
@@ -763,9 +771,10 @@ export interface FileRoutesByTo {
   '/investor-leads': typeof ProtectedInvestorLeadsIndexRoute
   '/investors': typeof ProtectedInvestorsIndexRoute
   '/leads': typeof ProtectedLeadsIndexRoute
+  '/project-kickoff': typeof ProtectedProjectKickoffIndexRoute
+  '/project-trackers': typeof ProtectedProjectTrackersIndexRoute
   '/screeners': typeof ProtectedScreenersIndexRoute
   '/screening': typeof ProtectedScreeningIndexRoute
-  '/project-kickoff': typeof PublicProjectKickoffIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
@@ -835,7 +844,9 @@ export interface FileRoutesById {
   '/_protected/leads/new': typeof ProtectedLeadsNewRoute
   '/_protected/new/document': typeof ProtectedNewDocumentRoute
   '/_protected/profile/$uid': typeof ProtectedProfileUidRoute
+  '/_protected/project-trackers/$trackerId': typeof ProtectedProjectTrackersTrackerIdRoute
   '/_protected/screeners/$uid': typeof ProtectedScreenersUidRoute
+  '/_protected/screeners/new': typeof ProtectedScreenersNewRoute
   '/_protected/screening/new-run': typeof ProtectedScreeningNewRunRoute
   '/_public/deal-opportunities/ai-bitrix': typeof PublicDealOpportunitiesAiBitrixRoute
   '/_public/deal-opportunities/ic-scorer': typeof PublicDealOpportunitiesIcScorerRoute
@@ -849,8 +860,6 @@ export interface FileRoutesById {
   '/api/investor-leads/ingest': typeof ApiInvestorLeadsIngestRoute
   '/api/leads/ingest': typeof ApiLeadsIngestRoute
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
-  '/api/project-kickoff/save': typeof ApiProjectKickoffSaveRoute
-  '/api/project-kickoff/status/$jobId': typeof ApiProjectKickoffStatusJobIdRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/_chatbot/chat/': typeof ChatbotChatIndexRoute
   '/_protected/companies/': typeof ProtectedCompaniesIndexRoute
@@ -859,9 +868,10 @@ export interface FileRoutesById {
   '/_protected/investor-leads/': typeof ProtectedInvestorLeadsIndexRoute
   '/_protected/investors/': typeof ProtectedInvestorsIndexRoute
   '/_protected/leads/': typeof ProtectedLeadsIndexRoute
+  '/_protected/project-kickoff/': typeof ProtectedProjectKickoffIndexRoute
+  '/_protected/project-trackers/': typeof ProtectedProjectTrackersIndexRoute
   '/_protected/screeners/': typeof ProtectedScreenersIndexRoute
   '/_protected/screening/': typeof ProtectedScreeningIndexRoute
-  '/_public/project-kickoff/': typeof PublicProjectKickoffIndexRoute
   '/_protected/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/_protected/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/_protected/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
@@ -927,7 +937,9 @@ export interface FileRouteTypes {
     | '/leads/new'
     | '/new/document'
     | '/profile/$uid'
+    | '/project-trackers/$trackerId'
     | '/screeners/$uid'
+    | '/screeners/new'
     | '/screening/new-run'
     | '/deal-opportunities/ai-bitrix'
     | '/deal-opportunities/ic-scorer'
@@ -941,8 +953,6 @@ export interface FileRouteTypes {
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/project-kickoff/extract'
-    | '/api/project-kickoff/save'
-    | '/api/project-kickoff/status/$jobId'
     | '/api/trpc/$'
     | '/chat/'
     | '/companies/'
@@ -951,9 +961,10 @@ export interface FileRouteTypes {
     | '/investor-leads/'
     | '/investors/'
     | '/leads/'
+    | '/project-kickoff/'
+    | '/project-trackers/'
     | '/screeners/'
     | '/screening/'
-    | '/project-kickoff/'
     | '/companies/$uid/edit'
     | '/deal-opportunities/$uid/edit'
     | '/deal-opportunities/$uid/sync-bitrix-24'
@@ -1016,7 +1027,9 @@ export interface FileRouteTypes {
     | '/leads/new'
     | '/new/document'
     | '/profile/$uid'
+    | '/project-trackers/$trackerId'
     | '/screeners/$uid'
+    | '/screeners/new'
     | '/screening/new-run'
     | '/deal-opportunities/ai-bitrix'
     | '/deal-opportunities/ic-scorer'
@@ -1030,8 +1043,6 @@ export interface FileRouteTypes {
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/project-kickoff/extract'
-    | '/api/project-kickoff/save'
-    | '/api/project-kickoff/status/$jobId'
     | '/api/trpc/$'
     | '/chat'
     | '/companies'
@@ -1040,9 +1051,10 @@ export interface FileRouteTypes {
     | '/investor-leads'
     | '/investors'
     | '/leads'
+    | '/project-kickoff'
+    | '/project-trackers'
     | '/screeners'
     | '/screening'
-    | '/project-kickoff'
     | '/companies/$uid/edit'
     | '/deal-opportunities/$uid/edit'
     | '/deal-opportunities/$uid/sync-bitrix-24'
@@ -1111,7 +1123,9 @@ export interface FileRouteTypes {
     | '/_protected/leads/new'
     | '/_protected/new/document'
     | '/_protected/profile/$uid'
+    | '/_protected/project-trackers/$trackerId'
     | '/_protected/screeners/$uid'
+    | '/_protected/screeners/new'
     | '/_protected/screening/new-run'
     | '/_public/deal-opportunities/ai-bitrix'
     | '/_public/deal-opportunities/ic-scorer'
@@ -1125,8 +1139,6 @@ export interface FileRouteTypes {
     | '/api/investor-leads/ingest'
     | '/api/leads/ingest'
     | '/api/project-kickoff/extract'
-    | '/api/project-kickoff/save'
-    | '/api/project-kickoff/status/$jobId'
     | '/api/trpc/$'
     | '/_chatbot/chat/'
     | '/_protected/companies/'
@@ -1135,9 +1147,10 @@ export interface FileRouteTypes {
     | '/_protected/investor-leads/'
     | '/_protected/investors/'
     | '/_protected/leads/'
+    | '/_protected/project-kickoff/'
+    | '/_protected/project-trackers/'
     | '/_protected/screeners/'
     | '/_protected/screening/'
-    | '/_public/project-kickoff/'
     | '/_protected/companies/$uid/edit'
     | '/_protected/deal-opportunities/$uid/edit'
     | '/_protected/deal-opportunities/$uid/sync-bitrix-24'
@@ -1173,8 +1186,6 @@ export interface RootRouteChildren {
   ApiInvestorLeadsIngestRoute: typeof ApiInvestorLeadsIngestRoute
   ApiLeadsIngestRoute: typeof ApiLeadsIngestRoute
   ApiProjectKickoffExtractRoute: typeof ApiProjectKickoffExtractRoute
-  ApiProjectKickoffSaveRoute: typeof ApiProjectKickoffSaveRoute
-  ApiProjectKickoffStatusJobIdRoute: typeof ApiProjectKickoffStatusJobIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1319,13 +1330,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatbotChatRouteImport
       parentRoute: typeof ChatbotRouteRoute
     }
-    '/_public/project-kickoff/': {
-      id: '/_public/project-kickoff/'
-      path: '/project-kickoff'
-      fullPath: '/project-kickoff/'
-      preLoaderRoute: typeof PublicProjectKickoffIndexRouteImport
-      parentRoute: typeof PublicRouteRoute
-    }
     '/_protected/screening/': {
       id: '/_protected/screening/'
       path: '/screening'
@@ -1338,6 +1342,20 @@ declare module '@tanstack/react-router' {
       path: '/screeners'
       fullPath: '/screeners/'
       preLoaderRoute: typeof ProtectedScreenersIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/project-trackers/': {
+      id: '/_protected/project-trackers/'
+      path: '/project-trackers'
+      fullPath: '/project-trackers/'
+      preLoaderRoute: typeof ProtectedProjectTrackersIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/project-kickoff/': {
+      id: '/_protected/project-kickoff/'
+      path: '/project-kickoff'
+      fullPath: '/project-kickoff/'
+      preLoaderRoute: typeof ProtectedProjectKickoffIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/leads/': {
@@ -1401,20 +1419,6 @@ declare module '@tanstack/react-router' {
       path: '/api/project-kickoff/extract'
       fullPath: '/api/project-kickoff/extract'
       preLoaderRoute: typeof ApiProjectKickoffExtractRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/project-kickoff/save': {
-      id: '/api/project-kickoff/save'
-      path: '/api/project-kickoff/save'
-      fullPath: '/api/project-kickoff/save'
-      preLoaderRoute: typeof ApiProjectKickoffSaveRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/project-kickoff/status/$jobId': {
-      id: '/api/project-kickoff/status/$jobId'
-      path: '/api/project-kickoff/status/$jobId'
-      fullPath: '/api/project-kickoff/status/$jobId'
-      preLoaderRoute: typeof ApiProjectKickoffStatusJobIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/leads/ingest': {
@@ -1501,11 +1505,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedScreeningNewRunRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/screeners/new': {
+      id: '/_protected/screeners/new'
+      path: '/screeners/new'
+      fullPath: '/screeners/new'
+      preLoaderRoute: typeof ProtectedScreenersNewRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/screeners/$uid': {
       id: '/_protected/screeners/$uid'
       path: '/screeners/$uid'
       fullPath: '/screeners/$uid'
       preLoaderRoute: typeof ProtectedScreenersUidRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/project-trackers/$trackerId': {
+      id: '/_protected/project-trackers/$trackerId'
+      path: '/project-trackers/$trackerId'
+      fullPath: '/project-trackers/$trackerId'
+      preLoaderRoute: typeof ProtectedProjectTrackersTrackerIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/profile/$uid': {
@@ -1970,7 +1988,9 @@ interface ProtectedRouteRouteChildren {
   ProtectedInvestorsNewRoute: typeof ProtectedInvestorsNewRoute
   ProtectedLeadsNewRoute: typeof ProtectedLeadsNewRoute
   ProtectedProfileUidRoute: typeof ProtectedProfileUidRoute
+  ProtectedProjectTrackersTrackerIdRoute: typeof ProtectedProjectTrackersTrackerIdRoute
   ProtectedScreenersUidRoute: typeof ProtectedScreenersUidRoute
+  ProtectedScreenersNewRoute: typeof ProtectedScreenersNewRoute
   ProtectedScreeningNewRunRoute: typeof ProtectedScreeningNewRunRoute
   ProtectedCompaniesIndexRoute: typeof ProtectedCompaniesIndexRoute
   ProtectedDealOpportunitiesIndexRoute: typeof ProtectedDealOpportunitiesIndexRoute
@@ -1978,6 +1998,8 @@ interface ProtectedRouteRouteChildren {
   ProtectedInvestorLeadsIndexRoute: typeof ProtectedInvestorLeadsIndexRoute
   ProtectedInvestorsIndexRoute: typeof ProtectedInvestorsIndexRoute
   ProtectedLeadsIndexRoute: typeof ProtectedLeadsIndexRoute
+  ProtectedProjectKickoffIndexRoute: typeof ProtectedProjectKickoffIndexRoute
+  ProtectedProjectTrackersIndexRoute: typeof ProtectedProjectTrackersIndexRoute
   ProtectedScreenersIndexRoute: typeof ProtectedScreenersIndexRoute
   ProtectedScreeningIndexRoute: typeof ProtectedScreeningIndexRoute
   ProtectedDealOpportunitiesUidEditRoute: typeof ProtectedDealOpportunitiesUidEditRoute
@@ -2017,7 +2039,10 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedInvestorsNewRoute: ProtectedInvestorsNewRoute,
   ProtectedLeadsNewRoute: ProtectedLeadsNewRoute,
   ProtectedProfileUidRoute: ProtectedProfileUidRoute,
+  ProtectedProjectTrackersTrackerIdRoute:
+    ProtectedProjectTrackersTrackerIdRoute,
   ProtectedScreenersUidRoute: ProtectedScreenersUidRoute,
+  ProtectedScreenersNewRoute: ProtectedScreenersNewRoute,
   ProtectedScreeningNewRunRoute: ProtectedScreeningNewRunRoute,
   ProtectedCompaniesIndexRoute: ProtectedCompaniesIndexRoute,
   ProtectedDealOpportunitiesIndexRoute: ProtectedDealOpportunitiesIndexRoute,
@@ -2025,6 +2050,8 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedInvestorLeadsIndexRoute: ProtectedInvestorLeadsIndexRoute,
   ProtectedInvestorsIndexRoute: ProtectedInvestorsIndexRoute,
   ProtectedLeadsIndexRoute: ProtectedLeadsIndexRoute,
+  ProtectedProjectKickoffIndexRoute: ProtectedProjectKickoffIndexRoute,
+  ProtectedProjectTrackersIndexRoute: ProtectedProjectTrackersIndexRoute,
   ProtectedScreenersIndexRoute: ProtectedScreenersIndexRoute,
   ProtectedScreeningIndexRoute: ProtectedScreeningIndexRoute,
   ProtectedDealOpportunitiesUidEditRoute:
@@ -2057,7 +2084,6 @@ interface PublicRouteRouteChildren {
   PublicDealOpportunitiesAiBitrixRoute: typeof PublicDealOpportunitiesAiBitrixRoute
   PublicDealOpportunitiesIcScorerRoute: typeof PublicDealOpportunitiesIcScorerRoute
   PublicDealOpportunitiesScreenBitrixRoute: typeof PublicDealOpportunitiesScreenBitrixRoute
-  PublicProjectKickoffIndexRoute: typeof PublicProjectKickoffIndexRoute
 }
 
 const PublicRouteRouteChildren: PublicRouteRouteChildren = {
@@ -2065,7 +2091,6 @@ const PublicRouteRouteChildren: PublicRouteRouteChildren = {
   PublicDealOpportunitiesIcScorerRoute: PublicDealOpportunitiesIcScorerRoute,
   PublicDealOpportunitiesScreenBitrixRoute:
     PublicDealOpportunitiesScreenBitrixRoute,
-  PublicProjectKickoffIndexRoute: PublicProjectKickoffIndexRoute,
 }
 
 const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
@@ -2115,8 +2140,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInvestorLeadsIngestRoute: ApiInvestorLeadsIngestRoute,
   ApiLeadsIngestRoute: ApiLeadsIngestRoute,
   ApiProjectKickoffExtractRoute: ApiProjectKickoffExtractRoute,
-  ApiProjectKickoffSaveRoute: ApiProjectKickoffSaveRoute,
-  ApiProjectKickoffStatusJobIdRoute: ApiProjectKickoffStatusJobIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

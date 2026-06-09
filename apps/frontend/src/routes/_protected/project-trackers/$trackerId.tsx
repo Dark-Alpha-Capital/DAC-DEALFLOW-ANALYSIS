@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useTRPC } from "@/trpc/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, Loader2, Save } from "lucide-react";
+import { ChevronLeft, Loader2, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { DEPARTMENT_VALUES } from "@repo/db/enums";
 import {
@@ -32,6 +31,9 @@ import {
   type EditProjectKickoffValues,
 } from "@repo/schemas";
 import DeleteProjectTrackerButton from "@/components/project-trackers/delete-project-tracker-button";
+import { PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
+import { useProjectKickoffScreeningPoll } from "@/hooks/use-project-kickoff-screening-poll";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute(
   "/_protected/project-trackers/$trackerId",
@@ -41,16 +43,6 @@ export const Route = createFileRoute(
   }),
   component: ProjectTrackerDetailPage,
 });
-
-function parseSourceId(content: string | null): string | null {
-  if (!content) return null;
-  try {
-    const parsed = JSON.parse(content) as { sourceId?: string };
-    return parsed.sourceId ?? null;
-  } catch {
-    return null;
-  }
-}
 
 function scoreColor(score: number) {
   if (score >= 3.5) return "text-green-600";
@@ -70,6 +62,137 @@ function scoreBadgeClass(score: number) {
   return "bg-red-100 text-red-800";
 }
 
+function ScreeningPanel({
+  kickoff,
+  latestScreening,
+  onRescreen,
+  isRescreening,
+}: {
+  kickoff: {
+    id: string;
+    updatedAt: Date;
+    projectName: string;
+  };
+  latestScreening: {
+    id: string;
+    status: "pending" | "running" | "completed" | "failed";
+    score: number | null;
+    analysis: string | null;
+    workflowInstanceId: string | null;
+    screenedAt: Date | null;
+    createdAt: Date;
+  } | null;
+  onRescreen: () => void;
+  isRescreening: boolean;
+}) {
+  const [pollJobId, setPollJobId] = useState<string | null>(null);
+  const isActive =
+    latestScreening?.status === "pending" ||
+    latestScreening?.status === "running";
+
+  useEffect(() => {
+    if (isActive && latestScreening?.workflowInstanceId) {
+      setPollJobId(latestScreening.workflowInstanceId);
+    }
+  }, [isActive, latestScreening?.workflowInstanceId]);
+
+  const { progress, result, terminalState } = useProjectKickoffScreeningPoll(
+    pollJobId,
+    isActive,
+  );
+
+  const score =
+    result?.score ?? latestScreening?.score ?? null;
+  const analysis =
+    result?.analysis ?? latestScreening?.analysis ?? null;
+  const status =
+    terminalState === "completed"
+      ? "completed"
+      : terminalState === "failed"
+        ? "failed"
+        : (latestScreening?.status ?? null);
+
+  const scoreMayBeOutdated =
+    latestScreening?.screenedAt != null &&
+    kickoff.updatedAt > latestScreening.screenedAt &&
+    status === "completed";
+
+  return (
+    <div className="bg-card/40 ring-border/60 rounded-xl p-4 ring-1">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-foreground text-sm font-semibold">AI Screening</h2>
+        <div className="flex items-center gap-2">
+          {scoreMayBeOutdated ? (
+            <Badge variant="outline" className="text-xs text-amber-600">
+              Score may be outdated
+            </Badge>
+          ) : null}
+          {(status === "failed" || scoreMayBeOutdated) && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={isRescreening || isActive}
+              onClick={onRescreen}
+            >
+              <RefreshCw
+                className={cn("size-3.5", isRescreening && "animate-spin")}
+              />
+              Re-run screening
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {status === "completed" && score !== null ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-baseline gap-2">
+            <span
+              className={cn(
+                "tabular-nums text-5xl font-bold",
+                scoreColor(score),
+              )}
+            >
+              {score.toFixed(1)}
+            </span>
+            <span className="text-muted-foreground text-xl">/ 5</span>
+          </div>
+          <span
+            className={cn(
+              "inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+              scoreBadgeClass(score),
+            )}
+          >
+            {scoreLabel(score)}
+          </span>
+          {analysis ? (
+            <p className="text-foreground text-sm leading-relaxed">
+              {analysis}
+            </p>
+          ) : null}
+        </div>
+      ) : status === "running" || status === "pending" ? (
+        <div className="text-muted-foreground flex flex-col gap-2 text-sm">
+          <div className="flex items-center gap-2">
+            <Loader2 className="size-4 animate-spin" />
+            <span>
+              {progress?.step ?? "Screening in progress…"}
+              {progress?.percentage != null ? ` (${progress.percentage}%)` : ""}
+            </span>
+          </div>
+        </div>
+      ) : status === "failed" ? (
+        <p className="text-destructive text-sm">
+          Screening failed. Use re-run to try again.
+        </p>
+      ) : (
+        <p className="text-muted-foreground text-sm">Not yet screened.</p>
+      )}
+    </div>
+  );
+}
+
 function ProjectTrackerDetailPage() {
   const { trackerId } = Route.useParams();
   const trpc = useTRPC();
@@ -77,6 +200,20 @@ function ProjectTrackerDetailPage() {
 
   const { data, isLoading, isError } = useQuery(
     trpc.projectTrackers.getById.queryOptions({ trackerId }),
+  );
+
+  const { mutate: rescreen, isPending: isRescreening } = useMutation(
+    trpc.projectKickoffs.rescreen.mutationOptions({
+      onSuccess: () => {
+        toast.success("Re-screening started");
+        void queryClient.invalidateQueries(
+          trpc.projectTrackers.getById.queryOptions({ trackerId }),
+        );
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to start re-screening");
+      },
+    }),
   );
 
   if (isLoading) {
@@ -98,8 +235,8 @@ function ProjectTrackerDetailPage() {
     );
   }
 
-  const { tracker, kickoff } = data;
-  const sourceId = parseSourceId(tracker.content);
+  const { tracker, kickoff, latestScreening } = data;
+  const displayName = kickoff?.projectName ?? tracker.name;
 
   return (
     <section className="block-space-mini container max-w-3xl">
@@ -110,83 +247,48 @@ function ProjectTrackerDetailPage() {
           size="sm"
           className="-ml-2 mb-4 gap-1.5"
         >
-          <Link to="/project-trackers">
+          <Link
+            to="/project-trackers"
+            search={PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH}
+          >
             <ChevronLeft className="size-4" />
             Back to Project Trackers
           </Link>
         </Button>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold md:text-3xl">{tracker.name}</h1>
+            <h1 className="text-2xl font-bold md:text-3xl">{displayName}</h1>
             <Badge variant="outline" className="text-xs">
               Project Kickoff
             </Badge>
           </div>
-          <DeleteProjectTrackerButton
-            trackerId={tracker.id}
-            sourceId={sourceId}
-            redirectAfterDelete
-          />
+          {kickoff ? (
+            <DeleteProjectTrackerButton
+              kickoffId={kickoff.id}
+              redirectAfterDelete
+            />
+          ) : null}
         </div>
       </div>
 
       {kickoff ? (
         <div className="space-y-4">
-          {/* AI screening result */}
-          <div className="bg-card/40 ring-border/60 rounded-xl p-4 ring-1">
-            <h2 className="text-foreground mb-3 text-sm font-semibold">
-              AI Screening
-            </h2>
-            {kickoff.screeningStatus === "completed" &&
-            kickoff.screeningScore !== null ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-baseline gap-2">
-                  <span
-                    className={cn(
-                      "tabular-nums text-5xl font-bold",
-                      scoreColor(kickoff.screeningScore),
-                    )}
-                  >
-                    {kickoff.screeningScore.toFixed(1)}
-                  </span>
-                  <span className="text-muted-foreground text-xl">/ 5</span>
-                </div>
-                <span
-                  className={cn(
-                    "inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                    scoreBadgeClass(kickoff.screeningScore),
-                  )}
-                >
-                  {scoreLabel(kickoff.screeningScore)}
-                </span>
-                {kickoff.screeningAnalysis && (
-                  <p className="text-foreground text-sm leading-relaxed">
-                    {kickoff.screeningAnalysis}
-                  </p>
-                )}
-              </div>
-            ) : kickoff.screeningStatus === "running" ||
-              kickoff.screeningStatus === "pending" ? (
-              <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <Loader2 className="size-4 animate-spin" />
-                <span>Screening in progress…</span>
-              </div>
-            ) : kickoff.screeningStatus === "failed" ? (
-              <p className="text-destructive text-sm">
-                Screening failed. No score available.
-              </p>
-            ) : (
-              <p className="text-muted-foreground text-sm">Not yet screened.</p>
-            )}
-          </div>
+          <ScreeningPanel
+            kickoff={kickoff}
+            latestScreening={latestScreening}
+            isRescreening={isRescreening}
+            onRescreen={() => rescreen({ kickoffId: kickoff.id })}
+          />
 
-          {/* Edit form */}
           <EditProjectForm
             kickoff={kickoff}
-            onSuccess={() => {
+            onSuccess={(rescreened) => {
               void queryClient.invalidateQueries(
                 trpc.projectTrackers.getById.queryOptions({ trackerId }),
               );
+              if (rescreened) {
+                toast.success("Project updated — re-screening started");
+              }
             }}
           />
         </div>
@@ -214,13 +316,14 @@ function EditProjectForm({
     platformEnables: string | null;
     keyDeliverables: string | null;
     risksAndBlockers: string | null;
+    raciMatrix: string | null;
     timeline: string | null;
     chosenTool: string | null;
     techStack: string | null;
     definitionOfDone: string | null;
     additionalNotes: string | null;
   };
-  onSuccess: () => void;
+  onSuccess: (rescreened: boolean) => void;
 }) {
   const trpc = useTRPC();
 
@@ -238,6 +341,7 @@ function EditProjectForm({
       platformEnables: kickoff.platformEnables ?? "",
       keyDeliverables: kickoff.keyDeliverables ?? "",
       risksAndBlockers: kickoff.risksAndBlockers ?? "",
+      raciMatrix: kickoff.raciMatrix ?? "",
       timeline: kickoff.timeline ?? "",
       chosenTool: kickoff.chosenTool ?? "",
       techStack: kickoff.techStack ?? "",
@@ -247,10 +351,12 @@ function EditProjectForm({
   });
 
   const { mutate: updateProject, isPending } = useMutation(
-    trpc.projectTrackers.update.mutationOptions({
-      onSuccess: () => {
-        toast.success("Project updated");
-        onSuccess();
+    trpc.projectKickoffs.update.mutationOptions({
+      onSuccess: (result) => {
+        if (!result.rescreened) {
+          toast.success("Project updated");
+        }
+        onSuccess(result.rescreened);
       },
       onError: (error) => {
         toast.error(error.message || "Failed to update project");
@@ -268,6 +374,7 @@ function EditProjectForm({
       platformEnables: values.platformEnables || null,
       keyDeliverables: values.keyDeliverables || null,
       risksAndBlockers: values.risksAndBlockers || null,
+      raciMatrix: values.raciMatrix || null,
       timeline: values.timeline || null,
       chosenTool: values.chosenTool || null,
       techStack: values.techStack || null,

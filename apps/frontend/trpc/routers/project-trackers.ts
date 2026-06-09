@@ -5,11 +5,7 @@ import {
   getAllProjectTrackers,
   getProjectTrackerById,
 } from "@repo/db/queries";
-import {
-  deleteProjectTracker,
-  updateProjectKickoffById,
-} from "@repo/db/mutations";
-import { editProjectKickoffSchema } from "@repo/schemas";
+import { deleteProjectTracker } from "@repo/db/mutations";
 
 export const projectTrackersRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async () => {
@@ -30,22 +26,9 @@ export const projectTrackersRouter = createTRPCRouter({
     }),
 
   delete: protectedProcedure
-    .input(
-      z.object({
-        trackerId: z.string().min(1),
-        sourceId: z.string().nullable(),
-      }),
-    )
+    .input(z.object({ kickoffId: z.string().min(1) }))
     .mutation(async ({ input }) => {
-      await deleteProjectTracker(input.trackerId, input.sourceId);
+      await deleteProjectTracker(input.kickoffId);
       return { success: true };
-    }),
-
-  update: protectedProcedure
-    .input(editProjectKickoffSchema.extend({ kickoffId: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const { kickoffId, ...values } = input;
-      await updateProjectKickoffById(kickoffId, values);
-      return { kickoffId };
     }),
 });

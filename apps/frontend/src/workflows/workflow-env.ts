@@ -119,7 +119,8 @@ export type IcScorerWorkflowParams = {
 
 export type ProjectKickoffScreenParams = {
   jobId: string;
-  projectId: string;
+  kickoffId: string;
+  screeningId: string;
   userId: string | null;
 };
 
