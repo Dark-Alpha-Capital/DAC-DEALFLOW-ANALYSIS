@@ -12,8 +12,8 @@ import {
   asc,
   desc,
   count,
-  arrayOverlaps,
 } from "drizzle-orm";
+import { jsonArrayOverlaps } from "../sqlite-helpers";
 
 /**
  * Get a deal by id
@@ -151,7 +151,8 @@ export const GetAllDeals = async ({
     conditions.push(eq(deals.status, status));
   }
   if (tags && tags.length > 0) {
-    conditions.push(arrayOverlaps(deals.tags, tags));
+    const overlap = jsonArrayOverlaps(deals.tags, tags);
+    if (overlap) conditions.push(overlap);
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

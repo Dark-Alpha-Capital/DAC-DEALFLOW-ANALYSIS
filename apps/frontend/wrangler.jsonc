@@ -1,11 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "dealflow-dark-alpha-capital",
+  "account_id": "db3c8d159d12f92055af63054dfec052",
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
   "observability": {
     "enabled": true
+  },
+  // Custom domain: dealflow.darkalphacapital.com (attached in CF dashboard)
+  "vars": {
+    "BETTER_AUTH_URL": "https://dealflow.darkalphacapital.com",
+    "VITE_PUBLIC_APP_URL": "https://dealflow.darkalphacapital.com"
   },
   // wrangler vectorize create document-chunks --dimensions=768 --metric=cosine
   // "remote": true + @cloudflare/vite-plugin remoteBindings: Vectorize calls from `vite dev` hit this LIVE index
@@ -20,6 +26,18 @@
   //   wrangler vectorize create-metadata-index document-chunks --property-name=themeId --type=string
   //
   // One index `document-chunks`: namespaces = per-document isolation; metadata = entity scope (deal / lead / company / theme / global).
+  // "remote": true + vite remoteBindings: local `vite dev` uses live D1 on the logged-in account.
+  // Migrations: `bun run --cwd packages/db db:generate` then
+  // `wrangler d1 migrations apply dealflow-db --remote` from apps/frontend.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "dealflow-db",
+      "database_id": "ceeb42af-f9f3-4868-89ee-bf08dc6352a2",
+      "migrations_dir": "../../packages/db/drizzle",
+      "remote": true
+    }
+  ],
   "vectorize": [
     {
       "binding": "DOCUMENT_CHUNKS_INDEX",

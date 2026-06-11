@@ -2,7 +2,12 @@ import { Link } from "@tanstack/react-router";
 import { usePathname } from "@/lib/navigation-shim";
 import { NewChatSidebarButton } from "./new-chat-sidebar-button";
 import { useQuery } from "@tanstack/react-query";
-import { MessageSquarePlus, LayoutDashboard, BookOpen } from "lucide-react";
+import {
+  MessageSquarePlus,
+  LayoutDashboard,
+  BookOpen,
+  Layers,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -28,6 +33,7 @@ const layoutLinks = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Chat", url: "/chat", icon: MessageSquarePlus },
   { title: "Docs", url: "/docs", icon: BookOpen },
+  { title: "Project Trackers", url: "/project-trackers", icon: Layers },
 ];
 
 export default function ChatSidebar() {

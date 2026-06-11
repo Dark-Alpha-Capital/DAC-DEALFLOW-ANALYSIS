@@ -4,7 +4,7 @@ import {
   type WorkflowStep,
 } from "cloudflare:workers";
 import { generateText, Output } from "ai";
-import db, { and, asc, eq, runDbWithWorkerNeonPool } from "@repo/db";
+import db, { and, asc, eq, runDbWithD1 } from "@repo/db";
 import { documentChunks, documents } from "@repo/db/schema";
 import {
   formatDealOpportunityScreeningContext,
@@ -40,7 +40,6 @@ import {
   sleep,
 } from "./cim-screening-core";
 
-const openai = getOpenAIProvider();
 const LOG = "[CimMonographScreeningWorkflow]";
 const QUESTION_PREVIEW_MAX = 120;
 
@@ -175,10 +174,10 @@ export class CimMonographScreeningWorkflow extends WorkflowEntrypoint<
       payloadListingSource ?? ("deal_opportunity_db" as const);
 
     try {
-      await runDbWithWorkerNeonPool(async () => markWorkflowRunning(instanceId));
+      await runDbWithD1(this.env.DB, async () => markWorkflowRunning(instanceId));
 
       await step.do("validate-monograph-document", async () =>
-        runDbWithWorkerNeonPool(async () => {
+        runDbWithD1(this.env.DB, async () => {
           await updateCimScreeningRun(runId, { status: "INGESTING" });
           await updateWorkflowJobProgress(instanceId, {
             step: "Validating selected document",
@@ -238,7 +237,7 @@ export class CimMonographScreeningWorkflow extends WorkflowEntrypoint<
       );
 
       await step.do("screen-monograph-questions", async () =>
-        runDbWithWorkerNeonPool(async () => {
+        runDbWithD1(this.env.DB, async () => {
           await updateCimScreeningRun(runId, { status: "SCREENING" });
           await updateWorkflowJobProgress(instanceId, {
             step: "Loading screener questions",
@@ -303,7 +302,7 @@ export class CimMonographScreeningWorkflow extends WorkflowEntrypoint<
             });
 
             const { output } = await generateText({
-              model: openai(CIM_SCREENING_MODEL),
+              model: getOpenAIProvider()(CIM_SCREENING_MODEL),
               prompt,
               output: Output.object({
                 schema: SCREENING_ANSWER_SCHEMA,
@@ -341,7 +340,7 @@ export class CimMonographScreeningWorkflow extends WorkflowEntrypoint<
         postBitrixComment && bitrixDealId ? "failed" : "not_requested";
       if (postBitrixComment && bitrixDealId) {
         commentSyncStatus = await step.do("post-bitrix-comment", async () =>
-          runDbWithWorkerNeonPool(async () => {
+          runDbWithD1(this.env.DB, async () => {
             try {
               const env = getBitrixSyncEnv();
               if (!env?.webhookBaseUrl) return "failed" as const;
@@ -375,7 +374,7 @@ export class CimMonographScreeningWorkflow extends WorkflowEntrypoint<
         runId,
         commentSyncStatus,
       };
-      await runDbWithWorkerNeonPool(async () =>
+      await runDbWithD1(this.env.DB, async () =>
         markWorkflowCompleted(instanceId, out),
       );
       return out;
@@ -389,7 +388,7 @@ export class CimMonographScreeningWorkflow extends WorkflowEntrypoint<
       });
       const message = err instanceof Error ? err.message : String(err);
       try {
-        await runDbWithWorkerNeonPool(async () =>
+        await runDbWithD1(this.env.DB, async () =>
           updateCimScreeningRun(runId, {
             status: "FAILED",
             errorMessage: message,
@@ -398,7 +397,7 @@ export class CimMonographScreeningWorkflow extends WorkflowEntrypoint<
       } catch {
         // ignore
       }
-      await runDbWithWorkerNeonPool(async () =>
+      await runDbWithD1(this.env.DB, async () =>
         markWorkflowFailed(instanceId, err),
       );
       throw err;

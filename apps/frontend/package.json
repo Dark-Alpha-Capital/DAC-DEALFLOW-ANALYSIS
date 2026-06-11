@@ -6,11 +6,12 @@
   "scripts": {
     "ic-scorer-pdf-test": "bun run ./scripts/ic-scorer-bitrix-pdf-test.ts",
     "dev": "vite dev",
-    "dev:local": "LOCAL_DEV=true vite dev",
     "build": "NODE_OPTIONS='--max-old-space-size=8192' vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler deploy",
-    "cf-typegen": "wrangler types",
+    "deploy": "bun run build && wrangler deploy",
+    "cf:setup": "bash scripts/setup-cloudflare.sh",
+    "cf:typegen": "wrangler types",
+    "db:migrate:remote": "wrangler d1 migrations apply dealflow-db --remote",
     "lint": "eslint ."
   },
   "dependencies": {

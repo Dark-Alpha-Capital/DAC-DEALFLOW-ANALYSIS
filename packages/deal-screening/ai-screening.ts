@@ -19,13 +19,11 @@ export type QualitativeScreeningResult = z.infer<
   typeof qualitativeScreeningOutputSchema
 >;
 
-const openai = getOpenAIProvider();
-
 export async function runAiQualitativeScreening(
   dealDescription: string,
 ): Promise<QualitativeScreeningResult> {
   const { output } = await generateText({
-    model: openai("gpt-4o-mini"),
+    model: getOpenAIProvider()("gpt-4o-mini"),
     prompt: `${QUALITATIVE_SCREENING_PROMPT}\n\nDeal description:\n${dealDescription}`,
     output: Output.object({
       schema: qualitativeScreeningOutputSchema,

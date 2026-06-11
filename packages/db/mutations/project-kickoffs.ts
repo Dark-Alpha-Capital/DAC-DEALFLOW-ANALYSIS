@@ -67,17 +67,17 @@ export async function createProjectKickoff(
       createdBy: input.userId,
     });
 
+    await insertWorkflowJobTx(tx, {
+      instanceId: jobId,
+      workflowKind: "project-kickoff-screen",
+      userId: input.userId,
+    });
+
     await tx.insert(projectKickoffScreenings).values({
       id: screeningId,
       kickoffId,
       workflowInstanceId: jobId,
       status: "pending",
-    });
-
-    await insertWorkflowJobTx(tx, {
-      instanceId: jobId,
-      workflowKind: "project-kickoff-screen",
-      userId: input.userId,
     });
   });
 
@@ -99,17 +99,17 @@ export async function createProjectKickoffRescreen(input: {
   const jobId = createId();
 
   await db.transaction(async (tx) => {
+    await insertWorkflowJobTx(tx, {
+      instanceId: jobId,
+      workflowKind: "project-kickoff-screen",
+      userId: input.userId,
+    });
+
     await tx.insert(projectKickoffScreenings).values({
       id: screeningId,
       kickoffId: input.kickoffId,
       workflowInstanceId: jobId,
       status: "pending",
-    });
-
-    await insertWorkflowJobTx(tx, {
-      instanceId: jobId,
-      workflowKind: "project-kickoff-screen",
-      userId: input.userId,
     });
   });
 

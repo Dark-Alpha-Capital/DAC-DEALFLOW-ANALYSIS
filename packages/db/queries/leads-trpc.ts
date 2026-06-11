@@ -1,6 +1,7 @@
 import { db } from "../index";
 import { leads, companies } from "../schema";
-import { and, desc, eq, ilike, isNull, or } from "drizzle-orm";
+import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { ilike } from "../sqlite-helpers";
 
 export async function searchLeadsForChat(input: {
   query?: string;

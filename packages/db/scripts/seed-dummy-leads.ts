@@ -1,3 +1,4 @@
+/** Requires remote D1 via Worker runtime — not supported as a plain Bun script. Use the app or `wrangler d1 execute`. */
 import { faker } from "@faker-js/faker";
 import db, {
   type NewInvestorLead,

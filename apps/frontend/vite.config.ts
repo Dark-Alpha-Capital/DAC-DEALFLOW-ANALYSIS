@@ -24,44 +24,24 @@ const repoPackages = [
   "types",
 ];
 
-const isLocalDev = process.env.LOCAL_DEV === "true";
-
 export default defineConfig({
   root: appRoot,
-  envPrefix: ["VITE_", "NEXT_PUBLIC_", "LOCAL_"],
+  envPrefix: ["VITE_", "NEXT_PUBLIC_"],
   server: {
     port: 3000,
-    allowedHosts: [".trycloudflare.com"],
+    allowedHosts: [".trycloudflare.com", "dealflow.darkalphacapital.com"],
   },
   plugins: [
-    ...(isLocalDev
-      ? []
-      : [
-          cloudflare({
-            viteEnvironment: { name: "ssr" },
-            remoteBindings: true,
-            configPath: wranglerConfigPath,
-          }),
-        ]),
+    cloudflare({
+      viteEnvironment: { name: "ssr" },
+      remoteBindings: true,
+      configPath: wranglerConfigPath,
+    }),
     tanstackStart(),
     tailwindcss(),
     viteReact(),
     tsconfigPaths(),
   ],
-  resolve: isLocalDev
-    ? {
-        alias: {
-          "@/lib/document-chunk-vectorize": path.resolve(
-            appRoot,
-            "lib/document-chunk-vectorize.local.ts",
-          ),
-          "@/src/lib/workflow-jobs-api": path.resolve(
-            appRoot,
-            "src/lib/workflow-jobs-api.local.ts",
-          ),
-        },
-      }
-    : undefined,
   ssr: {
     noExternal: repoPackages,
   },

@@ -3,7 +3,7 @@ import {
   type WorkflowEvent,
   type WorkflowStep,
 } from "cloudflare:workers";
-import { runDbWithWorkerNeonPool } from "@repo/db";
+import { runDbWithD1 } from "@repo/db";
 import { upsertCIMExtraction } from "@repo/db/mutations";
 import { getFileContents } from "@repo/nextcloud";
 import { extractTextFromPdf, runCIMExtractionLLM } from "@repo/cim-extraction";
@@ -53,7 +53,7 @@ export class CimExtractionWorkflow extends WorkflowEntrypoint<
     });
 
     try {
-      await runDbWithWorkerNeonPool(async () => {
+      await runDbWithD1(this.env.DB, async () => {
         console.log(`${LOG} markWorkflowRunning`, { instanceId });
         await markWorkflowRunning(instanceId);
       });
@@ -62,7 +62,7 @@ export class CimExtractionWorkflow extends WorkflowEntrypoint<
         "cim-extract",
         { timeout: "30 minutes" },
         () =>
-          runDbWithWorkerNeonPool(async () => {
+          runDbWithD1(this.env.DB, async () => {
             console.log(`${LOG} step "cim-extract" entered`, { instanceId });
 
             await updateWorkflowJobProgress(instanceId, {
@@ -136,7 +136,7 @@ export class CimExtractionWorkflow extends WorkflowEntrypoint<
       );
 
       console.log(`${LOG} markWorkflowCompleted`, { instanceId });
-      await runDbWithWorkerNeonPool(async () => {
+      await runDbWithD1(this.env.DB, async () => {
         await markWorkflowCompleted(instanceId, { success: true });
       });
       console.log(`${LOG} run() success`, { instanceId });
@@ -148,7 +148,7 @@ export class CimExtractionWorkflow extends WorkflowEntrypoint<
         stack: err instanceof Error ? err.stack : undefined,
       });
       try {
-        await runDbWithWorkerNeonPool(async () => {
+        await runDbWithD1(this.env.DB, async () => {
           await markWorkflowFailed(instanceId, err);
         });
       } catch {

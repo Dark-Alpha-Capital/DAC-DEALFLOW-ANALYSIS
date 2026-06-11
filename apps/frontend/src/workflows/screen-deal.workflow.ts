@@ -6,7 +6,6 @@ import {
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import db, {
-  runDbWithWorkerNeonPool,
   Sentiment,
   dealOpportunities,
   dealFinancialSnapshots,
@@ -31,8 +30,7 @@ import {
   markWorkflowRunning,
 } from "./progress";
 import type { ScreenDealParams, WorkflowWorkerEnv } from "./workflow-env";
-
-const openai = getOpenAIProvider();
+import { withWorkflowDb } from "./with-workflow-db";
 
 interface DealInfo {
   id: string;
@@ -61,7 +59,7 @@ export class ScreenDealWorkflow extends WorkflowEntrypoint<
     evaluationId?: string;
     message?: string;
   }> {
-    return runDbWithWorkerNeonPool(async () => {
+    return withWorkflowDb(this.env, async () => {
       const instanceId = event.instanceId;
       const payload = event.payload;
 
@@ -229,7 +227,7 @@ export class ScreenDealWorkflow extends WorkflowEntrypoint<
               });
 
               const summary = await generateText({
-                model: openai("gpt-4o-mini"),
+                model: getOpenAIProvider()("gpt-4o-mini"),
                 prompt: buildScreenDealChunkPrompt(deal, chunk),
               });
 
@@ -251,7 +249,7 @@ export class ScreenDealWorkflow extends WorkflowEntrypoint<
           );
 
           const finalSummary = await generateObject({
-            model: openai("gpt-4o-mini"),
+            model: getOpenAIProvider()("gpt-4o-mini"),
             prompt: buildScreenDealSummaryPrompt(combinedSummary),
             schema: z.object({
               title: z.string().max(120),

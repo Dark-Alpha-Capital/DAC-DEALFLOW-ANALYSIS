@@ -1,1 +1,1 @@
-// Route lives at _protected/project-trackers/index.tsx — this file is intentionally inert.
+// Route lives at _project-trackers/project-trackers/index.tsx — this file is intentionally inert.

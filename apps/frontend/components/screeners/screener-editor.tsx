@@ -60,7 +60,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { MarkdownEditor } from "@/components/markdown-editor/MarkdownEditor";
+import { MarkdownEditor } from "@/components/markdown-editor/MarkdownEditorLazy";
 
 type ScreenerWithQuestions = NonNullable<
   Awaited<

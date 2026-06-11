@@ -5,7 +5,7 @@ import {
 } from "cloudflare:workers";
 import { generateText, Output } from "ai";
 import type { AppDb } from "@repo/db";
-import db, { count, eq, runDbWithWorkerNeonPool } from "@repo/db";
+import db, { count, eq, runDbWithD1 } from "@repo/db";
 import { documents, documentChunks } from "@repo/db/schema";
 import {
   formatDealOpportunityScreeningContext,
@@ -47,8 +47,6 @@ import {
   SCREENING_ANSWER_SCHEMA,
   sleep,
 } from "./cim-screening-core";
-
-const openai = getOpenAIProvider();
 
 /** Pause between questions to avoid Vectorize/OpenAI bursts (deal RAG scans many namespaces per query). */
 function cimScreeningInterQuestionDelayMs(): number {
@@ -237,12 +235,12 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
     });
 
     try {
-      await runDbWithWorkerNeonPool(async () => markWorkflowRunning(instanceId));
+      await runDbWithD1(this.env.DB, async () => markWorkflowRunning(instanceId));
       logDetail("markWorkflowRunning.done", { instanceId });
 
       if (isDealScope) {
         await step.do("validate-deal-rag", { timeout: "10 minutes" }, async () =>
-          runDbWithWorkerNeonPool(async () => {
+          runDbWithD1(this.env.DB, async () => {
             if (!this.env.DOCUMENT_CHUNKS_INDEX) {
               logDetail("validate-deal-rag.vectorize_unbound", {
                 message:
@@ -279,7 +277,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
           "validate-library-document",
           { timeout: "5 minutes" },
           async () =>
-            runDbWithWorkerNeonPool(async () => {
+            runDbWithD1(this.env.DB, async () => {
               const documentId = libraryDocumentId!;
               logDetail("step.validate-library-document.enter", {
                 instanceId,
@@ -367,7 +365,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
       }
 
       await step.do("screen-questions", { timeout: "60 minutes" }, async () =>
-        runDbWithWorkerNeonPool(async () => {
+        runDbWithD1(this.env.DB, async () => {
           const screenT0 = Date.now();
           logDetail("step.screen-questions.enter", {
             instanceId,
@@ -614,7 +612,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
 
             const llmT0 = Date.now();
             const { output } = await generateText({
-              model: openai(CIM_SCREENING_MODEL),
+              model: getOpenAIProvider()(CIM_SCREENING_MODEL),
               prompt,
               output: Output.object({
                 schema: SCREENING_ANSWER_SCHEMA,
@@ -687,7 +685,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
           "post-bitrix-comment",
           { timeout: "5 minutes" },
           async () =>
-            runDbWithWorkerNeonPool(async () => {
+            runDbWithD1(this.env.DB, async () => {
               try {
                 const env = getBitrixSyncEnv();
                 if (!env?.webhookBaseUrl) {
@@ -737,7 +735,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
         commentSyncStatus,
       };
       logDetail("run.completed", { instanceId, sessionId, runId });
-      await runDbWithWorkerNeonPool(async () =>
+      await runDbWithD1(this.env.DB, async () =>
         markWorkflowCompleted(instanceId, out),
       );
       return out;
@@ -751,7 +749,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
       });
       const message = err instanceof Error ? err.message : String(err);
       try {
-        await runDbWithWorkerNeonPool(async () =>
+        await runDbWithD1(this.env.DB, async () =>
           updateCimScreeningRun(runId, {
             status: "FAILED",
             errorMessage: message,
@@ -760,7 +758,7 @@ export class CimScreeningWorkflow extends WorkflowEntrypoint<
       } catch {
         // ignore
       }
-      await runDbWithWorkerNeonPool(async () =>
+      await runDbWithD1(this.env.DB, async () =>
         markWorkflowFailed(instanceId, err),
       );
       throw err;

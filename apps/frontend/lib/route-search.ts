@@ -43,7 +43,7 @@ export const DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH = {
 export type ProjectTrackerSortBy = "createdAt" | "department" | "createdBy";
 export type ProjectTrackerSortDir = "asc" | "desc";
 
-/** Default URL search for `/_protected/project-trackers/`. */
+/** Default URL search for `/_project-trackers/project-trackers/`. */
 export const PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH = {
   sortBy: "createdAt",
   sortDir: "desc",

@@ -4,7 +4,8 @@ import {
   investorInteractions,
   investorCompanyLinks,
 } from "../schema";
-import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, desc, eq, or } from "drizzle-orm";
+import { ilike } from "../sqlite-helpers";
 
 export async function listInvestorsForSelect() {
   return db

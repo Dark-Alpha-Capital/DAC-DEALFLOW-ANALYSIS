@@ -1,6 +1,7 @@
 import { db } from "../index";
 import { companies, dealOpportunities } from "../schema";
-import { and, asc, desc, eq, ilike, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { ilike } from "../sqlite-helpers";
 
 export async function listCompaniesForSelect() {
   return db

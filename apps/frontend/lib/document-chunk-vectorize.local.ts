@@ -8,6 +8,25 @@ const UPSERT_BATCH = 100;
 
 type DocumentChunkInsert = InferInsertModel<typeof documentChunks>;
 
+let localVectorTableReady = false;
+
+async function ensureLocalVectorTable(db: AppDb): Promise<void> {
+  if (localVectorTableReady) return;
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "DocumentChunkVector" (
+      "id" TEXT PRIMARY KEY,
+      "namespace" TEXT NOT NULL DEFAULT '',
+      "embedding" TEXT NOT NULL,
+      "metadata" TEXT NOT NULL DEFAULT '{}'
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS document_chunk_vector_namespace_idx
+    ON "DocumentChunkVector" ("namespace")
+  `);
+  localVectorTableReady = true;
+}
+
 export function vectorizeMetadataFromChunkRow(
   row: DocumentChunkInsert,
 ): Record<string, string> {
@@ -33,8 +52,17 @@ function hasFiniteEmbeddingValues(values: number[]): boolean {
   return true;
 }
 
-function embeddingToVector(embedding: number[]): ReturnType<typeof sql.raw> {
-  return sql.raw(`'[${embedding.join(",")}]'::vector`);
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i]! * b[i]!;
+    normA += a[i]! * a[i]!;
+    normB += b[i]! * b[i]!;
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
 async function getDb(userProvided?: AppDb): Promise<AppDb> {
@@ -48,34 +76,30 @@ export async function upsertDocumentChunkVectors(
   db?: AppDb,
 ): Promise<void> {
   const d = await getDb(db);
+  await ensureLocalVectorTable(d);
   for (let i = 0; i < chunks.length; i += UPSERT_BATCH) {
     const slice = chunks.slice(i, i + UPSERT_BATCH);
     for (const c of slice) {
       const values = c.embedding;
       if (!values || values.length !== EMBEDDING_DIMENSION) {
         throw new Error(
-          `pgvector upsert: chunk ${c.row.id} has invalid embedding length ${values?.length ?? 0} (expected ${EMBEDDING_DIMENSION})`,
+          `local vector upsert: chunk ${c.row.id} has invalid embedding length ${values?.length ?? 0} (expected ${EMBEDDING_DIMENSION})`,
         );
       }
       if (!hasFiniteEmbeddingValues(values)) {
         throw new Error(
-          `pgvector upsert: chunk ${c.row.id} has non-finite embedding values`,
+          `local vector upsert: chunk ${c.row.id} has non-finite embedding values`,
         );
       }
       const metadata = vectorizeMetadataFromChunkRow(c.row);
-      try {
-        await d.execute(sql`
-          INSERT INTO "DocumentChunkVector" ("id", "namespace", "embedding", "metadata")
-          VALUES (${String(c.row.id)}, ${c.row.documentId}, ${embeddingToVector(values)}, ${JSON.stringify(metadata)}::jsonb)
-          ON CONFLICT ("id") DO UPDATE SET "embedding" = EXCLUDED."embedding", "metadata" = EXCLUDED."metadata"
-        `);
-      } catch (err) {
-        console.warn("[pgvector-upsert] Failed for chunk", {
-          chunkId: c.row.id,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        throw err;
-      }
+      const embeddingJson = JSON.stringify(values);
+      await d.execute(sql`
+        INSERT INTO "DocumentChunkVector" ("id", "namespace", "embedding", "metadata")
+        VALUES (${String(c.row.id)}, ${c.row.documentId}, ${embeddingJson}, ${JSON.stringify(metadata)})
+        ON CONFLICT ("id") DO UPDATE SET
+          "embedding" = excluded."embedding",
+          "metadata" = excluded."metadata"
+      `);
     }
   }
 }
@@ -85,6 +109,7 @@ export async function deleteChunkVectorsForDocument(
   _index: unknown,
   documentId: string,
 ): Promise<void> {
+  await ensureLocalVectorTable(db);
   await db.execute(
     sql`DELETE FROM "DocumentChunkVector" WHERE "namespace" = ${documentId}`,
   );
@@ -101,26 +126,28 @@ export interface SearchDocumentChunksVectorInput {
   themeId?: string;
 }
 
-function buildMetaFilter(
+function metadataMatches(
+  metadata: Record<string, string>,
   input: SearchDocumentChunksVectorInput,
-): ReturnType<typeof sql>[] {
-  const conditions: ReturnType<typeof sql>[] = [];
-  if (input.entityType) {
-    conditions.push(sql`"metadata"->>'entityType' = ${input.entityType}`);
+): boolean {
+  if (input.entityType && metadata.entityType !== input.entityType) return false;
+  if (input.entityId != null && input.entityId !== "" && metadata.entityId !== String(input.entityId)) {
+    return false;
   }
-  if (input.entityId != null && input.entityId !== "") {
-    conditions.push(sql`"metadata"->>'entityId' = ${String(input.entityId)}`);
+  if (
+    input.dealOpportunityId != null &&
+    input.dealOpportunityId !== "" &&
+    metadata.dealOpportunityId !== String(input.dealOpportunityId)
+  ) {
+    return false;
   }
-  if (input.dealOpportunityId != null && input.dealOpportunityId !== "") {
-    conditions.push(sql`"metadata"->>'dealOpportunityId' = ${String(input.dealOpportunityId)}`);
+  if (input.companyId != null && input.companyId !== "" && metadata.companyId !== String(input.companyId)) {
+    return false;
   }
-  if (input.companyId != null && input.companyId !== "") {
-    conditions.push(sql`"metadata"->>'companyId' = ${String(input.companyId)}`);
+  if (input.themeId != null && input.themeId !== "" && metadata.themeId !== String(input.themeId)) {
+    return false;
   }
-  if (input.themeId != null && input.themeId !== "") {
-    conditions.push(sql`"metadata"->>'themeId' = ${String(input.themeId)}`);
-  }
-  return conditions;
+  return true;
 }
 
 export function buildVectorizeFilter(
@@ -145,38 +172,53 @@ export async function searchDocumentChunksVector(
   if (!queryEmbedding.length) return [];
   if (queryEmbedding.length !== EMBEDDING_DIMENSION) {
     throw new Error(
-      `pgvector query: expected embedding length ${EMBEDDING_DIMENSION}, got ${queryEmbedding.length}`,
+      `local vector query: expected embedding length ${EMBEDDING_DIMENSION}, got ${queryEmbedding.length}`,
     );
   }
 
-  const vec = embeddingToVector(queryEmbedding);
+  await ensureLocalVectorTable(db);
   const topK = Math.min(limit, 100);
 
-  const conditions: ReturnType<typeof sql>[] = [];
-
-  if (input.documentId) {
-    conditions.push(sql`"namespace" = ${input.documentId}`);
-  }
-
-  const metaConds = buildMetaFilter(input);
-  conditions.push(...metaConds);
-
-  const whereClause =
-    conditions.length > 0
-      ? sql`WHERE ${sql.join(conditions, sql` AND `)}`
-      : sql``;
-
   const result = await db.execute(sql`
-    SELECT "id" FROM "DocumentChunkVector"
-    ${whereClause}
-    ORDER BY "embedding" <=> ${vec}
-    LIMIT ${topK}
+    SELECT "id", "namespace", "embedding", "metadata"
+    FROM "DocumentChunkVector"
+    ${input.documentId ? sql`WHERE "namespace" = ${input.documentId}` : sql``}
   `);
 
-  const rows = (result as any).rows ?? result;
+  const rows = (result as { rows?: unknown[] }).rows ?? result;
   if (!Array.isArray(rows) || rows.length === 0) return [];
 
-  const ids: string[] = rows.map((r: any) => String(r.id));
+  const scored: { id: string; score: number }[] = [];
+  for (const row of rows as Array<{
+    id: string;
+    embedding: string;
+    metadata: string;
+  }>) {
+    let metadata: Record<string, string> = {};
+    try {
+      metadata = JSON.parse(row.metadata) as Record<string, string>;
+    } catch {
+      continue;
+    }
+    if (!metadataMatches(metadata, input)) continue;
+
+    let embedding: number[];
+    try {
+      embedding = JSON.parse(row.embedding) as number[];
+    } catch {
+      continue;
+    }
+    if (embedding.length !== EMBEDDING_DIMENSION) continue;
+
+    scored.push({
+      id: String(row.id),
+      score: cosineSimilarity(queryEmbedding, embedding),
+    });
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+  const ids = scored.slice(0, topK).map((s) => s.id);
+  if (ids.length === 0) return [];
 
   const chunkRows = await db
     .select()

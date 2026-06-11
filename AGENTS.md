@@ -18,62 +18,38 @@
 
 - **TanStack React Start**, not Next.js. Uses `vite dev`, routing via TanStack Router, file-based routes in `src/routes/`.
 - **tRPC** for API: routers in `trpc/routers/`. Uses `@trpc/tanstack-react-query`.
-- **Auth:** `better-auth` with Drizzle adapter, restricted to `@darkalphacapital.com` emails. Config in `auth.ts`.
-- **DB:** PostgreSQL + Drizzle ORM in `packages/db/`. Schema in `schema.ts`, migrations in `drizzle/`.
-- **Cloudflare integration:** Deployed to Workers. Requires `wrangler login`. Remote bindings used in dev for Vectorize + Workflows. No local Vectorize emulator.
-- **Workflows:** 7 Cloudflare Workflows (screen-deal, file-upload, cim-extraction, rag-ingestion, cim-screening, cim-monograph-screening, ic-scorer) defined in `wrangler.jsonc`, exported from `src/server.ts`.
-- **Vectorize index:** `document-chunks` (768d, cosine). Namespaces per document, metadata filters for entity scoping. Index must exist on Cloudflare account before use.
-- **Env:** Copy `apps/frontend/.env.example` → `.env`. Key vars: `DATABASE_URL`, `AUTH_SECRET`, `GTM_LEADS_API_KEY`, `INVESTOR_LEADS_API_KEY`, `DEAL_QUICK_ADD_API_KEY`, `VITE_PUBLIC_APP_URL`.
-- **TanStack devtools:** Hidden by default. Enable with `VITE_ENABLE_TANSTACK_DEVTOOLS=true`, force-off with `VITE_DISABLE_TANSTACK_DEVTOOLS=true`.
+- **Auth:** `better-auth` with Drizzle adapter (`provider: "sqlite"`), restricted to `@darkalphacapital.com` emails. Config in `auth.ts`.
+- **DB:** Cloudflare **D1** (SQLite) + Drizzle ORM in `packages/db/`. **No local DB** — dev uses **remote D1** via Wrangler (`d1_databases` + `remote: true`, Vite `remoteBindings: true`).
+- **Files:** Nextcloud (not R2) for document storage.
+- **Cloudflare:** Firm account (`account_id` in `wrangler.jsonc`). `bun run dev` hits live D1, Vectorize, and Workflows on the logged-in account.
+- **Workflows:** 8 workflows in `wrangler.jsonc`, exported from `src/server.ts`.
+- **Vectorize:** `document-chunks` (768d, cosine).
+- **Env:** Copy `apps/frontend/.env.example` → `.env`. Key vars: `AUTH_SECRET`, `BETTER_AUTH_URL`, `VITE_PUBLIC_APP_URL`.
 - **Build:** `NODE_OPTIONS='--max-old-space-size=8192' vite build` then `wrangler deploy`.
-- **Vite SSR:** All `@repo/*` packages are `noExternal`. `@repo/db` excluded from `optimizeDeps`.
-- **Middleware:** Request middleware chain in `src/start.ts` (neon pool + bitrix-ai-widget gate).
+- **Middleware:** `src/start.ts` — D1 ALS middleware + bitrix-ai-widget gate.
 
 ## Database (packages/db)
 
-- `drizzle-kit` for migrations. Drizzle config in `drizzle.config.ts`.
-- Commands (run from repo root with `--cwd packages/db`):
-  - `db:generate` -- creates migration
-  - `db:migrate` -- applies pending
-  - `db:push` -- dev only (no migration file)
-  - `db:studio` -- Drizzle Studio
-  - `db:seed:dummy-leads` / `db:seed:dummy-deal-pipeline` -- seed scripts
-- All commands need `DATABASE_URL` in env.
-- Exports: `"."`, `"./enums"`, `"./schema"`, `"./queries"`, `"./mutations"`, `"./types"`, `"./workflow-jobs"`, `"./worker-neon-context"`.
+- `drizzle-kit` for migrations. SQLite dialect; migrations in `drizzle/`.
+- Commands (`--cwd packages/db`):
+  - `db:generate` — new migration SQL
+  - Remote apply: `bun run --cwd apps/frontend db:migrate:remote`
+- Workers: `@repo/db` `db` via ALS + `env.DB`. CLI outside Workers has no DB — use `runDbWithD1` or `wrangler d1`.
+- Exports: `"."`, `"./enums"`, `"./schema"`, `"./queries"`, `"./mutations"`, `"./types"`, `"./workflow-jobs"`, `"./d1-context"`, `"./create-db"`.
 
 ## Dev workflow
 
 ```sh
 bun install
-cp apps/frontend/.env.example apps/frontend/.env  # then edit DATABASE_URL
-bun run --cwd packages/db db:migrate
-bun run dev          # turbo dev -- starts frontend on :3000
-bun run check-types  # turbo typecheck
-bun run lint         # turbo lint
-bun run format       # prettier across workspace
+cp apps/frontend/.env.example apps/frontend/.env
+bunx wrangler login
+bash apps/frontend/scripts/setup-cloudflare.sh   # once per account
+bun run dev   # remote D1 + Vectorize + Workflows
 ```
-
-## Packages (workspace deps)
-
-| Package | Import name | Entry |
-|---|---|---|
-| db | `@repo/db` | `packages/db/index.ts` |
-| ai-core | `@repo/ai-core` | `packages/ai-core/index.ts` |
-| schemas | `@repo/schemas` | `packages/schemas/index.ts` |
-| rag-engine | `@repo/rag-engine` | `packages/rag-engine/index.ts` |
-| bitrix-sync | `@repo/bitrix-sync` | `packages/bitrix-sync/src/index.ts` |
-| deal-screening | `@repo/deal-screening` | ❓ check package.json |
-| nextcloud | `@repo/nextcloud` | ❓ check package.json |
-| redis-queue | `@repo/redis-queue` | `packages/redis-queue/src/index.ts` |
-| cim-extraction | `@repo/cim-extraction` | ❓ check package.json |
-| types | `types` (legacy name) | `packages/types/index.ts` |
 
 ## Gotchas
 
-- **Frontend README `apps/frontend/README.md` is stale** -- says Next.js + Prisma, but code uses TanStack Start + Vite + Drizzle. Trust the config files.
-- **No tests exist** in the entire repo. No test framework is configured.
-- **No CI workflows** in `.github/workflows/`.
-- **Telephony app** (`apps/telephony`) has its own stack (npm/ts-node/express). Does not use bun workspaces.
-- **Old CLAUDE.md files** scattered in packages with generic "use Bun instead of Node" boilerplate -- largely noise.
-- **Global `@types/react` override** pinned to 19.2.7 across all packages.
-- **OpenCode override:** `@ai-sdk/provider-utils` forced to 4.0.20.
+- **Frontend README is stale** (says Next.js + Prisma).
+- **No tests / no CI workflows** in repo.
+- **Worker bundle size:** free tier 3 MiB gzip limit may block deploy.
+- **Postgres migrations** archived in `packages/db/drizzle-pg-archive/`.

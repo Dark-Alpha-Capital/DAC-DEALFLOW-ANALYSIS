@@ -11,7 +11,8 @@ import {
   type UIMessage,
   validateUIMessages,
 } from "ai";
-import { runDbWithWorkerNeonPool, type ChatSession } from "@repo/db";
+import { env } from "cloudflare:workers";
+import { runDbWithD1, type ChatSession } from "@repo/db";
 import {
   buildFullChatSystemPrompt,
   getChatLanguageModel,
@@ -620,7 +621,7 @@ export async function postChat(req: Request): Promise<Response> {
         messages: UIMessage[];
       }) => {
         try {
-          await runDbWithWorkerNeonPool(async () =>
+          await runDbWithD1(env.DB, async () =>
             saveChatSessionMessages({
               userId: session.user.id,
               chatId: id,

@@ -64,7 +64,7 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
   },
   plugins: [tanstackStartCookies()],
   database: drizzleAdapter(db, {
-    provider: "pg",
+    provider: "sqlite",
     schema: {
       user: users,
       account: accounts,

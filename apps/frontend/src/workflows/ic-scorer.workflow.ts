@@ -5,7 +5,7 @@ import {
 } from "cloudflare:workers";
 import { buildIcScorerUserPrompt } from "@repo/ai-core";
 import { getBitrixSyncEnv } from "@repo/bitrix-sync";
-import db, { runDbWithWorkerNeonPool } from "@repo/db";
+import db, { runDbWithD1 } from "@repo/db";
 import { updateWorkflowJobProgress } from "@repo/db/workflow-jobs";
 import { getIcScorerRunById } from "@repo/db/queries";
 import { updateIcScorerRun } from "@repo/db/mutations";
@@ -44,10 +44,10 @@ export class IcScorerWorkflow extends WorkflowEntrypoint<
     const p = event.payload;
 
     try {
-      await runDbWithWorkerNeonPool(async () => markWorkflowRunning(instanceId));
+      await runDbWithD1(this.env.DB, async () => markWorkflowRunning(instanceId));
 
       await step.do("score-core", async () =>
-        runDbWithWorkerNeonPool(async () => {
+        runDbWithD1(this.env.DB, async () => {
           const existing = await getIcScorerRunById(p.runId);
           if (!existing || !icScorerActorMatches(existing.userId, p.userId)) {
             throw new Error("IC scorer run not found or forbidden");
@@ -113,7 +113,7 @@ export class IcScorerWorkflow extends WorkflowEntrypoint<
       );
 
       await step.do("memo-llm", async () =>
-        runDbWithWorkerNeonPool(async () => {
+        runDbWithD1(this.env.DB, async () => {
           const run = await getIcScorerRunById(p.runId);
           if (!run || !icScorerActorMatches(run.userId, p.userId)) {
             throw new Error("IC scorer run not found or forbidden");
@@ -152,7 +152,7 @@ export class IcScorerWorkflow extends WorkflowEntrypoint<
         }),
       );
 
-      await runDbWithWorkerNeonPool(async () =>
+      await runDbWithD1(this.env.DB, async () =>
         markWorkflowCompleted(instanceId, { runId: p.runId }),
       );
 
@@ -160,7 +160,7 @@ export class IcScorerWorkflow extends WorkflowEntrypoint<
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(`${LOG} failed`, { runId: p.runId, msg });
-      await runDbWithWorkerNeonPool(async () => {
+      await runDbWithD1(this.env.DB, async () => {
         await updateIcScorerRun(p.runId, {
           status: "FAILED",
           errorMessage: msg,

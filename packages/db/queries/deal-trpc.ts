@@ -8,7 +8,8 @@ import {
   leads,
   documents,
 } from "../schema";
-import { and, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import { ilike } from "../sqlite-helpers";
 
 export async function searchDealOpportunitiesForChat(input: {
   query?: string;

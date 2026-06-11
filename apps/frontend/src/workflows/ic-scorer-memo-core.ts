@@ -11,8 +11,6 @@ import {
 } from "@repo/schemas";
 import { IC_SCORER_LLM_MODEL } from "./ic-scorer-score-core";
 
-const openai = getOpenAIProvider();
-
 export async function generateIcScorerMemoPass(input: {
   scoreCore: IcScorerScoreCore;
   evidenceSummary: string;
@@ -22,7 +20,7 @@ export async function generateIcScorerMemoPass(input: {
     evidenceSummary: input.evidenceSummary,
   });
   const { output } = await generateText({
-    model: openai(IC_SCORER_LLM_MODEL),
+    model: getOpenAIProvider()(IC_SCORER_LLM_MODEL),
     system: IC_SCORER_MEMO_SYSTEM,
     prompt: userPrompt,
     output: Output.object({

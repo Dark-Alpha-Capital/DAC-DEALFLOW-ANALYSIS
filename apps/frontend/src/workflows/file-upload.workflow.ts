@@ -3,7 +3,7 @@ import {
   type WorkflowEvent,
   type WorkflowStep,
 } from "cloudflare:workers";
-import { db, runDbWithWorkerNeonPool } from "@repo/db";
+import { db, runDbWithD1 } from "@repo/db";
 import type { DocumentCategory } from "@repo/db/enums";
 import { documents } from "@repo/db/schema";
 import { buildNextcloudFileUrl, fileExists } from "@repo/nextcloud";
@@ -60,7 +60,7 @@ async function safeUpdateWorkflowJobProgress(
   progress: { step: string; percentage: number },
 ): Promise<void> {
   try {
-    await runDbWithWorkerNeonPool(async () => {
+    await runDbWithD1(this.env.DB, async () => {
       await updateWorkflowJobProgress(instanceId, progress);
     });
   } catch (e) {
@@ -155,7 +155,7 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
         mimeType,
         contentHashPrefix: p.contentHash?.slice(0, 12),
       });
-      await runDbWithWorkerNeonPool(async () => markWorkflowRunning(instanceId));
+      await runDbWithD1(this.env.DB, async () => markWorkflowRunning(instanceId));
       assertDealOpportunityUploadPayload(p, jobId);
 
       await step.do("validate", { timeout: "2 minutes" }, async () => {
@@ -188,7 +188,7 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
           retries: { limit: 0, delay: "1 second" },
         },
         async (stepCtx) =>
-          runDbWithWorkerNeonPool(async () => {
+          runDbWithD1(this.env.DB, async () => {
             logInfo(`${jobId}: save-db attempt`, { attempt: stepCtx.attempt });
             await updateWorkflowJobProgress(instanceId, {
               step: "Saving to database",
@@ -279,14 +279,14 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
         fileName,
         fileId: saveResult.fileId,
       });
-      await runDbWithWorkerNeonPool(async () => markWorkflowCompleted(instanceId, out));
+      await runDbWithD1(this.env.DB, async () => markWorkflowCompleted(instanceId, out));
       return out;
     } catch (err) {
       if (isUniqueViolationError(err)) {
         const duplicateError = new Error(
           "This document was already uploaded for this deal",
         );
-        await runDbWithWorkerNeonPool(async () =>
+        await runDbWithD1(this.env.DB, async () =>
           markWorkflowFailed(instanceId, duplicateError),
         );
         throw duplicateError;
@@ -298,7 +298,7 @@ export class FileUploadWorkflow extends WorkflowEntrypoint<
         message: err instanceof Error ? err.message : String(err),
         stack: err instanceof Error ? err.stack : undefined,
       });
-      await runDbWithWorkerNeonPool(async () => markWorkflowFailed(instanceId, err));
+      await runDbWithD1(this.env.DB, async () => markWorkflowFailed(instanceId, err));
       throw err;
     }
   }

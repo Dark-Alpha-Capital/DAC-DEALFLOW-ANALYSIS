@@ -1,267 +1,40 @@
 import {
-  pgTable,
+  sqliteTable,
   text,
-  timestamp,
-  boolean,
-  doublePrecision,
   integer,
-  pgEnum,
-  decimal,
+  real,
   index,
   uniqueIndex,
-  jsonb,
   check,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
 import { relations, sql } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 
-// ============================================================================
-// ENUMS
-// ============================================================================
+// ENUMS — see enums.ts; SQLite uses text({ enum: [...] })
 
-export const userRoleEnum = pgEnum("UserRole", ["USER", "ADMIN"]);
-
-export const dealStatusEnum = pgEnum("DealStatus", [
-  "AVAILABLE",
-  "SOLD",
-  "UNDER_CONTRACT",
-  "NOT_SPECIFIED",
-]);
-
-export const dealTypeEnum = pgEnum("DealType", [
-  "SCRAPED",
-  "MANUAL",
-  "AI_INFERRED",
-]);
-
-export const sentimentEnum = pgEnum("Sentiment", [
-  "POSITIVE",
-  "NEUTRAL",
-  "NEGATIVE",
-]);
-
-// Unified document category enum (merges FileCategory and DealDocumentCategory)
-export const documentCategoryEnum = pgEnum("DocumentCategory", [
-  // From FileCategory
-  "FINANCIALS",
-  "LEGAL",
-  "TAX",
-  "TECHNICAL",
-  "COMMERCIAL",
-  "ESG",
-  "MARKETING",
-  "OPERATIONS",
-  // From DealDocumentCategory (merged/renamed)
-  "DOCUMENTATION",
-  "INVESTOR_RELATIONSHIPS",
-  "TOOLS",
-  "LEGISLATION",
-  "RESEARCH",
-  "PROSPECTUS",
-  "OTHER",
-  // Firm-level global document categories
-  "OPERATING_PLAYBOOK",
-  "INVESTMENT_MEMO",
-  "IC_TEMPLATE",
-  "INDUSTRY_RESEARCH",
-  "VALUE_CREATION_PLAYBOOK",
-  "PAST_DEAL_ANALYSIS",
-  "DUE_DILIGENCE_CHECKLIST",
-  "CIM_SCREENING",
-  "CIM",
-]);
-
-// Entity type enum for polymorphic association
-export const entityTypeEnum = pgEnum("EntityType", ["DEAL", "COMPANY"]);
-
-export const themeStatusEnum = pgEnum("ThemeStatus", [
-  "ACTIVE",
-  "PAUSED",
-  "RETIRED",
-]);
-
-export const outreachTypeEnum = pgEnum("OutreachType", [
-  "EMAIL",
-  "CALL",
-  "LINKEDIN",
-  "MEETING",
-]);
-
-export const reviewStateEnum = pgEnum("ReviewState", [
-  "NOT_SEEN",
-  "SEEN",
-  "REVIEWED",
-  "PUBLISHED",
-]);
-
-export const dealScreeningStatusEnum = pgEnum("DealScreeningStatus", [
-  "PASS",
-  "FAIL",
-  "INCOMPLETE",
-]);
-
-export const screenerResponseTypeEnum = pgEnum("ScreenerResponseType", [
-  "SCORE",
-]);
-
-export const screenerResponseSourceEnum = pgEnum("ScreenerResponseSource", [
-  "AI",
-  "HUMAN",
-]);
-
-export const dealCimStatusEnum = pgEnum("DealCimStatus", [
-  "ACTIVE",
-  "ARCHIVED",
-]);
-
-export const cimScreeningSessionStatusEnum = pgEnum(
-  "CimScreeningSessionStatus",
-  ["PENDING", "INGESTING", "SCREENING", "COMPLETED", "FAILED"],
-);
-
-export const icScorerRunStatusEnum = pgEnum("IcScorerRunStatus", [
-  "PENDING",
-  "SCORING",
-  "MEMO",
-  "COMPLETED",
-  "FAILED",
-]);
-
-export const icScorerModeEnum = pgEnum("IcScorerMode", ["rag", "monograph"]);
-
-export const cimExtractionSourceEnum = pgEnum("CIMExtractionSource", [
-  "AI",
-  "USER",
-]);
-
-export const dealFinancialSnapshotSourceEnum = pgEnum(
-  "DealFinancialSnapshotSource",
-  [
-    "LISTING",
-    "BROKER_CALL",
-    "CIM",
-    "MANAGEMENT_MEETING",
-    "DILIGENCE",
-    "MANUAL",
-  ],
-);
-
-export const companyFinancialSnapshotSourceEnum = pgEnum(
-  "CompanyFinancialSnapshotSource",
-  ["MANAGEMENT", "CIM", "MANUAL"],
-);
-
-export const dealRiskTypeEnum = pgEnum("DealRiskType", [
-  "CUSTOMER_CONCENTRATION",
-  "CAPEX",
-  "QUALITY_OF_EARNINGS",
-  "WORKING_CAPITAL",
-  "OTHER",
-]);
-
-export const dealRiskSeverityEnum = pgEnum("DealRiskSeverity", [
-  "LOW",
-  "MEDIUM",
-  "HIGH",
-]);
-
-export const dealRiskSourceEnum = pgEnum("DealRiskSource", ["SYSTEM", "USER"]);
-
-// Capital CRM layer
-export const investorTypeEnum = pgEnum("InvestorType", [
-  "HNWI",
-  "FAMILY_OFFICE",
-  "INSTITUTION",
-]);
-export const investorStatusEnum = pgEnum("InvestorStatus", [
-  "PROSPECT",
-  "QUALIFIED",
-  "ACTIVE",
-  "INACTIVE",
-]);
-export const investorLeadStatusEnum = pgEnum("InvestorLeadStatus", [
-  "RAW",
-  "CONTACTED",
-  "ENGAGED",
-  "QUALIFIED",
-  "REJECTED",
-]);
-export const investorInteractionTypeEnum = pgEnum("InvestorInteractionType", [
-  "EMAIL",
-  "CALL",
-  "MEETING",
-  "EVENT",
-  "INTRO",
-]);
-export const investorRiskProfileEnum = pgEnum("InvestorRiskProfile", [
-  "CONSERVATIVE",
-  "MODERATE",
-  "BALANCED",
-  "GROWTH",
-  "AGGRESSIVE",
-]);
-
-export const investorCompanyLinkStatusEnum = pgEnum(
-  "InvestorCompanyLinkStatus",
-  ["ACTIVE", "ARCHIVED"],
-);
-
-export const screenerCategoryEnum = pgEnum("ScreenerCategory", [
-  "Deal Screener",
-  "Project Screener",
-]);
-export type ScreenerCategoryValue =
-  (typeof screenerCategoryEnum.enumValues)[number];
-
-export const projectTrackerSourceTypeEnum = pgEnum("ProjectTrackerSourceType", [
-  "PROJECT_KICKOFF",
-]);
-
-export const projectKickoffScreeningStatusEnum = pgEnum(
-  "ProjectKickoffScreeningStatus",
-  ["pending", "running", "completed", "failed"],
-);
-
-export const departmentEnum = pgEnum("Department", [
-  "Capital Markets",
-  "Deal Team",
-  "Legal and Compliance",
-  "Operations",
-  "M&A Origination",
-  "Technology",
-  "Investor Relations",
-  "Public Markets/Hedge Fund",
-  "Investment Team",
-  "Due Diligence",
-  "Talent Acquisition",
-  "Operating Partner",
-]);
-export type DepartmentValue = (typeof departmentEnum.enumValues)[number];
-
-// ============================================================================
 // TABLES
 // ============================================================================
 
 // User table
-export const users = pgTable("User", {
+export const users = sqliteTable("User", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
   name: text("name").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   email: text("email").notNull(),
-  emailVerified: boolean("emailVerified").default(false).notNull(),
+  emailVerified: integer("emailVerified", { mode: "boolean" }).default(false).notNull(),
   image: text("image"),
-  role: userRoleEnum("role").default("USER").notNull(),
-  updatedAt: timestamp("updatedAt")
+  role: text("role", { enum: ["USER", "ADMIN"] as const }).default("USER").notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
-  isBlocked: boolean("isBlocked").default(false).notNull(),
+  isBlocked: integer("isBlocked", { mode: "boolean" }).default(false).notNull(),
 });
 
 // Account table (for OAuth)
-export const accounts = pgTable("Account", {
+export const accounts = sqliteTable("Account", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
@@ -272,20 +45,20 @@ export const accounts = pgTable("Account", {
   providerId: text("providerId").notNull(),
   accessToken: text("accessToken"),
   refreshToken: text("refreshToken"),
-  accessTokenExpiresAt: timestamp("accessTokenExpiresAt"),
-  refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt"),
+  accessTokenExpiresAt: integer("accessTokenExpiresAt", { mode: "timestamp" }),
+  refreshTokenExpiresAt: integer("refreshTokenExpiresAt", { mode: "timestamp" }),
   scope: text("scope"),
   idToken: text("idToken"),
   password: text("password"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
 });
 
 // Session table
-export const sessions = pgTable("Session", {
+export const sessions = sqliteTable("Session", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
@@ -293,53 +66,53 @@ export const sessions = pgTable("Session", {
   userId: text("userId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  expiresAt: timestamp("expiresAt").notNull(),
+  expiresAt: integer("expiresAt", { mode: "timestamp" }).notNull(),
   ipAddress: text("ipAddress"),
   userAgent: text("userAgent"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
 });
 
 // Verification table
-export const verifications = pgTable("Verification", {
+export const verifications = sqliteTable("Verification", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
-  expiresAt: timestamp("expiresAt").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
+  expiresAt: integer("expiresAt", { mode: "timestamp" }).notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
 });
 
-export const themes = pgTable("Theme", {
+export const themes = sqliteTable("Theme", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
   name: text("name").notNull(),
   description: text("description").notNull(),
   sector: text("sector").notNull(), // Healthcare, Manufacturing, etc.
-  status: themeStatusEnum("status").default("ACTIVE").notNull(), // ACTIVE, PAUSED, RETIRED
+  status: text("status", { enum: ["ACTIVE", "PAUSED", "RETIRED"] as const }).default("ACTIVE").notNull(), // ACTIVE, PAUSED, RETIRED
   capitalPriorityScore: integer("capitalPriorityScore"), // 1–100
   confidenceScore: integer("confidenceScore"), // Conviction level
   createdById: text("createdById").references(() => users.id, {
     onDelete: "set null",
   }),
-  deletedAt: timestamp("deletedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
+  deletedAt: integer("deletedAt", { mode: "timestamp" }),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
 });
 
-export const theses = pgTable(
+export const theses = sqliteTable(
   "Thesis",
   {
     id: text("id")
@@ -349,15 +122,15 @@ export const theses = pgTable(
       .notNull()
       .references(() => themes.id, { onDelete: "cascade" }),
     summary: text("summary").notNull(),
-    macroDrivers: text("macroDrivers").array(),
+    macroDrivers: text("macroDrivers", { mode: "json" }).$type<string[]>(),
     mispricingHypothesis: text("mispricingHypothesis"),
-    valueCreationLevers: text("valueCreationLevers").array(),
+    valueCreationLevers: text("valueCreationLevers", { mode: "json" }).$type<string[]>(),
     exitLogic: text("exitLogic"),
-    riskFactors: text("riskFactors").array(),
+    riskFactors: text("riskFactors", { mode: "json" }).$type<string[]>(),
     version: text("version").default("1.0"),
-    isActive: boolean("isActive").default(true),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    isActive: integer("isActive", { mode: "boolean" }).default(true),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -370,7 +143,7 @@ export const theses = pgTable(
   }),
 );
 
-export const industryIntelligence = pgTable(
+export const industryIntelligence = sqliteTable(
   "IndustryIntelligence",
   {
     id: text("id")
@@ -379,19 +152,19 @@ export const industryIntelligence = pgTable(
     themeId: text("themeId")
       .notNull()
       .references(() => themes.id, { onDelete: "cascade" }),
-    tam: doublePrecision("tam"),
-    growthRate: doublePrecision("growthRate"),
-    avgEbitdaMargin: doublePrecision("avgEbitdaMargin"),
-    avgEntryMultiple: doublePrecision("avgEntryMultiple"),
-    avgExitMultiple: doublePrecision("avgExitMultiple"),
+    tam: real("tam"),
+    growthRate: real("growthRate"),
+    avgEbitdaMargin: real("avgEbitdaMargin"),
+    avgEntryMultiple: real("avgEntryMultiple"),
+    avgExitMultiple: real("avgExitMultiple"),
     fragmentationScore: integer("fragmentationScore"),
-    sponsorPenetration: doublePrecision("sponsorPenetration"),
+    sponsorPenetration: real("sponsorPenetration"),
     cyclicalityScore: integer("cyclicalityScore"),
     disruptionRiskScore: integer("disruptionRiskScore"),
     notes: text("notes"),
     version: text("version").default("1.0"),
-    isActive: boolean("isActive").default(true),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    isActive: integer("isActive", { mode: "boolean" }).default(true),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     industryIntelThemeIdx: index("industry_intel_theme_idx").on(table.themeId),
@@ -403,16 +176,7 @@ export const industryIntelligence = pgTable(
   }),
 );
 
-export const companyCoverageStatusEnum = pgEnum("CompanyCoverageStatus", [
-  "UNCONTACTED",
-  "CONTACTED",
-  "IN_DISCUSSION",
-  "UNDER_LOI",
-  "CLOSED",
-  "PASSED",
-]);
-
-export const companies = pgTable(
+export const companies = sqliteTable(
   "Company",
   {
     id: text("id")
@@ -426,47 +190,47 @@ export const companies = pgTable(
     location: text("location"),
 
     // Financial profile (normalized)
-    revenueEstimate: doublePrecision("revenueEstimate"),
-    ebitdaEstimate: doublePrecision("ebitdaEstimate"),
-    ebitdaMarginEstimate: doublePrecision("ebitdaMarginEstimate"),
-    recurringRevenuePct: doublePrecision("recurringRevenuePct"),
-    customerConcentrationPct: doublePrecision("customerConcentrationPct"),
+    revenueEstimate: real("revenueEstimate"),
+    ebitdaEstimate: real("ebitdaEstimate"),
+    ebitdaMarginEstimate: real("ebitdaMarginEstimate"),
+    recurringRevenuePct: real("recurringRevenuePct"),
+    customerConcentrationPct: real("customerConcentrationPct"),
 
     founderAgeEstimate: integer("founderAgeEstimate"),
 
     // Structured business profile
     businessModel: text("businessModel"),
     employees: integer("employees"),
-    revenueTtm: doublePrecision("revenueTtm"),
-    ebitdaTtm: doublePrecision("ebitdaTtm"),
-    grossMargin: doublePrecision("grossMargin"),
-    revenueCagr: doublePrecision("revenueCagr"),
+    revenueTtm: real("revenueTtm"),
+    ebitdaTtm: real("ebitdaTtm"),
+    grossMargin: real("grossMargin"),
+    revenueCagr: real("revenueCagr"),
     totalClients: integer("totalClients"),
-    top10Concentration: doublePrecision("top10Concentration"),
-    customerIndustries: text("customerIndustries").array(),
+    top10Concentration: real("top10Concentration"),
+    customerIndustries: text("customerIndustries", { mode: "json" }).$type<string[]>(),
     revenueModelType: text("revenueModelType"),
     expansionModel: text("expansionModel"),
-    concentrationHigh: boolean("concentrationHigh"),
-    marginLow: boolean("marginLow"),
-    vendorDependency: boolean("vendorDependency"),
-    growthLevers: text("growthLevers").array(),
+    concentrationHigh: integer("concentrationHigh", { mode: "boolean" }),
+    marginLow: integer("marginLow", { mode: "boolean" }),
+    vendorDependency: integer("vendorDependency", { mode: "boolean" }),
+    growthLevers: text("growthLevers", { mode: "json" }).$type<string[]>(),
 
     // Strategic alignment
     themeId: text("themeId").references(() => themes.id, {
       onDelete: "set null",
     }),
     attractivenessScore: integer("attractivenessScore"),
-    coverageStatus: companyCoverageStatusEnum("coverageStatus")
+    coverageStatus: text("coverageStatus", { enum: ["UNCONTACTED", "CONTACTED", "IN_DISCUSSION", "UNDER_LOI", "CLOSED", "PASSED"] as const })
       .default("UNCONTACTED")
       .notNull(),
 
-    firstSeenAt: timestamp("firstSeenAt"),
-    lastSeenAt: timestamp("lastSeenAt"),
+    firstSeenAt: integer("firstSeenAt", { mode: "timestamp" }),
+    lastSeenAt: integer("lastSeenAt", { mode: "timestamp" }),
     firstSeenFromLeadId: text("firstSeenFromLeadId"),
-    deletedAt: timestamp("deletedAt"),
+    deletedAt: integer("deletedAt", { mode: "timestamp" }),
 
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -483,7 +247,7 @@ export const companies = pgTable(
   }),
 );
 
-export const companyNotes = pgTable(
+export const companyNotes = sqliteTable(
   "CompanyNote",
   {
     id: text("id")
@@ -501,8 +265,8 @@ export const companyNotes = pgTable(
       onDelete: "set null",
     }),
 
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -517,7 +281,7 @@ export const companyNotes = pgTable(
   }),
 );
 
-export const themeCompanyCoverage = pgTable(
+export const themeCompanyCoverage = sqliteTable(
   "ThemeCompanyCoverage",
   {
     id: text("id")
@@ -529,13 +293,13 @@ export const themeCompanyCoverage = pgTable(
     companyId: text("companyId")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
-    coverageStatus: companyCoverageStatusEnum("coverageStatus")
+    coverageStatus: text("coverageStatus", { enum: ["UNCONTACTED", "CONTACTED", "IN_DISCUSSION", "UNDER_LOI", "CLOSED", "PASSED"] as const })
       .default("UNCONTACTED")
       .notNull(),
-    lastOutreachAt: timestamp("lastOutreachAt"),
+    lastOutreachAt: integer("lastOutreachAt", { mode: "timestamp" }),
     notes: text("notes"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -553,7 +317,7 @@ export const themeCompanyCoverage = pgTable(
   }),
 );
 
-export const themePerformance = pgTable("ThemePerformance", {
+export const themePerformance = sqliteTable("ThemePerformance", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
@@ -564,24 +328,17 @@ export const themePerformance = pgTable("ThemePerformance", {
   meetingsHeld: integer("meetingsHeld"),
   loisIssued: integer("loisIssued"),
   dealsClosed: integer("dealsClosed"),
-  averageEntryMultiple: doublePrecision("averageEntryMultiple"),
-  averageIRR: doublePrecision("averageIRR"),
-  observedAt: timestamp("observedAt").defaultNow().notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
+  averageEntryMultiple: real("averageEntryMultiple"),
+  averageIRR: real("averageIRR"),
+  observedAt: integer("observedAt", { mode: "timestamp" }).defaultNow().notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
 });
 
-export const leadStatusEnum = pgEnum("LeadStatus", [
-  "NEW",
-  "PROCESSED",
-  "DUPLICATE",
-  "REJECTED",
-]);
-
-export const leads = pgTable(
+export const leads = sqliteTable(
   "Lead",
   {
     id: text("id")
@@ -596,9 +353,9 @@ export const leads = pgTable(
     rawIndustry: text("rawIndustry"),
 
     // Raw financials (before normalization)
-    revenue: doublePrecision("revenue"),
-    ebitda: doublePrecision("ebitda"),
-    askingPrice: doublePrecision("askingPrice"),
+    revenue: real("revenue"),
+    ebitda: real("ebitda"),
+    askingPrice: real("askingPrice"),
 
     // Broker / contact info
     brokerage: text("brokerage"),
@@ -612,17 +369,17 @@ export const leads = pgTable(
     companyLocation: text("companyLocation"),
 
     // Processing state
-    status: leadStatusEnum("status").default("NEW").notNull(),
+    status: text("status", { enum: ["NEW", "PROCESSED", "DUPLICATE", "REJECTED"] as const }).default("NEW").notNull(),
     duplicateCompanyId: text("duplicateCompanyId").references(
       () => companies.id,
       {
         onDelete: "set null",
       },
     ),
-    processedAt: timestamp("processedAt"),
-    deletedAt: timestamp("deletedAt"),
+    processedAt: integer("processedAt", { mode: "timestamp" }),
+    deletedAt: integer("deletedAt", { mode: "timestamp" }),
 
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     leadDuplicateCompanyIdx: index("lead_duplicate_company_idx").on(
@@ -632,7 +389,7 @@ export const leads = pgTable(
 );
 
 // Deal table
-export const deals = pgTable("Deal", {
+export const deals = sqliteTable("Deal", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
@@ -642,35 +399,35 @@ export const deals = pgTable("Deal", {
   linkedinUrl: text("linkedinUrl"),
   workPhone: text("workPhone"),
   dealCaption: text("dealCaption").notNull(),
-  revenue: doublePrecision("revenue").notNull(),
-  ebitda: doublePrecision("ebitda").notNull(),
+  revenue: real("revenue").notNull(),
+  ebitda: real("ebitda").notNull(),
   title: text("title"),
-  grossRevenue: doublePrecision("grossRevenue"),
-  askingPrice: doublePrecision("askingPrice"),
-  ebitdaMargin: doublePrecision("ebitdaMargin").notNull(),
+  grossRevenue: real("grossRevenue"),
+  askingPrice: real("askingPrice"),
+  ebitdaMargin: real("ebitdaMargin").notNull(),
   industry: text("industry").notNull(),
-  dealType: dealTypeEnum("dealType").default("MANUAL").notNull(),
+  dealType: text("dealType", { enum: ["SCRAPED", "MANUAL", "AI_INFERRED"] as const }).default("MANUAL").notNull(),
   sourceWebsite: text("sourceWebsite").notNull(),
   companyLocation: text("companyLocation"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   email: text("email"),
-  updatedAt: timestamp("updatedAt")
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
-  bitrixCreatedAt: timestamp("bitrixCreatedAt"),
+  bitrixCreatedAt: integer("bitrixCreatedAt", { mode: "timestamp" }),
   bitrixId: text("bitrixId"),
   userId: text("userId").references(() => users.id, { onDelete: "set null" }),
   dealTeaser: text("dealTeaser"),
-  tags: text("tags").array().default([]),
+  tags: text("tags", { mode: "json" }).$type<string[]>().notNull().default([]),
   bitrixLink: text("bitrixLink"),
-  reviewState: reviewStateEnum("reviewState").default("NOT_SEEN").notNull(),
-  status: dealStatusEnum("status").default("NOT_SPECIFIED").notNull(),
+  reviewState: text("reviewState", { enum: ["NOT_SEEN", "SEEN", "REVIEWED", "PUBLISHED"] as const }).default("NOT_SEEN").notNull(),
+  status: text("status", { enum: ["AVAILABLE", "SOLD", "UNDER_CONTRACT", "NOT_SPECIFIED"] as const }).default("NOT_SPECIFIED").notNull(),
   chunk_text: text("chunk_text"),
   description: text("description"),
 });
 
-export const dealOpportunities = pgTable(
+export const dealOpportunities = sqliteTable(
   "DealOpportunity",
   {
     id: text("id")
@@ -697,29 +454,29 @@ export const dealOpportunities = pgTable(
     brokerage: text("brokerage"),
 
     // Financial snapshot at listing time
-    revenue: doublePrecision("revenue"),
-    ebitda: doublePrecision("ebitda"),
-    ebitdaMargin: doublePrecision("ebitdaMargin"),
+    revenue: real("revenue"),
+    ebitda: real("ebitda"),
+    ebitdaMargin: real("ebitdaMargin"),
 
-    askingPrice: doublePrecision("askingPrice"),
-    impliedMultiple: doublePrecision("impliedMultiple"),
+    askingPrice: real("askingPrice"),
+    impliedMultiple: real("impliedMultiple"),
 
     /** Bitrix deal TITLE / listing headline */
     title: text("title"),
     dealTeaser: text("dealTeaser"),
     description: text("description"),
 
-    dealType: dealTypeEnum("dealType").default("MANUAL").notNull(),
+    dealType: text("dealType", { enum: ["SCRAPED", "MANUAL", "AI_INFERRED"] as const }).default("MANUAL").notNull(),
     /** Bitrix24 CRM deal kanban `STAGE_ID` for the configured pipeline (`BITRIX_DEAL_STAGES_JSON` / `getBitrixDealStages`). */
     stage: text("stage").notNull().default("NEW"),
-    status: dealStatusEnum("status").default("AVAILABLE").notNull(),
+    status: text("status", { enum: ["AVAILABLE", "SOLD", "UNDER_CONTRACT", "NOT_SPECIFIED"] as const }).default("AVAILABLE").notNull(),
 
-    tags: text("tags").array().default([]),
-    reviewState: reviewStateEnum("reviewState").default("NOT_SEEN").notNull(),
+    tags: text("tags", { mode: "json" }).$type<string[]>().notNull().default([]),
+    reviewState: text("reviewState", { enum: ["NOT_SEEN", "SEEN", "REVIEWED", "PUBLISHED"] as const }).default("NOT_SEEN").notNull(),
 
     bitrixId: text("bitrixId"),
     bitrixLink: text("bitrixLink"),
-    bitrixCreatedAt: timestamp("bitrixCreatedAt"),
+    bitrixCreatedAt: integer("bitrixCreatedAt", { mode: "timestamp" }),
 
     brokerFirstName: text("brokerFirstName"),
     brokerLastName: text("brokerLastName"),
@@ -729,8 +486,8 @@ export const dealOpportunities = pgTable(
 
     userId: text("userId").references(() => users.id, { onDelete: "set null" }),
 
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -746,7 +503,7 @@ export const dealOpportunities = pgTable(
 );
 
 /** Many-to-many: deal opportunities linked to companies (primary/secondary targets). */
-export const dealOpportunityCompanyLinks = pgTable(
+export const dealOpportunityCompanyLinks = sqliteTable(
   "DealOpportunityCompanyLink",
   {
     id: text("id")
@@ -759,7 +516,7 @@ export const dealOpportunityCompanyLinks = pgTable(
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
     notes: text("notes"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     dealOppCompanyLinkUniqueIdx: uniqueIndex("deal_opp_company_link_unique_idx")
@@ -773,7 +530,7 @@ export const dealOpportunityCompanyLinks = pgTable(
   }),
 );
 
-export const dealOpportunityThemes = pgTable(
+export const dealOpportunityThemes = sqliteTable(
   "DealOpportunityTheme",
   {
     id: text("id")
@@ -785,8 +542,8 @@ export const dealOpportunityThemes = pgTable(
     themeId: text("themeId")
       .notNull()
       .references(() => themes.id, { onDelete: "cascade" }),
-    isPrimary: boolean("isPrimary").default(true).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    isPrimary: integer("isPrimary", { mode: "boolean" }).default(true).notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     dealOppThemeUniqueIdx: uniqueIndex("deal_opp_theme_unique_idx").on(
@@ -803,7 +560,7 @@ export const dealOpportunityThemes = pgTable(
   }),
 );
 
-export const dealFinancialSnapshots = pgTable(
+export const dealFinancialSnapshots = sqliteTable(
   "DealFinancialSnapshot",
   {
     id: text("id")
@@ -812,17 +569,17 @@ export const dealFinancialSnapshots = pgTable(
     dealOpportunityId: text("dealOpportunityId")
       .notNull()
       .references(() => dealOpportunities.id, { onDelete: "cascade" }),
-    revenue: doublePrecision("revenue"),
-    ebitda: doublePrecision("ebitda"),
-    ebitdaMargin: doublePrecision("ebitdaMargin"),
-    askingPrice: doublePrecision("askingPrice"),
-    impliedMultiple: doublePrecision("impliedMultiple"),
-    source: dealFinancialSnapshotSourceEnum("source").notNull(),
+    revenue: real("revenue"),
+    ebitda: real("ebitda"),
+    ebitdaMargin: real("ebitdaMargin"),
+    askingPrice: real("askingPrice"),
+    impliedMultiple: real("impliedMultiple"),
+    source: text("source", { enum: ["LISTING", "BROKER_CALL", "CIM", "MANAGEMENT_MEETING", "DILIGENCE", "MANUAL"] as const }).notNull(),
     notes: text("notes"),
     createdById: text("createdById").references(() => users.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     dealFinancialSnapshotDealOppIdx: index("deal_fin_snapshot_deal_opp_idx").on(
@@ -837,7 +594,7 @@ export const dealFinancialSnapshots = pgTable(
   }),
 );
 
-export const companyFinancialSnapshots = pgTable(
+export const companyFinancialSnapshots = sqliteTable(
   "CompanyFinancialSnapshot",
   {
     id: text("id")
@@ -846,21 +603,21 @@ export const companyFinancialSnapshots = pgTable(
     companyId: text("companyId")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
-    periodEnd: timestamp("periodEnd").notNull(),
-    revenue: doublePrecision("revenue"),
-    ebitda: doublePrecision("ebitda"),
-    grossMargin: doublePrecision("grossMargin"),
-    revenueCagr: doublePrecision("revenueCagr"),
+    periodEnd: integer("periodEnd", { mode: "timestamp" }).notNull(),
+    revenue: real("revenue"),
+    ebitda: real("ebitda"),
+    grossMargin: real("grossMargin"),
+    revenueCagr: real("revenueCagr"),
     employees: integer("employees"),
     totalClients: integer("totalClients"),
-    top10Concentration: doublePrecision("top10Concentration"),
-    recurringRevenuePct: doublePrecision("recurringRevenuePct"),
-    source: companyFinancialSnapshotSourceEnum("source").notNull(),
+    top10Concentration: real("top10Concentration"),
+    recurringRevenuePct: real("recurringRevenuePct"),
+    source: text("source", { enum: ["MANAGEMENT", "CIM", "MANUAL"] as const }).notNull(),
     notes: text("notes"),
     createdById: text("createdById").references(() => users.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     companyFinancialSnapshotCompanyIdx: index(
@@ -872,7 +629,7 @@ export const companyFinancialSnapshots = pgTable(
   }),
 );
 
-export const dealRiskFlags = pgTable(
+export const dealRiskFlags = sqliteTable(
   "DealRiskFlag",
   {
     id: text("id")
@@ -881,14 +638,14 @@ export const dealRiskFlags = pgTable(
     dealOpportunityId: text("dealOpportunityId")
       .notNull()
       .references(() => dealOpportunities.id, { onDelete: "cascade" }),
-    riskType: dealRiskTypeEnum("riskType").notNull(),
-    severity: dealRiskSeverityEnum("severity").notNull(),
+    riskType: text("riskType", { enum: ["CUSTOMER_CONCENTRATION", "CAPEX", "QUALITY_OF_EARNINGS", "WORKING_CAPITAL", "OTHER"] as const }).notNull(),
+    severity: text("severity", { enum: ["LOW", "MEDIUM", "HIGH"] as const }).notNull(),
     description: text("description").notNull(),
-    source: dealRiskSourceEnum("source").default("USER").notNull(),
+    source: text("source", { enum: ["SYSTEM", "USER"] as const }).default("USER").notNull(),
     createdById: text("createdById").references(() => users.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     dealRiskFlagDealOppIdx: index("deal_risk_flag_deal_opp_idx").on(
@@ -903,13 +660,7 @@ export const dealRiskFlags = pgTable(
   }),
 );
 
-export const contactEntityEnum = pgEnum("ContactEntityType", [
-  "LEAD",
-  "COMPANY",
-  "DEAL_OPPORTUNITY",
-]);
-
-export const outreach = pgTable("Outreach", {
+export const outreach = sqliteTable("Outreach", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
@@ -922,7 +673,7 @@ export const outreach = pgTable("Outreach", {
     onDelete: "cascade",
   }),
 
-  type: outreachTypeEnum("type").notNull(),
+  type: text("type", { enum: ["EMAIL", "CALL", "LINKEDIN", "MEETING"] as const }).notNull(),
   notes: text("notes"),
   outcome: text("outcome"),
 
@@ -930,14 +681,14 @@ export const outreach = pgTable("Outreach", {
     onDelete: "set null",
   }),
 
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
 });
 
-export const contacts = pgTable("Contact", {
+export const contacts = sqliteTable("Contact", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
-  entityType: contactEntityEnum("entityType").notNull(),
+  entityType: text("entityType", { enum: ["LEAD", "COMPANY", "DEAL_OPPORTUNITY"] as const }).notNull(),
   entityId: text("entityId").notNull(),
   companyId: text("companyId").references(() => companies.id, {
     onDelete: "cascade",
@@ -953,11 +704,11 @@ export const contacts = pgTable("Contact", {
   phone: text("phone"),
   linkedinUrl: text("linkedinUrl"),
   role: text("role"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
 });
 
 // Questionnaire table
-export const questionnaires = pgTable("questionnaires", {
+export const questionnaires = sqliteTable("questionnaires", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
@@ -966,8 +717,8 @@ export const questionnaires = pgTable("questionnaires", {
   purpose: text("purpose").notNull(),
   author: text("author").notNull(),
   version: text("version").notNull(),
-  created_at: timestamp("created_at").defaultNow().notNull(),
-  updated_at: timestamp("updated_at")
+  created_at: integer("created_at", { mode: "timestamp" }).defaultNow().notNull(),
+  updated_at: integer("updated_at", { mode: "timestamp" })
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
@@ -975,19 +726,19 @@ export const questionnaires = pgTable("questionnaires", {
 
 
 
-export const screenerTemplates = pgTable(
+export const screenerTemplates = sqliteTable(
   "ScreenerTemplate",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
     name: text("name").notNull(),
-    category: screenerCategoryEnum("category").notNull().default("Deal Screener"),
+    category: text("category", { enum: ["Deal Screener", "Project Screener"] as const }).notNull().default("Deal Screener"),
     description: text("description"),
     content: text("content"),
-    department: departmentEnum("department"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    department: text("department", { enum: ["Capital Markets", "Deal Team", "Legal and Compliance", "Operations", "M&A Origination", "Technology", "Investor Relations", "Public Markets/Hedge Fund", "Investment Team", "Due Diligence", "Talent Acquisition", "Operating Partner"] as const }),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1002,7 +753,7 @@ export const screenerTemplates = pgTable(
 
 export const screeners = screenerTemplates;
 
-export const screenerQuestions = pgTable(
+export const screenerQuestions = sqliteTable(
   "ScreenerQuestion",
   {
     id: text("id")
@@ -1013,12 +764,12 @@ export const screenerQuestions = pgTable(
       .references(() => screenerTemplates.id, { onDelete: "cascade" }),
     question: text("question").notNull(),
     weight: integer("weight").default(10).notNull(),
-    responseType: screenerResponseTypeEnum("responseType")
+    responseType: text("responseType", { enum: ["SCORE"] as const })
       .default("SCORE")
       .notNull(),
     position: integer("position").default(0).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1033,7 +784,7 @@ export const screenerQuestions = pgTable(
   }),
 );
 
-export const screenerResponses = pgTable(
+export const screenerResponses = sqliteTable(
   "ScreenerResponse",
   {
     id: text("id")
@@ -1046,10 +797,10 @@ export const screenerResponses = pgTable(
       .notNull()
       .references(() => screenerQuestions.id, { onDelete: "cascade" }),
     score: integer("score").notNull(),
-    source: screenerResponseSourceEnum("source").notNull(),
+    source: text("source", { enum: ["AI", "HUMAN"] as const }).notNull(),
     notes: text("notes"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1070,7 +821,7 @@ export const screenerResponses = pgTable(
 );
 
 // AiScreening table
-export const aiScreenings = pgTable(
+export const aiScreenings = sqliteTable(
   "AiScreening",
   {
     id: text("id")
@@ -1081,12 +832,12 @@ export const aiScreenings = pgTable(
       .references(() => dealOpportunities.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     explanation: text("explanation").notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
-    sentiment: sentimentEnum("sentiment").default("NEUTRAL").notNull(),
+    sentiment: text("sentiment", { enum: ["POSITIVE", "NEUTRAL", "NEGATIVE"] as const }).default("NEUTRAL").notNull(),
     content: text("content"),
     score: integer("score"),
     screenerId: text("screenerId").references(() => screeners.id, {
@@ -1100,7 +851,7 @@ export const aiScreenings = pgTable(
   }),
 );
 
-export const dealOpportunityScreenings = pgTable(
+export const dealOpportunityScreenings = sqliteTable(
   "DealOpportunityScreening",
   {
     id: text("id")
@@ -1109,18 +860,18 @@ export const dealOpportunityScreenings = pgTable(
     dealOpportunityId: text("dealOpportunityId")
       .notNull()
       .references(() => dealOpportunities.id, { onDelete: "cascade" }),
-    status: dealScreeningStatusEnum("status").notNull(),
-    passed: boolean("passed").notNull().default(false),
-    reasons: text("reasons").array().notNull().default([]),
+    status: text("status", { enum: ["PASS", "FAIL", "INCOMPLETE"] as const }).notNull(),
+    passed: integer("passed", { mode: "boolean" }).notNull().default(false),
+    reasons: text("reasons", { mode: "json" }).$type<string[]>().notNull().default([]),
     score: integer("score"),
     ebitdaFitScore: integer("ebitdaFitScore"),
     revenueScore: integer("revenueScore"),
     industryScore: integer("industryScore"),
     profileKey: text("profileKey").notNull(),
     profileVersion: text("profileVersion").notNull(),
-    screenedAt: timestamp("screenedAt").defaultNow().notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    screenedAt: integer("screenedAt", { mode: "timestamp" }).defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1138,7 +889,7 @@ export const dealOpportunityScreenings = pgTable(
   }),
 );
 
-export const leadScreenings = pgTable(
+export const leadScreenings = sqliteTable(
   "LeadScreening",
   {
     id: text("id")
@@ -1147,18 +898,18 @@ export const leadScreenings = pgTable(
     leadId: text("leadId")
       .notNull()
       .references(() => leads.id, { onDelete: "cascade" }),
-    status: dealScreeningStatusEnum("status").notNull(),
-    passed: boolean("passed").notNull().default(false),
-    reasons: text("reasons").array().notNull().default([]),
+    status: text("status", { enum: ["PASS", "FAIL", "INCOMPLETE"] as const }).notNull(),
+    passed: integer("passed", { mode: "boolean" }).notNull().default(false),
+    reasons: text("reasons", { mode: "json" }).$type<string[]>().notNull().default([]),
     score: integer("score"),
     ebitdaFitScore: integer("ebitdaFitScore"),
     revenueScore: integer("revenueScore"),
     industryScore: integer("industryScore"),
     profileKey: text("profileKey").notNull(),
     profileVersion: text("profileVersion").notNull(),
-    screenedAt: timestamp("screenedAt").defaultNow().notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    screenedAt: integer("screenedAt", { mode: "timestamp" }).defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1173,7 +924,7 @@ export const leadScreenings = pgTable(
 );
 
 // UserActionLog table
-export const userActionLogs = pgTable("UserActionLog", {
+export const userActionLogs = sqliteTable("UserActionLog", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
@@ -1182,45 +933,21 @@ export const userActionLogs = pgTable("UserActionLog", {
     .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   content: text("content").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
 });
 
-export const documentEntityEnum = pgEnum("DocumentEntityType", [
-  "LEAD",
-  "COMPANY",
-  "DEAL_OPPORTUNITY",
-  "THEME",
-  "GLOBAL",
-]);
-
-export const documentIngestionStatusEnum = pgEnum("DocumentIngestionStatus", [
-  "PENDING",
-  "PROCESSING",
-  "PROCESSED",
-  "FAILED",
-  "SKIPPED",
-]);
-
-export const documentChunkModalityEnum = pgEnum("DocumentChunkModality", [
-  "TEXT",
-  "IMAGE",
-  "AUDIO",
-  "VIDEO",
-  "PDF",
-]);
-
-export const documents = pgTable(
+export const documents = sqliteTable(
   "Document",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
 
-    entityType: documentEntityEnum("entityType").notNull(),
+    entityType: text("entityType", { enum: ["LEAD", "COMPANY", "DEAL_OPPORTUNITY", "THEME", "GLOBAL"] as const }).notNull(),
     entityId: text("entityId"), // Nullable for GLOBAL documents
     companyId: text("companyId").references(() => companies.id, {
       onDelete: "cascade",
@@ -1236,18 +963,18 @@ export const documents = pgTable(
 
     title: text("title").notNull(),
     description: text("description"),
-    category: documentCategoryEnum("category").default("OTHER").notNull(),
+    category: text("category", { enum: ["FINANCIALS", "LEGAL", "TAX", "TECHNICAL", "COMMERCIAL", "ESG", "MARKETING", "OPERATIONS", "DOCUMENTATION", "INVESTOR_RELATIONSHIPS", "TOOLS", "LEGISLATION", "RESEARCH", "PROSPECTUS", "OTHER", "OPERATING_PLAYBOOK", "INVESTMENT_MEMO", "IC_TEMPLATE", "INDUSTRY_RESEARCH", "VALUE_CREATION_PLAYBOOK", "PAST_DEAL_ANALYSIS", "DUE_DILIGENCE_CHECKLIST", "CIM_SCREENING", "CIM"] as const }).default("OTHER").notNull(),
 
     fileUrl: text("fileUrl").notNull(),
     fileName: text("fileName").notNull(),
     fileSize: integer("fileSize"),
     mimeType: text("mimeType"),
     contentHash: text("contentHash"),
-    ingestionStatus: documentIngestionStatusEnum("ingestionStatus")
+    ingestionStatus: text("ingestionStatus", { enum: ["PENDING", "PROCESSING", "PROCESSED", "FAILED", "SKIPPED"] as const })
       .default("PENDING")
       .notNull(),
-    ingestionStartedAt: timestamp("ingestionStartedAt"),
-    ingestionCompletedAt: timestamp("ingestionCompletedAt"),
+    ingestionStartedAt: integer("ingestionStartedAt", { mode: "timestamp" }),
+    ingestionCompletedAt: integer("ingestionCompletedAt", { mode: "timestamp" }),
     ingestionAttemptCount: integer("ingestionAttemptCount").default(0).notNull(),
     ingestionError: text("ingestionError"),
 
@@ -1255,8 +982,8 @@ export const documents = pgTable(
       onDelete: "set null",
     }),
 
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1300,7 +1027,7 @@ export const documents = pgTable(
   }),
 );
 
-export const documentChunks = pgTable(
+export const documentChunks = sqliteTable(
   "DocumentChunk",
   {
     id: text("id")
@@ -1309,7 +1036,7 @@ export const documentChunks = pgTable(
     documentId: text("documentId")
       .notNull()
       .references(() => documents.id, { onDelete: "cascade" }),
-    entityType: documentEntityEnum("entityType").notNull(),
+    entityType: text("entityType", { enum: ["LEAD", "COMPANY", "DEAL_OPPORTUNITY", "THEME", "GLOBAL"] as const }).notNull(),
     entityId: text("entityId"),
     dealOpportunityId: text("dealOpportunityId").references(
       () => dealOpportunities.id,
@@ -1322,10 +1049,10 @@ export const documentChunks = pgTable(
       onDelete: "cascade",
     }),
     chunkText: text("chunkText"),
-    modality: documentChunkModalityEnum("modality").default("TEXT").notNull(),
-    metadata: jsonb("metadata"),
+    modality: text("modality", { enum: ["TEXT", "IMAGE", "AUDIO", "VIDEO", "PDF"] as const }).default("TEXT").notNull(),
+    metadata: text("metadata"),
     pageNumber: integer("pageNumber"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     documentChunkDocumentIdx: index("document_chunk_document_idx").on(
@@ -1346,7 +1073,7 @@ export const documentChunks = pgTable(
 );
 
 /** Tracks Cloudflare Workflow instances for job list / progress in the app UI */
-export const workflowJobs = pgTable(
+export const workflowJobs = sqliteTable(
   "WorkflowJob",
   {
     instanceId: text("instanceId").primaryKey(),
@@ -1362,10 +1089,10 @@ export const workflowJobs = pgTable(
     /** UI state: waiting | active | completed | failed | delayed */
     state: text("state").notNull().default("waiting"),
     failedReason: text("failedReason"),
-    returnValue: jsonb("returnValue"),
+    returnValue: text("returnValue"),
     attemptsMade: integer("attemptsMade").default(0).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     workflowJobUserCreatedIdx: index("workflow_job_user_created_idx").on(
@@ -1376,14 +1103,14 @@ export const workflowJobs = pgTable(
 );
 
 /** Stores saved project kickoff form data */
-export const projectKickoffs = pgTable(
+export const projectKickoffs = sqliteTable(
   "ProjectKickoff",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
     projectName: text("projectName").notNull(),
-    department: departmentEnum("department"),
+    department: text("department", { enum: ["Capital Markets", "Deal Team", "Legal and Compliance", "Operations", "M&A Origination", "Technology", "Investor Relations", "Public Markets/Hedge Fund", "Investment Team", "Due Diligence", "Talent Acquisition", "Operating Partner"] as const }),
     projectOwners: text("projectOwners"),
     productDirection: text("productDirection"),
     engineeringLead: text("engineeringLead"),
@@ -1400,12 +1127,12 @@ export const projectKickoffs = pgTable(
     /** Original paste from step 1 — preserved for reference */
     rawText: text("rawText"),
     /** Structured extraction shape (arrays/objects preserved) */
-    structuredData: jsonb("structuredData"),
+    structuredData: text("structuredData"),
     userId: text("userId").references(() => users.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1419,7 +1146,7 @@ export const projectKickoffs = pgTable(
 );
 
 /** AI screening runs for a project kickoff (history + current) */
-export const projectKickoffScreenings = pgTable(
+export const projectKickoffScreenings = sqliteTable(
   "ProjectKickoffScreening",
   {
     id: text("id")
@@ -1432,14 +1159,14 @@ export const projectKickoffScreenings = pgTable(
       () => workflowJobs.instanceId,
       { onDelete: "set null" },
     ),
-    status: projectKickoffScreeningStatusEnum("status")
+    status: text("status", { enum: ["pending", "running", "completed", "failed"] as const })
       .notNull()
       .default("pending"),
-    score: doublePrecision("score"),
+    score: real("score"),
     analysis: text("analysis"),
-    screenedAt: timestamp("screenedAt"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    screenedAt: integer("screenedAt", { mode: "timestamp" }),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1455,20 +1182,20 @@ export const projectKickoffScreenings = pgTable(
 );
 
 /** Registry of all projects across types — one row per project, populated on save */
-export const projectTrackers = pgTable(
+export const projectTrackers = sqliteTable(
   "ProjectTracker",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
     name: text("name").notNull(),
-    sourceType: projectTrackerSourceTypeEnum("sourceType")
+    sourceType: text("sourceType", { enum: ["PROJECT_KICKOFF"] as const })
       .notNull()
       .default("PROJECT_KICKOFF"),
     kickoffId: text("kickoffId")
       .notNull()
       .references(() => projectKickoffs.id, { onDelete: "cascade" }),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
     createdBy: text("createdBy").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -1492,7 +1219,7 @@ export type NewProjectKickoffScreening =
  * Bitrix CRM file attachment → app Document + RAG (widget auto-ingest).
  * Keyed by Bitrix deal id + disk file id (not internal deal opportunity id alone).
  */
-export const bitrixWidgetDealFiles = pgTable(
+export const bitrixWidgetDealFiles = sqliteTable(
   "BitrixWidgetDealFile",
   {
     id: text("id")
@@ -1509,8 +1236,8 @@ export const bitrixWidgetDealFiles = pgTable(
     /** pending | syncing | processed | failed */
     status: text("status").notNull().default("pending"),
     lastError: text("lastError"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1527,7 +1254,7 @@ export const bitrixWidgetDealFiles = pgTable(
 );
 
 /** CIM template screening: one uploaded CIM PDF per session, or a deal opportunity (multi-doc RAG); runs hold per-template executions */
-export const cimScreeningSessions = pgTable(
+export const cimScreeningSessions = sqliteTable(
   "CimScreeningSession",
   {
     id: text("id")
@@ -1543,8 +1270,8 @@ export const cimScreeningSessions = pgTable(
       () => dealOpportunities.id,
       { onDelete: "cascade" },
     ),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1567,7 +1294,7 @@ export const cimScreeningSessions = pgTable(
 );
 
 /** One screening execution: screener template + workflow job + answers */
-export const cimScreeningRuns = pgTable(
+export const cimScreeningRuns = sqliteTable(
   "CimScreeningRun",
   {
     id: text("id")
@@ -1580,14 +1307,14 @@ export const cimScreeningRuns = pgTable(
       .notNull()
       .references(() => screenerTemplates.id, { onDelete: "cascade" }),
     workflowInstanceId: text("workflowInstanceId"),
-    status: cimScreeningSessionStatusEnum("status")
+    status: text("status", { enum: ["PENDING", "INGESTING", "SCREENING", "COMPLETED", "FAILED"] as const })
       .default("PENDING")
       .notNull(),
     errorMessage: text("errorMessage"),
     /** Snapshot of deal documents (ids + names) at run start for Bitrix widget history */
-    dealDocumentsSnapshot: jsonb("dealDocumentsSnapshot"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    dealDocumentsSnapshot: text("dealDocumentsSnapshot"),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1599,7 +1326,7 @@ export const cimScreeningRuns = pgTable(
   }),
 );
 
-export const cimScreeningAnswers = pgTable(
+export const cimScreeningAnswers = sqliteTable(
   "CimScreeningAnswer",
   {
     id: text("id")
@@ -1613,9 +1340,9 @@ export const cimScreeningAnswers = pgTable(
       .references(() => screenerQuestions.id, { onDelete: "cascade" }),
     score: integer("score").notNull(),
     rationale: text("rationale").notNull(),
-    evidenceChunkIds: jsonb("evidenceChunkIds").$type<string[]>(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    evidenceChunkIds: text("evidenceChunkIds").$type<string[]>(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1634,7 +1361,7 @@ export const cimScreeningAnswers = pgTable(
  * IC Readiness scorer runs: one row per scoring attempt for a Bitrix deal.
  * Holds the structured score payload + final memo output so past runs are replayable from history.
  */
-export const icScorerRuns = pgTable(
+export const icScorerRuns = sqliteTable(
   "IcScorerRun",
   {
     id: text("id")
@@ -1647,24 +1374,24 @@ export const icScorerRuns = pgTable(
       .notNull()
       .references(() => dealOpportunities.id, { onDelete: "cascade" }),
     bitrixDealId: text("bitrixDealId"),
-    mode: icScorerModeEnum("mode").notNull(),
+    mode: text("mode", { enum: ["rag", "monograph"] as const }).notNull(),
     targetDocumentId: text("targetDocumentId").references(() => documents.id, {
       onDelete: "set null",
     }),
-    status: icScorerRunStatusEnum("status").default("PENDING").notNull(),
+    status: text("status", { enum: ["PENDING", "SCORING", "MEMO", "COMPLETED", "FAILED"] as const }).default("PENDING").notNull(),
     errorMessage: text("errorMessage"),
     scoreWorkflowInstanceId: text("scoreWorkflowInstanceId"),
     memoWorkflowInstanceId: text("memoWorkflowInstanceId"),
     /** Score core produced by the score workflow; nullable until the score step completes. */
-    scorePayload: jsonb("scorePayload"),
+    scorePayload: text("scorePayload"),
     /** Full IC scorer payload (score + structured `memo`); nullable until the run completes. */
-    output: jsonb("output"),
+    output: text("output"),
     /** Snapshot of deal documents (ids + names) at run start for history display. */
-    dealDocumentsSnapshot: jsonb("dealDocumentsSnapshot"),
-    evidenceChunkIds: jsonb("evidenceChunkIds").$type<string[]>(),
+    dealDocumentsSnapshot: text("dealDocumentsSnapshot"),
+    evidenceChunkIds: text("evidenceChunkIds").$type<string[]>(),
     promptVersion: text("promptVersion"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1685,7 +1412,7 @@ export const icScorerRuns = pgTable(
  * Deal CIM uploads — one active per deal opportunity.
  * Latest upload becomes active; previous is archived.
  */
-export const dealCims = pgTable(
+export const dealCims = sqliteTable(
   "DealCim",
   {
     id: text("id")
@@ -1698,11 +1425,11 @@ export const dealCims = pgTable(
       .notNull()
       .references(() => documents.id, { onDelete: "cascade" }),
     storageKey: text("storageKey").notNull(), // Path in object storage for worker
-    status: dealCimStatusEnum("status").default("ACTIVE").notNull(),
+    status: text("status", { enum: ["ACTIVE", "ARCHIVED"] as const }).default("ACTIVE").notNull(),
     uploadedById: text("uploadedById").references(() => users.id, {
       onDelete: "set null",
     }),
-    uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+    uploadedAt: integer("uploadedAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     dealCimDealOppIdx: index("deal_cim_deal_opp_idx").on(
@@ -1714,7 +1441,7 @@ export const dealCims = pgTable(
   }),
 );
 
-export const cimExtractions = pgTable(
+export const cimExtractions = sqliteTable(
   "CIMExtraction",
   {
     id: text("id")
@@ -1731,18 +1458,18 @@ export const cimExtractions = pgTable(
       { onDelete: "cascade" },
     ), // Denormalized for queries
 
-    revenueHistory: jsonb("revenueHistory").$type<Record<string, number>>(),
-    ebitdaHistory: jsonb("ebitdaHistory").$type<Record<string, number>>(),
+    revenueHistory: text("revenueHistory").$type<Record<string, number>>(),
+    ebitdaHistory: text("ebitdaHistory").$type<Record<string, number>>(),
     employeeCount: integer("employeeCount"),
-    customerConcentration: doublePrecision("customerConcentration"),
+    customerConcentration: real("customerConcentration"),
     capexIntensity: text("capexIntensity"),
-    revenueBreakdown: jsonb("revenueBreakdown").$type<Record<string, number>>(),
-    growthDrivers: text("growthDrivers").array(),
-    keyRisks: text("keyRisks").array(),
+    revenueBreakdown: text("revenueBreakdown").$type<Record<string, number>>(),
+    growthDrivers: text("growthDrivers", { mode: "json" }).$type<string[]>(),
+    keyRisks: text("keyRisks", { mode: "json" }).$type<string[]>(),
     industryOverview: text("industryOverview"),
     transactionDetails: text("transactionDetails"),
 
-    source: cimExtractionSourceEnum("source").default("AI").notNull(),
+    source: text("source", { enum: ["AI", "USER"] as const }).default("AI").notNull(),
     updatedByUserId: text("updatedByUserId").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -1750,8 +1477,8 @@ export const cimExtractions = pgTable(
     modelName: text("modelName"),
     version: text("version"),
 
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1770,15 +1497,15 @@ export const cimExtractions = pgTable(
 );
 
 // Simple dummy tables for migration verification
-export const cimExtractionDebugs = pgTable("CIMExtractionDebug", {
+export const cimExtractionDebugs = sqliteTable("CIMExtractionDebug", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
   note: text("note"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
 });
 
-export const cimExtractionLogs = pgTable("CIMExtractionLog", {
+export const cimExtractionLogs = sqliteTable("CIMExtractionLog", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
@@ -1787,10 +1514,10 @@ export const cimExtractionLogs = pgTable("CIMExtractionLog", {
     { onDelete: "cascade" },
   ),
   message: text("message"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
 });
 
-export const chatSessions = pgTable(
+export const chatSessions = sqliteTable(
   "ChatSession",
   {
     id: text("id")
@@ -1812,12 +1539,12 @@ export const chatSessions = pgTable(
       () => dealOpportunities.id,
       { onDelete: "set null" },
     ),
-    messages: jsonb("messages")
+    messages: text("messages")
       .$type<Record<string, unknown>[]>()
       .notNull()
-      .default(sql`'[]'::jsonb`),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+      .default([]),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1835,31 +1562,31 @@ export const chatSessions = pgTable(
 // Capital CRM layer
 // ----------------------------------------------------------------------------
 
-export const investors = pgTable("Investor", {
+export const investors = sqliteTable("Investor", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
   name: text("name").notNull(),
-  type: investorTypeEnum("type").notNull(),
+  type: text("type", { enum: ["HNWI", "FAMILY_OFFICE", "INSTITUTION"] as const }).notNull(),
   primaryContactName: text("primaryContactName"),
   email: text("email"),
   phone: text("phone"),
   geography: text("geography"),
-  minCheckSize: decimal("minCheckSize"),
-  maxCheckSize: decimal("maxCheckSize"),
-  sectorFocus: text("sectorFocus").array(),
-  stagePreference: text("stagePreference").array(),
-  riskProfile: investorRiskProfileEnum("riskProfile"),
-  status: investorStatusEnum("status").default("PROSPECT").notNull(),
+  minCheckSize: real("minCheckSize"),
+  maxCheckSize: real("maxCheckSize"),
+  sectorFocus: text("sectorFocus", { mode: "json" }).$type<string[]>(),
+  stagePreference: text("stagePreference", { mode: "json" }).$type<string[]>(),
+  riskProfile: text("riskProfile", { enum: ["CONSERVATIVE", "MODERATE", "BALANCED", "GROWTH", "AGGRESSIVE"] as const }),
+  status: text("status", { enum: ["PROSPECT", "QUALIFIED", "ACTIVE", "INACTIVE"] as const }).default("PROSPECT").notNull(),
   firstSeenFromInvestorLeadId: text("firstSeenFromInvestorLeadId"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
 });
 
-export const investorLeads = pgTable(
+export const investorLeads = sqliteTable(
   "InvestorLead",
   {
     id: text("id")
@@ -1871,11 +1598,11 @@ export const investorLeads = pgTable(
     phone: text("phone"),
     inferredType: text("inferredType"),
     notes: text("notes"),
-    status: investorLeadStatusEnum("status").default("RAW").notNull(),
+    status: text("status", { enum: ["RAW", "CONTACTED", "ENGAGED", "QUALIFIED", "REJECTED"] as const }).default("RAW").notNull(),
     ownerUserId: text("ownerUserId").references(() => users.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     investorLeadOwnerIdx: index("investor_lead_owner_idx").on(
@@ -1885,7 +1612,7 @@ export const investorLeads = pgTable(
   }),
 );
 
-export const investorInteractions = pgTable(
+export const investorInteractions = sqliteTable(
   "InvestorInteraction",
   {
     id: text("id")
@@ -1897,10 +1624,10 @@ export const investorInteractions = pgTable(
     investorLeadId: text("investorLeadId").references(() => investorLeads.id, {
       onDelete: "cascade",
     }),
-    type: investorInteractionTypeEnum("type"),
+    type: text("type", { enum: ["EMAIL", "CALL", "MEETING", "EVENT", "INTRO"] as const }),
     notes: text("notes"),
     outcome: text("outcome"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
   },
   (table) => ({
     investorInteractionInvestorIdx: index(
@@ -1914,7 +1641,7 @@ export const investorInteractions = pgTable(
 );
 
 /** Many-to-many: investor linked to companies they represent or were sourced from. */
-export const investorCompanyLinks = pgTable(
+export const investorCompanyLinks = sqliteTable(
   "InvestorCompanyLink",
   {
     id: text("id")
@@ -1926,10 +1653,10 @@ export const investorCompanyLinks = pgTable(
     companyId: text("companyId")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
-    status: investorCompanyLinkStatusEnum("status").default("ACTIVE").notNull(),
+    status: text("status", { enum: ["ACTIVE", "ARCHIVED"] as const }).default("ACTIVE").notNull(),
     notes: text("notes"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),
@@ -1948,7 +1675,7 @@ export const investorCompanyLinks = pgTable(
 );
 
 /** Many-to-many: investors linked directly to deal opportunities. */
-export const investorDealOpportunityLinks = pgTable(
+export const investorDealOpportunityLinks = sqliteTable(
   "InvestorDealOpportunityLink",
   {
     id: text("id")
@@ -1961,8 +1688,8 @@ export const investorDealOpportunityLinks = pgTable(
       .notNull()
       .references(() => dealOpportunities.id, { onDelete: "cascade" }),
     notes: text("notes"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt")
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date()),

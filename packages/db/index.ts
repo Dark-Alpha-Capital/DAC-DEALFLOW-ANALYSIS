@@ -1,22 +1,10 @@
-import { Pool } from "@neondatabase/serverless";
-import { drizzle as drizzleNeon } from "drizzle-orm/neon-serverless";
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import * as schema from "./schema";
-import {
-  ensureNeonConfiguredForCloudflareWorkers,
-  isCloudflareWorkersRuntime,
-  isNeonHost,
-  workerNeonDbAls,
-} from "./worker-neon-context";
+import { createDbFromD1 } from "./create-db";
+import { isCloudflareWorkersRuntime, workerD1DbAls } from "./d1-context";
 
-// Re-export enums first (no drizzle/postgres) for shared types/constants
+export type { AppDb } from "./db-types";
 export * from "./enums";
-// Re-export everything from schema
 export * from "./schema";
 
-// Re-export drizzle operators
 export {
   eq,
   and,
@@ -34,83 +22,50 @@ export {
   gt,
   lt,
   like,
-  ilike,
   between,
   notInArray,
 } from "drizzle-orm";
+export { ilike, jsonArrayOverlaps } from "./sqlite-helpers";
 export type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
-/** Both drivers are ORM-compatible; use PostgresJs shape for overload resolution (e.g. `.returning({ col })`). */
-export type AppDb = PostgresJsDatabase<typeof schema>;
+export { createDbFromD1 } from "./create-db";
+export { isCloudflareWorkersRuntime, workerD1DbAls } from "./d1-context";
 
-function requireDatabaseUrl(): string {
-  const u = process.env.DATABASE_URL;
-  if (!u) {
-    console.error("ERROR: DATABASE_URL environment variable is not set!");
-    throw new Error("DATABASE_URL is required");
-  }
-  return u;
-}
-
-const url = requireDatabaseUrl();
-
-if (isCloudflareWorkersRuntime()) {
-  ensureNeonConfiguredForCloudflareWorkers();
-  if (!isNeonHost(url)) {
-    throw new Error(
-      "@repo/db: Cloudflare Workers need a Neon DATABASE_URL (host containing neon.tech). TCP postgres cannot be reused per request; use Neon + per-request Pool (see request middleware) or Hyperdrive.",
-    );
-  }
-}
-
-const nodeDb: AppDb | null = isCloudflareWorkersRuntime()
-  ? null
-  : drizzlePostgres(
-    postgres(url, {
-      max: 10,
-      idle_timeout: 20,
-      connect_timeout: 10,
-      onnotice: () => { },
-      debug: process.env.NODE_ENV === "development" ? console.log : undefined,
-    }),
-    { schema },
-  );
+import type { AppDb } from "./db-types";
 
 const workerDbProxy: AppDb = new Proxy({} as AppDb, {
   get(_target, prop, receiver) {
-    const store = workerNeonDbAls.getStore();
+    const store = workerD1DbAls.getStore();
     if (!store?.db) {
       throw new Error(
-        "@repo/db: Drizzle `db` was used on Cloudflare Workers without an active Neon pool. Ensure `neonPoolRequestMiddleware` is registered in TanStack Start `requestMiddleware`.",
+        "@repo/db: Drizzle `db` was used without an active D1 binding. Run the app with `bun run dev` (remote D1 via Wrangler), or call `runDbWithD1(env.DB, ...)`.",
       );
     }
     return Reflect.get(store.db as object, prop, receiver);
   },
 });
 
+const nodeDbProxy: AppDb = new Proxy({} as AppDb, {
+  get() {
+    throw new Error(
+      "@repo/db: No local database. Use `bun run dev` in apps/frontend — dev uses remote D1 on your Cloudflare account (see wrangler.jsonc `d1_databases` with `remote: true`). For CLI scripts, use `runDbWithD1` with a D1 binding or `wrangler d1` commands.",
+    );
+  },
+});
+
 export const db: AppDb = isCloudflareWorkersRuntime()
   ? workerDbProxy
-  : (nodeDb as AppDb);
+  : nodeDbProxy;
 
 /**
- * Run `fn` with a Neon Pool bound for this call (Workers only). Used by HTTP
- * middleware and Cloudflare Workflows — Pool/WebSockets must not cross requests.
+ * Run `fn` with a D1-backed Drizzle instance (Workers + Workflows).
  */
-export async function runDbWithWorkerNeonPool<T>(fn: () => Promise<T>): Promise<T> {
-  if (!isCloudflareWorkersRuntime()) {
-    return fn();
-  }
-  ensureNeonConfiguredForCloudflareWorkers();
-  const pool = new Pool({ connectionString: url });
-  const requestDb = drizzleNeon(pool, { schema }) as unknown as AppDb;
-  return workerNeonDbAls.run({ pool, db: requestDb }, async () => {
-    try {
-      return await fn();
-    } finally {
-      await pool.end().catch(() => undefined);
-    }
-  });
+export async function runDbWithD1<T>(
+  d1: D1Database,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const requestDb = createDbFromD1(d1);
+  return workerD1DbAls.run({ db: requestDb }, fn);
 }
 
-// Default export for convenience
 export default db;

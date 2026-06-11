@@ -12,12 +12,12 @@ import {
   desc,
   count,
   or,
-  ilike,
   isNull,
   not,
   sql,
   type SQL,
 } from "drizzle-orm";
+import { ilike } from "../sqlite-helpers";
 
 /**
  * Get DealOpportunity by id

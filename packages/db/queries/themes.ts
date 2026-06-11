@@ -15,11 +15,11 @@ import {
   or,
   desc,
   count,
-  ilike,
   gte,
   lte,
   isNull,
 } from "drizzle-orm";
+import { ilike } from "../sqlite-helpers";
 
 /**
  * Get a theme by id

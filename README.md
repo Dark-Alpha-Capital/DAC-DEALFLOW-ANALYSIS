@@ -10,8 +10,7 @@ This repo uses `bun` workspaces + Turborepo. The main web app lives in `apps/fro
 
 - [Bun](https://bun.sh/docs/installation) `>= 1.1.13`
 - Node.js `>= 18` (required by engines)
-- A running Postgres database (local or hosted)
-- Cloudflare account access (for remote bindings used in local dev)
+- Cloudflare account + `wrangler login` (default dev uses **remote D1** and Vectorize)
 
 Optional (feature-dependent):
 - Redis instance (`REDIS_URL`)
@@ -37,7 +36,8 @@ cp apps/frontend/.env.example apps/frontend/.env
 
 At minimum, set:
 
-- `DATABASE_URL` (required; app fails to boot without it)
+- `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` (for login)
+- `AI_API_KEY` or `GOOGLE_AI_API_KEY`
 
 Recommended for local auth/callback behavior:
 
@@ -51,19 +51,15 @@ If you want Google sign-in locally, also set:
 - `AUTH_GOOGLE_ID`
 - `AUTH_GOOGLE_SECRET`
 
-### 4) Run database migrations
+### 4) Bootstrap Cloudflare + database
 
-From repo root:
-
-```bash
-bun run --cwd packages/db db:migrate
-```
-
-If you are doing local schema iteration (without creating migration files), you can use:
+One-time per account:
 
 ```bash
-bun run --cwd packages/db db:push
+bash apps/frontend/scripts/setup-cloudflare.sh
 ```
+
+Dev uses **remote D1** — no local database. See `SETUP_LOCAL.md`.
 
 ### 5) Start the app
 
@@ -104,7 +100,7 @@ bun run --cwd packages/db db:seed:dummy-leads
 
 ### 7) Troubleshooting
 
-- `DATABASE_URL is required`: ensure `apps/frontend/.env` has a valid Postgres URL.
+- D1 binding errors: run `wrangler login` and apply migrations with `bun run --cwd apps/frontend db:migrate:remote`.
 - OAuth callback issues: ensure Google redirect URI matches:
   - `http://localhost:3000/api/auth/callback/google`
 - Wrong host in local API/auth requests: verify `BETTER_AUTH_URL` and `FRONTEND_URL`.

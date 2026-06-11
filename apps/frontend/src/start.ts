@@ -1,14 +1,14 @@
 import { createStart } from "@tanstack/react-start";
 import { bitrixAiWidgetGateRequestMiddleware } from "@/middleware/bitrix-ai-widget-gate.middleware";
 import {
-  neonPoolFunctionMiddleware,
-  neonPoolRequestMiddleware,
-} from "@/middleware/neon-pool.middleware";
+  d1FunctionMiddleware,
+  d1RequestMiddleware,
+} from "@/middleware/d1-pool.middleware";
 
 export const startInstance = createStart(() => ({
   requestMiddleware: [
     bitrixAiWidgetGateRequestMiddleware,
-    neonPoolRequestMiddleware,
+    d1RequestMiddleware,
   ],
-  functionMiddleware: [neonPoolFunctionMiddleware],
+  functionMiddleware: [d1FunctionMiddleware],
 }));

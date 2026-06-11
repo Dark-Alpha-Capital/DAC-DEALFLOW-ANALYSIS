@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
+import { Route as ProjectTrackersRouteRouteImport } from './routes/_project-trackers/route'
 import { Route as DocumentationRouteRouteImport } from './routes/_documentation/route'
 import { Route as ChatbotRouteRouteImport } from './routes/_chatbot/route'
 import { Route as AuthenticationRouteRouteImport } from './routes/_authentication/route'
@@ -31,14 +32,14 @@ import { Route as DocumentationDocsRouteImport } from './routes/_documentation/d
 import { Route as ChatbotChatRouteImport } from './routes/_chatbot/chat'
 import { Route as ProtectedScreeningIndexRouteImport } from './routes/_protected/screening/index'
 import { Route as ProtectedScreenersIndexRouteImport } from './routes/_protected/screeners/index'
-import { Route as ProtectedProjectTrackersIndexRouteImport } from './routes/_protected/project-trackers/index'
-import { Route as ProtectedProjectKickoffIndexRouteImport } from './routes/_protected/project-kickoff/index'
 import { Route as ProtectedLeadsIndexRouteImport } from './routes/_protected/leads/index'
 import { Route as ProtectedInvestorsIndexRouteImport } from './routes/_protected/investors/index'
 import { Route as ProtectedInvestorLeadsIndexRouteImport } from './routes/_protected/investor-leads/index'
 import { Route as ProtectedInvestmentThemesIndexRouteImport } from './routes/_protected/investment-themes/index'
 import { Route as ProtectedDealOpportunitiesIndexRouteImport } from './routes/_protected/deal-opportunities/index'
 import { Route as ProtectedCompaniesIndexRouteImport } from './routes/_protected/companies/index'
+import { Route as ProjectTrackersProjectTrackersIndexRouteImport } from './routes/_project-trackers/project-trackers/index'
+import { Route as ProjectTrackersProjectKickoffIndexRouteImport } from './routes/_project-trackers/project-kickoff/index'
 import { Route as ChatbotChatIndexRouteImport } from './routes/_chatbot/chat/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc.$'
 import { Route as ApiProjectKickoffExtractRouteImport } from './routes/api/project-kickoff/extract'
@@ -56,7 +57,6 @@ import { Route as PublicDealOpportunitiesAiBitrixRouteImport } from './routes/_p
 import { Route as ProtectedScreeningNewRunRouteImport } from './routes/_protected/screening/new-run'
 import { Route as ProtectedScreenersNewRouteImport } from './routes/_protected/screeners/new'
 import { Route as ProtectedScreenersUidRouteImport } from './routes/_protected/screeners/$uid'
-import { Route as ProtectedProjectTrackersTrackerIdRouteImport } from './routes/_protected/project-trackers/$trackerId'
 import { Route as ProtectedProfileUidRouteImport } from './routes/_protected/profile/$uid'
 import { Route as ProtectedNewDocumentRouteImport } from './routes/_protected/new/document'
 import { Route as ProtectedLeadsNewRouteImport } from './routes/_protected/leads/new'
@@ -67,6 +67,7 @@ import { Route as ProtectedDealOpportunitiesQuickAddRouteImport } from './routes
 import { Route as ProtectedDealOpportunitiesNewRouteImport } from './routes/_protected/deal-opportunities/new'
 import { Route as ProtectedCompaniesNewRouteImport } from './routes/_protected/companies/new'
 import { Route as ProtectedCompaniesUidRouteImport } from './routes/_protected/companies/$uid'
+import { Route as ProjectTrackersProjectTrackersTrackerIdRouteImport } from './routes/_project-trackers/project-trackers/$trackerId'
 import { Route as DocumentationDocsThemesRouteImport } from './routes/_documentation/docs/themes'
 import { Route as DocumentationDocsScreeningsRouteImport } from './routes/_documentation/docs/screenings'
 import { Route as DocumentationDocsLeadsRouteImport } from './routes/_documentation/docs/leads'
@@ -110,6 +111,10 @@ const PublicRouteRoute = PublicRouteRouteImport.update({
 } as any)
 const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
   id: '/_protected',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectTrackersRouteRoute = ProjectTrackersRouteRouteImport.update({
+  id: '/_project-trackers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocumentationRouteRoute = DocumentationRouteRouteImport.update({
@@ -209,18 +214,6 @@ const ProtectedScreenersIndexRoute = ProtectedScreenersIndexRouteImport.update({
   path: '/screeners/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedProjectTrackersIndexRoute =
-  ProtectedProjectTrackersIndexRouteImport.update({
-    id: '/project-trackers/',
-    path: '/project-trackers/',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedProjectKickoffIndexRoute =
-  ProtectedProjectKickoffIndexRouteImport.update({
-    id: '/project-kickoff/',
-    path: '/project-kickoff/',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ProtectedLeadsIndexRoute = ProtectedLeadsIndexRouteImport.update({
   id: '/leads/',
   path: '/leads/',
@@ -254,6 +247,18 @@ const ProtectedCompaniesIndexRoute = ProtectedCompaniesIndexRouteImport.update({
   path: '/companies/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProjectTrackersProjectTrackersIndexRoute =
+  ProjectTrackersProjectTrackersIndexRouteImport.update({
+    id: '/project-trackers/',
+    path: '/project-trackers/',
+    getParentRoute: () => ProjectTrackersRouteRoute,
+  } as any)
+const ProjectTrackersProjectKickoffIndexRoute =
+  ProjectTrackersProjectKickoffIndexRouteImport.update({
+    id: '/project-kickoff/',
+    path: '/project-kickoff/',
+    getParentRoute: () => ProjectTrackersRouteRoute,
+  } as any)
 const ChatbotChatIndexRoute = ChatbotChatIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -346,12 +351,6 @@ const ProtectedScreenersUidRoute = ProtectedScreenersUidRouteImport.update({
   path: '/screeners/$uid',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedProjectTrackersTrackerIdRoute =
-  ProtectedProjectTrackersTrackerIdRouteImport.update({
-    id: '/project-trackers/$trackerId',
-    path: '/project-trackers/$trackerId',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ProtectedProfileUidRoute = ProtectedProfileUidRouteImport.update({
   id: '/profile/$uid',
   path: '/profile/$uid',
@@ -406,6 +405,12 @@ const ProtectedCompaniesUidRoute = ProtectedCompaniesUidRouteImport.update({
   path: '/companies/$uid',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProjectTrackersProjectTrackersTrackerIdRoute =
+  ProjectTrackersProjectTrackersTrackerIdRouteImport.update({
+    id: '/project-trackers/$trackerId',
+    path: '/project-trackers/$trackerId',
+    getParentRoute: () => ProjectTrackersRouteRoute,
+  } as any)
 const DocumentationDocsThemesRoute = DocumentationDocsThemesRouteImport.update({
   id: '/themes',
   path: '/themes',
@@ -647,6 +652,7 @@ export interface FileRoutesByFullPath {
   '/docs/leads': typeof DocumentationDocsLeadsRoute
   '/docs/screenings': typeof DocumentationDocsScreeningsRoute
   '/docs/themes': typeof DocumentationDocsThemesRoute
+  '/project-trackers/$trackerId': typeof ProjectTrackersProjectTrackersTrackerIdRoute
   '/companies/$uid': typeof ProtectedCompaniesUidRouteWithChildren
   '/companies/new': typeof ProtectedCompaniesNewRoute
   '/deal-opportunities/new': typeof ProtectedDealOpportunitiesNewRoute
@@ -657,7 +663,6 @@ export interface FileRoutesByFullPath {
   '/leads/new': typeof ProtectedLeadsNewRoute
   '/new/document': typeof ProtectedNewDocumentRoute
   '/profile/$uid': typeof ProtectedProfileUidRoute
-  '/project-trackers/$trackerId': typeof ProtectedProjectTrackersTrackerIdRoute
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/screeners/new': typeof ProtectedScreenersNewRoute
   '/screening/new-run': typeof ProtectedScreeningNewRunRoute
@@ -675,14 +680,14 @@ export interface FileRoutesByFullPath {
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat/': typeof ChatbotChatIndexRoute
+  '/project-kickoff/': typeof ProjectTrackersProjectKickoffIndexRoute
+  '/project-trackers/': typeof ProjectTrackersProjectTrackersIndexRoute
   '/companies/': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
   '/investment-themes/': typeof ProtectedInvestmentThemesIndexRoute
   '/investor-leads/': typeof ProtectedInvestorLeadsIndexRoute
   '/investors/': typeof ProtectedInvestorsIndexRoute
   '/leads/': typeof ProtectedLeadsIndexRoute
-  '/project-kickoff/': typeof ProtectedProjectKickoffIndexRoute
-  '/project-trackers/': typeof ProtectedProjectTrackersIndexRoute
   '/screeners/': typeof ProtectedScreenersIndexRoute
   '/screening/': typeof ProtectedScreeningIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
@@ -737,6 +742,7 @@ export interface FileRoutesByTo {
   '/docs/leads': typeof DocumentationDocsLeadsRoute
   '/docs/screenings': typeof DocumentationDocsScreeningsRoute
   '/docs/themes': typeof DocumentationDocsThemesRoute
+  '/project-trackers/$trackerId': typeof ProjectTrackersProjectTrackersTrackerIdRoute
   '/companies/$uid': typeof ProtectedCompaniesUidRouteWithChildren
   '/companies/new': typeof ProtectedCompaniesNewRoute
   '/deal-opportunities/new': typeof ProtectedDealOpportunitiesNewRoute
@@ -747,7 +753,6 @@ export interface FileRoutesByTo {
   '/leads/new': typeof ProtectedLeadsNewRoute
   '/new/document': typeof ProtectedNewDocumentRoute
   '/profile/$uid': typeof ProtectedProfileUidRoute
-  '/project-trackers/$trackerId': typeof ProtectedProjectTrackersTrackerIdRoute
   '/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/screeners/new': typeof ProtectedScreenersNewRoute
   '/screening/new-run': typeof ProtectedScreeningNewRunRoute
@@ -765,14 +770,14 @@ export interface FileRoutesByTo {
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat': typeof ChatbotChatIndexRoute
+  '/project-kickoff': typeof ProjectTrackersProjectKickoffIndexRoute
+  '/project-trackers': typeof ProjectTrackersProjectTrackersIndexRoute
   '/companies': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities': typeof ProtectedDealOpportunitiesIndexRoute
   '/investment-themes': typeof ProtectedInvestmentThemesIndexRoute
   '/investor-leads': typeof ProtectedInvestorLeadsIndexRoute
   '/investors': typeof ProtectedInvestorsIndexRoute
   '/leads': typeof ProtectedLeadsIndexRoute
-  '/project-kickoff': typeof ProtectedProjectKickoffIndexRoute
-  '/project-trackers': typeof ProtectedProjectTrackersIndexRoute
   '/screeners': typeof ProtectedScreenersIndexRoute
   '/screening': typeof ProtectedScreeningIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
@@ -797,6 +802,7 @@ export interface FileRoutesById {
   '/_authentication': typeof AuthenticationRouteRouteWithChildren
   '/_chatbot': typeof ChatbotRouteRouteWithChildren
   '/_documentation': typeof DocumentationRouteRouteWithChildren
+  '/_project-trackers': typeof ProjectTrackersRouteRouteWithChildren
   '/_protected': typeof ProtectedRouteRouteWithChildren
   '/_public': typeof PublicRouteRouteWithChildren
   '/_chatbot/chat': typeof ChatbotChatRouteWithChildren
@@ -834,6 +840,7 @@ export interface FileRoutesById {
   '/_documentation/docs/leads': typeof DocumentationDocsLeadsRoute
   '/_documentation/docs/screenings': typeof DocumentationDocsScreeningsRoute
   '/_documentation/docs/themes': typeof DocumentationDocsThemesRoute
+  '/_project-trackers/project-trackers/$trackerId': typeof ProjectTrackersProjectTrackersTrackerIdRoute
   '/_protected/companies/$uid': typeof ProtectedCompaniesUidRouteWithChildren
   '/_protected/companies/new': typeof ProtectedCompaniesNewRoute
   '/_protected/deal-opportunities/new': typeof ProtectedDealOpportunitiesNewRoute
@@ -844,7 +851,6 @@ export interface FileRoutesById {
   '/_protected/leads/new': typeof ProtectedLeadsNewRoute
   '/_protected/new/document': typeof ProtectedNewDocumentRoute
   '/_protected/profile/$uid': typeof ProtectedProfileUidRoute
-  '/_protected/project-trackers/$trackerId': typeof ProtectedProjectTrackersTrackerIdRoute
   '/_protected/screeners/$uid': typeof ProtectedScreenersUidRoute
   '/_protected/screeners/new': typeof ProtectedScreenersNewRoute
   '/_protected/screening/new-run': typeof ProtectedScreeningNewRunRoute
@@ -862,14 +868,14 @@ export interface FileRoutesById {
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/_chatbot/chat/': typeof ChatbotChatIndexRoute
+  '/_project-trackers/project-kickoff/': typeof ProjectTrackersProjectKickoffIndexRoute
+  '/_project-trackers/project-trackers/': typeof ProjectTrackersProjectTrackersIndexRoute
   '/_protected/companies/': typeof ProtectedCompaniesIndexRoute
   '/_protected/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
   '/_protected/investment-themes/': typeof ProtectedInvestmentThemesIndexRoute
   '/_protected/investor-leads/': typeof ProtectedInvestorLeadsIndexRoute
   '/_protected/investors/': typeof ProtectedInvestorsIndexRoute
   '/_protected/leads/': typeof ProtectedLeadsIndexRoute
-  '/_protected/project-kickoff/': typeof ProtectedProjectKickoffIndexRoute
-  '/_protected/project-trackers/': typeof ProtectedProjectTrackersIndexRoute
   '/_protected/screeners/': typeof ProtectedScreenersIndexRoute
   '/_protected/screening/': typeof ProtectedScreeningIndexRoute
   '/_protected/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
@@ -927,6 +933,7 @@ export interface FileRouteTypes {
     | '/docs/leads'
     | '/docs/screenings'
     | '/docs/themes'
+    | '/project-trackers/$trackerId'
     | '/companies/$uid'
     | '/companies/new'
     | '/deal-opportunities/new'
@@ -937,7 +944,6 @@ export interface FileRouteTypes {
     | '/leads/new'
     | '/new/document'
     | '/profile/$uid'
-    | '/project-trackers/$trackerId'
     | '/screeners/$uid'
     | '/screeners/new'
     | '/screening/new-run'
@@ -955,14 +961,14 @@ export interface FileRouteTypes {
     | '/api/project-kickoff/extract'
     | '/api/trpc/$'
     | '/chat/'
+    | '/project-kickoff/'
+    | '/project-trackers/'
     | '/companies/'
     | '/deal-opportunities/'
     | '/investment-themes/'
     | '/investor-leads/'
     | '/investors/'
     | '/leads/'
-    | '/project-kickoff/'
-    | '/project-trackers/'
     | '/screeners/'
     | '/screening/'
     | '/companies/$uid/edit'
@@ -1017,6 +1023,7 @@ export interface FileRouteTypes {
     | '/docs/leads'
     | '/docs/screenings'
     | '/docs/themes'
+    | '/project-trackers/$trackerId'
     | '/companies/$uid'
     | '/companies/new'
     | '/deal-opportunities/new'
@@ -1027,7 +1034,6 @@ export interface FileRouteTypes {
     | '/leads/new'
     | '/new/document'
     | '/profile/$uid'
-    | '/project-trackers/$trackerId'
     | '/screeners/$uid'
     | '/screeners/new'
     | '/screening/new-run'
@@ -1045,14 +1051,14 @@ export interface FileRouteTypes {
     | '/api/project-kickoff/extract'
     | '/api/trpc/$'
     | '/chat'
+    | '/project-kickoff'
+    | '/project-trackers'
     | '/companies'
     | '/deal-opportunities'
     | '/investment-themes'
     | '/investor-leads'
     | '/investors'
     | '/leads'
-    | '/project-kickoff'
-    | '/project-trackers'
     | '/screeners'
     | '/screening'
     | '/companies/$uid/edit'
@@ -1076,6 +1082,7 @@ export interface FileRouteTypes {
     | '/_authentication'
     | '/_chatbot'
     | '/_documentation'
+    | '/_project-trackers'
     | '/_protected'
     | '/_public'
     | '/_chatbot/chat'
@@ -1113,6 +1120,7 @@ export interface FileRouteTypes {
     | '/_documentation/docs/leads'
     | '/_documentation/docs/screenings'
     | '/_documentation/docs/themes'
+    | '/_project-trackers/project-trackers/$trackerId'
     | '/_protected/companies/$uid'
     | '/_protected/companies/new'
     | '/_protected/deal-opportunities/new'
@@ -1123,7 +1131,6 @@ export interface FileRouteTypes {
     | '/_protected/leads/new'
     | '/_protected/new/document'
     | '/_protected/profile/$uid'
-    | '/_protected/project-trackers/$trackerId'
     | '/_protected/screeners/$uid'
     | '/_protected/screeners/new'
     | '/_protected/screening/new-run'
@@ -1141,14 +1148,14 @@ export interface FileRouteTypes {
     | '/api/project-kickoff/extract'
     | '/api/trpc/$'
     | '/_chatbot/chat/'
+    | '/_project-trackers/project-kickoff/'
+    | '/_project-trackers/project-trackers/'
     | '/_protected/companies/'
     | '/_protected/deal-opportunities/'
     | '/_protected/investment-themes/'
     | '/_protected/investor-leads/'
     | '/_protected/investors/'
     | '/_protected/leads/'
-    | '/_protected/project-kickoff/'
-    | '/_protected/project-trackers/'
     | '/_protected/screeners/'
     | '/_protected/screening/'
     | '/_protected/companies/$uid/edit'
@@ -1173,6 +1180,7 @@ export interface RootRouteChildren {
   AuthenticationRouteRoute: typeof AuthenticationRouteRouteWithChildren
   ChatbotRouteRoute: typeof ChatbotRouteRouteWithChildren
   DocumentationRouteRoute: typeof DocumentationRouteRouteWithChildren
+  ProjectTrackersRouteRoute: typeof ProjectTrackersRouteRouteWithChildren
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
@@ -1202,6 +1210,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof ProtectedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_project-trackers': {
+      id: '/_project-trackers'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ProjectTrackersRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_documentation': {
@@ -1344,20 +1359,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedScreenersIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/project-trackers/': {
-      id: '/_protected/project-trackers/'
-      path: '/project-trackers'
-      fullPath: '/project-trackers/'
-      preLoaderRoute: typeof ProtectedProjectTrackersIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/project-kickoff/': {
-      id: '/_protected/project-kickoff/'
-      path: '/project-kickoff'
-      fullPath: '/project-kickoff/'
-      preLoaderRoute: typeof ProtectedProjectKickoffIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
     '/_protected/leads/': {
       id: '/_protected/leads/'
       path: '/leads'
@@ -1399,6 +1400,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/companies/'
       preLoaderRoute: typeof ProtectedCompaniesIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_project-trackers/project-trackers/': {
+      id: '/_project-trackers/project-trackers/'
+      path: '/project-trackers'
+      fullPath: '/project-trackers/'
+      preLoaderRoute: typeof ProjectTrackersProjectTrackersIndexRouteImport
+      parentRoute: typeof ProjectTrackersRouteRoute
+    }
+    '/_project-trackers/project-kickoff/': {
+      id: '/_project-trackers/project-kickoff/'
+      path: '/project-kickoff'
+      fullPath: '/project-kickoff/'
+      preLoaderRoute: typeof ProjectTrackersProjectKickoffIndexRouteImport
+      parentRoute: typeof ProjectTrackersRouteRoute
     }
     '/_chatbot/chat/': {
       id: '/_chatbot/chat/'
@@ -1519,13 +1534,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedScreenersUidRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/project-trackers/$trackerId': {
-      id: '/_protected/project-trackers/$trackerId'
-      path: '/project-trackers/$trackerId'
-      fullPath: '/project-trackers/$trackerId'
-      preLoaderRoute: typeof ProtectedProjectTrackersTrackerIdRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
     '/_protected/profile/$uid': {
       id: '/_protected/profile/$uid'
       path: '/profile/$uid'
@@ -1595,6 +1603,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/companies/$uid'
       preLoaderRoute: typeof ProtectedCompaniesUidRouteImport
       parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_project-trackers/project-trackers/$trackerId': {
+      id: '/_project-trackers/project-trackers/$trackerId'
+      path: '/project-trackers/$trackerId'
+      fullPath: '/project-trackers/$trackerId'
+      preLoaderRoute: typeof ProjectTrackersProjectTrackersTrackerIdRouteImport
+      parentRoute: typeof ProjectTrackersRouteRoute
     }
     '/_documentation/docs/themes': {
       id: '/_documentation/docs/themes'
@@ -1944,6 +1959,24 @@ const DocumentationRouteRouteChildren: DocumentationRouteRouteChildren = {
 const DocumentationRouteRouteWithChildren =
   DocumentationRouteRoute._addFileChildren(DocumentationRouteRouteChildren)
 
+interface ProjectTrackersRouteRouteChildren {
+  ProjectTrackersProjectTrackersTrackerIdRoute: typeof ProjectTrackersProjectTrackersTrackerIdRoute
+  ProjectTrackersProjectKickoffIndexRoute: typeof ProjectTrackersProjectKickoffIndexRoute
+  ProjectTrackersProjectTrackersIndexRoute: typeof ProjectTrackersProjectTrackersIndexRoute
+}
+
+const ProjectTrackersRouteRouteChildren: ProjectTrackersRouteRouteChildren = {
+  ProjectTrackersProjectTrackersTrackerIdRoute:
+    ProjectTrackersProjectTrackersTrackerIdRoute,
+  ProjectTrackersProjectKickoffIndexRoute:
+    ProjectTrackersProjectKickoffIndexRoute,
+  ProjectTrackersProjectTrackersIndexRoute:
+    ProjectTrackersProjectTrackersIndexRoute,
+}
+
+const ProjectTrackersRouteRouteWithChildren =
+  ProjectTrackersRouteRoute._addFileChildren(ProjectTrackersRouteRouteChildren)
+
 interface ProtectedNewRouteChildren {
   ProtectedNewDocumentRoute: typeof ProtectedNewDocumentRoute
 }
@@ -1988,7 +2021,6 @@ interface ProtectedRouteRouteChildren {
   ProtectedInvestorsNewRoute: typeof ProtectedInvestorsNewRoute
   ProtectedLeadsNewRoute: typeof ProtectedLeadsNewRoute
   ProtectedProfileUidRoute: typeof ProtectedProfileUidRoute
-  ProtectedProjectTrackersTrackerIdRoute: typeof ProtectedProjectTrackersTrackerIdRoute
   ProtectedScreenersUidRoute: typeof ProtectedScreenersUidRoute
   ProtectedScreenersNewRoute: typeof ProtectedScreenersNewRoute
   ProtectedScreeningNewRunRoute: typeof ProtectedScreeningNewRunRoute
@@ -1998,8 +2030,6 @@ interface ProtectedRouteRouteChildren {
   ProtectedInvestorLeadsIndexRoute: typeof ProtectedInvestorLeadsIndexRoute
   ProtectedInvestorsIndexRoute: typeof ProtectedInvestorsIndexRoute
   ProtectedLeadsIndexRoute: typeof ProtectedLeadsIndexRoute
-  ProtectedProjectKickoffIndexRoute: typeof ProtectedProjectKickoffIndexRoute
-  ProtectedProjectTrackersIndexRoute: typeof ProtectedProjectTrackersIndexRoute
   ProtectedScreenersIndexRoute: typeof ProtectedScreenersIndexRoute
   ProtectedScreeningIndexRoute: typeof ProtectedScreeningIndexRoute
   ProtectedDealOpportunitiesUidEditRoute: typeof ProtectedDealOpportunitiesUidEditRoute
@@ -2039,8 +2069,6 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedInvestorsNewRoute: ProtectedInvestorsNewRoute,
   ProtectedLeadsNewRoute: ProtectedLeadsNewRoute,
   ProtectedProfileUidRoute: ProtectedProfileUidRoute,
-  ProtectedProjectTrackersTrackerIdRoute:
-    ProtectedProjectTrackersTrackerIdRoute,
   ProtectedScreenersUidRoute: ProtectedScreenersUidRoute,
   ProtectedScreenersNewRoute: ProtectedScreenersNewRoute,
   ProtectedScreeningNewRunRoute: ProtectedScreeningNewRunRoute,
@@ -2050,8 +2078,6 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedInvestorLeadsIndexRoute: ProtectedInvestorLeadsIndexRoute,
   ProtectedInvestorsIndexRoute: ProtectedInvestorsIndexRoute,
   ProtectedLeadsIndexRoute: ProtectedLeadsIndexRoute,
-  ProtectedProjectKickoffIndexRoute: ProtectedProjectKickoffIndexRoute,
-  ProtectedProjectTrackersIndexRoute: ProtectedProjectTrackersIndexRoute,
   ProtectedScreenersIndexRoute: ProtectedScreenersIndexRoute,
   ProtectedScreeningIndexRoute: ProtectedScreeningIndexRoute,
   ProtectedDealOpportunitiesUidEditRoute:
@@ -2126,6 +2152,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticationRouteRoute: AuthenticationRouteRouteWithChildren,
   ChatbotRouteRoute: ChatbotRouteRouteWithChildren,
   DocumentationRouteRoute: DocumentationRouteRouteWithChildren,
+  ProjectTrackersRouteRoute: ProjectTrackersRouteRouteWithChildren,
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
   PublicRouteRoute: PublicRouteRouteWithChildren,
   ApiChatRoute: ApiChatRoute,

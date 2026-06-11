@@ -126,6 +126,7 @@ export type ProjectKickoffScreenParams = {
 
 /** Cloudflare Worker env with workflow bindings (see wrangler.jsonc) */
 export interface WorkflowWorkerEnv {
+  DB: D1Database;
   DOCUMENT_CHUNKS_INDEX: VectorizeIndex;
   SCREEN_DEAL_WORKFLOW: Workflow<ScreenDealParams>;
   FILE_UPLOAD_WORKFLOW: Workflow<FileUploadParams>;

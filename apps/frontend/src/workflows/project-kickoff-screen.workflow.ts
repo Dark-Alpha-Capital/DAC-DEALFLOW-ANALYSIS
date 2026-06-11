@@ -6,7 +6,6 @@ import {
 import { generateObject } from "ai";
 import { z } from "zod";
 import db, {
-  runDbWithWorkerNeonPool,
   projectKickoffs,
   projectKickoffScreenings,
   screeners,
@@ -25,8 +24,7 @@ import {
   markWorkflowRunning,
 } from "./progress";
 import type { ProjectKickoffScreenParams, WorkflowWorkerEnv } from "./workflow-env";
-
-const openai = getOpenAIProvider();
+import { withWorkflowDb } from "./with-workflow-db";
 
 /** Allowed score values: 0 to 5 in 0.5 increments */
 const scoreSchema = z.union([
@@ -56,7 +54,7 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
     event: WorkflowEvent<ProjectKickoffScreenParams>,
     step: WorkflowStep,
   ): Promise<{ success: boolean; score?: number; analysis?: string; message?: string }> {
-    return runDbWithWorkerNeonPool(async () => {
+    return withWorkflowDb(this.env, async () => {
       const instanceId = event.instanceId;
       const { kickoffId, screeningId } = event.payload;
 
@@ -154,7 +152,7 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
           );
 
           const { object } = await generateObject({
-            model: openai("gpt-4o-mini"),
+            model: getOpenAIProvider()("gpt-4o-mini"),
             system: PROJECT_KICKOFF_SCREENING_SYSTEM,
             prompt,
             schema: screeningOutputSchema,

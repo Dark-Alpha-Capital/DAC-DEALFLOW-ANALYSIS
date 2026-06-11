@@ -6,7 +6,6 @@ import {
 } from "@repo/ai-core";
 import { z } from "zod";
 import mammoth from "mammoth";
-import { extractText } from "unpdf";
 import * as XLSX from "xlsx";
 
 const LOG = "[cim-extraction]";
@@ -120,6 +119,7 @@ export async function extractPdfContent(
   console.log(`${LOG} extractPdfContent: input size=${data.byteLength} bytes`);
   assertNonEmptyPdf(data);
   try {
+    const { extractText } = await import("unpdf");
     const { totalPages, text: rawText } = await extractText(data, {
       mergePages: true,
     });
@@ -184,8 +184,6 @@ export function extractTextFromExcel(buffer: Buffer): string {
 // LLM Extraction
 // ============================================================================
 
-const openai = getOpenAIProvider();
-
 export async function runCIMExtractionLLM(
   rawText: string,
 ): Promise<CIMExtractionPayload> {
@@ -199,7 +197,7 @@ export async function runCIMExtractionLLM(
 
   console.log(`[cim-extraction] runCIMExtractionLLM: calling generateText...`);
   const { output } = await generateText({
-    model: openai("gpt-4o-mini"),
+    model: getOpenAIProvider()("gpt-4o-mini"),
     system: CIM_EXTRACTION_SYSTEM,
     prompt: `${CIM_EXTRACTION_USER}\n\n---\n\nDocument text:\n\n${truncated}`,
     output: Output.object({

@@ -7,8 +7,9 @@
         "^build"
       ],
       "env": [
-        "DATABASE_URL",
-        "DIRECT_URL",
+        "CLOUDFLARE_ACCOUNT_ID",
+        "CLOUDFLARE_D1_DATABASE_ID",
+        "CLOUDFLARE_API_TOKEN",
         "AUTH_SECRET",
         "REDIS_URL",
         "AI_API_KEY",

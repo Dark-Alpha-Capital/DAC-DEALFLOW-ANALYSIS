@@ -22,7 +22,7 @@ import {
 import { useTRPC } from "@/trpc/client";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { MarkdownEditor } from "@/components/markdown-editor/MarkdownEditor";
+import { MarkdownEditor } from "@/components/markdown-editor/MarkdownEditorLazy";
 import { Input } from "@/components/ui/input";
 import {
   ResizableHandle,

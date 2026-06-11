@@ -3,7 +3,7 @@ import {
   type WorkflowEvent,
   type WorkflowStep,
 } from "cloudflare:workers";
-import db, { eq, runDbWithWorkerNeonPool, sql } from "@repo/db";
+import db, { eq, runDbWithD1, sql } from "@repo/db";
 import { documents, documentChunks } from "@repo/db/schema";
 import { extractFilePathFromUrl, getFileContents } from "@repo/nextcloud";
 import {
@@ -118,7 +118,7 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
         documentId,
         forceReingest,
       });
-      await runDbWithWorkerNeonPool(() => markWorkflowRunning(instanceId));
+      await runDbWithD1(this.env.DB, () => markWorkflowRunning(instanceId));
 
       const result = await step.do(
         "rag-ingest",
@@ -127,7 +127,7 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
           retries: { limit: 0, delay: "1 second" },
         },
         (stepCtx) =>
-          runDbWithWorkerNeonPool(async () => {
+          runDbWithD1(this.env.DB, async () => {
             const stepT0 = Date.now();
             const reporter = workflowProgressReporter(instanceId);
             ragDebug("step.rag-ingest.start", {
@@ -350,7 +350,7 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
         documentId,
         chunksInserted: result.chunksInserted,
       });
-      await runDbWithWorkerNeonPool(() => markWorkflowCompleted(instanceId, result));
+      await runDbWithD1(this.env.DB, () => markWorkflowCompleted(instanceId, result));
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -365,13 +365,13 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
         stack: error instanceof Error ? error.stack : undefined,
       });
       try {
-        await runDbWithWorkerNeonPool(() =>
+        await runDbWithD1(this.env.DB, () =>
           markDocumentIngestionFailed(documentId, errorWithContext.message),
         );
       } catch {
         // ignore
       }
-      await runDbWithWorkerNeonPool(() =>
+      await runDbWithD1(this.env.DB, () =>
         markWorkflowFailed(instanceId, errorWithContext),
       );
       throw errorWithContext;

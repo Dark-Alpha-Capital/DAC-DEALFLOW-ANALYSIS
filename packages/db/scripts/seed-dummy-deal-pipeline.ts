@@ -2,6 +2,7 @@
  * Seeds themes, companies, deal opportunities (no leadId / legacyDealId — avoids FK and unique constraints).
  * Run: bun run ./scripts/seed-dummy-deal-pipeline.ts (from packages/db) or pnpm db:seed:dummy-deal-pipeline
  */
+/** Requires remote D1 via Worker runtime — not supported as a plain Bun script. */
 import { faker } from "@faker-js/faker";
 import db, {
   companies,

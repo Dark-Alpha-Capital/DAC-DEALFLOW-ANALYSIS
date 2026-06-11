@@ -1,0 +1,328 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1700000000000,
+      "tag": "0000_black_oracle",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1700001000000,
+      "tag": "0001_old_songbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1700002000000,
+      "tag": "0002_dapper_black_bird",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1700003000000,
+      "tag": "0003_tiresome_rattler",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1700004000000,
+      "tag": "0004_tiresome_stephen_strange",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1700005000000,
+      "tag": "0005_fancy_duplicate_leads",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1700006000000,
+      "tag": "0006_steady_theme_workflows",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1700007000000,
+      "tag": "0007_review_state_enum",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1700008000000,
+      "tag": "0008_deal_opportunity_screenings",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1700009000000,
+      "tag": "0009_structured_screeners",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1700010000000,
+      "tag": "0010_milky_secret_warriors",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1700011000000,
+      "tag": "0011_exotic_puff_adder",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1700012000000,
+      "tag": "0012_add_deal_sims",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1700013000000,
+      "tag": "0013_lonely_shadowcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1700014000000,
+      "tag": "0014_natural_morbius",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1700015000000,
+      "tag": "0015_open_shooting_star",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1700016000000,
+      "tag": "0016_unique_zarek",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1700017000000,
+      "tag": "0017_broad_mockingbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1700018000000,
+      "tag": "0018_goofy_roughhouse",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1700019000000,
+      "tag": "0019_last_skullbuster",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1700020000000,
+      "tag": "0020_material_bloodstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1700021000000,
+      "tag": "0021_daily_the_phantom",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1700022000000,
+      "tag": "0022_fat_strong_guy",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1700023000000,
+      "tag": "0023_wet_maggott",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1700024000000,
+      "tag": "0024_same_liz_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1700025000000,
+      "tag": "0025_brief_nocturne",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1700026000000,
+      "tag": "0026_shiny_hobgoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1700027000000,
+      "tag": "0027_workflow_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1700028000000,
+      "tag": "0028_lucky_quicksilver",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1700029000000,
+      "tag": "0029_fine_darkstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1700030000000,
+      "tag": "0030_good_paladin",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1700031000000,
+      "tag": "0031_drop_document_chunk_embedding",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1700032000000,
+      "tag": "0032_fuzzy_inertia",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1700033000000,
+      "tag": "0033_add_document_category_cim",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1700034000000,
+      "tag": "0034_stiff_exiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1700035000000,
+      "tag": "0035_loving_solo",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1700036000000,
+      "tag": "0036_outgoing_whirlwind",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1700037000000,
+      "tag": "0037_fat_crusher_hogan",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1700038000000,
+      "tag": "0038_lean_talon",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1700039000000,
+      "tag": "0039_furry_oracle",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1700040000000,
+      "tag": "0040_sleepy_tinkerer",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1700041000000,
+      "tag": "0041_talented_krista_starr",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1700042000000,
+      "tag": "0042_damp_taskmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1700043000000,
+      "tag": "0043_groovy_princess_powerful",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1700044000000,
+      "tag": "0044_next_romulus",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1781010476438,
+      "tag": "0045_spotty_callisto",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,5 +1,3 @@
-import { extractText } from "unpdf";
-
 export class PDFLoader {
   /**
    * @param buffer ArrayBuffer of PDF file
@@ -7,6 +5,7 @@ export class PDFLoader {
    */
   async loadFromBuffer(buffer: ArrayBuffer): Promise<string> {
     try {
+      const { extractText } = await import("unpdf");
       const { text } = await extractText(new Uint8Array(buffer), {
         mergePages: true,
       });

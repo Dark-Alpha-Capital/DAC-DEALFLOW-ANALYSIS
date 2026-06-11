@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MarkdownEditor } from "@/components/markdown-editor/MarkdownEditor";
+import { MarkdownEditor } from "@/components/markdown-editor/MarkdownEditorLazy";
 
 export const Route = createFileRoute("/_protected/screeners/new")({
   head: () => ({
