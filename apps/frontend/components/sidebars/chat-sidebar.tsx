@@ -39,6 +39,7 @@ const layoutLinks = [
 export default function ChatSidebar() {
   const pathname = usePathname();
   const trpc = useTRPC();
+
   const { data: session } = useSession();
 
   const { data: chats = [], isLoading } = useQuery({
