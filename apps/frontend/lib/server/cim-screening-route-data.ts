@@ -100,7 +100,7 @@ export const loadCimScreeningNewRunData = createServerFn({
 });
 
 export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => cimScreeningSessionInputSchema.parse(raw))
+  .validator((raw: unknown) => cimScreeningSessionInputSchema.parse(raw))
   .handler(async ({ data }) => {
     const session = await assertAuthenticated();
     const userId = session.user.id;
@@ -260,7 +260,7 @@ export const loadCimScreeningSessionData = createServerFn({ method: "GET" })
   });
 
 export const loadCimScreeningBitrixSyncData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => cimScreeningSessionSyncInputSchema.parse(raw))
+  .validator((raw: unknown) => cimScreeningSessionSyncInputSchema.parse(raw))
   .handler(async ({ data }) => {
     if (!data.runId) {
       return {

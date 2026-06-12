@@ -17,7 +17,7 @@ import {
 } from "@/lib/server/server-fn-input-schemas";
 
 export const loadRawDealsPageData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => rawDealsListFilterSchema.parse(raw))
+  .validator((raw: unknown) => rawDealsListFilterSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     const { data: rows, totalPages, totalCount } = await GetAllDeals({
@@ -45,7 +45,7 @@ export const loadRawDealsPageData = createServerFn({ method: "GET" })
   });
 
 export const loadRawDealDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
+  .validator((raw: unknown) => uidParamSchema.parse(raw))
   .handler((async ({ data }: { data: { uid: string } }) => {
     await assertAuthenticated();
     try {
@@ -61,7 +61,7 @@ export const loadRawDealDetailData = createServerFn({ method: "GET" })
   }) as any);
 
 export const loadRawDealForEditData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
+  .validator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {
@@ -74,7 +74,7 @@ export const loadRawDealForEditData = createServerFn({ method: "GET" })
   });
 
 export const loadRawDealReasoningsData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
+  .validator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     const reasonings = await getAllDealReasoningsWithScreenerName(data.uid);
@@ -82,7 +82,7 @@ export const loadRawDealReasoningsData = createServerFn({ method: "GET" })
   });
 
 export const loadRawDealReasoningDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => uidAndReasoningIdSchema.parse(raw))
+  .validator((raw: unknown) => uidAndReasoningIdSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     const reasoning = await getCompleteAiReasoningById(data.reasoningId);
@@ -90,7 +90,7 @@ export const loadRawDealReasoningDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadRawDealScreenData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
+  .validator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     const dealId = data.uid;

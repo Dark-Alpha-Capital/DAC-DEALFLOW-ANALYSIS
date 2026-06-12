@@ -15,7 +15,7 @@ export type ChatRouteLoaderData = {
 };
 
 export const fetchChatRouteLoaderData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => chatLoaderInputSchema.parse(raw))
+  .validator((raw: unknown) => chatLoaderInputSchema.parse(raw))
   // @ts-expect-error Start ServerFn R is stricter than loader data (UIMessage, redirect throw)
   .handler(async ({ data }) => {
     const session = await assertAuthenticated();

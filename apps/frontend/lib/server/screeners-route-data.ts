@@ -24,7 +24,7 @@ export const loadScreenersPageData = createServerFn({ method: "GET" }).handler(
 );
 
 export const loadScreenerDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
+  .validator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     const screener = await getScreenerWithQuestions(data.uid);

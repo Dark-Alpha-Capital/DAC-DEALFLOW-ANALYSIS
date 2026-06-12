@@ -289,5 +289,5 @@ export type BitrixScreeningWidgetBootstrapPayload = Awaited<
 export const loadBitrixScreeningWidgetBootstrapData = createServerFn({
   method: "GET",
 })
-  .inputValidator((raw: unknown) => bitrixScreeningWidgetBootstrapSchema.parse(raw))
+  .validator((raw: unknown) => bitrixScreeningWidgetBootstrapSchema.parse(raw))
   .handler(async ({ data }) => bitrixScreeningWidgetBootstrapPayload(data));
