@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { DEPARTMENT_VALUES, SCREENER_CATEGORY_VALUES } from "@repo/db/enums";
+import { DEPARTMENT_VALUES } from "@repo/enums";
+import { SCREENER_CATEGORY_VALUES } from "@repo/db/enums";
 
 export const screenerCategorySchema = z.enum(SCREENER_CATEGORY_VALUES);
 export type ScreenerCategoryFormValue = z.infer<typeof screenerCategorySchema>;

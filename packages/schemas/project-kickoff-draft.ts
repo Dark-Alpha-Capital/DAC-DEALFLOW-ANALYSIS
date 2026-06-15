@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DEPARTMENT_VALUES } from "@repo/db/enums";
+import { DEPARTMENT_VALUES } from "@repo/enums";
 import type { ProjectKickoffExtraction } from "./project-kickoff-extraction";
 
 /** Flat form draft used in workspace UI and save/update mutations */

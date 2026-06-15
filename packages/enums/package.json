@@ -1,0 +1,13 @@
+{
+  "name": "@repo/enums",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./departments": "./departments.ts"
+  }
+}

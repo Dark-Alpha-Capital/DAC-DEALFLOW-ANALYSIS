@@ -4,6 +4,8 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "@repo/db": "workspace:*",
+    "@repo/enums": "workspace:*",
     "zod": "^4.3.5"
   },
   "devDependencies": {

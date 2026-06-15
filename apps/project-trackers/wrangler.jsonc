@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "project-trackers",
+  "account_id": "db3c8d159d12f92055af63054dfec052",
+  "compatibility_date": "2025-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/server.ts",
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "BETTER_AUTH_URL": "https://tracker.darkalphacapital.com",
+    "VITE_PUBLIC_APP_URL": "https://tracker.darkalphacapital.com"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "project-trackers-db",
+      "database_id": "c097acaa-9124-4395-abf0-cba37321c643",
+      "migrations_dir": "../../packages/db-tracker/drizzle",
+      "remote": true
+    }
+  ],
+  "workflows": [
+    {
+      "name": "tracker-kickoff-screen",
+      "binding": "PROJECT_KICKOFF_SCREEN_WORKFLOW",
+      "class_name": "ProjectKickoffScreenWorkflow"
+    }
+  ]
+}
