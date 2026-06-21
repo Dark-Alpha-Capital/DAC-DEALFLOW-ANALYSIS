@@ -5,9 +5,11 @@ import {
   projectKickoffs,
   projectTrackers,
   projectKickoffScreenings,
+  projectStageEvents,
   type DepartmentValue,
 } from "../schema";
 import { insertWorkflowJobStatement } from "../workflow-jobs";
+import { DEFAULT_PROJECT_STAGE } from "@repo/enums";
 
 export type ProjectKickoffFieldValues = {
   projectName: string;
@@ -64,8 +66,16 @@ export async function createProjectKickoff(
       id: trackerId,
       name: fields.projectName,
       sourceType: "PROJECT_KICKOFF",
+      stage: DEFAULT_PROJECT_STAGE,
       kickoffId,
       createdBy: input.userId,
+    }),
+    db.insert(projectStageEvents).values({
+      id: createId(),
+      trackerId,
+      fromStage: null,
+      toStage: DEFAULT_PROJECT_STAGE,
+      changedBy: input.userId,
     }),
     insertWorkflowJobStatement(db, {
       instanceId: jobId,

@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/select";
 import {
   scoreColor,
+  stageBadgeVariant,
+  stageLabel,
   statusBadgeVariant,
 } from "@/lib/project-tracker-display";
 import { cn } from "@/lib/utils";
@@ -151,7 +153,10 @@ function ProjectTrackersPage() {
                   Department
                 </th>
                 <th className="text-muted-foreground px-4 py-3 text-left font-medium">
-                  Status
+                  Stage
+                </th>
+                <th className="text-muted-foreground px-4 py-3 text-left font-medium">
+                  Screening
                 </th>
                 <th className="text-muted-foreground px-4 py-3 text-left font-medium">
                   Score
@@ -188,6 +193,16 @@ function ProjectTrackersPage() {
                     {t.department ?? (
                       <span className="text-muted-foreground">—</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                        stageBadgeVariant(t.stage),
+                      )}
+                    >
+                      {stageLabel(t.stage)}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <span

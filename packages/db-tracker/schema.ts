@@ -8,10 +8,11 @@ import {
 } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
-import { DEPARTMENT_VALUES } from "@repo/enums";
+import { DEPARTMENT_VALUES, PROJECT_STAGE_VALUES } from "@repo/enums";
 import { SCREENER_CATEGORY_VALUES } from "./enums";
 
 export type DepartmentValue = (typeof DEPARTMENT_VALUES)[number];
+export type ProjectStageValue = (typeof PROJECT_STAGE_VALUES)[number];
 export type ScreenerCategoryValue = (typeof SCREENER_CATEGORY_VALUES)[number];
 
 export const users = sqliteTable("User", {
@@ -239,6 +240,12 @@ export const projectTrackers = sqliteTable(
     sourceType: text("sourceType", { enum: ["PROJECT_KICKOFF"] as const })
       .notNull()
       .default("PROJECT_KICKOFF"),
+    stage: text("stage", { enum: PROJECT_STAGE_VALUES })
+      .notNull()
+      .default("KICKOFF"),
+    stageChangedAt: integer("stageChangedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull(),
     kickoffId: text("kickoffId")
       .notNull()
       .references(() => projectKickoffs.id, { onDelete: "cascade" }),
@@ -251,6 +258,31 @@ export const projectTrackers = sqliteTable(
     projectTrackerKickoffUniqueIdx: uniqueIndex(
       "project_tracker_kickoff_unique_idx",
     ).on(table.kickoffId),
+    projectTrackerStageIdx: index("project_tracker_stage_idx").on(table.stage),
+  }),
+);
+
+export const projectStageEvents = sqliteTable(
+  "ProjectStageEvent",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    trackerId: text("trackerId")
+      .notNull()
+      .references(() => projectTrackers.id, { onDelete: "cascade" }),
+    fromStage: text("fromStage", { enum: PROJECT_STAGE_VALUES }),
+    toStage: text("toStage", { enum: PROJECT_STAGE_VALUES }).notNull(),
+    changedBy: text("changedBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    note: text("note"),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    projectStageEventTrackerCreatedIdx: index(
+      "project_stage_event_tracker_created_idx",
+    ).on(table.trackerId, table.createdAt),
   }),
 );
 
@@ -277,13 +309,28 @@ export const projectKickoffsRelations = relations(
 
 export const projectTrackersRelations = relations(
   projectTrackers,
-  ({ one }) => ({
+  ({ one, many }) => ({
     kickoff: one(projectKickoffs, {
       fields: [projectTrackers.kickoffId],
       references: [projectKickoffs.id],
     }),
     createdByUser: one(users, {
       fields: [projectTrackers.createdBy],
+      references: [users.id],
+    }),
+    stageEvents: many(projectStageEvents),
+  }),
+);
+
+export const projectStageEventsRelations = relations(
+  projectStageEvents,
+  ({ one }) => ({
+    tracker: one(projectTrackers, {
+      fields: [projectStageEvents.trackerId],
+      references: [projectTrackers.id],
+    }),
+    changedByUser: one(users, {
+      fields: [projectStageEvents.changedBy],
       references: [users.id],
     }),
   }),
@@ -305,6 +352,7 @@ export const projectKickoffScreeningsRelations = relations(
 
 export type User = typeof users.$inferSelect;
 export type ProjectTracker = typeof projectTrackers.$inferSelect;
+export type ProjectStageEvent = typeof projectStageEvents.$inferSelect;
 export type ProjectKickoff = typeof projectKickoffs.$inferSelect;
 export type ProjectKickoffScreening = typeof projectKickoffScreenings.$inferSelect;
 export type WorkflowJob = typeof workflowJobs.$inferSelect;
