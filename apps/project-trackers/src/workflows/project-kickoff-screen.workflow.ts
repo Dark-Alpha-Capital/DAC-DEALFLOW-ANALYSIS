@@ -54,14 +54,14 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
     event: WorkflowEvent<ProjectKickoffScreenParams>,
     step: WorkflowStep,
   ): Promise<{ success: boolean; score?: number; analysis?: string; message?: string }> {
-    return withWorkflowDb(this.env, async () => {
-      const instanceId = event.instanceId;
-      const { kickoffId, screeningId } = event.payload;
+    const instanceId = event.instanceId;
+    const { kickoffId, screeningId } = event.payload;
 
-      try {
-        await markWorkflowRunning(instanceId);
+    try {
+      await withWorkflowDb(this.env, () => markWorkflowRunning(instanceId));
 
-        const fetchPack = await step.do("fetch-data", async () => {
+      const fetchPack = await step.do("fetch-data", () =>
+        withWorkflowDb(this.env, async () => {
           await updateWorkflowJobProgress(instanceId, {
             step: "Fetching project data",
             percentage: 10,
@@ -121,9 +121,11 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
           }
 
           return { project, screener };
-        });
+        }),
+      );
 
-        const aiResult = await step.do("generate-score", async () => {
+      const aiResult = await step.do("generate-score", () =>
+        withWorkflowDb(this.env, async () => {
           await updateWorkflowJobProgress(instanceId, {
             step: "AI evaluating project",
             percentage: 50,
@@ -159,9 +161,11 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
           });
 
           return { score: object.score, analysis: object.analysis };
-        });
+        }),
+      );
 
-        await step.do("save-result", async () => {
+      await step.do("save-result", () =>
+        withWorkflowDb(this.env, async () => {
           await updateWorkflowJobProgress(instanceId, {
             step: "Saving results",
             percentage: 90,
@@ -183,16 +187,18 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
             step: "Completed",
             percentage: 100,
           });
-        });
+        }),
+      );
 
-        const out = {
-          success: true,
-          score: aiResult.score,
-          analysis: aiResult.analysis,
-        };
-        await markWorkflowCompleted(instanceId, out);
-        return out;
-      } catch (err) {
+      const out = {
+        success: true,
+        score: aiResult.score,
+        analysis: aiResult.analysis,
+      };
+      await withWorkflowDb(this.env, () => markWorkflowCompleted(instanceId, out));
+      return out;
+    } catch (err) {
+      await withWorkflowDb(this.env, async () => {
         await db
           .update(projectKickoffScreenings)
           .set({ status: "failed", updatedAt: new Date() })
@@ -200,8 +206,9 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
           .catch(() => undefined);
 
         await markWorkflowFailed(instanceId, err);
-        throw err;
-      }
-    });
+      }).catch(() => undefined);
+
+      throw err;
+    }
   }
 }
