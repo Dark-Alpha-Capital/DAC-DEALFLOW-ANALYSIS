@@ -80,27 +80,6 @@ export function ProjectTrackersSidebar({ session }: { session: Session }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-            Resources
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a
-                    href="https://tracker.darkalphacapital.com"
-                    className="flex items-center gap-2"
-                  >
-                    <ClipboardList className="size-4" />
-                    <span>Tracker home</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>

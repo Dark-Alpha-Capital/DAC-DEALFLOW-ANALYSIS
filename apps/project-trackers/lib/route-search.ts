@@ -72,6 +72,18 @@ export function projectTrackersListLoaderDeps(search: Record<string, unknown>) {
   return { sortBy, sortDir, department };
 }
 
+/** Default URL search for `/_app/screeners/` (department filter). */
+export const SCREENERS_INDEX_DEFAULT_SEARCH = {
+  department: "",
+} as const;
+
+/** Screeners index: department filter (passed to route loader). */
+export function screenersListLoaderDeps(search: Record<string, unknown>) {
+  const s = search as LooseSearch;
+  const department = (asString(s.department) ?? SCREENERS_INDEX_DEFAULT_SEARCH.department).trim();
+  return { department };
+}
+
 /** Deal opportunities index: page, page size, and server-side search query. */
 export function dealOpportunitiesListLoaderDeps(search: Record<string, unknown>) {
   const s = search as LooseSearch;

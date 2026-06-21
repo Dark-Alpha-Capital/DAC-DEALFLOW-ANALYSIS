@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Plus, Trash2 } from "lucide-react";
 import { useTRPC } from "@/trpc/client";
 import { Badge } from "@/components/ui/badge";
@@ -17,28 +16,57 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DEPARTMENT_VALUES } from "@repo/enums";
+import { useRouter } from "@/lib/navigation-shim";
+import { loadScreenersPageData } from "@/lib/server/screeners-route-data";
+import {
+  ROUTE_DATA_GC_TIME_MS,
+  ROUTE_DATA_STALE_TIME_MS,
+} from "@/lib/route-loader-cache";
+import {
+  looseValidateSearch,
+  screenersListLoaderDeps,
+} from "@/lib/route-search";
 
 export const Route = createFileRoute("/_app/screeners/")({
+  validateSearch: (input: Record<string, unknown>) =>
+    screenersListLoaderDeps(looseValidateSearch(input)),
+  staleTime: ROUTE_DATA_STALE_TIME_MS,
+  gcTime: ROUTE_DATA_GC_TIME_MS,
+  loaderDeps: ({ search }) => search,
   head: () => ({
     meta: [{ title: "Project Screeners — Dark Alpha Capital" }],
   }),
+  loader: async ({ deps }) => loadScreenersPageData({ data: deps }),
   component: ScreenersPage,
 });
 
 function ScreenersPage() {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
-  const { data: screeners = [], isLoading } = useQuery(
-    trpc.screeners.getAll.queryOptions(),
-  );
+  const router = useRouter();
+  const navigate = Route.useNavigate();
+  const { department: departmentFilter } = Route.useSearch();
+  const { screeners } = Route.useLoaderData();
+
+  function setSearch(patch: Partial<{ department: string }>) {
+    navigate({
+      search: (prev) => ({ ...prev, ...patch }),
+      replace: true,
+    });
+  }
 
   const { mutate: deleteScreener, isPending: isDeleting } = useMutation(
     trpc.screeners.delete.mutationOptions({
       onSuccess: async () => {
         toast.success("Screener deleted");
-        await queryClient.invalidateQueries({
-          queryKey: trpc.screeners.getAll.queryKey(),
-        });
+        void router.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to delete screener");
@@ -63,12 +91,31 @@ function ScreenersPage() {
         </Button>
       </div>
 
-      {isLoading ? (
-        <p className="text-muted-foreground text-sm">Loading screeners…</p>
-      ) : screeners.length === 0 ? (
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Select
+          value={departmentFilter || "all"}
+          onValueChange={(v) => setSearch({ department: v === "all" ? "" : v })}
+        >
+          <SelectTrigger className="w-52">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All departments</SelectItem>
+            {DEPARTMENT_VALUES.map((dept) => (
+              <SelectItem key={dept} value={dept}>
+                {dept}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {screeners.length === 0 ? (
         <div className="rounded-lg border border-dashed p-10 text-center">
           <p className="text-muted-foreground text-sm">
-            No project screeners yet. Add one per department or run the seed script.
+            {departmentFilter
+              ? "No screeners found for this department."
+              : "No project screeners yet. Add one per department or run the seed script."}
           </p>
         </div>
       ) : (

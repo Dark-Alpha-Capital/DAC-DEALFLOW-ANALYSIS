@@ -38,14 +38,22 @@ export async function insertWorkflowJob(row: InsertWorkflowJobInput) {
     .onConflictDoNothing({ target: workflowJobs.instanceId });
 }
 
+export function insertWorkflowJobStatement(
+  conn: Pick<typeof db, "insert">,
+  row: InsertWorkflowJobInput,
+) {
+  return conn
+    .insert(workflowJobs)
+    .values(workflowJobInsertValues(row))
+    .onConflictDoNothing({ target: workflowJobs.instanceId });
+}
+
+/** @deprecated Prefer `insertWorkflowJobStatement` + `db.batch` on D1. */
 export async function insertWorkflowJobTx(
   tx: Pick<typeof db, "insert">,
   row: InsertWorkflowJobInput,
 ) {
-  await tx
-    .insert(workflowJobs)
-    .values(workflowJobInsertValues(row))
-    .onConflictDoNothing({ target: workflowJobs.instanceId });
+  await insertWorkflowJobStatement(tx, row);
 }
 
 export async function updateWorkflowJobProgress(

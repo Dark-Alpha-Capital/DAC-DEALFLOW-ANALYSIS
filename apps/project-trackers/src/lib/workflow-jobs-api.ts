@@ -71,9 +71,9 @@ export async function getJobStatus(
     progress:
       row?.progressStep != null
         ? {
-            step: row.progressStep,
-            percentage: row.progressPercent ?? 0,
-          }
+          step: row.progressStep,
+          percentage: row.progressPercent ?? 0,
+        }
         : undefined,
     failedReason: row?.failedReason,
     returnValue: row?.returnValue ? JSON.parse(row.returnValue) : undefined,

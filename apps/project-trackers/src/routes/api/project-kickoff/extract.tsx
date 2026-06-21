@@ -10,9 +10,7 @@ import { requireKickoffSession } from "@/lib/server/require-kickoff-session";
 
 const OPENAI_EXTRACT_MODEL = "gpt-4.1-mini";
 
-export const Route = createFileRoute(
-  "/api/project-kickoff/extract",
-)({
+export const Route = createFileRoute("/api/project-kickoff/extract")({
   server: {
     handlers: {
       POST: async ({ request }) => {
@@ -70,7 +68,10 @@ export const Route = createFileRoute(
           }),
           abortSignal: request.signal,
           onError({ error }) {
-            console.error("[project-kickoff-extract] streamText (openai)", error);
+            console.error(
+              "[project-kickoff-extract] streamText (openai)",
+              error,
+            );
           },
         });
 

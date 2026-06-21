@@ -7,7 +7,7 @@ import {
   projectKickoffScreenings,
   type DepartmentValue,
 } from "../schema";
-import { insertWorkflowJobTx } from "../workflow-jobs";
+import { insertWorkflowJobStatement } from "../workflow-jobs";
 
 export type ProjectKickoffFieldValues = {
   projectName: string;
@@ -50,37 +50,35 @@ export async function createProjectKickoff(
   const jobId = createId();
   const { rawText, structuredData, ...fields } = input.fields;
 
-  await db.transaction(async (tx) => {
-    await tx.insert(projectKickoffs).values({
+  // D1 does not support SQL BEGIN/COMMIT; use batch for atomic multi-write.
+  await db.batch([
+    db.insert(projectKickoffs).values({
       id: kickoffId,
       ...fields,
       structuredData:
         structuredData != null ? JSON.stringify(structuredData) : null,
       rawText: rawText?.trim() || null,
       userId: input.userId,
-    });
-
-    await tx.insert(projectTrackers).values({
+    }),
+    db.insert(projectTrackers).values({
       id: trackerId,
       name: fields.projectName,
       sourceType: "PROJECT_KICKOFF",
       kickoffId,
       createdBy: input.userId,
-    });
-
-    await insertWorkflowJobTx(tx, {
+    }),
+    insertWorkflowJobStatement(db, {
       instanceId: jobId,
       workflowKind: "project-kickoff-screen",
       userId: input.userId,
-    });
-
-    await tx.insert(projectKickoffScreenings).values({
+    }),
+    db.insert(projectKickoffScreenings).values({
       id: screeningId,
       kickoffId,
       workflowInstanceId: jobId,
       status: "pending",
-    });
-  });
+    }),
+  ]);
 
   return { kickoffId, trackerId, screeningId, jobId };
 }
@@ -99,20 +97,19 @@ export async function createProjectKickoffRescreen(input: {
   const screeningId = createId();
   const jobId = createId();
 
-  await db.transaction(async (tx) => {
-    await insertWorkflowJobTx(tx, {
+  await db.batch([
+    insertWorkflowJobStatement(db, {
       instanceId: jobId,
       workflowKind: "project-kickoff-screen",
       userId: input.userId,
-    });
-
-    await tx.insert(projectKickoffScreenings).values({
+    }),
+    db.insert(projectKickoffScreenings).values({
       id: screeningId,
       kickoffId: input.kickoffId,
       workflowInstanceId: jobId,
       status: "pending",
-    });
-  });
+    }),
+  ]);
 
   return { screeningId, jobId };
 }
@@ -123,8 +120,8 @@ export async function updateProjectKickoffById(
 ) {
   const { rawText, structuredData, ...rest } = fields;
 
-  await db.transaction(async (tx) => {
-    await tx
+  await db.batch([
+    db
       .update(projectKickoffs)
       .set({
         ...rest,
@@ -133,13 +130,12 @@ export async function updateProjectKickoffById(
         ...(rawText !== undefined ? { rawText: rawText?.trim() || null } : {}),
         updatedAt: new Date(),
       })
-      .where(eq(projectKickoffs.id, kickoffId));
-
-    await tx
+      .where(eq(projectKickoffs.id, kickoffId)),
+    db
       .update(projectTrackers)
       .set({ name: rest.projectName })
-      .where(eq(projectTrackers.kickoffId, kickoffId));
-  });
+      .where(eq(projectTrackers.kickoffId, kickoffId)),
+  ]);
 }
 
 export async function deleteProjectKickoff(kickoffId: string) {

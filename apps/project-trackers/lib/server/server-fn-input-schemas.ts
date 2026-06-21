@@ -5,3 +5,7 @@ export const projectTrackersPageInputSchema = z.object({
   sortDir: z.enum(["asc", "desc"]).default("desc"),
   department: z.string().optional().default(""),
 });
+
+export const screenersPageInputSchema = z.object({
+  department: z.string().optional().default(""),
+});

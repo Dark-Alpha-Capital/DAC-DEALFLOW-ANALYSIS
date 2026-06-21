@@ -22,6 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  scoreBadgeClass,
+  scoreColor,
+  scoreLabel,
+} from "@/lib/project-tracker-display";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, Loader2, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -35,32 +40,15 @@ import { PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
 import { useProjectKickoffScreeningPoll } from "@/hooks/use-project-kickoff-screening-poll";
 import { useEffect, useState } from "react";
 
-export const Route = createFileRoute(
-  "/_app/project-trackers/$trackerId",
-)({
+/** Radix Select disallows empty string item values. */
+const NO_DEPARTMENT = "__none__";
+
+export const Route = createFileRoute("/_app/project-trackers/$trackerId")({
   head: () => ({
     meta: [{ title: "Project Detail — Dark Alpha Capital" }],
   }),
   component: ProjectTrackerDetailPage,
 });
-
-function scoreColor(score: number) {
-  if (score >= 3.5) return "text-green-600";
-  if (score >= 2) return "text-amber-500";
-  return "text-red-500";
-}
-
-function scoreLabel(score: number) {
-  if (score >= 3.5) return "Worth taking";
-  if (score >= 2) return "Review needed";
-  return "Not recommended";
-}
-
-function scoreBadgeClass(score: number) {
-  if (score >= 3.5) return "bg-green-100 text-green-800";
-  if (score >= 2) return "bg-amber-100 text-amber-800";
-  return "bg-red-100 text-red-800";
-}
 
 function ScreeningPanel({
   kickoff,
@@ -101,10 +89,8 @@ function ScreeningPanel({
     isActive,
   );
 
-  const score =
-    result?.score ?? latestScreening?.score ?? null;
-  const analysis =
-    result?.analysis ?? latestScreening?.analysis ?? null;
+  const score = result?.score ?? latestScreening?.score ?? null;
+  const analysis = result?.analysis ?? latestScreening?.analysis ?? null;
   const status =
     terminalState === "completed"
       ? "completed"
@@ -423,8 +409,10 @@ function EditProjectForm({
                 <FormItem>
                   <FormLabel>Department</FormLabel>
                   <Select
-                    value={field.value ?? ""}
-                    onValueChange={(v) => field.onChange(v === "" ? null : v)}
+                    value={field.value ?? NO_DEPARTMENT}
+                    onValueChange={(v) =>
+                      field.onChange(v === NO_DEPARTMENT ? null : v)
+                    }
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -432,7 +420,7 @@ function EditProjectForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value={NO_DEPARTMENT}>None</SelectItem>
                       {DEPARTMENT_VALUES.map((dept) => (
                         <SelectItem key={dept} value={dept}>
                           {dept}

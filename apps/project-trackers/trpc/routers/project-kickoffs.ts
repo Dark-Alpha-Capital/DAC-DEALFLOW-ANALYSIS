@@ -231,9 +231,9 @@ export const projectKickoffsRouter = createTRPCRouter({
           progress: status.progress ?? null,
           result: screening
             ? {
-                score: screening.score,
-                analysis: screening.analysis,
-              }
+              score: screening.score,
+              analysis: screening.analysis,
+            }
             : null,
         };
       }

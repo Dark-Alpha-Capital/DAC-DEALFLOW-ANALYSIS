@@ -84,7 +84,7 @@ function EditScreenerPage() {
   return (
     <section className="block-space-mini container max-w-3xl">
       <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 gap-1.5">
-        <Link to="/screeners">
+        <Link to="/screeners" search={{ department: "" }}>
           <ChevronLeft className="size-4" />
           Back to Screeners
         </Link>

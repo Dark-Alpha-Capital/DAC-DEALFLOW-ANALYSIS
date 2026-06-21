@@ -1,8 +1,14 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "../index";
-import { screeners } from "../schema";
+import { screeners, type DepartmentValue } from "../schema";
 
-export async function getAllProjectScreeners() {
+export async function getAllProjectScreeners(department?: DepartmentValue) {
+  const conditions: ReturnType<typeof eq>[] = [
+    eq(screeners.category, "Project Screener"),
+  ];
+  if (department) {
+    conditions.push(eq(screeners.department, department));
+  }
   return db
     .select({
       id: screeners.id,
@@ -14,7 +20,7 @@ export async function getAllProjectScreeners() {
       updatedAt: screeners.updatedAt,
     })
     .from(screeners)
-    .where(eq(screeners.category, "Project Screener"))
+    .where(and(...conditions))
     .orderBy(asc(screeners.name));
 }
 

@@ -30,6 +30,7 @@ function RootNotFound() {
 
 export const Route = createRootRoute({
   notFoundComponent: RootNotFound,
+
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -65,6 +66,7 @@ function RootDocument() {
       <head>
         <HeadContent />
       </head>
+
       <body className="antialiased">
         <Outlet />
         <Scripts />
