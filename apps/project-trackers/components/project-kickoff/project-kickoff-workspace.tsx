@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTRPC } from "@/trpc/client";
-import { useProjectKickoffScreeningPoll } from "@/hooks/use-project-kickoff-screening-poll";
 import {
   Check,
   ChevronLeft,
@@ -27,26 +27,16 @@ import {
   type WorkflowStep,
 } from "./project-kickoff-draft-utils";
 import { ReviewDraftFields } from "./review-draft-fields";
-import { ScreeningResultPanel } from "./screening-result-panel";
 import { WorkflowStepper } from "./workflow-stepper";
 import { WorkspacePanel } from "./workspace-panel";
 
 export function ProjectKickoffWorkspace() {
   const trpc = useTRPC();
+  const navigate = useNavigate();
   const [rawText, setRawText] = useState("");
   const [draft, setDraft] = useState<ReviewDraft | null>(null);
   const [step, setStep] = useState<WorkflowStep>(1);
   const [step2ContinueAttempted, setStep2ContinueAttempted] = useState(false);
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [screeningState, setScreeningState] = useState<
-    "idle" | "polling" | "completed" | "failed"
-  >("idle");
-
-  const {
-    progress: screeningProgress,
-    result: screeningResult,
-    terminalState: pollTerminalState,
-  } = useProjectKickoffScreeningPoll(jobId, screeningState === "polling");
 
   const { mutateAsync: createKickoff, isPending: isSaving } = useMutation(
     trpc.projectKickoffs.create.mutationOptions(),
@@ -77,17 +67,6 @@ export function ProjectKickoffWorkspace() {
   });
 
   useEffect(() => {
-    if (pollTerminalState === "completed") {
-      setScreeningState("completed");
-    } else if (pollTerminalState === "failed") {
-      setScreeningState("failed");
-      toast.error(
-        "AI screening failed. Your project was saved — retry from project trackers.",
-      );
-    }
-  }, [pollTerminalState]);
-
-  useEffect(() => {
     if (!draft && step !== 1) setStep(1);
   }, [draft, step]);
 
@@ -108,8 +87,7 @@ export function ProjectKickoffWorkspace() {
     setDraft(null);
     setRawText("");
     setStep(1);
-    setJobId(null);
-    setScreeningState("idle");
+    setStep2ContinueAttempted(false);
   }, [clear]);
 
   const onConfirm = useCallback(async () => {
@@ -119,10 +97,12 @@ export function ProjectKickoffWorkspace() {
         draft: toKickoffDraft(draft),
         rawText,
       });
-      setJobId(created.jobId);
-      setScreeningState("polling");
-      setStep(4);
+      resetWorkspace();
       toast.success("Project saved — AI screening in progress");
+      await navigate({
+        to: "/project-trackers/$trackerId",
+        params: { trackerId: created.trackerId },
+      });
     } catch (err) {
       console.error(err);
 
@@ -130,7 +110,7 @@ export function ProjectKickoffWorkspace() {
         err instanceof Error ? err.message : "Failed to save project",
       );
     }
-  }, [createKickoff, draft, rawText]);
+  }, [createKickoff, draft, navigate, rawText, resetWorkspace]);
 
   const continueToConfirmation = () => {
     if (!draft) return;
@@ -363,23 +343,6 @@ export function ProjectKickoffWorkspace() {
                 Save project kickoff
               </Button>
             </div>
-          </WorkspacePanel>
-        ) : null}
-
-        {step === 4 ? (
-          <WorkspacePanel
-            title="Project screening"
-            description="AI evaluates the kickoff against department criteria after save."
-          >
-            <ScreeningResultPanel
-              state={screeningState}
-              progress={screeningProgress}
-              result={screeningResult}
-              onRetry={() => {
-                setScreeningState("idle");
-                setStep(3);
-              }}
-            />
           </WorkspacePanel>
         ) : null}
       </div>

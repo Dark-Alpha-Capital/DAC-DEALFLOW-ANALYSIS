@@ -38,7 +38,7 @@ import {
 import DeleteProjectTrackerButton from "@/components/project-trackers/delete-project-tracker-button";
 import { PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
 import { useProjectKickoffScreeningPoll } from "@/hooks/use-project-kickoff-screening-poll";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 /** Radix Select disallows empty string item values. */
 const NO_DEPARTMENT = "__none__";
@@ -51,11 +51,13 @@ export const Route = createFileRoute("/_app/project-trackers/$trackerId")({
 });
 
 function ScreeningPanel({
+  trackerId,
   kickoff,
   latestScreening,
   onRescreen,
   isRescreening,
 }: {
+  trackerId: string;
   kickoff: {
     id: string;
     updatedAt: Date;
@@ -73,21 +75,27 @@ function ScreeningPanel({
   onRescreen: () => void;
   isRescreening: boolean;
 }) {
-  const [pollJobId, setPollJobId] = useState<string | null>(null);
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const isActive =
     latestScreening?.status === "pending" ||
     latestScreening?.status === "running";
-
-  useEffect(() => {
-    if (isActive && latestScreening?.workflowInstanceId) {
-      setPollJobId(latestScreening.workflowInstanceId);
-    }
-  }, [isActive, latestScreening?.workflowInstanceId]);
+  const pollJobId =
+    isActive && latestScreening?.workflowInstanceId
+      ? latestScreening.workflowInstanceId
+      : null;
 
   const { progress, result, terminalState } = useProjectKickoffScreeningPoll(
     pollJobId,
     isActive,
   );
+
+  useEffect(() => {
+    if (terminalState == null) return;
+    void queryClient.invalidateQueries(
+      trpc.projectTrackers.getById.queryOptions({ trackerId }),
+    );
+  }, [queryClient, terminalState, trackerId, trpc.projectTrackers.getById]);
 
   const score = result?.score ?? latestScreening?.score ?? null;
   const analysis = result?.analysis ?? latestScreening?.analysis ?? null;
@@ -260,6 +268,7 @@ function ProjectTrackerDetailPage() {
       {kickoff ? (
         <div className="space-y-4">
           <ScreeningPanel
+            trackerId={trackerId}
             kickoff={kickoff}
             latestScreening={latestScreening}
             isRescreening={isRescreening}

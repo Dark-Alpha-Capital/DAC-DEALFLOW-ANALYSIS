@@ -1,5 +1,4 @@
 import {
-  BarChart2,
   Check,
   ClipboardPaste,
   PenLine,
@@ -32,12 +31,6 @@ const WORKFLOW_STEPS: {
     description: "Verify & save",
     icon: ShieldCheck,
   },
-  {
-    step: 4,
-    label: "Screening",
-    description: "AI evaluation",
-    icon: BarChart2,
-  },
 ];
 
 type WorkflowStepperProps = {
@@ -63,8 +56,7 @@ export function WorkflowStepper({
           const canClick =
             step === 1 ||
             (step === 2 && hasDraft) ||
-            (step === 3 && current === 3) ||
-            (step === 4 && current === 4);
+            (step === 3 && current === 3);
 
           return (
             <li key={step} className="relative min-w-0 flex-1">
