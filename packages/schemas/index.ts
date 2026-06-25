@@ -32,6 +32,14 @@ export {
   type ProjectKickoffDraft,
 } from "./project-kickoff-draft";
 export {
+  workItemStatusSchema,
+  workItemTagsSchema,
+  createWorkItemSchema,
+  updateWorkItemSchema,
+  type CreateWorkItemInput,
+  type UpdateWorkItemInput,
+} from "./work-items";
+export {
   icScorerAlignmentRowSchema,
   icScorerAlignmentStatusSchema,
   icScorerColorSchema,

@@ -10,3 +10,10 @@ export {
   PROJECT_STAGE_LABELS,
   type ProjectStageValue,
 } from "./project-stages";
+export {
+  WorkItemStatus,
+  WORK_ITEM_STATUS_VALUES,
+  DEFAULT_WORK_ITEM_STATUS,
+  WORK_ITEM_STATUS_LABELS,
+  type WorkItemStatusValue,
+} from "./work-item-status";

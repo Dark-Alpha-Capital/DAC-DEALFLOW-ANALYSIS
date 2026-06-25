@@ -39,6 +39,13 @@ import {
   type EditProjectKickoffValues,
 } from "@repo/schemas";
 import DeleteProjectTrackerButton from "@/components/project-trackers/delete-project-tracker-button";
+import { WorkItemsPanel } from "@/components/work-items/work-items-panel";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
 import { useProjectKickoffScreeningPoll } from "@/hooks/use-project-kickoff-screening-poll";
 import { useEffect } from "react";
@@ -353,25 +360,41 @@ function ProjectTrackerDetailPage() {
             stageChangedAt={tracker.stageChangedAt}
           />
 
-          <ScreeningPanel
-            trackerId={trackerId}
-            kickoff={kickoff}
-            latestScreening={latestScreening}
-            isRescreening={isRescreening}
-            onRescreen={() => rescreen({ kickoffId: kickoff.id })}
-          />
+          <Tabs defaultValue="work-items" className="w-full">
+            <TabsList className="w-full justify-start overflow-x-auto">
+              <TabsTrigger value="work-items">Work items</TabsTrigger>
+              <TabsTrigger value="ai-scoring">AI scoring</TabsTrigger>
+              <TabsTrigger value="project-info">Core information</TabsTrigger>
+            </TabsList>
 
-          <EditProjectForm
-            kickoff={kickoff}
-            onSuccess={(rescreened) => {
-              void queryClient.invalidateQueries(
-                trpc.projectTrackers.getById.queryOptions({ trackerId }),
-              );
-              if (rescreened) {
-                toast.success("Project updated — re-screening started");
-              }
-            }}
-          />
+            <TabsContent value="work-items" className="mt-4">
+              <WorkItemsPanel trackerId={trackerId} />
+            </TabsContent>
+
+            <TabsContent value="ai-scoring" className="mt-4">
+              <ScreeningPanel
+                trackerId={trackerId}
+                kickoff={kickoff}
+                latestScreening={latestScreening}
+                isRescreening={isRescreening}
+                onRescreen={() => rescreen({ kickoffId: kickoff.id })}
+              />
+            </TabsContent>
+
+            <TabsContent value="project-info" className="mt-4">
+              <EditProjectForm
+                kickoff={kickoff}
+                onSuccess={(rescreened) => {
+                  void queryClient.invalidateQueries(
+                    trpc.projectTrackers.getById.queryOptions({ trackerId }),
+                  );
+                  if (rescreened) {
+                    toast.success("Project updated — re-screening started");
+                  }
+                }}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       ) : (
         <p className="text-muted-foreground text-sm">

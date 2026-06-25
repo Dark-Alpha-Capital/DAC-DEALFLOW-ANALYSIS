@@ -8,11 +8,16 @@ import {
 } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
-import { DEPARTMENT_VALUES, PROJECT_STAGE_VALUES } from "@repo/enums";
+import {
+  DEPARTMENT_VALUES,
+  PROJECT_STAGE_VALUES,
+  WORK_ITEM_STATUS_VALUES,
+} from "@repo/enums";
 import { SCREENER_CATEGORY_VALUES } from "./enums";
 
 export type DepartmentValue = (typeof DEPARTMENT_VALUES)[number];
 export type ProjectStageValue = (typeof PROJECT_STAGE_VALUES)[number];
+export type WorkItemStatusValue = (typeof WORK_ITEM_STATUS_VALUES)[number];
 export type ScreenerCategoryValue = (typeof SCREENER_CATEGORY_VALUES)[number];
 
 export const users = sqliteTable("User", {
@@ -262,6 +267,45 @@ export const projectTrackers = sqliteTable(
   }),
 );
 
+export const workItems = sqliteTable(
+  "WorkItem",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    trackerId: text("trackerId")
+      .notNull()
+      .references(() => projectTrackers.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    status: text("status", { enum: WORK_ITEM_STATUS_VALUES })
+      .notNull()
+      .default("TODO"),
+    startDate: integer("startDate", { mode: "timestamp" }),
+    dueDate: integer("dueDate", { mode: "timestamp" }),
+    /** JSON-serialized string[] */
+    tags: text("tags").notNull().default("[]"),
+    createdBy: text("createdBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    workItemTrackerCreatedIdx: index("work_item_tracker_created_idx").on(
+      table.trackerId,
+      table.createdAt,
+    ),
+    workItemTrackerStatusIdx: index("work_item_tracker_status_idx").on(
+      table.trackerId,
+      table.status,
+    ),
+  }),
+);
+
 export const projectStageEvents = sqliteTable(
   "ProjectStageEvent",
   {
@@ -319,8 +363,20 @@ export const projectTrackersRelations = relations(
       references: [users.id],
     }),
     stageEvents: many(projectStageEvents),
+    workItems: many(workItems),
   }),
 );
+
+export const workItemsRelations = relations(workItems, ({ one }) => ({
+  tracker: one(projectTrackers, {
+    fields: [workItems.trackerId],
+    references: [projectTrackers.id],
+  }),
+  createdByUser: one(users, {
+    fields: [workItems.createdBy],
+    references: [users.id],
+  }),
+}));
 
 export const projectStageEventsRelations = relations(
   projectStageEvents,
@@ -351,6 +407,7 @@ export const projectKickoffScreeningsRelations = relations(
 );
 
 export type User = typeof users.$inferSelect;
+export type WorkItem = typeof workItems.$inferSelect;
 export type ProjectTracker = typeof projectTrackers.$inferSelect;
 export type ProjectStageEvent = typeof projectStageEvents.$inferSelect;
 export type ProjectKickoff = typeof projectKickoffs.$inferSelect;
