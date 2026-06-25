@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -91,7 +92,7 @@ function parseDateInput(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function WorkItemFormDialog({
+function WorkItemFormDrawer({
   open,
   onOpenChange,
   trackerId,
@@ -166,70 +167,120 @@ function WorkItemFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 p-0 sm:max-w-xl md:max-w-2xl lg:max-w-3xl"
+      >
+        <SheetHeader className="shrink-0 border-b px-6 py-5 text-left">
+          <SheetTitle>
             {isEditing ? "Edit work item" : "New work item"}
-          </DialogTitle>
-        </DialogHeader>
+          </SheetTitle>
+        </SheetHeader>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Work item title" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {WORK_ITEM_STATUS_VALUES.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {workItemStatusLabel(status)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
               <FormField
                 control={form.control}
-                name="startDate"
+                name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start date</FormLabel>
+                    <FormLabel>Title</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        value={toDateInputValue(
-                          field.value instanceof Date ? field.value : null,
-                        )}
-                        onChange={(e) =>
-                          field.onChange(parseDateInput(e.target.value))
-                        }
+                      <Input placeholder="Work item title" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {WORK_ITEM_STATUS_VALUES.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {workItemStatusLabel(status)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start date</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          value={toDateInputValue(
+                            field.value instanceof Date ? field.value : null,
+                          )}
+                          onChange={(e) =>
+                            field.onChange(parseDateInput(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Due date</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          value={toDateInputValue(
+                            field.value instanceof Date ? field.value : null,
+                          )}
+                          onChange={(e) =>
+                            field.onChange(parseDateInput(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="tags"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tags</FormLabel>
+                    <FormControl>
+                      <TagsInput
+                        value={field.value ?? []}
+                        onTagsChange={field.onChange}
+                        maxTags={32}
+                        placeholder="Add a tag and press Enter…"
                       />
                     </FormControl>
                     <FormMessage />
@@ -239,19 +290,15 @@ function WorkItemFormDialog({
 
               <FormField
                 control={form.control}
-                name="dueDate"
+                name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Due date</FormLabel>
+                    <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        value={toDateInputValue(
-                          field.value instanceof Date ? field.value : null,
-                        )}
-                        onChange={(e) =>
-                          field.onChange(parseDateInput(e.target.value))
-                        }
+                      <MarkdownEditor
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        rows={14}
                       />
                     </FormControl>
                     <FormMessage />
@@ -260,44 +307,7 @@ function WorkItemFormDialog({
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="tags"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tags</FormLabel>
-                  <FormControl>
-                    <TagsInput
-                      value={field.value ?? []}
-                      onTagsChange={field.onChange}
-                      maxTags={32}
-                      placeholder="Add a tag and press Enter…"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <MarkdownEditor
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                      rows={8}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end gap-2">
+            <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end sm:space-x-2">
               <Button
                 type="button"
                 variant="outline"
@@ -312,11 +322,11 @@ function WorkItemFormDialog({
                     ? "Save changes"
                     : "Create work item"}
               </Button>
-            </div>
+            </SheetFooter>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -477,7 +487,7 @@ export function WorkItemsPanel({ trackerId }: { trackerId: string }) {
         </div>
       )}
 
-      <WorkItemFormDialog
+      <WorkItemFormDrawer
         key={editingItem?.id ?? "new"}
         open={formOpen}
         onOpenChange={setFormOpen}
