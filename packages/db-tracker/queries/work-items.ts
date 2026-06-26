@@ -19,11 +19,16 @@ export function serializeWorkItemTags(tags: string[]): string {
 export type WorkItemRecord = {
   id: string;
   trackerId: string;
+  epicId: string | null;
+  cycleId: string | null;
+  moduleId: string | null;
   title: string;
   description: string;
   status: (typeof workItems.$inferSelect)["status"];
   startDate: Date | null;
   dueDate: Date | null;
+  estimatePoints: number | null;
+  estimateHours: number | null;
   tags: string[];
   createdBy: string | null;
   createdAt: Date;

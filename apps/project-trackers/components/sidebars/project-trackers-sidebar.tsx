@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { usePathname } from "@/lib/navigation-shim";
-import { ClipboardList, Layers, Plus, List, Settings2 } from "lucide-react";
+import { ClipboardList, Layers, Plus, List, Settings2, Flag, BarChart3 } from "lucide-react";
 import type { Session } from "@/auth";
 import {
   Sidebar,
@@ -38,6 +38,18 @@ const projectNavItems = [
     url: "/screeners",
     icon: Settings2,
     match: (pathname: string) => pathname.startsWith("/screeners"),
+  },
+  {
+    title: "Initiatives",
+    url: "/initiatives",
+    icon: Flag,
+    match: (pathname: string) => pathname.startsWith("/initiatives"),
+  },
+  {
+    title: "Analytics",
+    url: "/analytics",
+    icon: BarChart3,
+    match: (pathname: string) => pathname.startsWith("/analytics"),
   },
 ] as const;
 

@@ -1,9 +1,61 @@
 import { createDbFromD1 } from "./create-db";
 import { isCloudflareWorkersRuntime, workerD1DbAls } from "./d1-context";
+import type { AppDb } from "./db-types";
 
 export type { AppDb } from "./db-types";
-export * from "./enums";
-export * from "./schema";
+
+export { DEPARTMENT_VALUES, Department } from "./enums";
+export type { DepartmentValue, ScreenerCategoryValue } from "./enums";
+
+export {
+  users,
+  accounts,
+  sessions,
+  verifications,
+  screenerTemplates,
+  screeners,
+  workflowJobs,
+  projectKickoffs,
+  projectKickoffScreenings,
+  projectTrackers,
+  epics,
+  initiatives,
+  initiativeTrackers,
+  cycles,
+  modules,
+  workItems,
+  projectStageEvents,
+  workLogs,
+  workItemComments,
+  views,
+} from "./schema";
+
+export type {
+  DepartmentValue as SchemaDepartmentValue,
+  ProjectStageValue,
+  WorkItemStatusValue,
+  EpicStatusValue,
+  InitiativeStatusValue,
+  CycleStatusValue,
+  ModuleStatusValue,
+  ViewTypeValue,
+  User,
+  WorkItem,
+  ProjectTracker,
+  ProjectStageEvent,
+  ProjectKickoff,
+  ProjectKickoffScreening,
+  WorkflowJob,
+  Screener,
+  Epic,
+  Initiative,
+  InitiativeTracker,
+  Cycle,
+  Module,
+  WorkLog,
+  WorkItemComment,
+  View,
+} from "./schema";
 
 export {
   eq,
@@ -29,8 +81,6 @@ export type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
 export { createDbFromD1 } from "./create-db";
 export { isCloudflareWorkersRuntime, workerD1DbAls } from "./d1-context";
-
-import type { AppDb } from "./db-types";
 
 const workerDbProxy: AppDb = new Proxy({} as AppDb, {
   get(_target, prop, receiver) {

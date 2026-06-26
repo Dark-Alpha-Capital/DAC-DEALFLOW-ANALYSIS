@@ -10,8 +10,13 @@ export type CreateWorkItemInput = {
   title: string;
   description?: string;
   status?: WorkItemStatusValue;
+  epicId?: string | null;
+  cycleId?: string | null;
+  moduleId?: string | null;
   startDate?: Date | null;
   dueDate?: Date | null;
+  estimatePoints?: number | null;
+  estimateHours?: number | null;
   tags?: string[];
   createdBy: string;
 };
@@ -26,8 +31,13 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     title: input.title.trim(),
     description: input.description ?? "",
     status: (input.status ?? "TODO") as SchemaWorkItemStatusValue,
+    epicId: input.epicId ?? null,
+    cycleId: input.cycleId ?? null,
+    moduleId: input.moduleId ?? null,
     startDate: input.startDate ?? null,
     dueDate: input.dueDate ?? null,
+    estimatePoints: input.estimatePoints ?? null,
+    estimateHours: input.estimateHours ?? null,
     tags: serializeWorkItemTags(input.tags ?? []),
     createdBy: input.createdBy,
     createdAt: now,
@@ -44,8 +54,13 @@ export type UpdateWorkItemInput = {
   title?: string;
   description?: string;
   status?: WorkItemStatusValue;
+  epicId?: string | null;
+  cycleId?: string | null;
+  moduleId?: string | null;
   startDate?: Date | null;
   dueDate?: Date | null;
+  estimatePoints?: number | null;
+  estimateHours?: number | null;
   tags?: string[];
 };
 
@@ -62,8 +77,13 @@ export async function updateWorkItem(input: UpdateWorkItemInput) {
   if (input.status !== undefined) {
     patch.status = input.status as SchemaWorkItemStatusValue;
   }
+  if (input.epicId !== undefined) patch.epicId = input.epicId;
+  if (input.cycleId !== undefined) patch.cycleId = input.cycleId;
+  if (input.moduleId !== undefined) patch.moduleId = input.moduleId;
   if (input.startDate !== undefined) patch.startDate = input.startDate;
   if (input.dueDate !== undefined) patch.dueDate = input.dueDate;
+  if (input.estimatePoints !== undefined) patch.estimatePoints = input.estimatePoints;
+  if (input.estimateHours !== undefined) patch.estimateHours = input.estimateHours;
   if (input.tags !== undefined) {
     patch.tags = serializeWorkItemTags(input.tags);
   }

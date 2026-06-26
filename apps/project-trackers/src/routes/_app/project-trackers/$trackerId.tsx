@@ -40,6 +40,9 @@ import {
 } from "@repo/schemas";
 import DeleteProjectTrackerButton from "@/components/project-trackers/delete-project-tracker-button";
 import { WorkItemsPanel } from "@/components/work-items/work-items-panel";
+import { EpicsPanel } from "@/components/epics/epics-panel";
+import { CyclesPanel } from "@/components/cycles/cycles-panel";
+import { ModulesPanel } from "@/components/modules/modules-panel";
 import {
   Tabs,
   TabsContent,
@@ -363,12 +366,27 @@ function ProjectTrackerDetailPage() {
           <Tabs defaultValue="work-items" className="w-full">
             <TabsList className="w-full justify-start overflow-x-auto">
               <TabsTrigger value="work-items">Work items</TabsTrigger>
+              <TabsTrigger value="epics">Epics</TabsTrigger>
+              <TabsTrigger value="cycles">Cycles</TabsTrigger>
+              <TabsTrigger value="modules">Modules</TabsTrigger>
               <TabsTrigger value="ai-scoring">AI scoring</TabsTrigger>
               <TabsTrigger value="project-info">Core information</TabsTrigger>
             </TabsList>
 
             <TabsContent value="work-items" className="mt-4">
               <WorkItemsPanel trackerId={trackerId} />
+            </TabsContent>
+
+            <TabsContent value="epics" className="mt-4">
+              <EpicsPanel trackerId={trackerId} />
+            </TabsContent>
+
+            <TabsContent value="cycles" className="mt-4">
+              <CyclesPanel trackerId={trackerId} />
+            </TabsContent>
+
+            <TabsContent value="modules" className="mt-4">
+              <ModulesPanel trackerId={trackerId} />
             </TabsContent>
 
             <TabsContent value="ai-scoring" className="mt-4">

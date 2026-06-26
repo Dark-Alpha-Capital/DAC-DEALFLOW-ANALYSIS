@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticationRouteRouteImport } from './routes/_authentication/route'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppInitiativesRouteImport } from './routes/_app/initiatives'
+import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
 import { Route as AppScreenersIndexRouteImport } from './routes/_app/screeners/index'
 import { Route as AppProjectTrackersIndexRouteImport } from './routes/_app/project-trackers/index'
 import { Route as AppProjectKickoffIndexRouteImport } from './routes/_app/project-kickoff/index'
@@ -40,6 +42,16 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppInitiativesRoute = AppInitiativesRouteImport.update({
+  id: '/initiatives',
+  path: '/initiatives',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppScreenersIndexRoute = AppScreenersIndexRouteImport.update({
   id: '/screeners/',
@@ -125,6 +137,8 @@ const AppProjectTrackersTrackerIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/analytics': typeof AppAnalyticsRoute
+  '/initiatives': typeof AppInitiativesRoute
   '/project-trackers/$trackerId': typeof AppProjectTrackersTrackerIdRoute
   '/screeners/$screenerId': typeof AppScreenersScreenerIdRoute
   '/screeners/new': typeof AppScreenersNewRoute
@@ -143,6 +157,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/analytics': typeof AppAnalyticsRoute
+  '/initiatives': typeof AppInitiativesRoute
   '/project-trackers/$trackerId': typeof AppProjectTrackersTrackerIdRoute
   '/screeners/$screenerId': typeof AppScreenersScreenerIdRoute
   '/screeners/new': typeof AppScreenersNewRoute
@@ -164,6 +180,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteRouteWithChildren
   '/_authentication': typeof AuthenticationRouteRouteWithChildren
+  '/_app/analytics': typeof AppAnalyticsRoute
+  '/_app/initiatives': typeof AppInitiativesRoute
   '/_app/project-trackers/$trackerId': typeof AppProjectTrackersTrackerIdRoute
   '/_app/screeners/$screenerId': typeof AppScreenersScreenerIdRoute
   '/_app/screeners/new': typeof AppScreenersNewRoute
@@ -184,6 +202,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/analytics'
+    | '/initiatives'
     | '/project-trackers/$trackerId'
     | '/screeners/$screenerId'
     | '/screeners/new'
@@ -202,6 +222,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/analytics'
+    | '/initiatives'
     | '/project-trackers/$trackerId'
     | '/screeners/$screenerId'
     | '/screeners/new'
@@ -222,6 +244,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/_authentication'
+    | '/_app/analytics'
+    | '/_app/initiatives'
     | '/_app/project-trackers/$trackerId'
     | '/_app/screeners/$screenerId'
     | '/_app/screeners/new'
@@ -270,6 +294,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/initiatives': {
+      id: '/_app/initiatives'
+      path: '/initiatives'
+      fullPath: '/initiatives'
+      preLoaderRoute: typeof AppInitiativesRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/analytics': {
+      id: '/_app/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AppAnalyticsRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/_app/screeners/': {
       id: '/_app/screeners/'
@@ -380,6 +418,8 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteRouteChildren {
+  AppAnalyticsRoute: typeof AppAnalyticsRoute
+  AppInitiativesRoute: typeof AppInitiativesRoute
   AppProjectTrackersTrackerIdRoute: typeof AppProjectTrackersTrackerIdRoute
   AppScreenersScreenerIdRoute: typeof AppScreenersScreenerIdRoute
   AppScreenersNewRoute: typeof AppScreenersNewRoute
@@ -389,6 +429,8 @@ interface AppRouteRouteChildren {
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppAnalyticsRoute: AppAnalyticsRoute,
+  AppInitiativesRoute: AppInitiativesRoute,
   AppProjectTrackersTrackerIdRoute: AppProjectTrackersTrackerIdRoute,
   AppScreenersScreenerIdRoute: AppScreenersScreenerIdRoute,
   AppScreenersNewRoute: AppScreenersNewRoute,

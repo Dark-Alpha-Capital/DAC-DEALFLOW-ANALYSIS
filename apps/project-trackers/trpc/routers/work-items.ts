@@ -42,8 +42,13 @@ export const workItemsRouter = createTRPCRouter({
         title: input.title,
         description: input.description,
         status: input.status,
+        epicId: input.epicId ?? null,
+        cycleId: input.cycleId ?? null,
+        moduleId: input.moduleId ?? null,
         startDate: input.startDate ?? null,
         dueDate: input.dueDate ?? null,
+        estimatePoints: input.estimatePoints ?? null,
+        estimateHours: input.estimateHours ?? null,
         tags: input.tags,
         createdBy: ctx.session.user.id,
       });

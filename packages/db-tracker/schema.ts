@@ -5,6 +5,7 @@ import {
   real,
   index,
   uniqueIndex,
+  primaryKey,
 } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
@@ -12,6 +13,11 @@ import {
   DEPARTMENT_VALUES,
   PROJECT_STAGE_VALUES,
   WORK_ITEM_STATUS_VALUES,
+  EPIC_STATUS_VALUES,
+  INITIATIVE_STATUS_VALUES,
+  CYCLE_STATUS_VALUES,
+  MODULE_STATUS_VALUES,
+  VIEW_TYPE_VALUES,
 } from "@repo/enums";
 import { SCREENER_CATEGORY_VALUES } from "./enums";
 
@@ -19,6 +25,12 @@ export type DepartmentValue = (typeof DEPARTMENT_VALUES)[number];
 export type ProjectStageValue = (typeof PROJECT_STAGE_VALUES)[number];
 export type WorkItemStatusValue = (typeof WORK_ITEM_STATUS_VALUES)[number];
 export type ScreenerCategoryValue = (typeof SCREENER_CATEGORY_VALUES)[number];
+export type EpicStatusValue = (typeof EPIC_STATUS_VALUES)[number];
+export type InitiativeStatusValue =
+  (typeof INITIATIVE_STATUS_VALUES)[number];
+export type CycleStatusValue = (typeof CYCLE_STATUS_VALUES)[number];
+export type ModuleStatusValue = (typeof MODULE_STATUS_VALUES)[number];
+export type ViewTypeValue = (typeof VIEW_TYPE_VALUES)[number];
 
 export const users = sqliteTable("User", {
   id: text("id")
@@ -267,8 +279,8 @@ export const projectTrackers = sqliteTable(
   }),
 );
 
-export const workItems = sqliteTable(
-  "WorkItem",
+export const epics = sqliteTable(
+  "Epic",
   {
     id: text("id")
       .primaryKey()
@@ -278,12 +290,155 @@ export const workItems = sqliteTable(
       .references(() => projectTrackers.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     description: text("description").notNull().default(""),
+    status: text("status", { enum: EPIC_STATUS_VALUES })
+      .notNull()
+      .default("ACTIVE"),
+    startDate: integer("startDate", { mode: "timestamp" }),
+    dueDate: integer("dueDate", { mode: "timestamp" }),
+    sortOrder: integer("sortOrder").default(0).notNull(),
+    createdBy: text("createdBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    epicTrackerIdx: index("epic_tracker_idx").on(table.trackerId),
+  }),
+);
+
+export const initiatives = sqliteTable(
+  "Initiative",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    status: text("status", { enum: INITIATIVE_STATUS_VALUES })
+      .notNull()
+      .default("ACTIVE"),
+    startDate: integer("startDate", { mode: "timestamp" }),
+    targetDate: integer("targetDate", { mode: "timestamp" }),
+    color: text("color"),
+    createdBy: text("createdBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+);
+
+export const initiativeTrackers = sqliteTable(
+  "InitiativeTracker",
+  {
+    initiativeId: text("initiativeId")
+      .notNull()
+      .references(() => initiatives.id, { onDelete: "cascade" }),
+    trackerId: text("trackerId")
+      .notNull()
+      .references(() => projectTrackers.id, { onDelete: "cascade" }),
+    addedAt: integer("addedAt", { mode: "timestamp" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.initiativeId, table.trackerId] }),
+  }),
+);
+
+export const cycles = sqliteTable(
+  "Cycle",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    trackerId: text("trackerId")
+      .notNull()
+      .references(() => projectTrackers.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    startDate: integer("startDate", { mode: "timestamp" }).notNull(),
+    endDate: integer("endDate", { mode: "timestamp" }).notNull(),
+    status: text("status", { enum: CYCLE_STATUS_VALUES })
+      .notNull()
+      .default("UPCOMING"),
+    sortOrder: integer("sortOrder").default(0).notNull(),
+    createdBy: text("createdBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    cycleTrackerIdx: index("cycle_tracker_idx").on(table.trackerId),
+    cycleStatusIdx: index("cycle_status_idx").on(table.status),
+  }),
+);
+
+export const modules = sqliteTable(
+  "Module",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    trackerId: text("trackerId")
+      .notNull()
+      .references(() => projectTrackers.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    status: text("status", { enum: MODULE_STATUS_VALUES })
+      .notNull()
+      .default("ACTIVE"),
+    leadUserId: text("leadUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    sortOrder: integer("sortOrder").default(0).notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    moduleTrackerIdx: index("module_tracker_idx").on(table.trackerId),
+  }),
+);
+
+export const workItems = sqliteTable(
+  "WorkItem",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    trackerId: text("trackerId")
+      .notNull()
+      .references(() => projectTrackers.id, { onDelete: "cascade" }),
+    epicId: text("epicId").references(() => epics.id, {
+      onDelete: "set null",
+    }),
+    cycleId: text("cycleId").references(() => cycles.id, {
+      onDelete: "set null",
+    }),
+    moduleId: text("moduleId").references(() => modules.id, {
+      onDelete: "set null",
+    }),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
     status: text("status", { enum: WORK_ITEM_STATUS_VALUES })
       .notNull()
       .default("TODO"),
     startDate: integer("startDate", { mode: "timestamp" }),
     dueDate: integer("dueDate", { mode: "timestamp" }),
-    /** JSON-serialized string[] */
+    estimatePoints: integer("estimatePoints"),
+    estimateHours: real("estimateHours"),
     tags: text("tags").notNull().default("[]"),
     createdBy: text("createdBy").references(() => users.id, {
       onDelete: "set null",
@@ -303,6 +458,9 @@ export const workItems = sqliteTable(
       table.trackerId,
       table.status,
     ),
+    workItemEpicIdx: index("work_item_epic_idx").on(table.epicId),
+    workItemCycleIdx: index("work_item_cycle_idx").on(table.cycleId),
+    workItemModuleIdx: index("work_item_module_idx").on(table.moduleId),
   }),
 );
 
@@ -327,6 +485,99 @@ export const projectStageEvents = sqliteTable(
     projectStageEventTrackerCreatedIdx: index(
       "project_stage_event_tracker_created_idx",
     ).on(table.trackerId, table.createdAt),
+  }),
+);
+
+export const workLogs = sqliteTable(
+  "WorkLog",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    workItemId: text("workItemId")
+      .notNull()
+      .references(() => workItems.id, { onDelete: "cascade" }),
+    userId: text("userId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    hours: real("hours").notNull(),
+    description: text("description").notNull().default(""),
+    loggedAt: integer("loggedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    workLogWorkItemIdx: index("work_log_work_item_idx").on(table.workItemId),
+    workLogUserIdIdx: index("work_log_user_id_idx").on(table.userId),
+  }),
+);
+
+export const workItemComments = sqliteTable(
+  "WorkItemComment",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    workItemId: text("workItemId")
+      .notNull()
+      .references(() => workItems.id, { onDelete: "cascade" }),
+    userId: text("userId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    parentCommentId: text("parentCommentId").references(
+      (): any => workItemComments.id,
+      { onDelete: "cascade" },
+    ),
+    content: text("content").notNull().default(""),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    workItemCommentWorkItemIdx: index("work_item_comment_work_item_idx").on(
+      table.workItemId,
+      table.createdAt,
+    ),
+    workItemCommentParentIdx: index("work_item_comment_parent_idx").on(
+      table.parentCommentId,
+    ),
+  }),
+);
+
+export const views = sqliteTable(
+  "View",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    trackerId: text("trackerId")
+      .notNull()
+      .references(() => projectTrackers.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: text("type", { enum: VIEW_TYPE_VALUES }).notNull(),
+    filters: text("filters").notNull().default("{}"),
+    sortConfig: text("sortConfig").notNull().default("{}"),
+    groupBy: text("groupBy"),
+    displayProps: text("displayProps").notNull().default("{}"),
+    isDefault: integer("isDefault", { mode: "boolean" }).default(false).notNull(),
+    createdBy: text("createdBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    viewTrackerIdx: index("view_tracker_idx").on(table.trackerId),
   }),
 );
 
@@ -364,18 +615,37 @@ export const projectTrackersRelations = relations(
     }),
     stageEvents: many(projectStageEvents),
     workItems: many(workItems),
+    epics: many(epics),
+    cycles: many(cycles),
+    modules: many(modules),
+    views: many(views),
+    initiativeTrackers: many(initiativeTrackers),
   }),
 );
 
-export const workItemsRelations = relations(workItems, ({ one }) => ({
+export const workItemsRelations = relations(workItems, ({ one, many }) => ({
   tracker: one(projectTrackers, {
     fields: [workItems.trackerId],
     references: [projectTrackers.id],
+  }),
+  epic: one(epics, {
+    fields: [workItems.epicId],
+    references: [epics.id],
+  }),
+  cycle: one(cycles, {
+    fields: [workItems.cycleId],
+    references: [cycles.id],
+  }),
+  module: one(modules, {
+    fields: [workItems.moduleId],
+    references: [modules.id],
   }),
   createdByUser: one(users, {
     fields: [workItems.createdBy],
     references: [users.id],
   }),
+  workLogs: many(workLogs),
+  comments: many(workItemComments),
 }));
 
 export const projectStageEventsRelations = relations(
@@ -406,6 +676,105 @@ export const projectKickoffScreeningsRelations = relations(
   }),
 );
 
+export const epicsRelations = relations(epics, ({ one, many }) => ({
+  tracker: one(projectTrackers, {
+    fields: [epics.trackerId],
+    references: [projectTrackers.id],
+  }),
+  createdByUser: one(users, {
+    fields: [epics.createdBy],
+    references: [users.id],
+  }),
+  workItems: many(workItems),
+}));
+
+export const initiativesRelations = relations(initiatives, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [initiatives.createdBy],
+    references: [users.id],
+  }),
+  initiativeTrackers: many(initiativeTrackers),
+}));
+
+export const initiativeTrackersRelations = relations(
+  initiativeTrackers,
+  ({ one }) => ({
+    initiative: one(initiatives, {
+      fields: [initiativeTrackers.initiativeId],
+      references: [initiatives.id],
+    }),
+    tracker: one(projectTrackers, {
+      fields: [initiativeTrackers.trackerId],
+      references: [projectTrackers.id],
+    }),
+  }),
+);
+
+export const cyclesRelations = relations(cycles, ({ one, many }) => ({
+  tracker: one(projectTrackers, {
+    fields: [cycles.trackerId],
+    references: [projectTrackers.id],
+  }),
+  createdByUser: one(users, {
+    fields: [cycles.createdBy],
+    references: [users.id],
+  }),
+  workItems: many(workItems),
+}));
+
+export const modulesRelations = relations(modules, ({ one, many }) => ({
+  tracker: one(projectTrackers, {
+    fields: [modules.trackerId],
+    references: [projectTrackers.id],
+  }),
+  leadUser: one(users, {
+    fields: [modules.leadUserId],
+    references: [users.id],
+  }),
+  workItems: many(workItems),
+}));
+
+export const workLogsRelations = relations(workLogs, ({ one }) => ({
+  workItem: one(workItems, {
+    fields: [workLogs.workItemId],
+    references: [workItems.id],
+  }),
+  user: one(users, {
+    fields: [workLogs.userId],
+    references: [users.id],
+  }),
+}));
+
+export const workItemCommentsRelations = relations(
+  workItemComments,
+  ({ one, many }) => ({
+    workItem: one(workItems, {
+      fields: [workItemComments.workItemId],
+      references: [workItems.id],
+    }),
+    user: one(users, {
+      fields: [workItemComments.userId],
+      references: [users.id],
+    }),
+    parentComment: one(workItemComments, {
+      fields: [workItemComments.parentCommentId],
+      references: [workItemComments.id],
+    }),
+    replies: many(workItemComments),
+  }),
+);
+
+export const viewsRelations = relations(views, ({ one }) => ({
+  tracker: one(projectTrackers, {
+    fields: [views.trackerId],
+    references: [projectTrackers.id],
+  }),
+  createdByUser: one(users, {
+    fields: [views.createdBy],
+    references: [users.id],
+  }),
+}));
+
 export type User = typeof users.$inferSelect;
 export type WorkItem = typeof workItems.$inferSelect;
 export type ProjectTracker = typeof projectTrackers.$inferSelect;
@@ -414,3 +783,11 @@ export type ProjectKickoff = typeof projectKickoffs.$inferSelect;
 export type ProjectKickoffScreening = typeof projectKickoffScreenings.$inferSelect;
 export type WorkflowJob = typeof workflowJobs.$inferSelect;
 export type Screener = typeof screeners.$inferSelect;
+export type Epic = typeof epics.$inferSelect;
+export type Initiative = typeof initiatives.$inferSelect;
+export type InitiativeTracker = typeof initiativeTrackers.$inferSelect;
+export type Cycle = typeof cycles.$inferSelect;
+export type Module = typeof modules.$inferSelect;
+export type WorkLog = typeof workLogs.$inferSelect;
+export type WorkItemComment = typeof workItemComments.$inferSelect;
+export type View = typeof views.$inferSelect;
