@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { authClient, getAuthClientBaseUrl } from "@/lib/auth-client";
+import { isAllowedWorkEmail } from "@/lib/utils";
 import { FaGoogle } from "react-icons/fa6";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,7 +24,12 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
+  email: z
+    .string()
+    .email("Please enter a valid email")
+    .refine(isAllowedWorkEmail, {
+      message: "Only @darkalphacapital.com email addresses are allowed.",
+    }),
   password: z.string().min(1, "Password is required"),
 });
 

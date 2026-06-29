@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { authClient } from "@/lib/auth-client";
+import { isAllowedWorkEmail } from "@/lib/utils";
 import { Mail, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,12 @@ import {
 } from "@/components/ui/form";
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
+  email: z
+    .string()
+    .email("Please enter a valid email address")
+    .refine(isAllowedWorkEmail, {
+      message: "Only @darkalphacapital.com email addresses are allowed.",
+    }),
 });
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;

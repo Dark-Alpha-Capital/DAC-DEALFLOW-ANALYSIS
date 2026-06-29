@@ -45,10 +45,27 @@ function isAllowedEmail(email: string | null | undefined) {
   return email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
 }
 
+function assertAllowedEmailFromBody(body: Record<string, unknown> | undefined) {
+  const rawEmail = (body?.email as string | undefined) ?? "";
+  const email = rawEmail.toLowerCase();
+
+  if (!email.endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) {
+    throw new APIError("UNPROCESSABLE_ENTITY", {
+      message: "Only darkalphacapital.com emails are allowed.",
+    });
+  }
+}
+
+const EMAIL_AUTH_PATHS = new Set([
+  "/sign-in/email",
+  "/sign-up/email",
+  "/forget-password",
+]);
+
 function getAuthBaseUrl(): string {
   const fromEnv = getServerEnv().BETTER_AUTH_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/+$/, "");
-  return "http://localhost:3000";
+  return "http://localhost:3001";
 }
 
 export const auth: ReturnType<typeof betterAuth> = betterAuth({
@@ -79,7 +96,7 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
       const html = await getPasswordResetEmailHtml(url);
       await sendEmail({
         to: user.email,
-        subject: "Reset your password - DAC DealFlow",
+        subject: "Reset your password - Project Trackers",
         html,
       });
     },
@@ -89,7 +106,7 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
       const html = await getVerificationEmailHtml(url);
       await sendEmail({
         to: user.email,
-        subject: "Verify your email - DAC DealFlow",
+        subject: "Verify your email - Project Trackers",
         html,
       });
     },
@@ -128,15 +145,8 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      if (ctx.path === "/sign-in/email") {
-        const rawEmail = (ctx.body?.email as string | undefined) ?? "";
-        const email = rawEmail.toLowerCase();
-
-        if (!email.endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) {
-          throw new APIError("UNAUTHORIZED", {
-            message: "Only darkalphacapital.com emails are allowed.",
-          });
-        }
+      if (EMAIL_AUTH_PATHS.has(ctx.path)) {
+        assertAllowedEmailFromBody(ctx.body);
       }
     }),
   },

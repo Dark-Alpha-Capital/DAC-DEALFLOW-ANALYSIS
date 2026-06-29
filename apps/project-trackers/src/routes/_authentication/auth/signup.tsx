@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { authClient } from "@/lib/auth-client";
+import { isAllowedWorkEmail } from "@/lib/utils";
 import { FaGoogle } from "react-icons/fa6";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -25,7 +26,12 @@ import { Separator } from "@/components/ui/separator";
 const signupSchema = z
   .object({
     name: z.string().min(2, "Name must be at least 2 characters"),
-    email: z.string().email("Please enter a valid email"),
+    email: z
+      .string()
+      .email("Please enter a valid email")
+      .refine(isAllowedWorkEmail, {
+        message: "Only @darkalphacapital.com email addresses are allowed.",
+      }),
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
   })
@@ -94,12 +100,12 @@ function SignupPage() {
     <div className="w-full max-w-md space-y-8">
       <header className="space-y-3">
         <div className="text-muted-foreground text-xs font-semibold tracking-[0.2em]">
-          DAC DEALFLOW
+          PROJECT TRACKERS
         </div>
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Create an account</h1>
           <p className="text-muted-foreground text-sm">
-            Use your Dark Alpha Capital email to join the internal dealflow
+            Use your Dark Alpha Capital email to join the project tracking
             workspace.
           </p>
         </div>
@@ -230,6 +236,6 @@ function SignupPage() {
 }
 
 export const Route = createFileRoute("/_authentication/auth/signup")({
-  head: () => ({ meta: [{ title: "Sign up — Dark Alpha Capital" }] }),
+  head: () => ({ meta: [{ title: "Sign up — Project Trackers" }] }),
   component: SignupPage,
 });

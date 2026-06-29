@@ -9,8 +9,8 @@
     "enabled": true
   },
   "vars": {
-    "BETTER_AUTH_URL": "https://tracker.darkalphacapital.com",
-    "VITE_PUBLIC_APP_URL": "https://tracker.darkalphacapital.com"
+    "BETTER_AUTH_URL": "https://projects.darkalphacapital.com",
+    "VITE_PUBLIC_APP_URL": "https://projects.darkalphacapital.com"
   },
   "d1_databases": [
     {

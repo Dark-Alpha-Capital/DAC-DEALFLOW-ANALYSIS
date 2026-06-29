@@ -7,7 +7,7 @@ export function getAuthClientBaseUrl(): string {
   }
   const fromEnv = import.meta.env.VITE_PUBLIC_APP_URL as string | undefined;
   if (fromEnv?.trim()) return fromEnv.replace(/\/+$/, "");
-  return "http://localhost:3000";
+  return "http://localhost:3001";
 }
 
 export const authClient = createAuthClient({

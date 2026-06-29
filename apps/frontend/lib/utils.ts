@@ -3,6 +3,12 @@ import { twMerge } from "tailwind-merge";
 import { UserRole } from "@repo/db/enums";
 import { ImageIcon } from "lucide-react";
 
+export const ALLOWED_EMAIL_DOMAIN = "darkalphacapital.com";
+
+export function isAllowedWorkEmail(email: string): boolean {
+  return email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
+}
+
 export const adminEmails = [
   "rahul@darkalphacapital.com",
   "gaurav@darkalphacapital.com",
