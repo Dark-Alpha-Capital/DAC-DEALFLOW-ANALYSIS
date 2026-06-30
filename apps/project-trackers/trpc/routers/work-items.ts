@@ -42,6 +42,7 @@ export const workItemsRouter = createTRPCRouter({
         title: input.title,
         description: input.description,
         status: input.status,
+        priority: input.priority,
         epicId: input.epicId ?? null,
         cycleId: input.cycleId ?? null,
         moduleId: input.moduleId ?? null,

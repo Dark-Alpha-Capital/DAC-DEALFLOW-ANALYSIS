@@ -1,8 +1,8 @@
 import { createId } from "@paralleldrive/cuid2";
 import { eq } from "drizzle-orm";
-import type { WorkItemStatusValue } from "@repo/enums";
+import type { WorkItemStatusValue, WorkItemPriorityValue } from "@repo/enums";
 import { db } from "..";
-import { workItems, type WorkItemStatusValue as SchemaWorkItemStatusValue } from "../schema";
+import { workItems, type WorkItemStatusValue as SchemaWorkItemStatusValue, type WorkItemPriorityValue as SchemaWorkItemPriorityValue } from "../schema";
 import { getWorkItemById, serializeWorkItemTags } from "../queries/work-items";
 
 export type CreateWorkItemInput = {
@@ -10,6 +10,7 @@ export type CreateWorkItemInput = {
   title: string;
   description?: string;
   status?: WorkItemStatusValue;
+  priority?: WorkItemPriorityValue;
   epicId?: string | null;
   cycleId?: string | null;
   moduleId?: string | null;
@@ -31,6 +32,7 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     title: input.title.trim(),
     description: input.description ?? "",
     status: (input.status ?? "TODO") as SchemaWorkItemStatusValue,
+    priority: (input.priority ?? "NONE") as SchemaWorkItemPriorityValue,
     epicId: input.epicId ?? null,
     cycleId: input.cycleId ?? null,
     moduleId: input.moduleId ?? null,
@@ -54,6 +56,7 @@ export type UpdateWorkItemInput = {
   title?: string;
   description?: string;
   status?: WorkItemStatusValue;
+  priority?: WorkItemPriorityValue;
   epicId?: string | null;
   cycleId?: string | null;
   moduleId?: string | null;
@@ -76,6 +79,9 @@ export async function updateWorkItem(input: UpdateWorkItemInput) {
   if (input.description !== undefined) patch.description = input.description;
   if (input.status !== undefined) {
     patch.status = input.status as SchemaWorkItemStatusValue;
+  }
+  if (input.priority !== undefined) {
+    patch.priority = input.priority as SchemaWorkItemPriorityValue;
   }
   if (input.epicId !== undefined) patch.epicId = input.epicId;
   if (input.cycleId !== undefined) patch.cycleId = input.cycleId;

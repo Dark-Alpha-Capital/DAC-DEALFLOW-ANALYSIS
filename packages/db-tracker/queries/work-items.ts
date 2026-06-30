@@ -25,6 +25,7 @@ export type WorkItemRecord = {
   title: string;
   description: string;
   status: (typeof workItems.$inferSelect)["status"];
+  priority: (typeof workItems.$inferSelect)["priority"];
   startDate: Date | null;
   dueDate: Date | null;
   estimatePoints: number | null;

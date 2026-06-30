@@ -13,6 +13,7 @@ import {
   DEPARTMENT_VALUES,
   PROJECT_STAGE_VALUES,
   WORK_ITEM_STATUS_VALUES,
+  WORK_ITEM_PRIORITY_VALUES,
   EPIC_STATUS_VALUES,
   INITIATIVE_STATUS_VALUES,
   CYCLE_STATUS_VALUES,
@@ -24,6 +25,7 @@ import { SCREENER_CATEGORY_VALUES } from "./enums";
 export type DepartmentValue = (typeof DEPARTMENT_VALUES)[number];
 export type ProjectStageValue = (typeof PROJECT_STAGE_VALUES)[number];
 export type WorkItemStatusValue = (typeof WORK_ITEM_STATUS_VALUES)[number];
+export type WorkItemPriorityValue = (typeof WORK_ITEM_PRIORITY_VALUES)[number];
 export type ScreenerCategoryValue = (typeof SCREENER_CATEGORY_VALUES)[number];
 export type EpicStatusValue = (typeof EPIC_STATUS_VALUES)[number];
 export type InitiativeStatusValue =
@@ -435,6 +437,9 @@ export const workItems = sqliteTable(
     status: text("status", { enum: WORK_ITEM_STATUS_VALUES })
       .notNull()
       .default("TODO"),
+    priority: text("priority", { enum: WORK_ITEM_PRIORITY_VALUES })
+      .notNull()
+      .default("NONE"),
     startDate: integer("startDate", { mode: "timestamp" }),
     dueDate: integer("dueDate", { mode: "timestamp" }),
     estimatePoints: integer("estimatePoints"),

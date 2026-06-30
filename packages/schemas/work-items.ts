@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { WORK_ITEM_STATUS_VALUES } from "@repo/enums";
+import { WORK_ITEM_STATUS_VALUES, WORK_ITEM_PRIORITY_VALUES } from "@repo/enums";
 
 export const workItemStatusSchema = z.enum(WORK_ITEM_STATUS_VALUES);
+export const workItemPrioritySchema = z.enum(WORK_ITEM_PRIORITY_VALUES);
 
 export const workItemTagsSchema = z.array(z.string().trim().min(1).max(64)).max(32);
 
@@ -25,6 +26,7 @@ export const createWorkItemSchema = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().max(50000).default(""),
   status: workItemStatusSchema.default("TODO"),
+  priority: workItemPrioritySchema.default("NONE"),
   epicId: z.string().nullable().optional(),
   cycleId: z.string().nullable().optional(),
   moduleId: z.string().nullable().optional(),
@@ -40,6 +42,7 @@ export const updateWorkItemSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   description: z.string().max(50000).optional(),
   status: workItemStatusSchema.optional(),
+  priority: workItemPrioritySchema.optional(),
   epicId: z.string().nullable().optional(),
   cycleId: z.string().nullable().optional(),
   moduleId: z.string().nullable().optional(),
