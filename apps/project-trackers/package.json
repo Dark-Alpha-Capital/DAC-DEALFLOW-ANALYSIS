@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "build": "NODE_OPTIONS='--max-old-space-size=8192' vite build",
     "preview": "vite preview",
-    "deploy": "bun run build && wrangler deploy",
+    "deploy": "bun run db:migrate:remote && bun run build && wrangler deploy",
     "cf:setup": "bash scripts/setup-cloudflare.sh",
     "cf:typegen": "wrangler types",
     "db:migrate:remote": "wrangler d1 migrations apply project-trackers-db --remote"

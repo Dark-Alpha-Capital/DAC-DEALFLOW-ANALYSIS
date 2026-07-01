@@ -1,6 +1,6 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { usePathname } from "@/lib/navigation-shim";
+import { usePathname, useSearchParams } from "@/lib/navigation-shim";
 import { useTRPC } from "@/trpc/client";
 import {
   ChevronLeft,
@@ -225,15 +225,11 @@ function WorkspaceNav({ pathname }: { pathname: string }) {
 
 export function ProjectTrackersSidebar({ session }: { session: Session }) {
   const pathname = usePathname();
-  const routerState = useRouterState();
+  const searchParams = useSearchParams();
 
   const trackerMatch = pathname.match(/^\/project-trackers\/([^/?]+)/);
   const currentTrackerId = trackerMatch?.[1] ?? null;
 
-  const searchStr = routerState.location.search;
-  const searchParams = new URLSearchParams(
-    searchStr.startsWith("?") ? searchStr.slice(1) : searchStr,
-  );
   const currentTab = searchParams.get("tab") ?? "work-items";
 
   return (
