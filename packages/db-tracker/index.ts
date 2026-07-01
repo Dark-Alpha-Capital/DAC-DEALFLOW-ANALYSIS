@@ -27,6 +27,8 @@ export {
   projectStageEvents,
   workLogs,
   workItemComments,
+  workItemAssignees,
+  workItemEvents,
   views,
 } from "./schema";
 
@@ -55,6 +57,8 @@ export type {
   WorkLog,
   WorkItemComment,
   View,
+  WorkItemAssignee,
+  WorkItemEvent,
 } from "./schema";
 
 export {

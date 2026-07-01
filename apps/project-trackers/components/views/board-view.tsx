@@ -27,7 +27,9 @@ type WorkItemRecord = {
   dueDate: Date | null;
   estimatePoints: number | null;
   estimateHours: number | null;
+  sequence: number | null;
   tags: string[];
+  assignees: string[];
   createdBy: string | null;
   createdAt: Date;
   updatedAt: Date;

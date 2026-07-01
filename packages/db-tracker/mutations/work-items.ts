@@ -1,9 +1,40 @@
 import { createId } from "@paralleldrive/cuid2";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { WorkItemStatusValue, WorkItemPriorityValue } from "@repo/enums";
 import { db } from "..";
-import { workItems, type WorkItemStatusValue as SchemaWorkItemStatusValue, type WorkItemPriorityValue as SchemaWorkItemPriorityValue } from "../schema";
+import { workItems, workItemAssignees, workItemEvents, type WorkItemStatusValue as SchemaWorkItemStatusValue, type WorkItemPriorityValue as SchemaWorkItemPriorityValue } from "../schema";
 import { getWorkItemById, serializeWorkItemTags } from "../queries/work-items";
+
+async function replaceWorkItemAssignees(
+  workItemId: string,
+  userIds: string[],
+): Promise<void> {
+  await db
+    .delete(workItemAssignees)
+    .where(eq(workItemAssignees.workItemId, workItemId));
+  if (userIds.length > 0) {
+    const now = new Date();
+    await db
+      .insert(workItemAssignees)
+      .values(userIds.map((userId) => ({ workItemId, userId, assignedAt: now })));
+  }
+}
+
+async function logWorkItemEvent(
+  workItemId: string,
+  userId: string | null,
+  kind: string,
+  detail: string,
+): Promise<void> {
+  await db.insert(workItemEvents).values({
+    id: createId(),
+    workItemId,
+    userId,
+    kind,
+    detail,
+    createdAt: new Date(),
+  });
+}
 
 export type CreateWorkItemInput = {
   trackerId: string;
@@ -19,6 +50,7 @@ export type CreateWorkItemInput = {
   estimatePoints?: number | null;
   estimateHours?: number | null;
   tags?: string[];
+  assignees?: string[];
   createdBy: string;
 };
 
@@ -26,9 +58,16 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   const id = createId();
   const now = new Date();
 
+  const seqRows = await db
+    .select({ maxSeq: sql<number>`COALESCE(MAX(${workItems.sequence}), 0)` })
+    .from(workItems)
+    .where(eq(workItems.trackerId, input.trackerId));
+  const sequence = (seqRows[0]?.maxSeq ?? 0) + 1;
+
   await db.insert(workItems).values({
     id,
     trackerId: input.trackerId,
+    sequence,
     title: input.title.trim(),
     description: input.description ?? "",
     status: (input.status ?? "TODO") as SchemaWorkItemStatusValue,
@@ -45,6 +84,12 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     createdAt: now,
     updatedAt: now,
   });
+
+  if (input.assignees?.length) {
+    await replaceWorkItemAssignees(id, input.assignees);
+  }
+
+  await logWorkItemEvent(id, input.createdBy, "created", "");
 
   const created = await getWorkItemById(id);
   if (!created) throw new Error("Failed to create work item");
@@ -65,6 +110,8 @@ export type UpdateWorkItemInput = {
   estimatePoints?: number | null;
   estimateHours?: number | null;
   tags?: string[];
+  assignees?: string[];
+  actorId?: string;
 };
 
 export async function updateWorkItem(input: UpdateWorkItemInput) {
@@ -98,6 +145,21 @@ export async function updateWorkItem(input: UpdateWorkItemInput) {
     .update(workItems)
     .set(patch)
     .where(eq(workItems.id, input.workItemId));
+
+  if (input.assignees !== undefined) {
+    await replaceWorkItemAssignees(input.workItemId, input.assignees);
+  }
+
+  const actor = input.actorId ?? null;
+  if (input.status !== undefined && input.status !== existing.status) {
+    await logWorkItemEvent(input.workItemId, actor, "status", input.status);
+  }
+  if (input.priority !== undefined && input.priority !== existing.priority) {
+    await logWorkItemEvent(input.workItemId, actor, "priority", input.priority);
+  }
+  if (input.title !== undefined && input.title.trim() !== existing.title) {
+    await logWorkItemEvent(input.workItemId, actor, "title", input.title.trim());
+  }
 
   return getWorkItemById(input.workItemId);
 }

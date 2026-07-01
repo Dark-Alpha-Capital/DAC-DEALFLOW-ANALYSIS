@@ -445,6 +445,7 @@ export const workItems = sqliteTable(
     estimatePoints: integer("estimatePoints"),
     estimateHours: real("estimateHours"),
     tags: text("tags").notNull().default("[]"),
+    sequence: integer("sequence"),
     createdBy: text("createdBy").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -556,6 +557,53 @@ export const workItemComments = sqliteTable(
   }),
 );
 
+export const workItemAssignees = sqliteTable(
+  "WorkItemAssignee",
+  {
+    workItemId: text("workItemId")
+      .notNull()
+      .references(() => workItems.id, { onDelete: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    assignedAt: integer("assignedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.workItemId, table.userId] }),
+    workItemAssigneeUserIdx: index("work_item_assignee_user_idx").on(
+      table.userId,
+    ),
+  }),
+);
+
+export const workItemEvents = sqliteTable(
+  "WorkItemEvent",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    workItemId: text("workItemId")
+      .notNull()
+      .references(() => workItems.id, { onDelete: "cascade" }),
+    userId: text("userId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    kind: text("kind").notNull(),
+    detail: text("detail").notNull().default(""),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    workItemEventItemIdx: index("work_item_event_item_idx").on(
+      table.workItemId,
+      table.createdAt,
+    ),
+  }),
+);
+
 export const views = sqliteTable(
   "View",
   {
@@ -651,6 +699,8 @@ export const workItemsRelations = relations(workItems, ({ one, many }) => ({
   }),
   workLogs: many(workLogs),
   comments: many(workItemComments),
+  assignees: many(workItemAssignees),
+  events: many(workItemEvents),
 }));
 
 export const projectStageEventsRelations = relations(
@@ -780,6 +830,34 @@ export const viewsRelations = relations(views, ({ one }) => ({
   }),
 }));
 
+export const workItemAssigneesRelations = relations(
+  workItemAssignees,
+  ({ one }) => ({
+    workItem: one(workItems, {
+      fields: [workItemAssignees.workItemId],
+      references: [workItems.id],
+    }),
+    user: one(users, {
+      fields: [workItemAssignees.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const workItemEventsRelations = relations(
+  workItemEvents,
+  ({ one }) => ({
+    workItem: one(workItems, {
+      fields: [workItemEvents.workItemId],
+      references: [workItems.id],
+    }),
+    user: one(users, {
+      fields: [workItemEvents.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
 export type User = typeof users.$inferSelect;
 export type WorkItem = typeof workItems.$inferSelect;
 export type ProjectTracker = typeof projectTrackers.$inferSelect;
@@ -796,3 +874,5 @@ export type Module = typeof modules.$inferSelect;
 export type WorkLog = typeof workLogs.$inferSelect;
 export type WorkItemComment = typeof workItemComments.$inferSelect;
 export type View = typeof views.$inferSelect;
+export type WorkItemAssignee = typeof workItemAssignees.$inferSelect;
+export type WorkItemEvent = typeof workItemEvents.$inferSelect;

@@ -6,6 +6,8 @@ export const workItemPrioritySchema = z.enum(WORK_ITEM_PRIORITY_VALUES);
 
 export const workItemTagsSchema = z.array(z.string().trim().min(1).max(64)).max(32);
 
+export const workItemAssigneesSchema = z.array(z.string().min(1)).max(20);
+
 export const estimatePointsSchema = z
   .number()
   .int()
@@ -35,6 +37,7 @@ export const createWorkItemSchema = z.object({
   estimatePoints: estimatePointsSchema,
   estimateHours: estimateHoursSchema,
   tags: workItemTagsSchema.default([]),
+  assignees: workItemAssigneesSchema.default([]),
 });
 
 export const updateWorkItemSchema = z.object({
@@ -51,6 +54,7 @@ export const updateWorkItemSchema = z.object({
   estimatePoints: estimatePointsSchema,
   estimateHours: estimateHoursSchema,
   tags: workItemTagsSchema.optional(),
+  assignees: workItemAssigneesSchema.optional(),
 });
 
 export type CreateWorkItemInput = z.infer<typeof createWorkItemSchema>;

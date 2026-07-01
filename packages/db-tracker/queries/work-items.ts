@@ -1,6 +1,6 @@
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, desc, inArray } from "drizzle-orm";
 import { db } from "..";
-import { workItems } from "../schema";
+import { workItems, workItemAssignees, workItemEvents, users } from "../schema";
 
 export function parseWorkItemTags(raw: string): string[] {
   try {
@@ -30,16 +30,22 @@ export type WorkItemRecord = {
   dueDate: Date | null;
   estimatePoints: number | null;
   estimateHours: number | null;
+  sequence: number | null;
   tags: string[];
+  assignees: string[];
   createdBy: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
 
-function mapWorkItem(row: typeof workItems.$inferSelect): WorkItemRecord {
+function mapWorkItem(
+  row: typeof workItems.$inferSelect,
+  assignees: string[],
+): WorkItemRecord {
   return {
     ...row,
     tags: parseWorkItemTags(row.tags),
+    assignees,
   };
 }
 
@@ -52,7 +58,22 @@ export async function getWorkItemsByTrackerId(
     .where(eq(workItems.trackerId, trackerId))
     .orderBy(asc(workItems.createdAt));
 
-  return rows.map(mapWorkItem);
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((r) => r.id);
+  const assigneeRows = await db
+    .select()
+    .from(workItemAssignees)
+    .where(inArray(workItemAssignees.workItemId, ids));
+
+  const byItem = new Map<string, string[]>();
+  for (const a of assigneeRows) {
+    const list = byItem.get(a.workItemId) ?? [];
+    list.push(a.userId);
+    byItem.set(a.workItemId, list);
+  }
+
+  return rows.map((r) => mapWorkItem(r, byItem.get(r.id) ?? []));
 }
 
 export async function getWorkItemById(workItemId: string) {
@@ -62,5 +83,42 @@ export async function getWorkItemById(workItemId: string) {
     .where(eq(workItems.id, workItemId))
     .limit(1);
 
-  return row ? mapWorkItem(row) : null;
+  if (!row) return null;
+
+  const assigneeRows = await db
+    .select()
+    .from(workItemAssignees)
+    .where(eq(workItemAssignees.workItemId, workItemId));
+
+  return mapWorkItem(
+    row,
+    assigneeRows.map((a) => a.userId),
+  );
+}
+
+export type WorkItemEventRecord = {
+  id: string;
+  kind: string;
+  detail: string;
+  createdAt: Date;
+  userId: string | null;
+  userName: string | null;
+};
+
+export async function getWorkItemEvents(
+  workItemId: string,
+): Promise<WorkItemEventRecord[]> {
+  return db
+    .select({
+      id: workItemEvents.id,
+      kind: workItemEvents.kind,
+      detail: workItemEvents.detail,
+      createdAt: workItemEvents.createdAt,
+      userId: workItemEvents.userId,
+      userName: users.name,
+    })
+    .from(workItemEvents)
+    .leftJoin(users, eq(workItemEvents.userId, users.id))
+    .where(eq(workItemEvents.workItemId, workItemId))
+    .orderBy(desc(workItemEvents.createdAt));
 }
