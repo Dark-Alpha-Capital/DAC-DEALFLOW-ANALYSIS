@@ -52,3 +52,10 @@ export {
   VIEW_TYPE_LABELS,
   type ViewTypeValue,
 } from "./view-type";
+export {
+  WorkItemPriority,
+  WORK_ITEM_PRIORITY_VALUES,
+  DEFAULT_WORK_ITEM_PRIORITY,
+  WORK_ITEM_PRIORITY_LABELS,
+  type WorkItemPriorityValue,
+} from "./work-item-priority";

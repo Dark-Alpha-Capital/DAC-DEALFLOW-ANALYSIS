@@ -56,9 +56,24 @@ import { useEffect } from "react";
 /** Radix Select disallows empty string item values. */
 const NO_DEPARTMENT = "__none__";
 
+const TAB_VALUES = [
+  "work-items",
+  "epics",
+  "cycles",
+  "modules",
+  "ai-scoring",
+  "project-info",
+] as const;
+type TabValue = (typeof TAB_VALUES)[number];
+
 export const Route = createFileRoute("/_app/project-trackers/$trackerId")({
   head: () => ({
     meta: [{ title: "Project Detail — Dark Alpha Capital" }],
+  }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: (TAB_VALUES.includes(search.tab as TabValue)
+      ? search.tab
+      : "work-items") as TabValue,
   }),
   component: ProjectTrackerDetailPage,
 });
@@ -279,6 +294,8 @@ function ScreeningPanel({
 
 function ProjectTrackerDetailPage() {
   const { trackerId } = Route.useParams();
+  const { tab } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
@@ -363,7 +380,13 @@ function ProjectTrackerDetailPage() {
             stageChangedAt={tracker.stageChangedAt}
           />
 
-          <Tabs defaultValue="work-items" className="w-full">
+          <Tabs
+            value={tab}
+            onValueChange={(v) =>
+              void navigate({ search: (prev) => ({ ...prev, tab: v as TabValue }) })
+            }
+            className="w-full"
+          >
             <TabsList className="w-full justify-start overflow-x-auto">
               <TabsTrigger value="work-items">Work items</TabsTrigger>
               <TabsTrigger value="epics">Epics</TabsTrigger>

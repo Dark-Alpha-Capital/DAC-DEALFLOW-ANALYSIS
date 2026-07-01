@@ -1,6 +1,7 @@
 export * from "./project-trackers";
 export * from "./screeners";
 export * from "./work-items";
+export * from "./users";
 export * from "./epics";
 export * from "./cycles";
 export * from "./modules";

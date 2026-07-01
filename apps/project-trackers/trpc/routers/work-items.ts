@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { getProjectTrackerById, getWorkItemsByTrackerId } from "@repo/db-tracker/queries";
+import {
+  getProjectTrackerById,
+  getWorkItemsByTrackerId,
+  listMembers,
+  getWorkItemEvents,
+} from "@repo/db-tracker/queries";
 import {
   createWorkItem,
   updateWorkItem,
@@ -26,6 +31,8 @@ export const workItemsRouter = createTRPCRouter({
       return getWorkItemsByTrackerId(input.trackerId);
     }),
 
+  listMembers: protectedProcedure.query(() => listMembers()),
+
   create: protectedProcedure
     .input(createWorkItemSchema)
     .mutation(async ({ ctx, input }) => {
@@ -42,6 +49,7 @@ export const workItemsRouter = createTRPCRouter({
         title: input.title,
         description: input.description,
         status: input.status,
+        priority: input.priority,
         epicId: input.epicId ?? null,
         cycleId: input.cycleId ?? null,
         moduleId: input.moduleId ?? null,
@@ -50,15 +58,20 @@ export const workItemsRouter = createTRPCRouter({
         estimatePoints: input.estimatePoints ?? null,
         estimateHours: input.estimateHours ?? null,
         tags: input.tags,
+        assignees: input.assignees,
         createdBy: ctx.session.user.id,
       });
     }),
 
   update: protectedProcedure
     .input(updateWorkItemSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { workItemId, ...fields } = input;
-      const updated = await updateWorkItem({ workItemId, ...fields });
+      const updated = await updateWorkItem({
+        workItemId,
+        ...fields,
+        actorId: ctx.session.user.id,
+      });
       if (!updated) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -80,4 +93,8 @@ export const workItemsRouter = createTRPCRouter({
       }
       return { success: true };
     }),
+
+  listActivity: protectedProcedure
+    .input(z.object({ workItemId: z.string().min(1) }))
+    .query(({ input }) => getWorkItemEvents(input.workItemId)),
 });

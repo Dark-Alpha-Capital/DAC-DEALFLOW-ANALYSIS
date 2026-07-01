@@ -29,6 +29,34 @@
       "when": 1782484481433,
       "tag": "0003_careless_shockwave",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1783036800000,
+      "tag": "0004_add_work_item_priority",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1783123200000,
+      "tag": "0005_add_work_item_assignees",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1783209600000,
+      "tag": "0006_add_work_item_sequence",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1783296000000,
+      "tag": "0007_add_work_item_events",
+      "breakpoints": true
     }
   ]
 }

@@ -5,9 +5,13 @@ import { cn } from "@/lib/utils";
 import {
   workItemStatusBadgeClass,
   workItemStatusLabel,
+  workItemPriorityColor,
 } from "@/lib/work-item-display";
-import type { WorkItemStatusValue } from "@repo/enums";
+import type { WorkItemStatusValue, WorkItemPriorityValue } from "@repo/enums";
 import { WORK_ITEM_STATUS_VALUES } from "@repo/enums";
+import {
+  AlertCircle, ArrowUp, ArrowRight, ArrowDown, Minus,
+} from "lucide-react";
 
 type WorkItemRecord = {
   id: string;
@@ -18,15 +22,29 @@ type WorkItemRecord = {
   title: string;
   description: string;
   status: WorkItemStatusValue;
+  priority: WorkItemPriorityValue;
   startDate: Date | null;
   dueDate: Date | null;
   estimatePoints: number | null;
   estimateHours: number | null;
+  sequence: number | null;
   tags: string[];
+  assignees: string[];
   createdBy: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
+
+function PriorityIcon({ priority, className }: { priority: WorkItemPriorityValue; className?: string }) {
+  const cls = cn("size-3 shrink-0", workItemPriorityColor(priority), className);
+  switch (priority) {
+    case "URGENT": return <AlertCircle className={cls} />;
+    case "HIGH": return <ArrowUp className={cls} />;
+    case "MEDIUM": return <ArrowRight className={cls} />;
+    case "LOW": return <ArrowDown className={cls} />;
+    case "NONE": return <Minus className={cls} />;
+  }
+}
 
 function BoardColumn({
   status,
@@ -65,8 +83,11 @@ function BoardColumn({
               className="bg-card ring-border/50 hover:ring-primary/30 w-full rounded-lg p-3 text-left ring-1 transition-shadow cursor-pointer"
               onClick={() => onItemClick(item)}
             >
-              <p className="text-sm font-medium truncate">{item.title}</p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <div className="mb-1 flex items-center gap-1.5">
+                <PriorityIcon priority={item.priority} />
+                <p className="text-sm font-medium truncate">{item.title}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
                 {item.estimatePoints != null && (
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                     {item.estimatePoints} pts
