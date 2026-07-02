@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { WorkItemsPanel } from "@/components/work-items/work-items-panel";
+import { MarkdownEditor } from "@/components/markdown-editor/MarkdownEditorLazy";
 
 type CycleFormValues = {
   trackerId: string;
@@ -179,6 +180,7 @@ function CycleFormDialog({
                 </FormItem>
               )}
             />
+            <div className="text-foreground text-sm font-medium">Duration</div>
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -232,7 +234,11 @@ function CycleFormDialog({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <MarkdownEditor
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      rows={6}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

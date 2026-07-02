@@ -8,7 +8,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { HeaderUserMenu } from "@/components/header-user-menu";
+import { HeaderBreadcrumb } from "@/components/header-breadcrumb";
 import { requireAuthenticatedUser } from "@/lib/require-auth";
 
 export const Route = createFileRoute("/_app")({
@@ -62,13 +63,11 @@ function AppLayout() {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
               <SidebarTrigger />
-              <span className="text-muted-foreground text-sm">
-                Dark Alpha Capital — Project Trackers
-              </span>
+              <HeaderBreadcrumb />
               <div className="flex-1" />
-              <ThemeToggle />
+              <HeaderUserMenu session={session} />
             </header>
-            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-6">
               <Outlet />
             </div>
           </div>

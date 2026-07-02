@@ -65,6 +65,7 @@ import {
   ChevronRight,
   LayoutList,
   Table2,
+  Columns3,
   MessageSquare,
   Clock,
   X,
@@ -76,9 +77,7 @@ import { toast } from "sonner";
 import { CommentsPanel } from "@/components/comments/comments-panel";
 import { WorkLogsPanel } from "@/components/work-logs/work-logs-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ViewSelector } from "@/components/views/view-selector";
 import { BoardView } from "@/components/views/board-view";
-import type { ViewTypeValue } from "@repo/enums";
 
 type WorkItemRecord = {
   id: string;
@@ -396,6 +395,7 @@ function WorkItemFormDrawer({
   onSuccess,
   defaultCycleId,
   defaultModuleId,
+  defaultEpicId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -407,6 +407,7 @@ function WorkItemFormDrawer({
   onSuccess: () => void;
   defaultCycleId?: string | null;
   defaultModuleId?: string | null;
+  defaultEpicId?: string | null;
 }) {
   const trpc = useTRPC();
   const members = useMembers();
@@ -420,7 +421,7 @@ function WorkItemFormDrawer({
       description: workItem?.description ?? "",
       status: workItem?.status ?? "TODO",
       priority: workItem?.priority ?? "NONE",
-      epicId: workItem?.epicId ?? null,
+      epicId: workItem?.epicId ?? defaultEpicId ?? null,
       cycleId: workItem?.cycleId ?? defaultCycleId ?? null,
       moduleId: workItem?.moduleId ?? defaultModuleId ?? null,
       startDate: workItem?.startDate ?? null,
@@ -918,6 +919,7 @@ function TableView({
   onExpand: (item: WorkItemRecord) => void;
   projectKey: string;
 }) {
+  const members = useMembers();
   if (items.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-8 text-center">
@@ -939,6 +941,9 @@ function TableView({
             </th>
             <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">
               Priority
+            </th>
+            <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">
+              Assignees
             </th>
             <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">
               Start date
@@ -988,6 +993,13 @@ function TableView({
                   <PriorityIcon priority={item.priority} />
                   {workItemPriorityLabel(item.priority)}
                 </span>
+              </td>
+              <td className="px-3 py-2.5">
+                {item.assignees.length > 0 ? (
+                  <AssigneeAvatars members={members} userIds={item.assignees} size={20} />
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
               </td>
               <td className="px-3 py-2.5 text-xs text-muted-foreground">
                 {formatWorkItemDate(item.startDate)}
@@ -1370,7 +1382,7 @@ export function WorkItemsPanel({
   scope,
 }: {
   trackerId: string;
-  scope?: { cycleId?: string; moduleId?: string };
+  scope?: { cycleId?: string; moduleId?: string; epicId?: string };
 }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -1378,11 +1390,7 @@ export function WorkItemsPanel({
   const [editingItem, setEditingItem] = useState<WorkItemRecord | null>(null);
   const [deletingItem, setDeletingItem] = useState<WorkItemRecord | null>(null);
   const [expandedItem, setExpandedItem] = useState<WorkItemRecord | null>(null);
-  const [viewMode, setViewMode] = useState<"list" | "table">("list");
-  const [activeView, setActiveView] = useState<{
-    type: ViewTypeValue;
-    filters: Record<string, unknown>;
-  }>({ type: "list", filters: {} });
+  const [viewMode, setViewMode] = useState<"list" | "table" | "board">("list");
 
   const itemsQuery = trpc.workItems.listByTracker.queryOptions({ trackerId });
   const { data: items = [], isLoading } = useQuery(itemsQuery);
@@ -1423,13 +1431,19 @@ export function WorkItemsPanel({
     }),
   );
 
-  const isBoard = activeView.type === "board";
+  const { mutate: moveItem } = useMutation(
+    trpc.workItems.update.mutationOptions({
+      onSuccess: () => invalidate(),
+      onError: (error) => toast.error(error.message || "Failed to move item"),
+    }),
+  );
 
   const displayItems = scope
     ? items.filter(
         (i) =>
           (scope.cycleId == null || i.cycleId === scope.cycleId) &&
-          (scope.moduleId == null || i.moduleId === scope.moduleId),
+          (scope.moduleId == null || i.moduleId === scope.moduleId) &&
+          (scope.epicId == null || i.epicId === scope.epicId),
       )
     : items;
 
@@ -1443,35 +1457,38 @@ export function WorkItemsPanel({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {!isBoard && (
-            <div className="flex items-center gap-0.5 rounded-md border p-0.5">
-              <Button
-                type="button"
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="icon"
-                className="size-6"
-                title="List view"
-                onClick={() => setViewMode("list")}
-              >
-                <LayoutList className="size-3.5" />
-              </Button>
-              <Button
-                type="button"
-                variant={viewMode === "table" ? "secondary" : "ghost"}
-                size="icon"
-                className="size-6"
-                title="Table view"
-                onClick={() => setViewMode("table")}
-              >
-                <Table2 className="size-3.5" />
-              </Button>
-            </div>
-          )}
-          <ViewSelector
-            trackerId={trackerId}
-            activeView={activeView}
-            onViewChange={setActiveView}
-          />
+          <div className="flex items-center gap-0.5 rounded-md border p-0.5">
+            <Button
+              type="button"
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="icon"
+              className="size-6"
+              title="List view"
+              onClick={() => setViewMode("list")}
+            >
+              <LayoutList className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "table" ? "secondary" : "ghost"}
+              size="icon"
+              className="size-6"
+              title="Table view"
+              onClick={() => setViewMode("table")}
+            >
+              <Table2 className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "board" ? "secondary" : "ghost"}
+              size="icon"
+              className="size-6"
+              title="Board view"
+              onClick={() => setViewMode("board")}
+            >
+              <Columns3 className="size-3.5" />
+            </Button>
+          </div>
           <Button
             type="button"
             size="sm"
@@ -1492,11 +1509,14 @@ export function WorkItemsPanel({
           <Loader2 className="size-4 animate-spin" />
           Loading…
         </div>
-      ) : isBoard ? (
+      ) : viewMode === "board" ? (
         <BoardView
           trackerId={trackerId}
           items={displayItems}
           onItemClick={(item) => setExpandedItem(item)}
+          onItemMove={(itemId, status) =>
+            moveItem({ workItemId: itemId, status })
+          }
         />
       ) : viewMode === "table" ? (
         <TableView
@@ -1533,6 +1553,7 @@ export function WorkItemsPanel({
         modules={modulesData}
         defaultCycleId={scope?.cycleId ?? null}
         defaultModuleId={scope?.moduleId ?? null}
+        defaultEpicId={scope?.epicId ?? null}
         onSuccess={invalidate}
       />
       <WorkItemDetailPanel

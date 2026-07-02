@@ -29,6 +29,7 @@ export {
   workItemComments,
   workItemAssignees,
   workItemEvents,
+  moduleMembers,
   views,
 } from "./schema";
 
@@ -59,6 +60,7 @@ export type {
   View,
   WorkItemAssignee,
   WorkItemEvent,
+  ModuleMember,
 } from "./schema";
 
 export {

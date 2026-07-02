@@ -578,6 +578,25 @@ export const workItemAssignees = sqliteTable(
   }),
 );
 
+export const moduleMembers = sqliteTable(
+  "ModuleMember",
+  {
+    moduleId: text("moduleId")
+      .notNull()
+      .references(() => modules.id, { onDelete: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    addedAt: integer("addedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.moduleId, table.userId] }),
+    moduleMemberUserIdx: index("module_member_user_idx").on(table.userId),
+  }),
+);
+
 export const workItemEvents = sqliteTable(
   "WorkItemEvent",
   {
@@ -787,6 +806,18 @@ export const modulesRelations = relations(modules, ({ one, many }) => ({
     references: [users.id],
   }),
   workItems: many(workItems),
+  members: many(moduleMembers),
+}));
+
+export const moduleMembersRelations = relations(moduleMembers, ({ one }) => ({
+  module: one(modules, {
+    fields: [moduleMembers.moduleId],
+    references: [modules.id],
+  }),
+  user: one(users, {
+    fields: [moduleMembers.userId],
+    references: [users.id],
+  }),
 }));
 
 export const workLogsRelations = relations(workLogs, ({ one }) => ({
@@ -875,4 +906,5 @@ export type WorkLog = typeof workLogs.$inferSelect;
 export type WorkItemComment = typeof workItemComments.$inferSelect;
 export type View = typeof views.$inferSelect;
 export type WorkItemAssignee = typeof workItemAssignees.$inferSelect;
+export type ModuleMember = typeof moduleMembers.$inferSelect;
 export type WorkItemEvent = typeof workItemEvents.$inferSelect;

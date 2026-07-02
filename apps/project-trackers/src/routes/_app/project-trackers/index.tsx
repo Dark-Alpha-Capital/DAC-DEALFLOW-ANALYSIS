@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -65,7 +64,7 @@ function ProjectTrackersPage() {
   }
 
   return (
-    <section className="block-space-mini container">
+    <section className="w-full pb-8">
       <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-3xl font-bold md:text-4xl">Project Trackers</h1>
@@ -139,106 +138,62 @@ function ProjectTrackersPage() {
           No projects match the selected department.
         </div>
       ) : (
-        <div className="ring-border/60 overflow-hidden rounded-xl ring-1">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 border-border/50 border-b">
-              <tr>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">
-                  Project name
-                </th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">
-                  Type
-                </th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">
-                  Department
-                </th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">
-                  Stage
-                </th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">
-                  Screening
-                </th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">
-                  Score
-                </th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">
-                  Created
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-border/40 divide-y">
-              {trackers.map((t) => (
-                <tr key={t.id} className="hover:bg-muted/20 transition-colors">
-                  <td className="px-4 py-3 font-medium">
-                    <Link
-                      to="/project-trackers/$trackerId"
-                      params={{ trackerId: t.id }}
-                      className="text-primary hover:underline"
-                    >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {trackers.map((t) => (
+            <Link
+              key={t.id}
+              to="/project-trackers/$trackerId"
+              params={{ trackerId: t.id }}
+              className="group bg-card/40 ring-border/60 hover:ring-primary/40 flex flex-col gap-3 rounded-xl p-4 ring-1 transition-all hover:shadow-md"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg text-base font-bold">
+                    {t.name.charAt(0).toUpperCase() || "P"}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="group-hover:text-primary truncate font-semibold">
                       {t.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    {t.sourceType ? (
-                      <Badge variant="outline" className="text-xs">
-                        {t.sourceType === "PROJECT_KICKOFF"
-                          ? "Project Kickoff"
-                          : t.sourceType}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
+                    </div>
+                    <div className="text-muted-foreground truncate text-xs">
+                      {t.department ?? "—"}
+                    </div>
+                  </div>
+                </div>
+                {t.screeningScore !== null && (
+                  <div
+                    className={cn(
+                      "flex size-10 shrink-0 items-center justify-center rounded-full border-[3px] border-current text-xs font-bold tabular-nums",
+                      scoreColor(t.screeningScore),
                     )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {t.department ?? (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                        stageBadgeVariant(t.stage),
-                      )}
-                    >
-                      {stageLabel(t.stage)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize",
-                        statusBadgeVariant(t.screeningStatus),
-                      )}
-                    >
-                      {t.screeningStatus ?? "pending"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {t.screeningScore !== null ? (
-                      <span
-                        className={cn(
-                          "font-semibold tabular-nums",
-                          scoreColor(t.screeningScore),
-                        )}
-                      >
-                        {t.screeningScore.toFixed(1)}
-                        <span className="text-muted-foreground font-normal">
-                          {" "}
-                          / 5
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="text-muted-foreground px-4 py-3">
-                    {new Date(t.createdAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  >
+                    {t.screeningScore.toFixed(1)}
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                    stageBadgeVariant(t.stage),
+                  )}
+                >
+                  {stageLabel(t.stage)}
+                </span>
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize",
+                    statusBadgeVariant(t.screeningStatus),
+                  )}
+                >
+                  {t.screeningStatus ?? "pending"}
+                </span>
+                <span className="text-muted-foreground ml-auto text-xs">
+                  {new Date(t.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
     </section>

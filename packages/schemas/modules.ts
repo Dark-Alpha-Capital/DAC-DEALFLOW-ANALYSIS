@@ -7,7 +7,9 @@ export const createModuleSchema = z.object({
   trackerId: z.string().min(1),
   name: z.string().trim().min(1).max(200),
   description: z.string().max(50000).default(""),
+  status: moduleStatusSchema.optional(),
   leadUserId: z.string().nullable().optional(),
+  memberUserIds: z.array(z.string()).optional(),
   sortOrder: z.number().int().default(0),
 });
 
@@ -17,6 +19,7 @@ export const updateModuleSchema = z.object({
   description: z.string().max(50000).optional(),
   status: moduleStatusSchema.optional(),
   leadUserId: z.string().nullable().optional(),
+  memberUserIds: z.array(z.string()).optional(),
   sortOrder: z.number().int().optional(),
 });
 

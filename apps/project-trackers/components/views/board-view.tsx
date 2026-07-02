@@ -1,5 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
-import { useTRPC } from "@/trpc/client";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -50,13 +49,39 @@ function BoardColumn({
   status,
   items,
   onItemClick,
+  onItemMove,
 }: {
   status: WorkItemStatusValue;
   items: WorkItemRecord[];
   onItemClick: (item: WorkItemRecord) => void;
+  onItemMove: (itemId: string, status: WorkItemStatusValue) => void;
 }) {
+  const [isOver, setIsOver] = useState(false);
+
   return (
-    <div className="bg-muted/30 rounded-lg p-3 min-w-[240px] flex-1">
+    <div
+      className={cn(
+        "rounded-lg p-3 min-w-[240px] flex-1 transition-colors",
+        isOver ? "bg-primary/10 ring-1 ring-primary/40" : "bg-muted/30",
+      )}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (!isOver) setIsOver(true);
+      }}
+      onDragLeave={(e) => {
+        // only clear when leaving the column, not when moving over children
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setIsOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsOver(false);
+        const itemId = e.dataTransfer.getData("text/plain");
+        if (itemId) onItemMove(itemId, status);
+      }}
+    >
       <div className="mb-3 flex items-center justify-between">
         <span
           className={cn(
@@ -73,14 +98,19 @@ function BoardColumn({
       <div className="space-y-2 min-h-[100px]">
         {items.length === 0 ? (
           <p className="text-muted-foreground text-xs text-center py-6">
-            No items
+            Drop items here
           </p>
         ) : (
           items.map((item) => (
             <button
               key={item.id}
               type="button"
-              className="bg-card ring-border/50 hover:ring-primary/30 w-full rounded-lg p-3 text-left ring-1 transition-shadow cursor-pointer"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData("text/plain", item.id);
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              className="bg-card ring-border/50 hover:ring-primary/30 w-full cursor-grab rounded-lg p-3 text-left ring-1 transition-shadow active:cursor-grabbing"
               onClick={() => onItemClick(item)}
             >
               <div className="mb-1 flex items-center gap-1.5">
@@ -113,13 +143,15 @@ function BoardColumn({
 }
 
 export function BoardView({
-  trackerId,
+  trackerId: _trackerId,
   items,
   onItemClick,
+  onItemMove,
 }: {
   trackerId: string;
   items: WorkItemRecord[];
   onItemClick: (item: WorkItemRecord) => void;
+  onItemMove: (itemId: string, status: WorkItemStatusValue) => void;
 }) {
   const columns = WORK_ITEM_STATUS_VALUES.map((status) => ({
     status,
@@ -134,6 +166,7 @@ export function BoardView({
           status={col.status}
           items={col.items}
           onItemClick={onItemClick}
+          onItemMove={onItemMove}
         />
       ))}
     </div>

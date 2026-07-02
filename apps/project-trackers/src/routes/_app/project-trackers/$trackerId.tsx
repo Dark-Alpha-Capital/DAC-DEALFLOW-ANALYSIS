@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,7 +23,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  formatTimeInStage,
   scoreBadgeClass,
   scoreColor,
   scoreLabel,
@@ -31,7 +30,7 @@ import {
   stageLabel,
 } from "@/lib/project-tracker-display";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, Loader2, RefreshCw, Save } from "lucide-react";
+import { Loader2, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { DEPARTMENT_VALUES, PROJECT_STAGE_VALUES, type ProjectStageValue } from "@repo/enums";
 import {
@@ -49,7 +48,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
 import { useProjectKickoffScreeningPoll } from "@/hooks/use-project-kickoff-screening-poll";
 import { useEffect } from "react";
 
@@ -77,83 +75,6 @@ export const Route = createFileRoute("/_app/project-trackers/$trackerId")({
   }),
   component: ProjectTrackerDetailPage,
 });
-
-function StagePanel({
-  trackerId,
-  stage,
-  stageChangedAt,
-}: {
-  trackerId: string;
-  stage: ProjectStageValue;
-  stageChangedAt: Date;
-}) {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
-
-  const { mutate: updateStage, isPending } = useMutation(
-    trpc.projectTrackers.updateStage.mutationOptions({
-      onSuccess: () => {
-        toast.success("Stage updated");
-        void queryClient.invalidateQueries(
-          trpc.projectTrackers.getById.queryOptions({ trackerId }),
-        );
-      },
-      onError: (error) => {
-        toast.error(error.message || "Failed to update stage");
-      },
-    }),
-  );
-
-  return (
-    <div className="bg-card/40 ring-border/60 rounded-xl p-4 ring-1">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-foreground text-sm font-semibold">Project stage</h2>
-        <span
-          className={cn(
-            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-            stageBadgeVariant(stage),
-          )}
-        >
-          {stageLabel(stage)}
-        </span>
-      </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex-1 space-y-1.5">
-          <label
-            htmlFor="project-stage-select"
-            className="text-muted-foreground text-xs font-medium"
-          >
-            Update stage
-          </label>
-          <Select
-            value={stage}
-            onValueChange={(value) =>
-              updateStage({
-                trackerId,
-                stage: value as ProjectStageValue,
-              })
-            }
-            disabled={isPending}
-          >
-            <SelectTrigger id="project-stage-select">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PROJECT_STAGE_VALUES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {stageLabel(s)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <p className="text-muted-foreground text-xs sm:pb-2.5">
-          In current stage for {formatTimeInStage(stageChangedAt)}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 function ScreeningPanel({
   trackerId,
@@ -292,6 +213,57 @@ function ScreeningPanel({
   );
 }
 
+function StagePill({
+  trackerId,
+  stage,
+}: {
+  trackerId: string;
+  stage: ProjectStageValue;
+}) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
+  const { mutate: updateStage, isPending } = useMutation(
+    trpc.projectTrackers.updateStage.mutationOptions({
+      onSuccess: () => {
+        toast.success("Stage updated");
+        void queryClient.invalidateQueries(
+          trpc.projectTrackers.getById.queryOptions({ trackerId }),
+        );
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to update stage");
+      },
+    }),
+  );
+
+  return (
+    <Select
+      value={stage}
+      onValueChange={(value) =>
+        updateStage({ trackerId, stage: value as ProjectStageValue })
+      }
+      disabled={isPending}
+    >
+      <SelectTrigger
+        className={cn(
+          "h-8 w-auto gap-1.5 rounded-full border-0 px-3 text-xs font-medium shadow-none focus:ring-0",
+          stageBadgeVariant(stage),
+        )}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {PROJECT_STAGE_VALUES.map((s) => (
+          <SelectItem key={s} value={s}>
+            {stageLabel(s)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 function ProjectTrackerDetailPage() {
   const { trackerId } = Route.useParams();
   const { tab } = Route.useSearch();
@@ -340,29 +312,30 @@ function ProjectTrackerDetailPage() {
   const displayName = kickoff?.projectName ?? tracker.name;
 
   return (
-    <section className="block-space-mini container max-w-3xl">
-      <div className="mb-6">
-        <Button
-          asChild
-          variant="ghost"
-          size="sm"
-          className="-ml-2 mb-4 gap-1.5"
-        >
-          <Link
-            to="/project-trackers"
-            search={PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH}
-          >
-            <ChevronLeft className="size-4" />
-            Back to Project Trackers
-          </Link>
-        </Button>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold md:text-3xl">{displayName}</h1>
-            <Badge variant="outline" className="text-xs">
-              Project Kickoff
-            </Badge>
-          </div>
+    <section className="w-full pb-8">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+            {displayName}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {kickoff?.department ? `${kickoff.department} · ` : ""}Project
+            Kickoff
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {latestScreening?.score != null && (
+            <div
+              className={cn(
+                "flex size-11 items-center justify-center rounded-full border-[3px] border-current text-sm font-bold tabular-nums",
+                scoreColor(latestScreening.score),
+              )}
+              title="AI screening score"
+            >
+              {latestScreening.score.toFixed(1)}
+            </div>
+          )}
+          <StagePill trackerId={trackerId} stage={tracker.stage} />
           {kickoff ? (
             <DeleteProjectTrackerButton
               kickoffId={kickoff.id}
@@ -374,12 +347,6 @@ function ProjectTrackerDetailPage() {
 
       {kickoff ? (
         <div className="space-y-4">
-          <StagePanel
-            trackerId={trackerId}
-            stage={tracker.stage}
-            stageChangedAt={tracker.stageChangedAt}
-          />
-
           <Tabs
             value={tab}
             onValueChange={(v) =>

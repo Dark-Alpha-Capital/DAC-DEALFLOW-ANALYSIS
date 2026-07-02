@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTRPC } from "@/trpc/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkdownEditor } from "@/components/markdown-editor/MarkdownEditorLazy";
 import {
   Form,
   FormControl,
@@ -69,18 +69,16 @@ function CommentItem({
           <div className="flex items-center gap-2">
             <span className="text-foreground text-sm font-medium">Team member</span>
             <span className="text-muted-foreground text-xs">{formatRelativeTime(comment.createdAt)}</span>
-            {comment.userId === userId && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="size-6"><MoreHorizontal className="size-3" /></Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onDelete(comment.id)} className="text-destructive">
-                    <Trash2 className="size-3 mr-2" />Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-6"><MoreHorizontal className="size-3" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onDelete(comment.id)} className="text-destructive">
+                  <Trash2 className="size-3 mr-2" />Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div className="text-foreground mt-1 text-sm whitespace-pre-wrap">{comment.content}</div>
           <Button variant="ghost" size="sm" className="text-muted-foreground mt-1 h-7 gap-1 text-xs" onClick={() => onReply(comment.id)}>
@@ -99,6 +97,7 @@ export function CommentsPanel({ workItemId }: { workItemId: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [editorKey, setEditorKey] = useState(0);
 
   const listQuery = trpc.workItemComments.listByWorkItem.queryOptions({ workItemId });
   const { data: comments = [], isLoading } = useQuery(listQuery);
@@ -112,7 +111,7 @@ export function CommentsPanel({ workItemId }: { workItemId: string }) {
 
   const { mutate: create, isPending } = useMutation(
     trpc.workItemComments.create.mutationOptions({
-      onSuccess: () => { toast.success("Comment added"); form.reset({ workItemId, content: "", parentCommentId: null }); setReplyingTo(null); invalidate(); },
+      onSuccess: () => { toast.success("Comment added"); form.reset({ workItemId, content: "", parentCommentId: null }); setReplyingTo(null); setEditorKey((k) => k + 1); invalidate(); },
       onError: (error) => toast.error(error.message),
     }),
   );
@@ -154,7 +153,13 @@ export function CommentsPanel({ workItemId }: { workItemId: string }) {
           <FormField control={form.control} name="content" render={({ field }) => (
             <FormItem>
               <FormControl>
-                <Textarea rows={3} placeholder={replyingTo ? "Write a reply…" : "Write a comment…"} {...field} />
+                <MarkdownEditor
+                  key={editorKey}
+                  value={field.value}
+                  onChange={field.onChange}
+                  rows={3}
+                  placeholder={replyingTo ? "Write a reply…" : "Write a comment…"}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

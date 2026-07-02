@@ -30,17 +30,33 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { MODULE_STATUS_LABELS } from "@repo/enums";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { MODULE_STATUS_LABELS, MODULE_STATUS_VALUES } from "@repo/enums";
 import { createModuleSchema } from "@repo/schemas";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, Loader2, Pencil, Plus, Trash2, Folder } from "lucide-react";
+import { ChevronLeft, Loader2, Pencil, Plus, Trash2, Folder, Users, ChevronDown, Check } from "lucide-react";
 import { toast } from "sonner";
 import { WorkItemsPanel } from "@/components/work-items/work-items-panel";
+import { MarkdownEditor } from "@/components/markdown-editor/MarkdownEditorLazy";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type ModuleFormValues = {
   trackerId: string;
   name: string;
   description: string;
+  status: string;
+  memberUserIds: string[];
 };
 
 type ModuleRecord = {
@@ -52,6 +68,7 @@ type ModuleRecord = {
   leadUserId: string | null;
   sortOrder: number;
   workItemCount: number;
+  members: string[];
 };
 
 function statusBadgeClass(status: string): string {
@@ -65,6 +82,116 @@ function statusBadgeClass(status: string): string {
     default:
       return "bg-muted text-muted-foreground";
   }
+}
+
+function memberInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
+
+type MemberOption = { id: string; name: string };
+
+function MemberAvatars({
+  members,
+  userIds,
+  size = 20,
+}: {
+  members: MemberOption[];
+  userIds: string[];
+  size?: number;
+}) {
+  const shown = userIds
+    .map((id) => members.find((m) => m.id === id))
+    .filter((m): m is MemberOption => m != null)
+    .slice(0, 3);
+  if (shown.length === 0) return null;
+  return (
+    <span className="flex items-center">
+      {shown.map((m, i) => (
+        <span
+          key={m.id}
+          className={cn(
+            "bg-primary/15 text-primary ring-background inline-flex items-center justify-center rounded-full text-[9px] font-medium ring-2",
+            i > 0 && "-ml-1.5",
+          )}
+          style={{ width: size, height: size }}
+        >
+          {memberInitials(m.name)}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function MembersPill({
+  members,
+  value,
+  onChange,
+}: {
+  members: MemberOption[];
+  value: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  function toggle(id: string) {
+    onChange(
+      value.includes(id) ? value.filter((x) => x !== id) : [...value, id],
+    );
+  }
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-between font-normal"
+        >
+          {value.length > 0 ? (
+            <span className="flex items-center gap-2">
+              <MemberAvatars members={members} userIds={value} size={20} />
+              <span className="text-muted-foreground text-xs">
+                {value.length} member{value.length > 1 ? "s" : ""}
+              </span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground flex items-center gap-2">
+              <Users className="size-4 opacity-60" />
+              Add members
+            </span>
+          )}
+          <ChevronDown className="size-4 opacity-60" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className="max-h-64 w-56 overflow-y-auto"
+      >
+        {members.length === 0 ? (
+          <div className="text-muted-foreground px-2 py-1.5 text-xs">
+            No members
+          </div>
+        ) : (
+          members.map((m) => (
+            <DropdownMenuItem
+              key={m.id}
+              onSelect={(e) => {
+                e.preventDefault();
+                toggle(m.id);
+              }}
+              className="gap-2"
+            >
+              <span className="bg-primary/15 text-primary inline-flex size-5 items-center justify-center rounded-full text-[9px] font-medium">
+                {memberInitials(m.name)}
+              </span>
+              <span className="flex-1 truncate">{m.name}</span>
+              {value.includes(m.id) && (
+                <Check className="text-primary size-3.5" />
+              )}
+            </DropdownMenuItem>
+          ))
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 function ModuleFormDialog({
@@ -82,6 +209,9 @@ function ModuleFormDialog({
 }) {
   const trpc = useTRPC();
   const isEditing = mod != null;
+  const { data: members = [] } = useQuery(
+    trpc.workItems.listMembers.queryOptions(),
+  );
 
   const form = useForm<ModuleFormValues>({
     resolver: zodResolver(createModuleSchema),
@@ -89,6 +219,8 @@ function ModuleFormDialog({
       trackerId,
       name: mod?.name ?? "",
       description: mod?.description ?? "",
+      status: mod?.status ?? "ACTIVE",
+      memberUserIds: mod?.members ?? [],
     },
   });
 
@@ -118,9 +250,12 @@ function ModuleFormDialog({
 
   function onSubmit(values: ModuleFormValues) {
     if (isEditing && mod) {
-      update({ moduleId: mod.id, ...values });
+      update({
+        moduleId: mod.id,
+        ...values,
+      } as Parameters<typeof update>[0]);
     } else {
-      create(values);
+      create(values as Parameters<typeof create>[0]);
     }
   }
 
@@ -147,12 +282,57 @@ function ModuleFormDialog({
             />
             <FormField
               control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {MODULE_STATUS_VALUES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {MODULE_STATUS_LABELS[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="memberUserIds"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Members</FormLabel>
+                  <FormControl>
+                    <MembersPill
+                      members={members}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input placeholder="Module description" {...field} />
+                    <MarkdownEditor
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      rows={6}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -218,6 +398,8 @@ function ModuleCard({
           </div>
           <div className="text-muted-foreground mt-1 text-xs">
             {mod.workItemCount} work items
+            {mod.members.length > 0 &&
+              ` · ${mod.members.length} member${mod.members.length > 1 ? "s" : ""}`}
           </div>
           {mod.description.trim() && (
             <p className="text-muted-foreground mt-1 text-sm">{mod.description}</p>
