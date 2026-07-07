@@ -1,5 +1,22 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@mdxeditor/editor/style.css";
+
+/*
+ * @mdxeditor/editor ships its link/image dialog and block-type/select dropdowns
+ * with low z-index values (1-3), assuming it's used on a plain page. We nest it
+ * inside fixed-position overlays (e.g. the work-item side panel, z-40), which
+ * paint on top and make those popovers invisible and unclickable. Force them
+ * above any overlay we ship. Class names are hashed but stable for the
+ * installed @mdxeditor/editor version; re-check on upgrade.
+ */
+._popoverContent_1e2ox_638,
+._toolbarNodeKindSelectContainer_1e2ox_285,
+._toolbarButtonDropdownContainer_1e2ox_286,
+._toolbarCodeBlockLanguageSelectContent_1e2ox_287,
+._selectContainer_1e2ox_288 {
+  z-index: 100 !important;
+}
 
 @custom-variant dark (&:is(.dark *));
 @plugin "@tailwindcss/typography";

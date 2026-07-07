@@ -72,7 +72,10 @@ import {
   Activity,
   Users,
   Check,
+  Calendar as CalendarIcon,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { CommentsPanel } from "@/components/comments/comments-panel";
 import { WorkLogsPanel } from "@/components/work-logs/work-logs-panel";
@@ -241,30 +244,49 @@ function DatePill({
   value: Date | null;
   onChange: (v: Date | null) => void;
 }) {
-  function toDateInputValue(date: Date | null): string {
-    if (!date) return "";
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }
-
-  function parseDateInput(val: string): Date | null {
-    if (!val) return null;
-    const parsed = new Date(`${val}T12:00:00`);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
+  const [open, setOpen] = useState(false);
 
   return (
-    <span className="relative inline-flex h-7 cursor-pointer select-none items-center rounded-full border border-input bg-background px-2.5 text-xs hover:bg-accent">
-      {value ? formatWorkItemDate(value) : label}
-      <input
-        type="date"
-        className="absolute inset-0 w-full cursor-pointer opacity-0"
-        value={toDateInputValue(value)}
-        onChange={(e) => onChange(parseDateInput(e.target.value))}
-      />
-    </span>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1.5 rounded-full px-2.5 text-xs font-normal"
+        >
+          <CalendarIcon className="size-3 opacity-60" />
+          {value ? formatWorkItemDate(value) : label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={value ?? undefined}
+          onSelect={(d) => {
+            onChange(d ?? null);
+            setOpen(false);
+          }}
+          initialFocus
+        />
+        {value && (
+          <div className="border-t p-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 w-full text-xs"
+              onClick={() => {
+                onChange(null);
+                setOpen(false);
+              }}
+            >
+              Clear
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
 

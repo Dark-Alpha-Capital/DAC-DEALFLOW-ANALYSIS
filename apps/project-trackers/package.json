@@ -33,7 +33,7 @@
     "@repo/enums": "workspace:*",
     "@repo/schemas": "workspace:*",
     "@tanstack/react-query": "^5.95.2",
-    "@tanstack/react-router": "^1.168.8",
+    "@tanstack/react-router": "^1.170.16",
     "@tanstack/react-start": "^1.168.25",
     "@trpc/client": "^11.8.1",
     "@trpc/server": "^11.8.1",
