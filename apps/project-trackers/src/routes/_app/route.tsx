@@ -1,4 +1,10 @@
-import { Suspense, useState, useRef, useEffect, type CSSProperties } from "react";
+import {
+  Suspense,
+  useState,
+  useRef,
+  useEffect,
+  type CSSProperties,
+} from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { ProjectTrackersSidebar } from "@/components/sidebars/project-trackers-sidebar";
 import { Providers } from "@/components/providers";
@@ -46,9 +52,7 @@ function AppLayout() {
       <SidebarProvider
         style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
       >
-        <Suspense fallback={null}>
-          <ProjectTrackersSidebar session={session} />
-        </Suspense>
+        <ProjectTrackersSidebar session={session} />
         <div
           onPointerDown={(e) => {
             draggingRef.current = true;

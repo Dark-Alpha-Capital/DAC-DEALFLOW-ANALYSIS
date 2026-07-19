@@ -128,10 +128,7 @@ function ProjectSubNav({
           <SidebarMenu>
             {projectTabItems.map((item) => (
               <SidebarMenuItem key={item.tab}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={currentTab === item.tab}
-                >
+                <SidebarMenuButton asChild isActive={currentTab === item.tab}>
                   <Link
                     to="/project-trackers/$trackerId"
                     params={{ trackerId }}
@@ -247,10 +244,7 @@ export function ProjectTrackersSidebar({ session }: { session: Session }) {
 
       <SidebarContent>
         {currentTrackerId ? (
-          <ProjectSubNav
-            trackerId={currentTrackerId}
-            currentTab={currentTab}
-          />
+          <ProjectSubNav trackerId={currentTrackerId} currentTab={currentTab} />
         ) : (
           <WorkspaceNav pathname={pathname} />
         )}
