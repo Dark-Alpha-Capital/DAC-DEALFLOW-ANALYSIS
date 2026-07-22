@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure } from "../init";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "../init";
 import {
   createProjectKickoff,
   createProjectKickoffRescreen,
@@ -83,7 +83,7 @@ async function startScreeningWorkflow(input: {
   jobId: string;
   kickoffId: string;
   screeningId: string;
-  userId: string;
+  userId: string | null;
 }) {
   try {
     await startProjectKickoffScreenWorkflow(input.jobId, {
@@ -102,7 +102,7 @@ async function startScreeningWorkflow(input: {
 }
 
 export const projectKickoffsRouter = createTRPCRouter({
-  create: protectedProcedure
+  create: publicProcedure
     .input(
       z.object({
         draft: projectKickoffDraftSchema,
@@ -110,7 +110,7 @@ export const projectKickoffsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const userId = ctx.user.id as string;
+      const userId = (ctx.user?.id as string | undefined) ?? null;
       const structured = draftToStructured(input.draft);
       const created = await createProjectKickoff({
         userId,

@@ -12,11 +12,18 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
-import { projectKickoffExtractionSchema } from "@repo/schemas";
+import {
+  draftToStructured,
+  projectKickoffExtractionSchema,
+} from "@repo/schemas";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import {
+  buildPlaneProjectIdentifier,
+  usePlaneEmbed,
+} from "@/hooks/use-plane-embed";
 import { ConfirmationSummary } from "./confirmation-summary";
 import {
   collectStep2ValidationMessages,
@@ -30,17 +37,32 @@ import { ReviewDraftFields } from "./review-draft-fields";
 import { WorkflowStepper } from "./workflow-stepper";
 import { WorkspacePanel } from "./workspace-panel";
 
-export function ProjectKickoffWorkspace() {
+type ProjectKickoffWorkspaceProps = {
+  /** When true (Plane iframe embed), skip auth-gated navigate and sync to Plane. */
+  publicEmbed?: boolean;
+  /** From `?workspaceSlug=` when Plane loads the iframe. */
+  initialWorkspaceSlug?: string;
+};
+
+export function ProjectKickoffWorkspace({
+  publicEmbed = false,
+  initialWorkspaceSlug,
+}: ProjectKickoffWorkspaceProps) {
   const trpc = useTRPC();
   const navigate = useNavigate();
+  const { ctx: planeCtx, createProject: createPlaneProject } = usePlaneEmbed(
+    initialWorkspaceSlug,
+  );
   const [rawText, setRawText] = useState("");
   const [draft, setDraft] = useState<ReviewDraft | null>(null);
   const [step, setStep] = useState<WorkflowStep>(1);
   const [step2ContinueAttempted, setStep2ContinueAttempted] = useState(false);
+  const [isCreatingInPlane, setIsCreatingInPlane] = useState(false);
 
-  const { mutateAsync: createKickoff, isPending: isSaving } = useMutation(
+  const { mutateAsync: createKickoff, isPending: isSavingKickoff } = useMutation(
     trpc.projectKickoffs.create.mutationOptions(),
   );
+  const isSaving = isSavingKickoff || isCreatingInPlane;
 
   const { object, submit, isLoading, error, clear, stop } = useObject({
     api: "/api/project-kickoff/extract",
@@ -93,10 +115,39 @@ export function ProjectKickoffWorkspace() {
   const onConfirm = useCallback(async () => {
     if (!draft || !isDraftReady(draft)) return;
     try {
+      const kickoffDraft = toKickoffDraft(draft);
       const created = await createKickoff({
-        draft: toKickoffDraft(draft),
+        draft: kickoffDraft,
         rawText,
       });
+
+      if (publicEmbed) {
+        setIsCreatingInPlane(true);
+        try {
+          const structured = draftToStructured(kickoffDraft);
+          const planeResult = await createPlaneProject(structured, {
+            identifier: buildPlaneProjectIdentifier(structured.projectName),
+            externalId: created.projectId,
+          });
+
+          if (planeResult.success) {
+            toast.success(
+              planeResult.project?.name
+                ? `Saved and created in Plane: ${planeResult.project.name}`
+                : "Saved and created in Plane",
+            );
+          } else {
+            toast.warning(
+              `Kickoff saved, but Plane create failed: ${planeResult.error ?? "Unknown error"}`,
+            );
+          }
+        } finally {
+          setIsCreatingInPlane(false);
+        }
+        resetWorkspace();
+        return;
+      }
+
       resetWorkspace();
       toast.success("Project saved — AI screening in progress");
       await navigate({
@@ -105,12 +156,20 @@ export function ProjectKickoffWorkspace() {
       });
     } catch (err) {
       console.error(err);
-
+      setIsCreatingInPlane(false);
       toast.error(
         err instanceof Error ? err.message : "Failed to save project",
       );
     }
-  }, [createKickoff, draft, navigate, rawText, resetWorkspace]);
+  }, [
+    createKickoff,
+    createPlaneProject,
+    draft,
+    navigate,
+    publicEmbed,
+    rawText,
+    resetWorkspace,
+  ]);
 
   const continueToConfirmation = () => {
     if (!draft) return;
@@ -128,13 +187,17 @@ export function ProjectKickoffWorkspace() {
       <header className="mb-8 space-y-2">
         <p className="text-muted-foreground text-[11px] font-medium tracking-[0.16em] uppercase">
           Project kickoff
+          {publicEmbed && planeCtx?.workspaceSlug
+            ? ` · Plane / ${planeCtx.workspaceSlug}`
+            : null}
         </p>
         <h1 className="text-foreground text-2xl font-semibold tracking-tight md:text-3xl">
           Turn notes into a structured project
         </h1>
         <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-          Paste kickoff notes or a document excerpt. We extract the fields, you
-          review them, then save and run AI screening against firm criteria.
+          {publicEmbed
+            ? "Paste kickoff notes or a document excerpt. We extract the fields, you review them, then save — creating the project in Plane and running AI screening."
+            : "Paste kickoff notes or a document excerpt. We extract the fields, you review them, then save and run AI screening against firm criteria."}
         </p>
       </header>
 
@@ -315,7 +378,11 @@ export function ProjectKickoffWorkspace() {
         {step === 3 && draft ? (
           <WorkspacePanel
             title="Final confirmation"
-            description="Review everything below before saving the project kickoff."
+            description={
+              publicEmbed
+                ? "Review everything below before saving to trackers and creating the project in Plane."
+                : "Review everything below before saving the project kickoff."
+            }
             contentClassName="flex max-h-[min(75dvh,640px)] flex-col gap-5 overflow-y-auto overscroll-contain"
           >
             <ConfirmationSummary draft={draft} />
@@ -340,7 +407,11 @@ export function ProjectKickoffWorkspace() {
                 ) : (
                   <Check className="size-4" />
                 )}
-                Save project kickoff
+                {publicEmbed
+                  ? isCreatingInPlane
+                    ? "Creating in Plane…"
+                    : "Save & create in Plane"
+                  : "Save project kickoff"}
               </Button>
             </div>
           </WorkspacePanel>

@@ -33,7 +33,7 @@ export type ProjectKickoffFieldValues = {
 
 export type CreateProjectKickoffInput = {
   fields: ProjectKickoffFieldValues;
-  userId: string;
+  userId: string | null;
 };
 
 export type CreateProjectKickoffResult = {

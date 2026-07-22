@@ -9,14 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AuthenticationRouteRouteImport } from './routes/_authentication/route'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppInitiativesRouteImport } from './routes/_app/initiatives'
 import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
+import { Route as PublicProjectKickoffIndexRouteImport } from './routes/_public/project-kickoff/index'
 import { Route as AppScreenersIndexRouteImport } from './routes/_app/screeners/index'
 import { Route as AppProjectTrackersIndexRouteImport } from './routes/_app/project-trackers/index'
-import { Route as AppProjectKickoffIndexRouteImport } from './routes/_app/project-kickoff/index'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiProjectKickoffExtractRouteImport } from './routes/api/project-kickoff/extract'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -30,6 +31,10 @@ import { Route as AppScreenersNewRouteImport } from './routes/_app/screeners/new
 import { Route as AppScreenersScreenerIdRouteImport } from './routes/_app/screeners/$screenerId'
 import { Route as AppProjectTrackersTrackerIdRouteImport } from './routes/_app/project-trackers/$trackerId'
 
+const PublicRouteRoute = PublicRouteRouteImport.update({
+  id: '/_public',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticationRouteRoute = AuthenticationRouteRouteImport.update({
   id: '/_authentication',
   getParentRoute: () => rootRouteImport,
@@ -53,6 +58,12 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const PublicProjectKickoffIndexRoute =
+  PublicProjectKickoffIndexRouteImport.update({
+    id: '/project-kickoff/',
+    path: '/project-kickoff/',
+    getParentRoute: () => PublicRouteRoute,
+  } as any)
 const AppScreenersIndexRoute = AppScreenersIndexRouteImport.update({
   id: '/screeners/',
   path: '/screeners/',
@@ -61,11 +72,6 @@ const AppScreenersIndexRoute = AppScreenersIndexRouteImport.update({
 const AppProjectTrackersIndexRoute = AppProjectTrackersIndexRouteImport.update({
   id: '/project-trackers/',
   path: '/project-trackers/',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppProjectKickoffIndexRoute = AppProjectKickoffIndexRouteImport.update({
-  id: '/project-kickoff/',
-  path: '/project-kickoff/',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
@@ -151,9 +157,9 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
-  '/project-kickoff/': typeof AppProjectKickoffIndexRoute
   '/project-trackers/': typeof AppProjectTrackersIndexRoute
   '/screeners/': typeof AppScreenersIndexRoute
+  '/project-kickoff/': typeof PublicProjectKickoffIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -171,15 +177,16 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
-  '/project-kickoff': typeof AppProjectKickoffIndexRoute
   '/project-trackers': typeof AppProjectTrackersIndexRoute
   '/screeners': typeof AppScreenersIndexRoute
+  '/project-kickoff': typeof PublicProjectKickoffIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteRouteWithChildren
   '/_authentication': typeof AuthenticationRouteRouteWithChildren
+  '/_public': typeof PublicRouteRouteWithChildren
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/initiatives': typeof AppInitiativesRoute
   '/_app/project-trackers/$trackerId': typeof AppProjectTrackersTrackerIdRoute
@@ -194,9 +201,9 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
-  '/_app/project-kickoff/': typeof AppProjectKickoffIndexRoute
   '/_app/project-trackers/': typeof AppProjectTrackersIndexRoute
   '/_app/screeners/': typeof AppScreenersIndexRoute
+  '/_public/project-kickoff/': typeof PublicProjectKickoffIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -216,9 +223,9 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/project-kickoff/extract'
     | '/api/trpc/$'
-    | '/project-kickoff/'
     | '/project-trackers/'
     | '/screeners/'
+    | '/project-kickoff/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -236,14 +243,15 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/project-kickoff/extract'
     | '/api/trpc/$'
-    | '/project-kickoff'
     | '/project-trackers'
     | '/screeners'
+    | '/project-kickoff'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/_authentication'
+    | '/_public'
     | '/_app/analytics'
     | '/_app/initiatives'
     | '/_app/project-trackers/$trackerId'
@@ -258,15 +266,16 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/project-kickoff/extract'
     | '/api/trpc/$'
-    | '/_app/project-kickoff/'
     | '/_app/project-trackers/'
     | '/_app/screeners/'
+    | '/_public/project-kickoff/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRouteRoute: typeof AppRouteRouteWithChildren
   AuthenticationRouteRoute: typeof AuthenticationRouteRouteWithChildren
+  PublicRouteRoute: typeof PublicRouteRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiProjectKickoffExtractRoute: typeof ApiProjectKickoffExtractRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
@@ -274,6 +283,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_public': {
+      id: '/_public'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PublicRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authentication': {
       id: '/_authentication'
       path: ''
@@ -309,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_public/project-kickoff/': {
+      id: '/_public/project-kickoff/'
+      path: '/project-kickoff'
+      fullPath: '/project-kickoff/'
+      preLoaderRoute: typeof PublicProjectKickoffIndexRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
     '/_app/screeners/': {
       id: '/_app/screeners/'
       path: '/screeners'
@@ -321,13 +344,6 @@ declare module '@tanstack/react-router' {
       path: '/project-trackers'
       fullPath: '/project-trackers/'
       preLoaderRoute: typeof AppProjectTrackersIndexRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/_app/project-kickoff/': {
-      id: '/_app/project-kickoff/'
-      path: '/project-kickoff'
-      fullPath: '/project-kickoff/'
-      preLoaderRoute: typeof AppProjectKickoffIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/api/trpc/$': {
@@ -423,7 +439,6 @@ interface AppRouteRouteChildren {
   AppProjectTrackersTrackerIdRoute: typeof AppProjectTrackersTrackerIdRoute
   AppScreenersScreenerIdRoute: typeof AppScreenersScreenerIdRoute
   AppScreenersNewRoute: typeof AppScreenersNewRoute
-  AppProjectKickoffIndexRoute: typeof AppProjectKickoffIndexRoute
   AppProjectTrackersIndexRoute: typeof AppProjectTrackersIndexRoute
   AppScreenersIndexRoute: typeof AppScreenersIndexRoute
 }
@@ -434,7 +449,6 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppProjectTrackersTrackerIdRoute: AppProjectTrackersTrackerIdRoute,
   AppScreenersScreenerIdRoute: AppScreenersScreenerIdRoute,
   AppScreenersNewRoute: AppScreenersNewRoute,
-  AppProjectKickoffIndexRoute: AppProjectKickoffIndexRoute,
   AppProjectTrackersIndexRoute: AppProjectTrackersIndexRoute,
   AppScreenersIndexRoute: AppScreenersIndexRoute,
 }
@@ -464,10 +478,23 @@ const AuthenticationRouteRouteChildren: AuthenticationRouteRouteChildren = {
 const AuthenticationRouteRouteWithChildren =
   AuthenticationRouteRoute._addFileChildren(AuthenticationRouteRouteChildren)
 
+interface PublicRouteRouteChildren {
+  PublicProjectKickoffIndexRoute: typeof PublicProjectKickoffIndexRoute
+}
+
+const PublicRouteRouteChildren: PublicRouteRouteChildren = {
+  PublicProjectKickoffIndexRoute: PublicProjectKickoffIndexRoute,
+}
+
+const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
+  PublicRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRouteRoute: AppRouteRouteWithChildren,
   AuthenticationRouteRoute: AuthenticationRouteRouteWithChildren,
+  PublicRouteRoute: PublicRouteRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiProjectKickoffExtractRoute: ApiProjectKickoffExtractRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
@@ -475,13 +502,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
