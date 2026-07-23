@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ProjectKickoffWorkspace } from "@/components/project-kickoff/project-kickoff-workspace";
 
-export const Route = createFileRoute("/_project-trackers/project-kickoff/")({
+export const Route = createFileRoute("/_public/project-kickoff/")({
   head: () => ({
     meta: [{ title: "AI → Project Kickoff — Dark Alpha Capital" }],
   }),
@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_project-trackers/project-kickoff/")({
 
 function ProjectKickoffPage() {
   return (
-    <section className="container max-w-5xl">
+    <section className="container max-w-5xl p-4">
       <ProjectKickoffWorkspace />
     </section>
   );

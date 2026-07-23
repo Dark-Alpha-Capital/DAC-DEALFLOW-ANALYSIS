@@ -6,7 +6,6 @@ import {
   resolveOpenAIApiKey,
 } from "@repo/ai-core";
 import { projectKickoffExtractionSchema } from "@repo/schemas";
-import { requireKickoffSession } from "@/lib/server/require-kickoff-session";
 
 const OPENAI_EXTRACT_MODEL = "gpt-4.1-mini";
 
@@ -16,11 +15,6 @@ export const Route = createFileRoute(
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const session = await requireKickoffSession(request);
-        if (!session) {
-          return Response.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
         if (!resolveOpenAIApiKey()) {
           return Response.json(
             { error: "OpenAI API key not configured for extraction" },

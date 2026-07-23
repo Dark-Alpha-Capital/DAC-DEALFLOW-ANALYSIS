@@ -9,184 +9,139 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PublicRouteRouteImport } from './routes/_public/route'
-import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
-import { Route as ProjectTrackersRouteRouteImport } from './routes/_project-trackers/route'
-import { Route as DocumentationRouteRouteImport } from './routes/_documentation/route'
-import { Route as ChatbotRouteRouteImport } from './routes/_chatbot/route'
 import { Route as AuthenticationRouteRouteImport } from './routes/_authentication/route'
-import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
-import { Route as ApiTrpcRouteImport } from './routes/api/trpc'
-import { Route as ApiRevalidateRouteImport } from './routes/api/revalidate'
-import { Route as ApiIcScorerRouteImport } from './routes/api/ic-scorer'
-import { Route as ApiChatRouteImport } from './routes/api/chat'
-import { Route as ProtectedScreeningsRouteImport } from './routes/_protected/screenings'
-import { Route as ProtectedNewRouteImport } from './routes/_protected/new'
-import { Route as ProtectedJobsRouteImport } from './routes/_protected/jobs'
-import { Route as ProtectedHealthRouteImport } from './routes/_protected/health'
-import { Route as ProtectedDocumentsRouteImport } from './routes/_protected/documents'
-import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
-import { Route as ProtectedAnalyticsRouteImport } from './routes/_protected/analytics'
-import { Route as ProtectedAdminRouteImport } from './routes/_protected/admin'
-import { Route as DocumentationDocsRouteImport } from './routes/_documentation/docs'
+import { Route as ChatbotRouteRouteImport } from './routes/_chatbot/route'
+import { Route as DocumentationRouteRouteImport } from './routes/_documentation/route'
+import { Route as ProjectTrackersRouteRouteImport } from './routes/_project-trackers/route'
+import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
+import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as ChatbotChatRouteImport } from './routes/_chatbot/chat'
-import { Route as ProtectedScreeningIndexRouteImport } from './routes/_protected/screening/index'
-import { Route as ProtectedScreenersIndexRouteImport } from './routes/_protected/screeners/index'
-import { Route as ProtectedLeadsIndexRouteImport } from './routes/_protected/leads/index'
-import { Route as ProtectedInvestorsIndexRouteImport } from './routes/_protected/investors/index'
-import { Route as ProtectedInvestorLeadsIndexRouteImport } from './routes/_protected/investor-leads/index'
-import { Route as ProtectedInvestmentThemesIndexRouteImport } from './routes/_protected/investment-themes/index'
-import { Route as ProtectedDealOpportunitiesIndexRouteImport } from './routes/_protected/deal-opportunities/index'
-import { Route as ProtectedCompaniesIndexRouteImport } from './routes/_protected/companies/index'
-import { Route as ProjectTrackersProjectTrackersIndexRouteImport } from './routes/_project-trackers/project-trackers/index'
-import { Route as ProjectTrackersProjectKickoffIndexRouteImport } from './routes/_project-trackers/project-kickoff/index'
-import { Route as ChatbotChatIndexRouteImport } from './routes/_chatbot/chat/index'
-import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc.$'
-import { Route as ApiProjectKickoffExtractRouteImport } from './routes/api/project-kickoff/extract'
-import { Route as ApiLeadsIngestRouteImport } from './routes/api/leads/ingest'
-import { Route as ApiInvestorLeadsIngestRouteImport } from './routes/api/investor-leads/ingest'
-import { Route as ApiIcScorerScoreRouteImport } from './routes/api/ic-scorer/score'
-import { Route as ApiIcScorerPostTimelineRouteImport } from './routes/api/ic-scorer/post-timeline'
-import { Route as ApiHealthRedisRouteImport } from './routes/api/health/redis'
-import { Route as ApiDealOpportunitiesQuickAddRouteImport } from './routes/api/deal-opportunities/quick-add'
-import { Route as ApiDealOpportunitiesAiBitrixExtractRouteImport } from './routes/api/deal-opportunities/ai-bitrix-extract'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as PublicDealOpportunitiesScreenBitrixRouteImport } from './routes/_public/deal-opportunities/screen-bitrix'
-import { Route as PublicDealOpportunitiesIcScorerRouteImport } from './routes/_public/deal-opportunities/ic-scorer'
-import { Route as PublicDealOpportunitiesAiBitrixRouteImport } from './routes/_public/deal-opportunities/ai-bitrix'
-import { Route as ProtectedScreeningNewRunRouteImport } from './routes/_protected/screening/new-run'
-import { Route as ProtectedScreenersNewRouteImport } from './routes/_protected/screeners/new'
-import { Route as ProtectedScreenersUidRouteImport } from './routes/_protected/screeners/$uid'
-import { Route as ProtectedProfileUidRouteImport } from './routes/_protected/profile/$uid'
-import { Route as ProtectedNewDocumentRouteImport } from './routes/_protected/new/document'
-import { Route as ProtectedLeadsNewRouteImport } from './routes/_protected/leads/new'
-import { Route as ProtectedInvestorsNewRouteImport } from './routes/_protected/investors/new'
-import { Route as ProtectedInvestorLeadsNewRouteImport } from './routes/_protected/investor-leads/new'
-import { Route as ProtectedInvestmentThemesNewRouteImport } from './routes/_protected/investment-themes/new'
-import { Route as ProtectedDealOpportunitiesQuickAddRouteImport } from './routes/_protected/deal-opportunities/quick-add'
-import { Route as ProtectedDealOpportunitiesNewRouteImport } from './routes/_protected/deal-opportunities/new'
-import { Route as ProtectedCompaniesNewRouteImport } from './routes/_protected/companies/new'
-import { Route as ProtectedCompaniesUidRouteImport } from './routes/_protected/companies/$uid'
-import { Route as ProjectTrackersProjectTrackersTrackerIdRouteImport } from './routes/_project-trackers/project-trackers/$trackerId'
-import { Route as DocumentationDocsThemesRouteImport } from './routes/_documentation/docs/themes'
-import { Route as DocumentationDocsScreeningsRouteImport } from './routes/_documentation/docs/screenings'
-import { Route as DocumentationDocsLeadsRouteImport } from './routes/_documentation/docs/leads'
-import { Route as DocumentationDocsJobsRouteImport } from './routes/_documentation/docs/jobs'
-import { Route as DocumentationDocsInvestorsRouteImport } from './routes/_documentation/docs/investors'
-import { Route as DocumentationDocsGettingStartedRouteImport } from './routes/_documentation/docs/getting-started'
-import { Route as DocumentationDocsFaqRouteImport } from './routes/_documentation/docs/faq'
-import { Route as DocumentationDocsDocumentsRouteImport } from './routes/_documentation/docs/documents'
-import { Route as DocumentationDocsDealsRouteImport } from './routes/_documentation/docs/deals'
-import { Route as DocumentationDocsCompaniesRouteImport } from './routes/_documentation/docs/companies'
-import { Route as DocumentationDocsChatRouteImport } from './routes/_documentation/docs/chat'
-import { Route as DocumentationDocsAnalyticsRouteImport } from './routes/_documentation/docs/analytics'
-import { Route as DocumentationDocsAdminRouteImport } from './routes/_documentation/docs/admin'
-import { Route as ChatbotChatIdRouteImport } from './routes/_chatbot/chat/$id'
-import { Route as AuthenticationAuthVerifyEmailRouteImport } from './routes/_authentication/auth/verify-email'
-import { Route as AuthenticationAuthSignupRouteImport } from './routes/_authentication/auth/signup'
-import { Route as AuthenticationAuthResetPasswordRouteImport } from './routes/_authentication/auth/reset-password'
-import { Route as AuthenticationAuthLoginRouteImport } from './routes/_authentication/auth/login'
-import { Route as AuthenticationAuthForgotPasswordRouteImport } from './routes/_authentication/auth/forgot-password'
+import { Route as DocumentationDocsRouteImport } from './routes/_documentation/docs'
+import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
+import { Route as ProtectedAdminRouteImport } from './routes/_protected/admin'
+import { Route as ProtectedAnalyticsRouteImport } from './routes/_protected/analytics'
+import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
+import { Route as ProtectedDocumentsRouteImport } from './routes/_protected/documents'
+import { Route as ProtectedHealthRouteImport } from './routes/_protected/health'
+import { Route as ProtectedJobsRouteImport } from './routes/_protected/jobs'
+import { Route as ProtectedNewRouteImport } from './routes/_protected/new'
+import { Route as ProtectedScreeningsRouteImport } from './routes/_protected/screenings'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiIcScorerRouteImport } from './routes/api/ic-scorer'
+import { Route as ApiRevalidateRouteImport } from './routes/api/revalidate'
+import { Route as ApiTrpcRouteImport } from './routes/api/trpc'
 import { Route as AuthenticationAuthErrorRouteImport } from './routes/_authentication/auth/error'
-import { Route as ProtectedScreeningSessionIdIndexRouteImport } from './routes/_protected/screening/$sessionId/index'
-import { Route as ProtectedLeadsUidIndexRouteImport } from './routes/_protected/leads/$uid/index'
-import { Route as ProtectedInvestorsUidIndexRouteImport } from './routes/_protected/investors/$uid/index'
-import { Route as ProtectedInvestorLeadsUidIndexRouteImport } from './routes/_protected/investor-leads/$uid/index'
-import { Route as ProtectedInvestmentThemesUidIndexRouteImport } from './routes/_protected/investment-themes/$uid/index'
-import { Route as ProtectedDealOpportunitiesUidIndexRouteImport } from './routes/_protected/deal-opportunities/$uid/index'
-import { Route as ProtectedLeadsUidEditRouteImport } from './routes/_protected/leads/$uid/edit'
-import { Route as ProtectedLeadsUidConvertRouteImport } from './routes/_protected/leads/$uid/convert'
-import { Route as ProtectedInvestorsUidEditRouteImport } from './routes/_protected/investors/$uid/edit'
-import { Route as ProtectedInvestorLeadsUidEditRouteImport } from './routes/_protected/investor-leads/$uid/edit'
-import { Route as ProtectedInvestorLeadsUidConvertRouteImport } from './routes/_protected/investor-leads/$uid/convert'
-import { Route as ProtectedInvestmentThemesUidEditRouteImport } from './routes/_protected/investment-themes/$uid/edit'
-import { Route as ProtectedDealOpportunitiesUidSyncBitrix24RouteImport } from './routes/_protected/deal-opportunities/$uid/sync-bitrix-24'
-import { Route as ProtectedDealOpportunitiesUidEditRouteImport } from './routes/_protected/deal-opportunities/$uid/edit'
+import { Route as AuthenticationAuthForgotPasswordRouteImport } from './routes/_authentication/auth/forgot-password'
+import { Route as AuthenticationAuthLoginRouteImport } from './routes/_authentication/auth/login'
+import { Route as AuthenticationAuthResetPasswordRouteImport } from './routes/_authentication/auth/reset-password'
+import { Route as AuthenticationAuthSignupRouteImport } from './routes/_authentication/auth/signup'
+import { Route as AuthenticationAuthVerifyEmailRouteImport } from './routes/_authentication/auth/verify-email'
+import { Route as ChatbotChatIndexRouteImport } from './routes/_chatbot/chat/index'
+import { Route as ChatbotChatIdRouteImport } from './routes/_chatbot/chat/$id'
+import { Route as DocumentationDocsAdminRouteImport } from './routes/_documentation/docs/admin'
+import { Route as DocumentationDocsAnalyticsRouteImport } from './routes/_documentation/docs/analytics'
+import { Route as DocumentationDocsChatRouteImport } from './routes/_documentation/docs/chat'
+import { Route as DocumentationDocsCompaniesRouteImport } from './routes/_documentation/docs/companies'
+import { Route as DocumentationDocsDealsRouteImport } from './routes/_documentation/docs/deals'
+import { Route as DocumentationDocsDocumentsRouteImport } from './routes/_documentation/docs/documents'
+import { Route as DocumentationDocsFaqRouteImport } from './routes/_documentation/docs/faq'
+import { Route as DocumentationDocsGettingStartedRouteImport } from './routes/_documentation/docs/getting-started'
+import { Route as DocumentationDocsInvestorsRouteImport } from './routes/_documentation/docs/investors'
+import { Route as DocumentationDocsJobsRouteImport } from './routes/_documentation/docs/jobs'
+import { Route as DocumentationDocsLeadsRouteImport } from './routes/_documentation/docs/leads'
+import { Route as DocumentationDocsScreeningsRouteImport } from './routes/_documentation/docs/screenings'
+import { Route as DocumentationDocsThemesRouteImport } from './routes/_documentation/docs/themes'
+import { Route as ProjectTrackersProjectTrackersIndexRouteImport } from './routes/_project-trackers/project-trackers/index'
+import { Route as ProjectTrackersProjectTrackersTrackerIdRouteImport } from './routes/_project-trackers/project-trackers/$trackerId'
+import { Route as ProtectedCompaniesIndexRouteImport } from './routes/_protected/companies/index'
+import { Route as ProtectedCompaniesUidRouteImport } from './routes/_protected/companies/$uid'
+import { Route as ProtectedCompaniesNewRouteImport } from './routes/_protected/companies/new'
+import { Route as ProtectedDealOpportunitiesIndexRouteImport } from './routes/_protected/deal-opportunities/index'
+import { Route as ProtectedDealOpportunitiesNewRouteImport } from './routes/_protected/deal-opportunities/new'
+import { Route as ProtectedDealOpportunitiesQuickAddRouteImport } from './routes/_protected/deal-opportunities/quick-add'
+import { Route as ProtectedInvestmentThemesIndexRouteImport } from './routes/_protected/investment-themes/index'
+import { Route as ProtectedInvestmentThemesNewRouteImport } from './routes/_protected/investment-themes/new'
+import { Route as ProtectedInvestorLeadsIndexRouteImport } from './routes/_protected/investor-leads/index'
+import { Route as ProtectedInvestorLeadsNewRouteImport } from './routes/_protected/investor-leads/new'
+import { Route as ProtectedInvestorsIndexRouteImport } from './routes/_protected/investors/index'
+import { Route as ProtectedInvestorsNewRouteImport } from './routes/_protected/investors/new'
+import { Route as ProtectedLeadsIndexRouteImport } from './routes/_protected/leads/index'
+import { Route as ProtectedLeadsNewRouteImport } from './routes/_protected/leads/new'
+import { Route as ProtectedNewDocumentRouteImport } from './routes/_protected/new/document'
+import { Route as ProtectedProfileUidRouteImport } from './routes/_protected/profile/$uid'
+import { Route as ProtectedScreenersIndexRouteImport } from './routes/_protected/screeners/index'
+import { Route as ProtectedScreenersUidRouteImport } from './routes/_protected/screeners/$uid'
+import { Route as ProtectedScreenersNewRouteImport } from './routes/_protected/screeners/new'
+import { Route as ProtectedScreeningIndexRouteImport } from './routes/_protected/screening/index'
+import { Route as ProtectedScreeningNewRunRouteImport } from './routes/_protected/screening/new-run'
+import { Route as PublicDealOpportunitiesAiBitrixRouteImport } from './routes/_public/deal-opportunities/ai-bitrix'
+import { Route as PublicDealOpportunitiesIcScorerRouteImport } from './routes/_public/deal-opportunities/ic-scorer'
+import { Route as PublicDealOpportunitiesScreenBitrixRouteImport } from './routes/_public/deal-opportunities/screen-bitrix'
+import { Route as PublicProjectKickoffIndexRouteImport } from './routes/_public/project-kickoff/index'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiDealOpportunitiesAiBitrixExtractRouteImport } from './routes/api/deal-opportunities/ai-bitrix-extract'
+import { Route as ApiDealOpportunitiesQuickAddRouteImport } from './routes/api/deal-opportunities/quick-add'
+import { Route as ApiHealthRedisRouteImport } from './routes/api/health/redis'
+import { Route as ApiIcScorerPostTimelineRouteImport } from './routes/api/ic-scorer/post-timeline'
+import { Route as ApiIcScorerScoreRouteImport } from './routes/api/ic-scorer/score'
+import { Route as ApiInvestorLeadsIngestRouteImport } from './routes/api/investor-leads/ingest'
+import { Route as ApiLeadsIngestRouteImport } from './routes/api/leads/ingest'
+import { Route as ApiProjectKickoffExtractRouteImport } from './routes/api/project-kickoff/extract'
+import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc.$'
 import { Route as ProtectedCompaniesUidEditRouteImport } from './routes/_protected/companies/$uid/edit'
+import { Route as ProtectedDealOpportunitiesUidIndexRouteImport } from './routes/_protected/deal-opportunities/$uid/index'
+import { Route as ProtectedDealOpportunitiesUidEditRouteImport } from './routes/_protected/deal-opportunities/$uid/edit'
+import { Route as ProtectedDealOpportunitiesUidSyncBitrix24RouteImport } from './routes/_protected/deal-opportunities/$uid/sync-bitrix-24'
+import { Route as ProtectedInvestmentThemesUidIndexRouteImport } from './routes/_protected/investment-themes/$uid/index'
+import { Route as ProtectedInvestmentThemesUidEditRouteImport } from './routes/_protected/investment-themes/$uid/edit'
+import { Route as ProtectedInvestorLeadsUidIndexRouteImport } from './routes/_protected/investor-leads/$uid/index'
+import { Route as ProtectedInvestorLeadsUidConvertRouteImport } from './routes/_protected/investor-leads/$uid/convert'
+import { Route as ProtectedInvestorLeadsUidEditRouteImport } from './routes/_protected/investor-leads/$uid/edit'
+import { Route as ProtectedInvestorsUidIndexRouteImport } from './routes/_protected/investors/$uid/index'
+import { Route as ProtectedInvestorsUidEditRouteImport } from './routes/_protected/investors/$uid/edit'
+import { Route as ProtectedLeadsUidIndexRouteImport } from './routes/_protected/leads/$uid/index'
+import { Route as ProtectedLeadsUidConvertRouteImport } from './routes/_protected/leads/$uid/convert'
+import { Route as ProtectedLeadsUidEditRouteImport } from './routes/_protected/leads/$uid/edit'
+import { Route as ProtectedScreeningSessionIdIndexRouteImport } from './routes/_protected/screening/$sessionId/index'
 import { Route as ProtectedScreeningSessionIdSyncBitrix24IndexRouteImport } from './routes/_protected/screening/$sessionId/sync-bitrix-24/index'
 
-const PublicRouteRoute = PublicRouteRouteImport.update({
-  id: '/_public',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
-  id: '/_protected',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjectTrackersRouteRoute = ProjectTrackersRouteRouteImport.update({
-  id: '/_project-trackers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocumentationRouteRoute = DocumentationRouteRouteImport.update({
-  id: '/_documentation',
+const AuthenticationRouteRoute = AuthenticationRouteRouteImport.update({
+  id: '/_authentication',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatbotRouteRoute = ChatbotRouteRouteImport.update({
   id: '/_chatbot',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticationRouteRoute = AuthenticationRouteRouteImport.update({
-  id: '/_authentication',
+const DocumentationRouteRoute = DocumentationRouteRouteImport.update({
+  id: '/_documentation',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectTrackersRouteRoute = ProjectTrackersRouteRouteImport.update({
+  id: '/_project-trackers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProtectedRouteRoute = ProtectedRouteRouteImport.update({
+  id: '/_protected',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PublicRouteRoute = PublicRouteRouteImport.update({
+  id: '/_public',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatbotChatRoute = ChatbotChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => ChatbotRouteRoute,
+} as any)
+const DocumentationDocsRoute = DocumentationDocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => DocumentationRouteRoute,
 } as any)
 const ProtectedIndexRoute = ProtectedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ApiTrpcRoute = ApiTrpcRouteImport.update({
-  id: '/api/trpc',
-  path: '/api/trpc',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiRevalidateRoute = ApiRevalidateRouteImport.update({
-  id: '/api/revalidate',
-  path: '/api/revalidate',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiIcScorerRoute = ApiIcScorerRouteImport.update({
-  id: '/api/ic-scorer',
-  path: '/api/ic-scorer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiChatRoute = ApiChatRouteImport.update({
-  id: '/api/chat',
-  path: '/api/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProtectedScreeningsRoute = ProtectedScreeningsRouteImport.update({
-  id: '/screenings',
-  path: '/screenings',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedNewRoute = ProtectedNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedJobsRoute = ProtectedJobsRouteImport.update({
-  id: '/jobs',
-  path: '/jobs',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedHealthRoute = ProtectedHealthRouteImport.update({
-  id: '/health',
-  path: '/health',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedDocumentsRoute = ProtectedDocumentsRouteImport.update({
-  id: '/documents',
-  path: '/documents',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedDashboardRoute = ProtectedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedAnalyticsRoute = ProtectedAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
 const ProtectedAdminRoute = ProtectedAdminRouteImport.update({
@@ -194,320 +149,64 @@ const ProtectedAdminRoute = ProtectedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const DocumentationDocsRoute = DocumentationDocsRouteImport.update({
-  id: '/docs',
-  path: '/docs',
-  getParentRoute: () => DocumentationRouteRoute,
-} as any)
-const ChatbotChatRoute = ChatbotChatRouteImport.update({
-  id: '/chat',
-  path: '/chat',
-  getParentRoute: () => ChatbotRouteRoute,
-} as any)
-const ProtectedScreeningIndexRoute = ProtectedScreeningIndexRouteImport.update({
-  id: '/screening/',
-  path: '/screening/',
+const ProtectedAnalyticsRoute = ProtectedAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedScreenersIndexRoute = ProtectedScreenersIndexRouteImport.update({
-  id: '/screeners/',
-  path: '/screeners/',
+const ProtectedDashboardRoute = ProtectedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedLeadsIndexRoute = ProtectedLeadsIndexRouteImport.update({
-  id: '/leads/',
-  path: '/leads/',
+const ProtectedDocumentsRoute = ProtectedDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedInvestorsIndexRoute = ProtectedInvestorsIndexRouteImport.update({
-  id: '/investors/',
-  path: '/investors/',
+const ProtectedHealthRoute = ProtectedHealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedInvestorLeadsIndexRoute =
-  ProtectedInvestorLeadsIndexRouteImport.update({
-    id: '/investor-leads/',
-    path: '/investor-leads/',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedInvestmentThemesIndexRoute =
-  ProtectedInvestmentThemesIndexRouteImport.update({
-    id: '/investment-themes/',
-    path: '/investment-themes/',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedDealOpportunitiesIndexRoute =
-  ProtectedDealOpportunitiesIndexRouteImport.update({
-    id: '/deal-opportunities/',
-    path: '/deal-opportunities/',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedCompaniesIndexRoute = ProtectedCompaniesIndexRouteImport.update({
-  id: '/companies/',
-  path: '/companies/',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProjectTrackersProjectTrackersIndexRoute =
-  ProjectTrackersProjectTrackersIndexRouteImport.update({
-    id: '/project-trackers/',
-    path: '/project-trackers/',
-    getParentRoute: () => ProjectTrackersRouteRoute,
-  } as any)
-const ProjectTrackersProjectKickoffIndexRoute =
-  ProjectTrackersProjectKickoffIndexRouteImport.update({
-    id: '/project-kickoff/',
-    path: '/project-kickoff/',
-    getParentRoute: () => ProjectTrackersRouteRoute,
-  } as any)
-const ChatbotChatIndexRoute = ChatbotChatIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ChatbotChatRoute,
-} as any)
-const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
-  id: '/$',
-  path: '/$',
-  getParentRoute: () => ApiTrpcRoute,
-} as any)
-const ApiProjectKickoffExtractRoute =
-  ApiProjectKickoffExtractRouteImport.update({
-    id: '/api/project-kickoff/extract',
-    path: '/api/project-kickoff/extract',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiLeadsIngestRoute = ApiLeadsIngestRouteImport.update({
-  id: '/api/leads/ingest',
-  path: '/api/leads/ingest',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiInvestorLeadsIngestRoute = ApiInvestorLeadsIngestRouteImport.update({
-  id: '/api/investor-leads/ingest',
-  path: '/api/investor-leads/ingest',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiIcScorerScoreRoute = ApiIcScorerScoreRouteImport.update({
-  id: '/score',
-  path: '/score',
-  getParentRoute: () => ApiIcScorerRoute,
-} as any)
-const ApiIcScorerPostTimelineRoute = ApiIcScorerPostTimelineRouteImport.update({
-  id: '/post-timeline',
-  path: '/post-timeline',
-  getParentRoute: () => ApiIcScorerRoute,
-} as any)
-const ApiHealthRedisRoute = ApiHealthRedisRouteImport.update({
-  id: '/api/health/redis',
-  path: '/api/health/redis',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiDealOpportunitiesQuickAddRoute =
-  ApiDealOpportunitiesQuickAddRouteImport.update({
-    id: '/api/deal-opportunities/quick-add',
-    path: '/api/deal-opportunities/quick-add',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiDealOpportunitiesAiBitrixExtractRoute =
-  ApiDealOpportunitiesAiBitrixExtractRouteImport.update({
-    id: '/api/deal-opportunities/ai-bitrix-extract',
-    path: '/api/deal-opportunities/ai-bitrix-extract',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PublicDealOpportunitiesScreenBitrixRoute =
-  PublicDealOpportunitiesScreenBitrixRouteImport.update({
-    id: '/deal-opportunities/screen-bitrix',
-    path: '/deal-opportunities/screen-bitrix',
-    getParentRoute: () => PublicRouteRoute,
-  } as any)
-const PublicDealOpportunitiesIcScorerRoute =
-  PublicDealOpportunitiesIcScorerRouteImport.update({
-    id: '/deal-opportunities/ic-scorer',
-    path: '/deal-opportunities/ic-scorer',
-    getParentRoute: () => PublicRouteRoute,
-  } as any)
-const PublicDealOpportunitiesAiBitrixRoute =
-  PublicDealOpportunitiesAiBitrixRouteImport.update({
-    id: '/deal-opportunities/ai-bitrix',
-    path: '/deal-opportunities/ai-bitrix',
-    getParentRoute: () => PublicRouteRoute,
-  } as any)
-const ProtectedScreeningNewRunRoute =
-  ProtectedScreeningNewRunRouteImport.update({
-    id: '/screening/new-run',
-    path: '/screening/new-run',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedScreenersNewRoute = ProtectedScreenersNewRouteImport.update({
-  id: '/screeners/new',
-  path: '/screeners/new',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedScreenersUidRoute = ProtectedScreenersUidRouteImport.update({
-  id: '/screeners/$uid',
-  path: '/screeners/$uid',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedProfileUidRoute = ProtectedProfileUidRouteImport.update({
-  id: '/profile/$uid',
-  path: '/profile/$uid',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedNewDocumentRoute = ProtectedNewDocumentRouteImport.update({
-  id: '/document',
-  path: '/document',
-  getParentRoute: () => ProtectedNewRoute,
-} as any)
-const ProtectedLeadsNewRoute = ProtectedLeadsNewRouteImport.update({
-  id: '/leads/new',
-  path: '/leads/new',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedInvestorsNewRoute = ProtectedInvestorsNewRouteImport.update({
-  id: '/investors/new',
-  path: '/investors/new',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedInvestorLeadsNewRoute =
-  ProtectedInvestorLeadsNewRouteImport.update({
-    id: '/investor-leads/new',
-    path: '/investor-leads/new',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedInvestmentThemesNewRoute =
-  ProtectedInvestmentThemesNewRouteImport.update({
-    id: '/investment-themes/new',
-    path: '/investment-themes/new',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedDealOpportunitiesQuickAddRoute =
-  ProtectedDealOpportunitiesQuickAddRouteImport.update({
-    id: '/deal-opportunities/quick-add',
-    path: '/deal-opportunities/quick-add',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedDealOpportunitiesNewRoute =
-  ProtectedDealOpportunitiesNewRouteImport.update({
-    id: '/deal-opportunities/new',
-    path: '/deal-opportunities/new',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedCompaniesNewRoute = ProtectedCompaniesNewRouteImport.update({
-  id: '/companies/new',
-  path: '/companies/new',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedCompaniesUidRoute = ProtectedCompaniesUidRouteImport.update({
-  id: '/companies/$uid',
-  path: '/companies/$uid',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProjectTrackersProjectTrackersTrackerIdRoute =
-  ProjectTrackersProjectTrackersTrackerIdRouteImport.update({
-    id: '/project-trackers/$trackerId',
-    path: '/project-trackers/$trackerId',
-    getParentRoute: () => ProjectTrackersRouteRoute,
-  } as any)
-const DocumentationDocsThemesRoute = DocumentationDocsThemesRouteImport.update({
-  id: '/themes',
-  path: '/themes',
-  getParentRoute: () => DocumentationDocsRoute,
-} as any)
-const DocumentationDocsScreeningsRoute =
-  DocumentationDocsScreeningsRouteImport.update({
-    id: '/screenings',
-    path: '/screenings',
-    getParentRoute: () => DocumentationDocsRoute,
-  } as any)
-const DocumentationDocsLeadsRoute = DocumentationDocsLeadsRouteImport.update({
-  id: '/leads',
-  path: '/leads',
-  getParentRoute: () => DocumentationDocsRoute,
-} as any)
-const DocumentationDocsJobsRoute = DocumentationDocsJobsRouteImport.update({
+const ProtectedJobsRoute = ProtectedJobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
-  getParentRoute: () => DocumentationDocsRoute,
+  getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const DocumentationDocsInvestorsRoute =
-  DocumentationDocsInvestorsRouteImport.update({
-    id: '/investors',
-    path: '/investors',
-    getParentRoute: () => DocumentationDocsRoute,
-  } as any)
-const DocumentationDocsGettingStartedRoute =
-  DocumentationDocsGettingStartedRouteImport.update({
-    id: '/getting-started',
-    path: '/getting-started',
-    getParentRoute: () => DocumentationDocsRoute,
-  } as any)
-const DocumentationDocsFaqRoute = DocumentationDocsFaqRouteImport.update({
-  id: '/faq',
-  path: '/faq',
-  getParentRoute: () => DocumentationDocsRoute,
+const ProtectedNewRoute = ProtectedNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const DocumentationDocsDocumentsRoute =
-  DocumentationDocsDocumentsRouteImport.update({
-    id: '/documents',
-    path: '/documents',
-    getParentRoute: () => DocumentationDocsRoute,
-  } as any)
-const DocumentationDocsDealsRoute = DocumentationDocsDealsRouteImport.update({
-  id: '/deals',
-  path: '/deals',
-  getParentRoute: () => DocumentationDocsRoute,
+const ProtectedScreeningsRoute = ProtectedScreeningsRouteImport.update({
+  id: '/screenings',
+  path: '/screenings',
+  getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const DocumentationDocsCompaniesRoute =
-  DocumentationDocsCompaniesRouteImport.update({
-    id: '/companies',
-    path: '/companies',
-    getParentRoute: () => DocumentationDocsRoute,
-  } as any)
-const DocumentationDocsChatRoute = DocumentationDocsChatRouteImport.update({
-  id: '/chat',
-  path: '/chat',
-  getParentRoute: () => DocumentationDocsRoute,
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const DocumentationDocsAnalyticsRoute =
-  DocumentationDocsAnalyticsRouteImport.update({
-    id: '/analytics',
-    path: '/analytics',
-    getParentRoute: () => DocumentationDocsRoute,
-  } as any)
-const DocumentationDocsAdminRoute = DocumentationDocsAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => DocumentationDocsRoute,
+const ApiIcScorerRoute = ApiIcScorerRouteImport.update({
+  id: '/api/ic-scorer',
+  path: '/api/ic-scorer',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ChatbotChatIdRoute = ChatbotChatIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ChatbotChatRoute,
+const ApiRevalidateRoute = ApiRevalidateRouteImport.update({
+  id: '/api/revalidate',
+  path: '/api/revalidate',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticationAuthVerifyEmailRoute =
-  AuthenticationAuthVerifyEmailRouteImport.update({
-    id: '/auth/verify-email',
-    path: '/auth/verify-email',
-    getParentRoute: () => AuthenticationRouteRoute,
-  } as any)
-const AuthenticationAuthSignupRoute =
-  AuthenticationAuthSignupRouteImport.update({
-    id: '/auth/signup',
-    path: '/auth/signup',
-    getParentRoute: () => AuthenticationRouteRoute,
-  } as any)
-const AuthenticationAuthResetPasswordRoute =
-  AuthenticationAuthResetPasswordRouteImport.update({
-    id: '/auth/reset-password',
-    path: '/auth/reset-password',
-    getParentRoute: () => AuthenticationRouteRoute,
-  } as any)
-const AuthenticationAuthLoginRoute = AuthenticationAuthLoginRouteImport.update({
-  id: '/auth/login',
-  path: '/auth/login',
+const ApiTrpcRoute = ApiTrpcRouteImport.update({
+  id: '/api/trpc',
+  path: '/api/trpc',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticationAuthErrorRoute = AuthenticationAuthErrorRouteImport.update({
+  id: '/auth/error',
+  path: '/auth/error',
   getParentRoute: () => AuthenticationRouteRoute,
 } as any)
 const AuthenticationAuthForgotPasswordRoute =
@@ -516,85 +215,322 @@ const AuthenticationAuthForgotPasswordRoute =
     path: '/auth/forgot-password',
     getParentRoute: () => AuthenticationRouteRoute,
   } as any)
-const AuthenticationAuthErrorRoute = AuthenticationAuthErrorRouteImport.update({
-  id: '/auth/error',
-  path: '/auth/error',
+const AuthenticationAuthLoginRoute = AuthenticationAuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
   getParentRoute: () => AuthenticationRouteRoute,
 } as any)
-const ProtectedScreeningSessionIdIndexRoute =
-  ProtectedScreeningSessionIdIndexRouteImport.update({
-    id: '/screening/$sessionId/',
-    path: '/screening/$sessionId/',
-    getParentRoute: () => ProtectedRouteRoute,
+const AuthenticationAuthResetPasswordRoute =
+  AuthenticationAuthResetPasswordRouteImport.update({
+    id: '/auth/reset-password',
+    path: '/auth/reset-password',
+    getParentRoute: () => AuthenticationRouteRoute,
   } as any)
-const ProtectedLeadsUidIndexRoute = ProtectedLeadsUidIndexRouteImport.update({
-  id: '/leads/$uid/',
-  path: '/leads/$uid/',
+const AuthenticationAuthSignupRoute =
+  AuthenticationAuthSignupRouteImport.update({
+    id: '/auth/signup',
+    path: '/auth/signup',
+    getParentRoute: () => AuthenticationRouteRoute,
+  } as any)
+const AuthenticationAuthVerifyEmailRoute =
+  AuthenticationAuthVerifyEmailRouteImport.update({
+    id: '/auth/verify-email',
+    path: '/auth/verify-email',
+    getParentRoute: () => AuthenticationRouteRoute,
+  } as any)
+const ChatbotChatIndexRoute = ChatbotChatIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ChatbotChatRoute,
+} as any)
+const ChatbotChatIdRoute = ChatbotChatIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ChatbotChatRoute,
+} as any)
+const DocumentationDocsAdminRoute = DocumentationDocsAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => DocumentationDocsRoute,
+} as any)
+const DocumentationDocsAnalyticsRoute =
+  DocumentationDocsAnalyticsRouteImport.update({
+    id: '/analytics',
+    path: '/analytics',
+    getParentRoute: () => DocumentationDocsRoute,
+  } as any)
+const DocumentationDocsChatRoute = DocumentationDocsChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => DocumentationDocsRoute,
+} as any)
+const DocumentationDocsCompaniesRoute =
+  DocumentationDocsCompaniesRouteImport.update({
+    id: '/companies',
+    path: '/companies',
+    getParentRoute: () => DocumentationDocsRoute,
+  } as any)
+const DocumentationDocsDealsRoute = DocumentationDocsDealsRouteImport.update({
+  id: '/deals',
+  path: '/deals',
+  getParentRoute: () => DocumentationDocsRoute,
+} as any)
+const DocumentationDocsDocumentsRoute =
+  DocumentationDocsDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => DocumentationDocsRoute,
+  } as any)
+const DocumentationDocsFaqRoute = DocumentationDocsFaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => DocumentationDocsRoute,
+} as any)
+const DocumentationDocsGettingStartedRoute =
+  DocumentationDocsGettingStartedRouteImport.update({
+    id: '/getting-started',
+    path: '/getting-started',
+    getParentRoute: () => DocumentationDocsRoute,
+  } as any)
+const DocumentationDocsInvestorsRoute =
+  DocumentationDocsInvestorsRouteImport.update({
+    id: '/investors',
+    path: '/investors',
+    getParentRoute: () => DocumentationDocsRoute,
+  } as any)
+const DocumentationDocsJobsRoute = DocumentationDocsJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => DocumentationDocsRoute,
+} as any)
+const DocumentationDocsLeadsRoute = DocumentationDocsLeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => DocumentationDocsRoute,
+} as any)
+const DocumentationDocsScreeningsRoute =
+  DocumentationDocsScreeningsRouteImport.update({
+    id: '/screenings',
+    path: '/screenings',
+    getParentRoute: () => DocumentationDocsRoute,
+  } as any)
+const DocumentationDocsThemesRoute = DocumentationDocsThemesRouteImport.update({
+  id: '/themes',
+  path: '/themes',
+  getParentRoute: () => DocumentationDocsRoute,
+} as any)
+const ProjectTrackersProjectTrackersIndexRoute =
+  ProjectTrackersProjectTrackersIndexRouteImport.update({
+    id: '/project-trackers/',
+    path: '/project-trackers/',
+    getParentRoute: () => ProjectTrackersRouteRoute,
+  } as any)
+const ProjectTrackersProjectTrackersTrackerIdRoute =
+  ProjectTrackersProjectTrackersTrackerIdRouteImport.update({
+    id: '/project-trackers/$trackerId',
+    path: '/project-trackers/$trackerId',
+    getParentRoute: () => ProjectTrackersRouteRoute,
+  } as any)
+const ProtectedCompaniesIndexRoute = ProtectedCompaniesIndexRouteImport.update({
+  id: '/companies/',
+  path: '/companies/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedInvestorsUidIndexRoute =
-  ProtectedInvestorsUidIndexRouteImport.update({
-    id: '/investors/$uid/',
-    path: '/investors/$uid/',
+const ProtectedCompaniesUidRoute = ProtectedCompaniesUidRouteImport.update({
+  id: '/companies/$uid',
+  path: '/companies/$uid',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedCompaniesNewRoute = ProtectedCompaniesNewRouteImport.update({
+  id: '/companies/new',
+  path: '/companies/new',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedDealOpportunitiesIndexRoute =
+  ProtectedDealOpportunitiesIndexRouteImport.update({
+    id: '/deal-opportunities/',
+    path: '/deal-opportunities/',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
-const ProtectedInvestorLeadsUidIndexRoute =
-  ProtectedInvestorLeadsUidIndexRouteImport.update({
-    id: '/investor-leads/$uid/',
-    path: '/investor-leads/$uid/',
+const ProtectedDealOpportunitiesNewRoute =
+  ProtectedDealOpportunitiesNewRouteImport.update({
+    id: '/deal-opportunities/new',
+    path: '/deal-opportunities/new',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
-const ProtectedInvestmentThemesUidIndexRoute =
-  ProtectedInvestmentThemesUidIndexRouteImport.update({
-    id: '/investment-themes/$uid/',
-    path: '/investment-themes/$uid/',
+const ProtectedDealOpportunitiesQuickAddRoute =
+  ProtectedDealOpportunitiesQuickAddRouteImport.update({
+    id: '/deal-opportunities/quick-add',
+    path: '/deal-opportunities/quick-add',
     getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestmentThemesIndexRoute =
+  ProtectedInvestmentThemesIndexRouteImport.update({
+    id: '/investment-themes/',
+    path: '/investment-themes/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestmentThemesNewRoute =
+  ProtectedInvestmentThemesNewRouteImport.update({
+    id: '/investment-themes/new',
+    path: '/investment-themes/new',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestorLeadsIndexRoute =
+  ProtectedInvestorLeadsIndexRouteImport.update({
+    id: '/investor-leads/',
+    path: '/investor-leads/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestorLeadsNewRoute =
+  ProtectedInvestorLeadsNewRouteImport.update({
+    id: '/investor-leads/new',
+    path: '/investor-leads/new',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestorsIndexRoute = ProtectedInvestorsIndexRouteImport.update({
+  id: '/investors/',
+  path: '/investors/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedInvestorsNewRoute = ProtectedInvestorsNewRouteImport.update({
+  id: '/investors/new',
+  path: '/investors/new',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedLeadsIndexRoute = ProtectedLeadsIndexRouteImport.update({
+  id: '/leads/',
+  path: '/leads/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedLeadsNewRoute = ProtectedLeadsNewRouteImport.update({
+  id: '/leads/new',
+  path: '/leads/new',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedNewDocumentRoute = ProtectedNewDocumentRouteImport.update({
+  id: '/document',
+  path: '/document',
+  getParentRoute: () => ProtectedNewRoute,
+} as any)
+const ProtectedProfileUidRoute = ProtectedProfileUidRouteImport.update({
+  id: '/profile/$uid',
+  path: '/profile/$uid',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedScreenersIndexRoute = ProtectedScreenersIndexRouteImport.update({
+  id: '/screeners/',
+  path: '/screeners/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedScreenersUidRoute = ProtectedScreenersUidRouteImport.update({
+  id: '/screeners/$uid',
+  path: '/screeners/$uid',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedScreenersNewRoute = ProtectedScreenersNewRouteImport.update({
+  id: '/screeners/new',
+  path: '/screeners/new',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedScreeningIndexRoute = ProtectedScreeningIndexRouteImport.update({
+  id: '/screening/',
+  path: '/screening/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedScreeningNewRunRoute =
+  ProtectedScreeningNewRunRouteImport.update({
+    id: '/screening/new-run',
+    path: '/screening/new-run',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const PublicDealOpportunitiesAiBitrixRoute =
+  PublicDealOpportunitiesAiBitrixRouteImport.update({
+    id: '/deal-opportunities/ai-bitrix',
+    path: '/deal-opportunities/ai-bitrix',
+    getParentRoute: () => PublicRouteRoute,
+  } as any)
+const PublicDealOpportunitiesIcScorerRoute =
+  PublicDealOpportunitiesIcScorerRouteImport.update({
+    id: '/deal-opportunities/ic-scorer',
+    path: '/deal-opportunities/ic-scorer',
+    getParentRoute: () => PublicRouteRoute,
+  } as any)
+const PublicDealOpportunitiesScreenBitrixRoute =
+  PublicDealOpportunitiesScreenBitrixRouteImport.update({
+    id: '/deal-opportunities/screen-bitrix',
+    path: '/deal-opportunities/screen-bitrix',
+    getParentRoute: () => PublicRouteRoute,
+  } as any)
+const PublicProjectKickoffIndexRoute =
+  PublicProjectKickoffIndexRouteImport.update({
+    id: '/project-kickoff/',
+    path: '/project-kickoff/',
+    getParentRoute: () => PublicRouteRoute,
+  } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDealOpportunitiesAiBitrixExtractRoute =
+  ApiDealOpportunitiesAiBitrixExtractRouteImport.update({
+    id: '/api/deal-opportunities/ai-bitrix-extract',
+    path: '/api/deal-opportunities/ai-bitrix-extract',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiDealOpportunitiesQuickAddRoute =
+  ApiDealOpportunitiesQuickAddRouteImport.update({
+    id: '/api/deal-opportunities/quick-add',
+    path: '/api/deal-opportunities/quick-add',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiHealthRedisRoute = ApiHealthRedisRouteImport.update({
+  id: '/api/health/redis',
+  path: '/api/health/redis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIcScorerPostTimelineRoute = ApiIcScorerPostTimelineRouteImport.update({
+  id: '/post-timeline',
+  path: '/post-timeline',
+  getParentRoute: () => ApiIcScorerRoute,
+} as any)
+const ApiIcScorerScoreRoute = ApiIcScorerScoreRouteImport.update({
+  id: '/score',
+  path: '/score',
+  getParentRoute: () => ApiIcScorerRoute,
+} as any)
+const ApiInvestorLeadsIngestRoute = ApiInvestorLeadsIngestRouteImport.update({
+  id: '/api/investor-leads/ingest',
+  path: '/api/investor-leads/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLeadsIngestRoute = ApiLeadsIngestRouteImport.update({
+  id: '/api/leads/ingest',
+  path: '/api/leads/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProjectKickoffExtractRoute =
+  ApiProjectKickoffExtractRouteImport.update({
+    id: '/api/project-kickoff/extract',
+    path: '/api/project-kickoff/extract',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => ApiTrpcRoute,
+} as any)
+const ProtectedCompaniesUidEditRoute =
+  ProtectedCompaniesUidEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => ProtectedCompaniesUidRoute,
   } as any)
 const ProtectedDealOpportunitiesUidIndexRoute =
   ProtectedDealOpportunitiesUidIndexRouteImport.update({
     id: '/deal-opportunities/$uid/',
     path: '/deal-opportunities/$uid/',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedLeadsUidEditRoute = ProtectedLeadsUidEditRouteImport.update({
-  id: '/leads/$uid/edit',
-  path: '/leads/$uid/edit',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedLeadsUidConvertRoute =
-  ProtectedLeadsUidConvertRouteImport.update({
-    id: '/leads/$uid/convert',
-    path: '/leads/$uid/convert',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedInvestorsUidEditRoute =
-  ProtectedInvestorsUidEditRouteImport.update({
-    id: '/investors/$uid/edit',
-    path: '/investors/$uid/edit',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedInvestorLeadsUidEditRoute =
-  ProtectedInvestorLeadsUidEditRouteImport.update({
-    id: '/investor-leads/$uid/edit',
-    path: '/investor-leads/$uid/edit',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedInvestorLeadsUidConvertRoute =
-  ProtectedInvestorLeadsUidConvertRouteImport.update({
-    id: '/investor-leads/$uid/convert',
-    path: '/investor-leads/$uid/convert',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedInvestmentThemesUidEditRoute =
-  ProtectedInvestmentThemesUidEditRouteImport.update({
-    id: '/investment-themes/$uid/edit',
-    path: '/investment-themes/$uid/edit',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedDealOpportunitiesUidSyncBitrix24Route =
-  ProtectedDealOpportunitiesUidSyncBitrix24RouteImport.update({
-    id: '/deal-opportunities/$uid/sync-bitrix-24',
-    path: '/deal-opportunities/$uid/sync-bitrix-24',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
 const ProtectedDealOpportunitiesUidEditRoute =
@@ -603,11 +539,75 @@ const ProtectedDealOpportunitiesUidEditRoute =
     path: '/deal-opportunities/$uid/edit',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
-const ProtectedCompaniesUidEditRoute =
-  ProtectedCompaniesUidEditRouteImport.update({
-    id: '/edit',
-    path: '/edit',
-    getParentRoute: () => ProtectedCompaniesUidRoute,
+const ProtectedDealOpportunitiesUidSyncBitrix24Route =
+  ProtectedDealOpportunitiesUidSyncBitrix24RouteImport.update({
+    id: '/deal-opportunities/$uid/sync-bitrix-24',
+    path: '/deal-opportunities/$uid/sync-bitrix-24',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestmentThemesUidIndexRoute =
+  ProtectedInvestmentThemesUidIndexRouteImport.update({
+    id: '/investment-themes/$uid/',
+    path: '/investment-themes/$uid/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestmentThemesUidEditRoute =
+  ProtectedInvestmentThemesUidEditRouteImport.update({
+    id: '/investment-themes/$uid/edit',
+    path: '/investment-themes/$uid/edit',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestorLeadsUidIndexRoute =
+  ProtectedInvestorLeadsUidIndexRouteImport.update({
+    id: '/investor-leads/$uid/',
+    path: '/investor-leads/$uid/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestorLeadsUidConvertRoute =
+  ProtectedInvestorLeadsUidConvertRouteImport.update({
+    id: '/investor-leads/$uid/convert',
+    path: '/investor-leads/$uid/convert',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestorLeadsUidEditRoute =
+  ProtectedInvestorLeadsUidEditRouteImport.update({
+    id: '/investor-leads/$uid/edit',
+    path: '/investor-leads/$uid/edit',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestorsUidIndexRoute =
+  ProtectedInvestorsUidIndexRouteImport.update({
+    id: '/investors/$uid/',
+    path: '/investors/$uid/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedInvestorsUidEditRoute =
+  ProtectedInvestorsUidEditRouteImport.update({
+    id: '/investors/$uid/edit',
+    path: '/investors/$uid/edit',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedLeadsUidIndexRoute = ProtectedLeadsUidIndexRouteImport.update({
+  id: '/leads/$uid/',
+  path: '/leads/$uid/',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedLeadsUidConvertRoute =
+  ProtectedLeadsUidConvertRouteImport.update({
+    id: '/leads/$uid/convert',
+    path: '/leads/$uid/convert',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedLeadsUidEditRoute = ProtectedLeadsUidEditRouteImport.update({
+  id: '/leads/$uid/edit',
+  path: '/leads/$uid/edit',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedScreeningSessionIdIndexRoute =
+  ProtectedScreeningSessionIdIndexRouteImport.update({
+    id: '/screening/$sessionId/',
+    path: '/screening/$sessionId/',
+    getParentRoute: () => ProtectedRouteRoute,
   } as any)
 const ProtectedScreeningSessionIdSyncBitrix24IndexRoute =
   ProtectedScreeningSessionIdSyncBitrix24IndexRouteImport.update({
@@ -680,7 +680,6 @@ export interface FileRoutesByFullPath {
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat/': typeof ChatbotChatIndexRoute
-  '/project-kickoff/': typeof ProjectTrackersProjectKickoffIndexRoute
   '/project-trackers/': typeof ProjectTrackersProjectTrackersIndexRoute
   '/companies/': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
@@ -690,6 +689,7 @@ export interface FileRoutesByFullPath {
   '/leads/': typeof ProtectedLeadsIndexRoute
   '/screeners/': typeof ProtectedScreenersIndexRoute
   '/screening/': typeof ProtectedScreeningIndexRoute
+  '/project-kickoff/': typeof PublicProjectKickoffIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
@@ -770,7 +770,6 @@ export interface FileRoutesByTo {
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/chat': typeof ChatbotChatIndexRoute
-  '/project-kickoff': typeof ProjectTrackersProjectKickoffIndexRoute
   '/project-trackers': typeof ProjectTrackersProjectTrackersIndexRoute
   '/companies': typeof ProtectedCompaniesIndexRoute
   '/deal-opportunities': typeof ProtectedDealOpportunitiesIndexRoute
@@ -780,6 +779,7 @@ export interface FileRoutesByTo {
   '/leads': typeof ProtectedLeadsIndexRoute
   '/screeners': typeof ProtectedScreenersIndexRoute
   '/screening': typeof ProtectedScreeningIndexRoute
+  '/project-kickoff': typeof PublicProjectKickoffIndexRoute
   '/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
@@ -868,7 +868,6 @@ export interface FileRoutesById {
   '/api/project-kickoff/extract': typeof ApiProjectKickoffExtractRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/_chatbot/chat/': typeof ChatbotChatIndexRoute
-  '/_project-trackers/project-kickoff/': typeof ProjectTrackersProjectKickoffIndexRoute
   '/_project-trackers/project-trackers/': typeof ProjectTrackersProjectTrackersIndexRoute
   '/_protected/companies/': typeof ProtectedCompaniesIndexRoute
   '/_protected/deal-opportunities/': typeof ProtectedDealOpportunitiesIndexRoute
@@ -878,6 +877,7 @@ export interface FileRoutesById {
   '/_protected/leads/': typeof ProtectedLeadsIndexRoute
   '/_protected/screeners/': typeof ProtectedScreenersIndexRoute
   '/_protected/screening/': typeof ProtectedScreeningIndexRoute
+  '/_public/project-kickoff/': typeof PublicProjectKickoffIndexRoute
   '/_protected/companies/$uid/edit': typeof ProtectedCompaniesUidEditRoute
   '/_protected/deal-opportunities/$uid/edit': typeof ProtectedDealOpportunitiesUidEditRoute
   '/_protected/deal-opportunities/$uid/sync-bitrix-24': typeof ProtectedDealOpportunitiesUidSyncBitrix24Route
@@ -961,7 +961,6 @@ export interface FileRouteTypes {
     | '/api/project-kickoff/extract'
     | '/api/trpc/$'
     | '/chat/'
-    | '/project-kickoff/'
     | '/project-trackers/'
     | '/companies/'
     | '/deal-opportunities/'
@@ -971,6 +970,7 @@ export interface FileRouteTypes {
     | '/leads/'
     | '/screeners/'
     | '/screening/'
+    | '/project-kickoff/'
     | '/companies/$uid/edit'
     | '/deal-opportunities/$uid/edit'
     | '/deal-opportunities/$uid/sync-bitrix-24'
@@ -1051,7 +1051,6 @@ export interface FileRouteTypes {
     | '/api/project-kickoff/extract'
     | '/api/trpc/$'
     | '/chat'
-    | '/project-kickoff'
     | '/project-trackers'
     | '/companies'
     | '/deal-opportunities'
@@ -1061,6 +1060,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/screeners'
     | '/screening'
+    | '/project-kickoff'
     | '/companies/$uid/edit'
     | '/deal-opportunities/$uid/edit'
     | '/deal-opportunities/$uid/sync-bitrix-24'
@@ -1148,7 +1148,6 @@ export interface FileRouteTypes {
     | '/api/project-kickoff/extract'
     | '/api/trpc/$'
     | '/_chatbot/chat/'
-    | '/_project-trackers/project-kickoff/'
     | '/_project-trackers/project-trackers/'
     | '/_protected/companies/'
     | '/_protected/deal-opportunities/'
@@ -1158,6 +1157,7 @@ export interface FileRouteTypes {
     | '/_protected/leads/'
     | '/_protected/screeners/'
     | '/_protected/screening/'
+    | '/_public/project-kickoff/'
     | '/_protected/companies/$uid/edit'
     | '/_protected/deal-opportunities/$uid/edit'
     | '/_protected/deal-opportunities/$uid/sync-bitrix-24'
@@ -1198,32 +1198,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_public': {
-      id: '/_public'
+    '/_authentication': {
+      id: '/_authentication'
       path: ''
       fullPath: '/'
-      preLoaderRoute: typeof PublicRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_protected': {
-      id: '/_protected'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof ProtectedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_project-trackers': {
-      id: '/_project-trackers'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof ProjectTrackersRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_documentation': {
-      id: '/_documentation'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof DocumentationRouteRouteImport
+      preLoaderRoute: typeof AuthenticationRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_chatbot': {
@@ -1233,95 +1212,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatbotRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authentication': {
-      id: '/_authentication'
+    '/_documentation': {
+      id: '/_documentation'
       path: ''
       fullPath: '/'
-      preLoaderRoute: typeof AuthenticationRouteRouteImport
+      preLoaderRoute: typeof DocumentationRouteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_project-trackers': {
+      id: '/_project-trackers'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ProjectTrackersRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_protected': {
+      id: '/_protected'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ProtectedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_public': {
+      id: '/_public'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PublicRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_chatbot/chat': {
+      id: '/_chatbot/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatbotChatRouteImport
+      parentRoute: typeof ChatbotRouteRoute
+    }
+    '/_documentation/docs': {
+      id: '/_documentation/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocumentationDocsRouteImport
+      parentRoute: typeof DocumentationRouteRoute
     }
     '/_protected/': {
       id: '/_protected/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof ProtectedIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/api/trpc': {
-      id: '/api/trpc'
-      path: '/api/trpc'
-      fullPath: '/api/trpc'
-      preLoaderRoute: typeof ApiTrpcRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/revalidate': {
-      id: '/api/revalidate'
-      path: '/api/revalidate'
-      fullPath: '/api/revalidate'
-      preLoaderRoute: typeof ApiRevalidateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/ic-scorer': {
-      id: '/api/ic-scorer'
-      path: '/api/ic-scorer'
-      fullPath: '/api/ic-scorer'
-      preLoaderRoute: typeof ApiIcScorerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/chat': {
-      id: '/api/chat'
-      path: '/api/chat'
-      fullPath: '/api/chat'
-      preLoaderRoute: typeof ApiChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_protected/screenings': {
-      id: '/_protected/screenings'
-      path: '/screenings'
-      fullPath: '/screenings'
-      preLoaderRoute: typeof ProtectedScreeningsRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/new': {
-      id: '/_protected/new'
-      path: '/new'
-      fullPath: '/new'
-      preLoaderRoute: typeof ProtectedNewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/jobs': {
-      id: '/_protected/jobs'
-      path: '/jobs'
-      fullPath: '/jobs'
-      preLoaderRoute: typeof ProtectedJobsRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/health': {
-      id: '/_protected/health'
-      path: '/health'
-      fullPath: '/health'
-      preLoaderRoute: typeof ProtectedHealthRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/documents': {
-      id: '/_protected/documents'
-      path: '/documents'
-      fullPath: '/documents'
-      preLoaderRoute: typeof ProtectedDocumentsRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/dashboard': {
-      id: '/_protected/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof ProtectedDashboardRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/analytics': {
-      id: '/_protected/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof ProtectedAnalyticsRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/admin': {
@@ -1331,410 +1268,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedAdminRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_documentation/docs': {
-      id: '/_documentation/docs'
-      path: '/docs'
-      fullPath: '/docs'
-      preLoaderRoute: typeof DocumentationDocsRouteImport
-      parentRoute: typeof DocumentationRouteRoute
-    }
-    '/_chatbot/chat': {
-      id: '/_chatbot/chat'
-      path: '/chat'
-      fullPath: '/chat'
-      preLoaderRoute: typeof ChatbotChatRouteImport
-      parentRoute: typeof ChatbotRouteRoute
-    }
-    '/_protected/screening/': {
-      id: '/_protected/screening/'
-      path: '/screening'
-      fullPath: '/screening/'
-      preLoaderRoute: typeof ProtectedScreeningIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/screeners/': {
-      id: '/_protected/screeners/'
-      path: '/screeners'
-      fullPath: '/screeners/'
-      preLoaderRoute: typeof ProtectedScreenersIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/leads/': {
-      id: '/_protected/leads/'
-      path: '/leads'
-      fullPath: '/leads/'
-      preLoaderRoute: typeof ProtectedLeadsIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/investors/': {
-      id: '/_protected/investors/'
-      path: '/investors'
-      fullPath: '/investors/'
-      preLoaderRoute: typeof ProtectedInvestorsIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/investor-leads/': {
-      id: '/_protected/investor-leads/'
-      path: '/investor-leads'
-      fullPath: '/investor-leads/'
-      preLoaderRoute: typeof ProtectedInvestorLeadsIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/investment-themes/': {
-      id: '/_protected/investment-themes/'
-      path: '/investment-themes'
-      fullPath: '/investment-themes/'
-      preLoaderRoute: typeof ProtectedInvestmentThemesIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/deal-opportunities/': {
-      id: '/_protected/deal-opportunities/'
-      path: '/deal-opportunities'
-      fullPath: '/deal-opportunities/'
-      preLoaderRoute: typeof ProtectedDealOpportunitiesIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/companies/': {
-      id: '/_protected/companies/'
-      path: '/companies'
-      fullPath: '/companies/'
-      preLoaderRoute: typeof ProtectedCompaniesIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_project-trackers/project-trackers/': {
-      id: '/_project-trackers/project-trackers/'
-      path: '/project-trackers'
-      fullPath: '/project-trackers/'
-      preLoaderRoute: typeof ProjectTrackersProjectTrackersIndexRouteImport
-      parentRoute: typeof ProjectTrackersRouteRoute
-    }
-    '/_project-trackers/project-kickoff/': {
-      id: '/_project-trackers/project-kickoff/'
-      path: '/project-kickoff'
-      fullPath: '/project-kickoff/'
-      preLoaderRoute: typeof ProjectTrackersProjectKickoffIndexRouteImport
-      parentRoute: typeof ProjectTrackersRouteRoute
-    }
-    '/_chatbot/chat/': {
-      id: '/_chatbot/chat/'
-      path: '/'
-      fullPath: '/chat/'
-      preLoaderRoute: typeof ChatbotChatIndexRouteImport
-      parentRoute: typeof ChatbotChatRoute
-    }
-    '/api/trpc/$': {
-      id: '/api/trpc/$'
-      path: '/$'
-      fullPath: '/api/trpc/$'
-      preLoaderRoute: typeof ApiTrpcSplatRouteImport
-      parentRoute: typeof ApiTrpcRoute
-    }
-    '/api/project-kickoff/extract': {
-      id: '/api/project-kickoff/extract'
-      path: '/api/project-kickoff/extract'
-      fullPath: '/api/project-kickoff/extract'
-      preLoaderRoute: typeof ApiProjectKickoffExtractRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/leads/ingest': {
-      id: '/api/leads/ingest'
-      path: '/api/leads/ingest'
-      fullPath: '/api/leads/ingest'
-      preLoaderRoute: typeof ApiLeadsIngestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/investor-leads/ingest': {
-      id: '/api/investor-leads/ingest'
-      path: '/api/investor-leads/ingest'
-      fullPath: '/api/investor-leads/ingest'
-      preLoaderRoute: typeof ApiInvestorLeadsIngestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/ic-scorer/score': {
-      id: '/api/ic-scorer/score'
-      path: '/score'
-      fullPath: '/api/ic-scorer/score'
-      preLoaderRoute: typeof ApiIcScorerScoreRouteImport
-      parentRoute: typeof ApiIcScorerRoute
-    }
-    '/api/ic-scorer/post-timeline': {
-      id: '/api/ic-scorer/post-timeline'
-      path: '/post-timeline'
-      fullPath: '/api/ic-scorer/post-timeline'
-      preLoaderRoute: typeof ApiIcScorerPostTimelineRouteImport
-      parentRoute: typeof ApiIcScorerRoute
-    }
-    '/api/health/redis': {
-      id: '/api/health/redis'
-      path: '/api/health/redis'
-      fullPath: '/api/health/redis'
-      preLoaderRoute: typeof ApiHealthRedisRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/deal-opportunities/quick-add': {
-      id: '/api/deal-opportunities/quick-add'
-      path: '/api/deal-opportunities/quick-add'
-      fullPath: '/api/deal-opportunities/quick-add'
-      preLoaderRoute: typeof ApiDealOpportunitiesQuickAddRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/deal-opportunities/ai-bitrix-extract': {
-      id: '/api/deal-opportunities/ai-bitrix-extract'
-      path: '/api/deal-opportunities/ai-bitrix-extract'
-      fullPath: '/api/deal-opportunities/ai-bitrix-extract'
-      preLoaderRoute: typeof ApiDealOpportunitiesAiBitrixExtractRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_public/deal-opportunities/screen-bitrix': {
-      id: '/_public/deal-opportunities/screen-bitrix'
-      path: '/deal-opportunities/screen-bitrix'
-      fullPath: '/deal-opportunities/screen-bitrix'
-      preLoaderRoute: typeof PublicDealOpportunitiesScreenBitrixRouteImport
-      parentRoute: typeof PublicRouteRoute
-    }
-    '/_public/deal-opportunities/ic-scorer': {
-      id: '/_public/deal-opportunities/ic-scorer'
-      path: '/deal-opportunities/ic-scorer'
-      fullPath: '/deal-opportunities/ic-scorer'
-      preLoaderRoute: typeof PublicDealOpportunitiesIcScorerRouteImport
-      parentRoute: typeof PublicRouteRoute
-    }
-    '/_public/deal-opportunities/ai-bitrix': {
-      id: '/_public/deal-opportunities/ai-bitrix'
-      path: '/deal-opportunities/ai-bitrix'
-      fullPath: '/deal-opportunities/ai-bitrix'
-      preLoaderRoute: typeof PublicDealOpportunitiesAiBitrixRouteImport
-      parentRoute: typeof PublicRouteRoute
-    }
-    '/_protected/screening/new-run': {
-      id: '/_protected/screening/new-run'
-      path: '/screening/new-run'
-      fullPath: '/screening/new-run'
-      preLoaderRoute: typeof ProtectedScreeningNewRunRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/screeners/new': {
-      id: '/_protected/screeners/new'
-      path: '/screeners/new'
-      fullPath: '/screeners/new'
-      preLoaderRoute: typeof ProtectedScreenersNewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/screeners/$uid': {
-      id: '/_protected/screeners/$uid'
-      path: '/screeners/$uid'
-      fullPath: '/screeners/$uid'
-      preLoaderRoute: typeof ProtectedScreenersUidRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/profile/$uid': {
-      id: '/_protected/profile/$uid'
-      path: '/profile/$uid'
-      fullPath: '/profile/$uid'
-      preLoaderRoute: typeof ProtectedProfileUidRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/new/document': {
-      id: '/_protected/new/document'
-      path: '/document'
-      fullPath: '/new/document'
-      preLoaderRoute: typeof ProtectedNewDocumentRouteImport
-      parentRoute: typeof ProtectedNewRoute
-    }
-    '/_protected/leads/new': {
-      id: '/_protected/leads/new'
-      path: '/leads/new'
-      fullPath: '/leads/new'
-      preLoaderRoute: typeof ProtectedLeadsNewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/investors/new': {
-      id: '/_protected/investors/new'
-      path: '/investors/new'
-      fullPath: '/investors/new'
-      preLoaderRoute: typeof ProtectedInvestorsNewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/investor-leads/new': {
-      id: '/_protected/investor-leads/new'
-      path: '/investor-leads/new'
-      fullPath: '/investor-leads/new'
-      preLoaderRoute: typeof ProtectedInvestorLeadsNewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/investment-themes/new': {
-      id: '/_protected/investment-themes/new'
-      path: '/investment-themes/new'
-      fullPath: '/investment-themes/new'
-      preLoaderRoute: typeof ProtectedInvestmentThemesNewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/deal-opportunities/quick-add': {
-      id: '/_protected/deal-opportunities/quick-add'
-      path: '/deal-opportunities/quick-add'
-      fullPath: '/deal-opportunities/quick-add'
-      preLoaderRoute: typeof ProtectedDealOpportunitiesQuickAddRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/deal-opportunities/new': {
-      id: '/_protected/deal-opportunities/new'
-      path: '/deal-opportunities/new'
-      fullPath: '/deal-opportunities/new'
-      preLoaderRoute: typeof ProtectedDealOpportunitiesNewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/companies/new': {
-      id: '/_protected/companies/new'
-      path: '/companies/new'
-      fullPath: '/companies/new'
-      preLoaderRoute: typeof ProtectedCompaniesNewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/companies/$uid': {
-      id: '/_protected/companies/$uid'
-      path: '/companies/$uid'
-      fullPath: '/companies/$uid'
-      preLoaderRoute: typeof ProtectedCompaniesUidRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_project-trackers/project-trackers/$trackerId': {
-      id: '/_project-trackers/project-trackers/$trackerId'
-      path: '/project-trackers/$trackerId'
-      fullPath: '/project-trackers/$trackerId'
-      preLoaderRoute: typeof ProjectTrackersProjectTrackersTrackerIdRouteImport
-      parentRoute: typeof ProjectTrackersRouteRoute
-    }
-    '/_documentation/docs/themes': {
-      id: '/_documentation/docs/themes'
-      path: '/themes'
-      fullPath: '/docs/themes'
-      preLoaderRoute: typeof DocumentationDocsThemesRouteImport
-      parentRoute: typeof DocumentationDocsRoute
-    }
-    '/_documentation/docs/screenings': {
-      id: '/_documentation/docs/screenings'
-      path: '/screenings'
-      fullPath: '/docs/screenings'
-      preLoaderRoute: typeof DocumentationDocsScreeningsRouteImport
-      parentRoute: typeof DocumentationDocsRoute
-    }
-    '/_documentation/docs/leads': {
-      id: '/_documentation/docs/leads'
-      path: '/leads'
-      fullPath: '/docs/leads'
-      preLoaderRoute: typeof DocumentationDocsLeadsRouteImport
-      parentRoute: typeof DocumentationDocsRoute
-    }
-    '/_documentation/docs/jobs': {
-      id: '/_documentation/docs/jobs'
-      path: '/jobs'
-      fullPath: '/docs/jobs'
-      preLoaderRoute: typeof DocumentationDocsJobsRouteImport
-      parentRoute: typeof DocumentationDocsRoute
-    }
-    '/_documentation/docs/investors': {
-      id: '/_documentation/docs/investors'
-      path: '/investors'
-      fullPath: '/docs/investors'
-      preLoaderRoute: typeof DocumentationDocsInvestorsRouteImport
-      parentRoute: typeof DocumentationDocsRoute
-    }
-    '/_documentation/docs/getting-started': {
-      id: '/_documentation/docs/getting-started'
-      path: '/getting-started'
-      fullPath: '/docs/getting-started'
-      preLoaderRoute: typeof DocumentationDocsGettingStartedRouteImport
-      parentRoute: typeof DocumentationDocsRoute
-    }
-    '/_documentation/docs/faq': {
-      id: '/_documentation/docs/faq'
-      path: '/faq'
-      fullPath: '/docs/faq'
-      preLoaderRoute: typeof DocumentationDocsFaqRouteImport
-      parentRoute: typeof DocumentationDocsRoute
-    }
-    '/_documentation/docs/documents': {
-      id: '/_documentation/docs/documents'
-      path: '/documents'
-      fullPath: '/docs/documents'
-      preLoaderRoute: typeof DocumentationDocsDocumentsRouteImport
-      parentRoute: typeof DocumentationDocsRoute
-    }
-    '/_documentation/docs/deals': {
-      id: '/_documentation/docs/deals'
-      path: '/deals'
-      fullPath: '/docs/deals'
-      preLoaderRoute: typeof DocumentationDocsDealsRouteImport
-      parentRoute: typeof DocumentationDocsRoute
-    }
-    '/_documentation/docs/companies': {
-      id: '/_documentation/docs/companies'
-      path: '/companies'
-      fullPath: '/docs/companies'
-      preLoaderRoute: typeof DocumentationDocsCompaniesRouteImport
-      parentRoute: typeof DocumentationDocsRoute
-    }
-    '/_documentation/docs/chat': {
-      id: '/_documentation/docs/chat'
-      path: '/chat'
-      fullPath: '/docs/chat'
-      preLoaderRoute: typeof DocumentationDocsChatRouteImport
-      parentRoute: typeof DocumentationDocsRoute
-    }
-    '/_documentation/docs/analytics': {
-      id: '/_documentation/docs/analytics'
+    '/_protected/analytics': {
+      id: '/_protected/analytics'
       path: '/analytics'
-      fullPath: '/docs/analytics'
-      preLoaderRoute: typeof DocumentationDocsAnalyticsRouteImport
-      parentRoute: typeof DocumentationDocsRoute
+      fullPath: '/analytics'
+      preLoaderRoute: typeof ProtectedAnalyticsRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
-    '/_documentation/docs/admin': {
-      id: '/_documentation/docs/admin'
-      path: '/admin'
-      fullPath: '/docs/admin'
-      preLoaderRoute: typeof DocumentationDocsAdminRouteImport
-      parentRoute: typeof DocumentationDocsRoute
+    '/_protected/dashboard': {
+      id: '/_protected/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof ProtectedDashboardRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
-    '/_chatbot/chat/$id': {
-      id: '/_chatbot/chat/$id'
-      path: '/$id'
-      fullPath: '/chat/$id'
-      preLoaderRoute: typeof ChatbotChatIdRouteImport
-      parentRoute: typeof ChatbotChatRoute
+    '/_protected/documents': {
+      id: '/_protected/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof ProtectedDocumentsRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
-    '/_authentication/auth/verify-email': {
-      id: '/_authentication/auth/verify-email'
-      path: '/auth/verify-email'
-      fullPath: '/auth/verify-email'
-      preLoaderRoute: typeof AuthenticationAuthVerifyEmailRouteImport
-      parentRoute: typeof AuthenticationRouteRoute
+    '/_protected/health': {
+      id: '/_protected/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof ProtectedHealthRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
-    '/_authentication/auth/signup': {
-      id: '/_authentication/auth/signup'
-      path: '/auth/signup'
-      fullPath: '/auth/signup'
-      preLoaderRoute: typeof AuthenticationAuthSignupRouteImport
-      parentRoute: typeof AuthenticationRouteRoute
+    '/_protected/jobs': {
+      id: '/_protected/jobs'
+      path: '/jobs'
+      fullPath: '/jobs'
+      preLoaderRoute: typeof ProtectedJobsRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
-    '/_authentication/auth/reset-password': {
-      id: '/_authentication/auth/reset-password'
-      path: '/auth/reset-password'
-      fullPath: '/auth/reset-password'
-      preLoaderRoute: typeof AuthenticationAuthResetPasswordRouteImport
-      parentRoute: typeof AuthenticationRouteRoute
+    '/_protected/new': {
+      id: '/_protected/new'
+      path: '/new'
+      fullPath: '/new'
+      preLoaderRoute: typeof ProtectedNewRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
-    '/_authentication/auth/login': {
-      id: '/_authentication/auth/login'
-      path: '/auth/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthenticationAuthLoginRouteImport
+    '/_protected/screenings': {
+      id: '/_protected/screenings'
+      path: '/screenings'
+      fullPath: '/screenings'
+      preLoaderRoute: typeof ProtectedScreeningsRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ic-scorer': {
+      id: '/api/ic-scorer'
+      path: '/api/ic-scorer'
+      fullPath: '/api/ic-scorer'
+      preLoaderRoute: typeof ApiIcScorerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/revalidate': {
+      id: '/api/revalidate'
+      path: '/api/revalidate'
+      fullPath: '/api/revalidate'
+      preLoaderRoute: typeof ApiRevalidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/trpc': {
+      id: '/api/trpc'
+      path: '/api/trpc'
+      fullPath: '/api/trpc'
+      preLoaderRoute: typeof ApiTrpcRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authentication/auth/error': {
+      id: '/_authentication/auth/error'
+      path: '/auth/error'
+      fullPath: '/auth/error'
+      preLoaderRoute: typeof AuthenticationAuthErrorRouteImport
       parentRoute: typeof AuthenticationRouteRoute
     }
     '/_authentication/auth/forgot-password': {
@@ -1744,102 +1359,410 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticationAuthForgotPasswordRouteImport
       parentRoute: typeof AuthenticationRouteRoute
     }
-    '/_authentication/auth/error': {
-      id: '/_authentication/auth/error'
-      path: '/auth/error'
-      fullPath: '/auth/error'
-      preLoaderRoute: typeof AuthenticationAuthErrorRouteImport
+    '/_authentication/auth/login': {
+      id: '/_authentication/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthenticationAuthLoginRouteImport
       parentRoute: typeof AuthenticationRouteRoute
     }
-    '/_protected/screening/$sessionId/': {
-      id: '/_protected/screening/$sessionId/'
-      path: '/screening/$sessionId'
-      fullPath: '/screening/$sessionId/'
-      preLoaderRoute: typeof ProtectedScreeningSessionIdIndexRouteImport
+    '/_authentication/auth/reset-password': {
+      id: '/_authentication/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthenticationAuthResetPasswordRouteImport
+      parentRoute: typeof AuthenticationRouteRoute
+    }
+    '/_authentication/auth/signup': {
+      id: '/_authentication/auth/signup'
+      path: '/auth/signup'
+      fullPath: '/auth/signup'
+      preLoaderRoute: typeof AuthenticationAuthSignupRouteImport
+      parentRoute: typeof AuthenticationRouteRoute
+    }
+    '/_authentication/auth/verify-email': {
+      id: '/_authentication/auth/verify-email'
+      path: '/auth/verify-email'
+      fullPath: '/auth/verify-email'
+      preLoaderRoute: typeof AuthenticationAuthVerifyEmailRouteImport
+      parentRoute: typeof AuthenticationRouteRoute
+    }
+    '/_chatbot/chat/': {
+      id: '/_chatbot/chat/'
+      path: '/'
+      fullPath: '/chat/'
+      preLoaderRoute: typeof ChatbotChatIndexRouteImport
+      parentRoute: typeof ChatbotChatRoute
+    }
+    '/_chatbot/chat/$id': {
+      id: '/_chatbot/chat/$id'
+      path: '/$id'
+      fullPath: '/chat/$id'
+      preLoaderRoute: typeof ChatbotChatIdRouteImport
+      parentRoute: typeof ChatbotChatRoute
+    }
+    '/_documentation/docs/admin': {
+      id: '/_documentation/docs/admin'
+      path: '/admin'
+      fullPath: '/docs/admin'
+      preLoaderRoute: typeof DocumentationDocsAdminRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/analytics': {
+      id: '/_documentation/docs/analytics'
+      path: '/analytics'
+      fullPath: '/docs/analytics'
+      preLoaderRoute: typeof DocumentationDocsAnalyticsRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/chat': {
+      id: '/_documentation/docs/chat'
+      path: '/chat'
+      fullPath: '/docs/chat'
+      preLoaderRoute: typeof DocumentationDocsChatRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/companies': {
+      id: '/_documentation/docs/companies'
+      path: '/companies'
+      fullPath: '/docs/companies'
+      preLoaderRoute: typeof DocumentationDocsCompaniesRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/deals': {
+      id: '/_documentation/docs/deals'
+      path: '/deals'
+      fullPath: '/docs/deals'
+      preLoaderRoute: typeof DocumentationDocsDealsRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/documents': {
+      id: '/_documentation/docs/documents'
+      path: '/documents'
+      fullPath: '/docs/documents'
+      preLoaderRoute: typeof DocumentationDocsDocumentsRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/faq': {
+      id: '/_documentation/docs/faq'
+      path: '/faq'
+      fullPath: '/docs/faq'
+      preLoaderRoute: typeof DocumentationDocsFaqRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/getting-started': {
+      id: '/_documentation/docs/getting-started'
+      path: '/getting-started'
+      fullPath: '/docs/getting-started'
+      preLoaderRoute: typeof DocumentationDocsGettingStartedRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/investors': {
+      id: '/_documentation/docs/investors'
+      path: '/investors'
+      fullPath: '/docs/investors'
+      preLoaderRoute: typeof DocumentationDocsInvestorsRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/jobs': {
+      id: '/_documentation/docs/jobs'
+      path: '/jobs'
+      fullPath: '/docs/jobs'
+      preLoaderRoute: typeof DocumentationDocsJobsRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/leads': {
+      id: '/_documentation/docs/leads'
+      path: '/leads'
+      fullPath: '/docs/leads'
+      preLoaderRoute: typeof DocumentationDocsLeadsRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/screenings': {
+      id: '/_documentation/docs/screenings'
+      path: '/screenings'
+      fullPath: '/docs/screenings'
+      preLoaderRoute: typeof DocumentationDocsScreeningsRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_documentation/docs/themes': {
+      id: '/_documentation/docs/themes'
+      path: '/themes'
+      fullPath: '/docs/themes'
+      preLoaderRoute: typeof DocumentationDocsThemesRouteImport
+      parentRoute: typeof DocumentationDocsRoute
+    }
+    '/_project-trackers/project-trackers/': {
+      id: '/_project-trackers/project-trackers/'
+      path: '/project-trackers'
+      fullPath: '/project-trackers/'
+      preLoaderRoute: typeof ProjectTrackersProjectTrackersIndexRouteImport
+      parentRoute: typeof ProjectTrackersRouteRoute
+    }
+    '/_project-trackers/project-trackers/$trackerId': {
+      id: '/_project-trackers/project-trackers/$trackerId'
+      path: '/project-trackers/$trackerId'
+      fullPath: '/project-trackers/$trackerId'
+      preLoaderRoute: typeof ProjectTrackersProjectTrackersTrackerIdRouteImport
+      parentRoute: typeof ProjectTrackersRouteRoute
+    }
+    '/_protected/companies/': {
+      id: '/_protected/companies/'
+      path: '/companies'
+      fullPath: '/companies/'
+      preLoaderRoute: typeof ProtectedCompaniesIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/leads/$uid/': {
-      id: '/_protected/leads/$uid/'
-      path: '/leads/$uid'
-      fullPath: '/leads/$uid/'
-      preLoaderRoute: typeof ProtectedLeadsUidIndexRouteImport
+    '/_protected/companies/$uid': {
+      id: '/_protected/companies/$uid'
+      path: '/companies/$uid'
+      fullPath: '/companies/$uid'
+      preLoaderRoute: typeof ProtectedCompaniesUidRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/investors/$uid/': {
-      id: '/_protected/investors/$uid/'
-      path: '/investors/$uid'
-      fullPath: '/investors/$uid/'
-      preLoaderRoute: typeof ProtectedInvestorsUidIndexRouteImport
+    '/_protected/companies/new': {
+      id: '/_protected/companies/new'
+      path: '/companies/new'
+      fullPath: '/companies/new'
+      preLoaderRoute: typeof ProtectedCompaniesNewRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/investor-leads/$uid/': {
-      id: '/_protected/investor-leads/$uid/'
-      path: '/investor-leads/$uid'
-      fullPath: '/investor-leads/$uid/'
-      preLoaderRoute: typeof ProtectedInvestorLeadsUidIndexRouteImport
+    '/_protected/deal-opportunities/': {
+      id: '/_protected/deal-opportunities/'
+      path: '/deal-opportunities'
+      fullPath: '/deal-opportunities/'
+      preLoaderRoute: typeof ProtectedDealOpportunitiesIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/investment-themes/$uid/': {
-      id: '/_protected/investment-themes/$uid/'
-      path: '/investment-themes/$uid'
-      fullPath: '/investment-themes/$uid/'
-      preLoaderRoute: typeof ProtectedInvestmentThemesUidIndexRouteImport
+    '/_protected/deal-opportunities/new': {
+      id: '/_protected/deal-opportunities/new'
+      path: '/deal-opportunities/new'
+      fullPath: '/deal-opportunities/new'
+      preLoaderRoute: typeof ProtectedDealOpportunitiesNewRouteImport
       parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/deal-opportunities/quick-add': {
+      id: '/_protected/deal-opportunities/quick-add'
+      path: '/deal-opportunities/quick-add'
+      fullPath: '/deal-opportunities/quick-add'
+      preLoaderRoute: typeof ProtectedDealOpportunitiesQuickAddRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investment-themes/': {
+      id: '/_protected/investment-themes/'
+      path: '/investment-themes'
+      fullPath: '/investment-themes/'
+      preLoaderRoute: typeof ProtectedInvestmentThemesIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investment-themes/new': {
+      id: '/_protected/investment-themes/new'
+      path: '/investment-themes/new'
+      fullPath: '/investment-themes/new'
+      preLoaderRoute: typeof ProtectedInvestmentThemesNewRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investor-leads/': {
+      id: '/_protected/investor-leads/'
+      path: '/investor-leads'
+      fullPath: '/investor-leads/'
+      preLoaderRoute: typeof ProtectedInvestorLeadsIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investor-leads/new': {
+      id: '/_protected/investor-leads/new'
+      path: '/investor-leads/new'
+      fullPath: '/investor-leads/new'
+      preLoaderRoute: typeof ProtectedInvestorLeadsNewRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investors/': {
+      id: '/_protected/investors/'
+      path: '/investors'
+      fullPath: '/investors/'
+      preLoaderRoute: typeof ProtectedInvestorsIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investors/new': {
+      id: '/_protected/investors/new'
+      path: '/investors/new'
+      fullPath: '/investors/new'
+      preLoaderRoute: typeof ProtectedInvestorsNewRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/leads/': {
+      id: '/_protected/leads/'
+      path: '/leads'
+      fullPath: '/leads/'
+      preLoaderRoute: typeof ProtectedLeadsIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/leads/new': {
+      id: '/_protected/leads/new'
+      path: '/leads/new'
+      fullPath: '/leads/new'
+      preLoaderRoute: typeof ProtectedLeadsNewRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/new/document': {
+      id: '/_protected/new/document'
+      path: '/document'
+      fullPath: '/new/document'
+      preLoaderRoute: typeof ProtectedNewDocumentRouteImport
+      parentRoute: typeof ProtectedNewRoute
+    }
+    '/_protected/profile/$uid': {
+      id: '/_protected/profile/$uid'
+      path: '/profile/$uid'
+      fullPath: '/profile/$uid'
+      preLoaderRoute: typeof ProtectedProfileUidRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/screeners/': {
+      id: '/_protected/screeners/'
+      path: '/screeners'
+      fullPath: '/screeners/'
+      preLoaderRoute: typeof ProtectedScreenersIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/screeners/$uid': {
+      id: '/_protected/screeners/$uid'
+      path: '/screeners/$uid'
+      fullPath: '/screeners/$uid'
+      preLoaderRoute: typeof ProtectedScreenersUidRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/screeners/new': {
+      id: '/_protected/screeners/new'
+      path: '/screeners/new'
+      fullPath: '/screeners/new'
+      preLoaderRoute: typeof ProtectedScreenersNewRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/screening/': {
+      id: '/_protected/screening/'
+      path: '/screening'
+      fullPath: '/screening/'
+      preLoaderRoute: typeof ProtectedScreeningIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/screening/new-run': {
+      id: '/_protected/screening/new-run'
+      path: '/screening/new-run'
+      fullPath: '/screening/new-run'
+      preLoaderRoute: typeof ProtectedScreeningNewRunRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_public/deal-opportunities/ai-bitrix': {
+      id: '/_public/deal-opportunities/ai-bitrix'
+      path: '/deal-opportunities/ai-bitrix'
+      fullPath: '/deal-opportunities/ai-bitrix'
+      preLoaderRoute: typeof PublicDealOpportunitiesAiBitrixRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/deal-opportunities/ic-scorer': {
+      id: '/_public/deal-opportunities/ic-scorer'
+      path: '/deal-opportunities/ic-scorer'
+      fullPath: '/deal-opportunities/ic-scorer'
+      preLoaderRoute: typeof PublicDealOpportunitiesIcScorerRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/deal-opportunities/screen-bitrix': {
+      id: '/_public/deal-opportunities/screen-bitrix'
+      path: '/deal-opportunities/screen-bitrix'
+      fullPath: '/deal-opportunities/screen-bitrix'
+      preLoaderRoute: typeof PublicDealOpportunitiesScreenBitrixRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/project-kickoff/': {
+      id: '/_public/project-kickoff/'
+      path: '/project-kickoff'
+      fullPath: '/project-kickoff/'
+      preLoaderRoute: typeof PublicProjectKickoffIndexRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/deal-opportunities/ai-bitrix-extract': {
+      id: '/api/deal-opportunities/ai-bitrix-extract'
+      path: '/api/deal-opportunities/ai-bitrix-extract'
+      fullPath: '/api/deal-opportunities/ai-bitrix-extract'
+      preLoaderRoute: typeof ApiDealOpportunitiesAiBitrixExtractRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/deal-opportunities/quick-add': {
+      id: '/api/deal-opportunities/quick-add'
+      path: '/api/deal-opportunities/quick-add'
+      fullPath: '/api/deal-opportunities/quick-add'
+      preLoaderRoute: typeof ApiDealOpportunitiesQuickAddRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health/redis': {
+      id: '/api/health/redis'
+      path: '/api/health/redis'
+      fullPath: '/api/health/redis'
+      preLoaderRoute: typeof ApiHealthRedisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ic-scorer/post-timeline': {
+      id: '/api/ic-scorer/post-timeline'
+      path: '/post-timeline'
+      fullPath: '/api/ic-scorer/post-timeline'
+      preLoaderRoute: typeof ApiIcScorerPostTimelineRouteImport
+      parentRoute: typeof ApiIcScorerRoute
+    }
+    '/api/ic-scorer/score': {
+      id: '/api/ic-scorer/score'
+      path: '/score'
+      fullPath: '/api/ic-scorer/score'
+      preLoaderRoute: typeof ApiIcScorerScoreRouteImport
+      parentRoute: typeof ApiIcScorerRoute
+    }
+    '/api/investor-leads/ingest': {
+      id: '/api/investor-leads/ingest'
+      path: '/api/investor-leads/ingest'
+      fullPath: '/api/investor-leads/ingest'
+      preLoaderRoute: typeof ApiInvestorLeadsIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/leads/ingest': {
+      id: '/api/leads/ingest'
+      path: '/api/leads/ingest'
+      fullPath: '/api/leads/ingest'
+      preLoaderRoute: typeof ApiLeadsIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/project-kickoff/extract': {
+      id: '/api/project-kickoff/extract'
+      path: '/api/project-kickoff/extract'
+      fullPath: '/api/project-kickoff/extract'
+      preLoaderRoute: typeof ApiProjectKickoffExtractRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/trpc/$': {
+      id: '/api/trpc/$'
+      path: '/$'
+      fullPath: '/api/trpc/$'
+      preLoaderRoute: typeof ApiTrpcSplatRouteImport
+      parentRoute: typeof ApiTrpcRoute
+    }
+    '/_protected/companies/$uid/edit': {
+      id: '/_protected/companies/$uid/edit'
+      path: '/edit'
+      fullPath: '/companies/$uid/edit'
+      preLoaderRoute: typeof ProtectedCompaniesUidEditRouteImport
+      parentRoute: typeof ProtectedCompaniesUidRoute
     }
     '/_protected/deal-opportunities/$uid/': {
       id: '/_protected/deal-opportunities/$uid/'
       path: '/deal-opportunities/$uid'
       fullPath: '/deal-opportunities/$uid/'
       preLoaderRoute: typeof ProtectedDealOpportunitiesUidIndexRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/leads/$uid/edit': {
-      id: '/_protected/leads/$uid/edit'
-      path: '/leads/$uid/edit'
-      fullPath: '/leads/$uid/edit'
-      preLoaderRoute: typeof ProtectedLeadsUidEditRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/leads/$uid/convert': {
-      id: '/_protected/leads/$uid/convert'
-      path: '/leads/$uid/convert'
-      fullPath: '/leads/$uid/convert'
-      preLoaderRoute: typeof ProtectedLeadsUidConvertRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/investors/$uid/edit': {
-      id: '/_protected/investors/$uid/edit'
-      path: '/investors/$uid/edit'
-      fullPath: '/investors/$uid/edit'
-      preLoaderRoute: typeof ProtectedInvestorsUidEditRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/investor-leads/$uid/edit': {
-      id: '/_protected/investor-leads/$uid/edit'
-      path: '/investor-leads/$uid/edit'
-      fullPath: '/investor-leads/$uid/edit'
-      preLoaderRoute: typeof ProtectedInvestorLeadsUidEditRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/investor-leads/$uid/convert': {
-      id: '/_protected/investor-leads/$uid/convert'
-      path: '/investor-leads/$uid/convert'
-      fullPath: '/investor-leads/$uid/convert'
-      preLoaderRoute: typeof ProtectedInvestorLeadsUidConvertRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/investment-themes/$uid/edit': {
-      id: '/_protected/investment-themes/$uid/edit'
-      path: '/investment-themes/$uid/edit'
-      fullPath: '/investment-themes/$uid/edit'
-      preLoaderRoute: typeof ProtectedInvestmentThemesUidEditRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/deal-opportunities/$uid/sync-bitrix-24': {
-      id: '/_protected/deal-opportunities/$uid/sync-bitrix-24'
-      path: '/deal-opportunities/$uid/sync-bitrix-24'
-      fullPath: '/deal-opportunities/$uid/sync-bitrix-24'
-      preLoaderRoute: typeof ProtectedDealOpportunitiesUidSyncBitrix24RouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/deal-opportunities/$uid/edit': {
@@ -1849,12 +1772,89 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedDealOpportunitiesUidEditRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/companies/$uid/edit': {
-      id: '/_protected/companies/$uid/edit'
-      path: '/edit'
-      fullPath: '/companies/$uid/edit'
-      preLoaderRoute: typeof ProtectedCompaniesUidEditRouteImport
-      parentRoute: typeof ProtectedCompaniesUidRoute
+    '/_protected/deal-opportunities/$uid/sync-bitrix-24': {
+      id: '/_protected/deal-opportunities/$uid/sync-bitrix-24'
+      path: '/deal-opportunities/$uid/sync-bitrix-24'
+      fullPath: '/deal-opportunities/$uid/sync-bitrix-24'
+      preLoaderRoute: typeof ProtectedDealOpportunitiesUidSyncBitrix24RouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investment-themes/$uid/': {
+      id: '/_protected/investment-themes/$uid/'
+      path: '/investment-themes/$uid'
+      fullPath: '/investment-themes/$uid/'
+      preLoaderRoute: typeof ProtectedInvestmentThemesUidIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investment-themes/$uid/edit': {
+      id: '/_protected/investment-themes/$uid/edit'
+      path: '/investment-themes/$uid/edit'
+      fullPath: '/investment-themes/$uid/edit'
+      preLoaderRoute: typeof ProtectedInvestmentThemesUidEditRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investor-leads/$uid/': {
+      id: '/_protected/investor-leads/$uid/'
+      path: '/investor-leads/$uid'
+      fullPath: '/investor-leads/$uid/'
+      preLoaderRoute: typeof ProtectedInvestorLeadsUidIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investor-leads/$uid/convert': {
+      id: '/_protected/investor-leads/$uid/convert'
+      path: '/investor-leads/$uid/convert'
+      fullPath: '/investor-leads/$uid/convert'
+      preLoaderRoute: typeof ProtectedInvestorLeadsUidConvertRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investor-leads/$uid/edit': {
+      id: '/_protected/investor-leads/$uid/edit'
+      path: '/investor-leads/$uid/edit'
+      fullPath: '/investor-leads/$uid/edit'
+      preLoaderRoute: typeof ProtectedInvestorLeadsUidEditRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investors/$uid/': {
+      id: '/_protected/investors/$uid/'
+      path: '/investors/$uid'
+      fullPath: '/investors/$uid/'
+      preLoaderRoute: typeof ProtectedInvestorsUidIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/investors/$uid/edit': {
+      id: '/_protected/investors/$uid/edit'
+      path: '/investors/$uid/edit'
+      fullPath: '/investors/$uid/edit'
+      preLoaderRoute: typeof ProtectedInvestorsUidEditRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/leads/$uid/': {
+      id: '/_protected/leads/$uid/'
+      path: '/leads/$uid'
+      fullPath: '/leads/$uid/'
+      preLoaderRoute: typeof ProtectedLeadsUidIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/leads/$uid/convert': {
+      id: '/_protected/leads/$uid/convert'
+      path: '/leads/$uid/convert'
+      fullPath: '/leads/$uid/convert'
+      preLoaderRoute: typeof ProtectedLeadsUidConvertRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/leads/$uid/edit': {
+      id: '/_protected/leads/$uid/edit'
+      path: '/leads/$uid/edit'
+      fullPath: '/leads/$uid/edit'
+      preLoaderRoute: typeof ProtectedLeadsUidEditRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/screening/$sessionId/': {
+      id: '/_protected/screening/$sessionId/'
+      path: '/screening/$sessionId'
+      fullPath: '/screening/$sessionId/'
+      preLoaderRoute: typeof ProtectedScreeningSessionIdIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/screening/$sessionId/sync-bitrix-24/': {
       id: '/_protected/screening/$sessionId/sync-bitrix-24/'
@@ -1961,15 +1961,12 @@ const DocumentationRouteRouteWithChildren =
 
 interface ProjectTrackersRouteRouteChildren {
   ProjectTrackersProjectTrackersTrackerIdRoute: typeof ProjectTrackersProjectTrackersTrackerIdRoute
-  ProjectTrackersProjectKickoffIndexRoute: typeof ProjectTrackersProjectKickoffIndexRoute
   ProjectTrackersProjectTrackersIndexRoute: typeof ProjectTrackersProjectTrackersIndexRoute
 }
 
 const ProjectTrackersRouteRouteChildren: ProjectTrackersRouteRouteChildren = {
   ProjectTrackersProjectTrackersTrackerIdRoute:
     ProjectTrackersProjectTrackersTrackerIdRoute,
-  ProjectTrackersProjectKickoffIndexRoute:
-    ProjectTrackersProjectKickoffIndexRoute,
   ProjectTrackersProjectTrackersIndexRoute:
     ProjectTrackersProjectTrackersIndexRoute,
 }
@@ -2110,6 +2107,7 @@ interface PublicRouteRouteChildren {
   PublicDealOpportunitiesAiBitrixRoute: typeof PublicDealOpportunitiesAiBitrixRoute
   PublicDealOpportunitiesIcScorerRoute: typeof PublicDealOpportunitiesIcScorerRoute
   PublicDealOpportunitiesScreenBitrixRoute: typeof PublicDealOpportunitiesScreenBitrixRoute
+  PublicProjectKickoffIndexRoute: typeof PublicProjectKickoffIndexRoute
 }
 
 const PublicRouteRouteChildren: PublicRouteRouteChildren = {
@@ -2117,6 +2115,7 @@ const PublicRouteRouteChildren: PublicRouteRouteChildren = {
   PublicDealOpportunitiesIcScorerRoute: PublicDealOpportunitiesIcScorerRoute,
   PublicDealOpportunitiesScreenBitrixRoute:
     PublicDealOpportunitiesScreenBitrixRoute,
+  PublicProjectKickoffIndexRoute: PublicProjectKickoffIndexRoute,
 }
 
 const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
@@ -2171,13 +2170,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
