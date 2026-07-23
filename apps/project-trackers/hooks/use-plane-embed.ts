@@ -63,6 +63,27 @@ function readWorkspaceSlugFromUrl(): string | null {
   return value?.trim() || null;
 }
 
+/** Normalize nullables so Plane bridge code can safely iterate fields. */
+function toPlaneKickoff(kickoff: ProjectKickoffExtraction) {
+  return {
+    projectName: kickoff.projectName,
+    department: kickoff.department ?? null,
+    projectOwners: kickoff.projectOwners ?? [],
+    productDirection: kickoff.productDirection ?? [],
+    engineeringLead: kickoff.engineeringLead ?? null,
+    objectives: kickoff.objectives ?? null,
+    platformEnables: kickoff.platformEnables ?? [],
+    keyDeliverables: kickoff.keyDeliverables ?? [],
+    raciMatrix: kickoff.raciMatrix ?? [],
+    risksAndBlockers: kickoff.risksAndBlockers ?? [],
+    timeline: kickoff.timeline ?? [],
+    chosenTool: kickoff.chosenTool ?? null,
+    techStack: kickoff.techStack ?? null,
+    definitionOfDone: kickoff.definitionOfDone ?? [],
+    additionalNotes: kickoff.additionalNotes ?? "",
+  };
+}
+
 export function usePlaneEmbed(initialWorkspaceSlug?: string) {
   const [ctx, setCtx] = useState<PlaneContext | null>(() => {
     if (initialWorkspaceSlug?.trim()) {
@@ -128,28 +149,18 @@ export function usePlaneEmbed(initialWorkspaceSlug?: string) {
         resolve(result);
       });
 
+      const kickoffPayload = toPlaneKickoff(kickoff);
+
+      // Plane's EmbedSheet reads `event.data.data.kickoff` (nested under `data`).
       window.parent.postMessage(
         {
           type: "PLANE_EMBED_CREATE_PROJECT",
           requestId,
-          identifier: options.identifier,
-          externalId: options.externalId,
-          kickoff: {
-            projectName: kickoff.projectName,
-            department: kickoff.department,
-            projectOwners: kickoff.projectOwners,
-            productDirection: kickoff.productDirection,
-            engineeringLead: kickoff.engineeringLead,
-            objectives: kickoff.objectives,
-            platformEnables: kickoff.platformEnables,
-            keyDeliverables: kickoff.keyDeliverables,
-            raciMatrix: kickoff.raciMatrix,
-            risksAndBlockers: kickoff.risksAndBlockers,
-            timeline: kickoff.timeline,
-            chosenTool: kickoff.chosenTool,
-            techStack: kickoff.techStack,
-            definitionOfDone: kickoff.definitionOfDone,
-            additionalNotes: kickoff.additionalNotes,
+          data: {
+            identifier: options.identifier,
+            name: kickoff.projectName,
+            externalId: options.externalId,
+            kickoff: kickoffPayload,
           },
         },
         "*",
