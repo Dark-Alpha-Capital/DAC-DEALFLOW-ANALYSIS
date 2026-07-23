@@ -75,8 +75,17 @@ export function ProjectKickoffWorkspace({
   const { object, submit, isLoading, error, clear, stop } = useObject({
     api: "/api/project-kickoff/extract",
     schema: projectKickoffExtractionSchema,
-    credentials: "include",
+    // Public extract; omit cookies so sandboxed Plane iframes (Origin: null) work with CORS.
+    credentials: "omit",
     onFinish: ({ object: finished, error: finishErr }) => {
+      console.info("[project-kickoff] extract onFinish", {
+        hasObject: !!finished,
+        error: finishErr?.message ?? null,
+        projectName:
+          finished && typeof finished === "object" && "projectName" in finished
+            ? String((finished as { projectName?: unknown }).projectName ?? "")
+            : null,
+      });
       if (finishErr) {
         toast.error(finishErr.message || "Extraction did not match schema");
         return;
@@ -95,6 +104,24 @@ export function ProjectKickoffWorkspace({
       toast.success("Extraction complete — review the fields below");
     },
   });
+
+  useEffect(() => {
+    console.info("[project-kickoff] boot", {
+      publicEmbed,
+      origin: typeof window !== "undefined" ? window.location.origin : null,
+      href: typeof window !== "undefined" ? window.location.href : null,
+      isInIframe:
+        typeof window !== "undefined" ? window.parent !== window : null,
+      planeWorkspace: planeCtx?.workspaceSlug ?? null,
+      initialWorkspaceSlug: initialWorkspaceSlug ?? null,
+    });
+  }, [publicEmbed, planeCtx?.workspaceSlug, initialWorkspaceSlug]);
+
+  useEffect(() => {
+    if (error) {
+      console.error("[project-kickoff] extract stream error", error);
+    }
+  }, [error]);
 
   useEffect(() => {
     if (!draft && step !== 1) setStep(1);
@@ -124,13 +151,28 @@ export function ProjectKickoffWorkspace({
     if (isLoading) return;
     const text = readRawText();
     const trimmed = text.trim();
+    console.info("[project-kickoff] extract click", {
+      origin: window.location.origin,
+      isInIframe: window.parent !== window,
+      textLength: text.length,
+      trimmedLength: trimmed.length,
+      planeWorkspace: planeCtx?.workspaceSlug ?? null,
+    });
     if (!trimmed) {
       toast.error("Paste or type source text first");
       return;
     }
     if (text !== rawText) setRawText(text);
-    submit({ rawText: text });
-  }, [isLoading, rawText, readRawText, submit]);
+    try {
+      submit({ rawText: text });
+      console.info("[project-kickoff] extract submit() called");
+    } catch (err) {
+      console.error("[project-kickoff] extract submit() threw", err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to start extraction",
+      );
+    }
+  }, [isLoading, planeCtx?.workspaceSlug, rawText, readRawText, submit]);
 
   const onConfirm = useCallback(async () => {
     if (!draft || !isDraftReady(draft)) return;

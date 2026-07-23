@@ -22,7 +22,11 @@ export default defineConfig({
   envPrefix: ["VITE_", "NEXT_PUBLIC_"],
   server: {
     port: 3001,
-    allowedHosts: [".trycloudflare.com", "tracker.darkalphacapital.com"],
+    allowedHosts: [
+      ".trycloudflare.com",
+      "tracker.darkalphacapital.com",
+      "projects.darkalphacapital.com",
+    ],
   },
   plugins: [
     cloudflare({
