@@ -10,99 +10,31 @@ export type PlaneCreateResult = {
   requestId: string;
   success: boolean;
   project?: { id: string; name: string; identifier?: string };
-  results?: {
-    milestones: unknown[];
-    risks: unknown[];
-    raci: unknown[];
-    deliverables: unknown[];
-    timelineItems: unknown[];
-  };
   error?: string;
-};
-
-export type PlaneUpsertAiEvaluationInput = {
-  projectId: string;
-  score: number;
-  analysis: string;
-  status: "completed" | "failed";
-  externalId?: string;
-  screenedAt?: string;
 };
 
 export type PlaneUpsertAiEvaluationResult = {
   type: "PLANE_EMBED_UPSERT_AI_EVALUATION_RESULT";
   requestId: string;
   success: boolean;
-  evaluation?: unknown;
   error?: string;
 };
 
-type PlaneInitMessage = {
-  type: "PLANE_EMBED_INIT";
-  workspaceSlug: string;
-};
+type PendingResult = PlaneCreateResult | PlaneUpsertAiEvaluationResult;
 
-type PendingResult =
-  | PlaneCreateResult
-  | PlaneUpsertAiEvaluationResult;
-
-const CREATE_TIMEOUT_MS = 90_000;
-const UPSERT_TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 60_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isPlaneInitMessage(data: unknown): data is PlaneInitMessage {
-  return (
-    isRecord(data) &&
-    data.type === "PLANE_EMBED_INIT" &&
-    typeof data.workspaceSlug === "string" &&
-    data.workspaceSlug.length > 0
-  );
-}
-
-function isPlaneCreateResult(data: unknown): data is PlaneCreateResult {
-  return (
-    isRecord(data) &&
-    data.type === "PLANE_EMBED_CREATE_PROJECT_RESULT" &&
-    typeof data.requestId === "string" &&
-    typeof data.success === "boolean"
-  );
-}
-
-function isPlaneUpsertAiEvaluationResult(
-  data: unknown,
-): data is PlaneUpsertAiEvaluationResult {
-  return (
-    isRecord(data) &&
-    data.type === "PLANE_EMBED_UPSERT_AI_EVALUATION_RESULT" &&
-    typeof data.requestId === "string" &&
-    typeof data.success === "boolean"
-  );
-}
-
-/** Plane project identifier: max 5 uppercase chars, unique within the workspace. */
+/** Max 5 uppercase alphanumeric chars + random suffix to avoid collisions. */
 export function buildPlaneProjectIdentifier(projectName: string): string {
-  const cleaned = projectName.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-  const base = cleaned.slice(0, 3) || "PRJ";
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let suffix = "";
-  for (let i = 0; i < 2; i++) {
-    suffix += alphabet[Math.floor(Math.random() * alphabet.length)];
-  }
+  const base = projectName.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 3) || "PRJ";
+  const suffix = Math.random().toString(36).slice(2, 4).toUpperCase();
   return `${base}${suffix}`.slice(0, 5);
 }
 
-function readWorkspaceSlugFromUrl(): string | null {
-  if (typeof window === "undefined") return null;
-  const value = new URLSearchParams(window.location.search).get(
-    "workspaceSlug",
-  );
-  return value?.trim() || null;
-}
-
-/** Normalize nullables so Plane bridge code can safely iterate fields. */
 function toPlaneKickoff(kickoff: ProjectKickoffExtraction) {
   return {
     projectName: kickoff.projectName,
@@ -123,6 +55,43 @@ function toPlaneKickoff(kickoff: ProjectKickoffExtraction) {
   };
 }
 
+function postToParent<T extends PendingResult>(
+  type: string,
+  data: Record<string, unknown>,
+  pending: Map<string, (result: PendingResult) => void>,
+  resultType: T["type"],
+): Promise<T> {
+  if (typeof window === "undefined" || window.parent === window) {
+    return Promise.resolve({
+      type: resultType,
+      requestId: crypto.randomUUID(),
+      success: false,
+      error: "Not embedded in Plane",
+    } as T);
+  }
+
+  return new Promise<T>((resolve) => {
+    const requestId = crypto.randomUUID();
+    const timeoutId = window.setTimeout(() => {
+      if (!pending.has(requestId)) return;
+      pending.delete(requestId);
+      resolve({
+        type: resultType,
+        requestId,
+        success: false,
+        error: "Timed out waiting for Plane",
+      } as T);
+    }, TIMEOUT_MS);
+
+    pending.set(requestId, (result) => {
+      window.clearTimeout(timeoutId);
+      resolve(result as T);
+    });
+
+    window.parent.postMessage({ type, requestId, data }, "*");
+  });
+}
+
 export function usePlaneEmbed(initialWorkspaceSlug?: string) {
   const [ctx, setCtx] = useState<PlaneContext | null>(() => {
     if (initialWorkspaceSlug?.trim()) {
@@ -133,26 +102,30 @@ export function usePlaneEmbed(initialWorkspaceSlug?: string) {
   const pending = useRef(new Map<string, (result: PendingResult) => void>());
 
   useEffect(() => {
-    const fromUrl = readWorkspaceSlugFromUrl();
-    if (fromUrl) {
-      setCtx((current) => current ?? { workspaceSlug: fromUrl });
+    if (typeof window !== "undefined") {
+      const slug = new URLSearchParams(window.location.search).get("workspaceSlug")?.trim();
+      if (slug) setCtx((current) => current ?? { workspaceSlug: slug });
     }
 
     const handler = (event: MessageEvent) => {
-      if (isPlaneInitMessage(event.data)) {
-        setCtx({ workspaceSlug: event.data.workspaceSlug });
+      const msg = event.data;
+      if (!isRecord(msg)) return;
+
+      if (msg.type === "PLANE_EMBED_INIT" && typeof msg.workspaceSlug === "string") {
+        setCtx({ workspaceSlug: msg.workspaceSlug });
         return;
       }
 
-      const data = event.data;
-      if (!isPlaneCreateResult(data) && !isPlaneUpsertAiEvaluationResult(data)) {
-        return;
+      if (
+        (msg.type === "PLANE_EMBED_CREATE_PROJECT_RESULT" ||
+          msg.type === "PLANE_EMBED_UPSERT_AI_EVALUATION_RESULT") &&
+        typeof msg.requestId === "string"
+      ) {
+        const resolve = pending.current.get(msg.requestId);
+        if (!resolve) return;
+        pending.current.delete(msg.requestId);
+        resolve(msg as PendingResult);
       }
-
-      const resolve = pending.current.get(data.requestId);
-      if (!resolve) return;
-      pending.current.delete(data.requestId);
-      resolve(data);
     };
 
     window.addEventListener("message", handler);
@@ -162,118 +135,33 @@ export function usePlaneEmbed(initialWorkspaceSlug?: string) {
   const createProject = (
     kickoff: ProjectKickoffExtraction,
     options: { identifier: string; externalId?: string },
-  ): Promise<PlaneCreateResult> => {
-    if (typeof window === "undefined" || window.parent === window) {
-      return Promise.resolve({
-        type: "PLANE_EMBED_CREATE_PROJECT_RESULT",
-        requestId: crypto.randomUUID(),
-        success: false,
-        error: "Not embedded in Plane (no parent frame)",
-      });
-    }
+  ) =>
+    postToParent<PlaneCreateResult>(
+      "PLANE_EMBED_CREATE_PROJECT",
+      {
+        identifier: options.identifier,
+        name: kickoff.projectName,
+        externalId: options.externalId,
+        kickoff: toPlaneKickoff(kickoff),
+      },
+      pending.current,
+      "PLANE_EMBED_CREATE_PROJECT_RESULT",
+    );
 
-    return new Promise<PlaneCreateResult>((resolve) => {
-      const requestId = crypto.randomUUID();
-      const timeoutId = window.setTimeout(() => {
-        if (!pending.current.has(requestId)) return;
-        pending.current.delete(requestId);
-        resolve({
-          type: "PLANE_EMBED_CREATE_PROJECT_RESULT",
-          requestId,
-          success: false,
-          error: "Timed out waiting for Plane to create the project",
-        });
-      }, CREATE_TIMEOUT_MS);
-
-      pending.current.set(requestId, (result) => {
-        window.clearTimeout(timeoutId);
-        if (result.type === "PLANE_EMBED_CREATE_PROJECT_RESULT") {
-          resolve(result);
-          return;
-        }
-        resolve({
-          type: "PLANE_EMBED_CREATE_PROJECT_RESULT",
-          requestId,
-          success: false,
-          error: "Unexpected response from Plane",
-        });
-      });
-
-      const kickoffPayload = toPlaneKickoff(kickoff);
-
-      // Plane's EmbedSheet reads `event.data.data.kickoff` (nested under `data`).
-      window.parent.postMessage(
-        {
-          type: "PLANE_EMBED_CREATE_PROJECT",
-          requestId,
-          data: {
-            identifier: options.identifier,
-            name: kickoff.projectName,
-            externalId: options.externalId,
-            kickoff: kickoffPayload,
-          },
-        },
-        "*",
-      );
-    });
-  };
-
-  const upsertAiEvaluation = (
-    input: PlaneUpsertAiEvaluationInput,
-  ): Promise<PlaneUpsertAiEvaluationResult> => {
-    if (typeof window === "undefined" || window.parent === window) {
-      return Promise.resolve({
-        type: "PLANE_EMBED_UPSERT_AI_EVALUATION_RESULT",
-        requestId: crypto.randomUUID(),
-        success: false,
-        error: "Not embedded in Plane (no parent frame)",
-      });
-    }
-
-    return new Promise<PlaneUpsertAiEvaluationResult>((resolve) => {
-      const requestId = crypto.randomUUID();
-      const timeoutId = window.setTimeout(() => {
-        if (!pending.current.has(requestId)) return;
-        pending.current.delete(requestId);
-        resolve({
-          type: "PLANE_EMBED_UPSERT_AI_EVALUATION_RESULT",
-          requestId,
-          success: false,
-          error: "Timed out waiting for Plane to save AI evaluation",
-        });
-      }, UPSERT_TIMEOUT_MS);
-
-      pending.current.set(requestId, (result) => {
-        window.clearTimeout(timeoutId);
-        if (result.type === "PLANE_EMBED_UPSERT_AI_EVALUATION_RESULT") {
-          resolve(result);
-          return;
-        }
-        resolve({
-          type: "PLANE_EMBED_UPSERT_AI_EVALUATION_RESULT",
-          requestId,
-          success: false,
-          error: "Unexpected response from Plane",
-        });
-      });
-
-      window.parent.postMessage(
-        {
-          type: "PLANE_EMBED_UPSERT_AI_EVALUATION",
-          requestId,
-          data: {
-            projectId: input.projectId,
-            score: input.score,
-            analysis: input.analysis,
-            status: input.status,
-            externalId: input.externalId,
-            screenedAt: input.screenedAt,
-          },
-        },
-        "*",
-      );
-    });
-  };
+  const upsertAiEvaluation = (input: {
+    projectId: string;
+    score: number;
+    analysis: string;
+    status: "completed" | "failed";
+    externalId?: string;
+    screenedAt?: string;
+  }) =>
+    postToParent<PlaneUpsertAiEvaluationResult>(
+      "PLANE_EMBED_UPSERT_AI_EVALUATION",
+      { ...input },
+      pending.current,
+      "PLANE_EMBED_UPSERT_AI_EVALUATION_RESULT",
+    );
 
   return { ctx, createProject, upsertAiEvaluation };
 }

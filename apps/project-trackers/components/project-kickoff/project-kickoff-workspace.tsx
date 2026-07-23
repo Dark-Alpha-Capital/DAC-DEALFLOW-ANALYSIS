@@ -194,23 +194,12 @@ export function ProjectKickoffWorkspace({
                 ? `Saved and created in Plane: ${planeResult.project.name}`
                 : "Saved and created in Plane",
             );
-            try {
-              await persistPlaneProjectId({
-                kickoffId: created.projectId,
-                planeProjectId: projectId,
-              });
-            } catch (persistErr) {
-              console.error(persistErr);
-              toast.warning(
-                "Plane project created, but failed to store Plane project id",
-              );
-            }
+            void persistPlaneProjectId({
+              kickoffId: created.projectId,
+              planeProjectId: projectId,
+            }).catch(console.error);
           } else {
-            createError =
-              planeResult.error ??
-              (!planeResult.success
-                ? "Plane did not return a project id"
-                : "Unknown Plane create error");
+            createError = planeResult.error ?? "Plane create failed";
             toast.warning(`Kickoff saved, but Plane create failed: ${createError}`);
           }
         } finally {
@@ -600,31 +589,11 @@ export function ProjectKickoffWorkspace({
             {syncPhase === "failed" ? (
               <Alert variant="destructive">
                 <AlertTitle className="text-sm">
-                  {planeProjectId
-                    ? "Could not finish Plane sync"
-                    : "Plane project was not created"}
+                  {planeProjectId ? "Could not sync AI score" : "Plane project was not created"}
                 </AlertTitle>
                 <AlertDescription className="text-sm">
-                  {planeCreateError ? (
-                    <>
-                      {planeCreateError}
-                      <br />
-                      Kickoff was still saved in project-trackers. Fix the issue
-                      above and try again, or start another kickoff.
-                    </>
-                  ) : planeProjectId ? (
-                    <>
-                      Kickoff and Plane project were created, but the AI
-                      evaluation may be missing on the overview. You can close
-                      this sheet or start another kickoff.
-                    </>
-                  ) : (
-                    <>
-                      Kickoff was saved in project-trackers, but Plane did not
-                      create the project. Keep this sheet open and try again, or
-                      start another kickoff.
-                    </>
-                  )}
+                  {planeCreateError ??
+                    "Kickoff was saved in project-trackers. You can close this sheet or try again."}
                 </AlertDescription>
               </Alert>
             ) : null}

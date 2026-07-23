@@ -3,6 +3,7 @@ import {
   type WorkflowEvent,
   type WorkflowStep,
 } from "cloudflare:workers";
+import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import db, {
@@ -15,7 +16,6 @@ import db, {
 import {
   PROJECT_KICKOFF_SCREENING_SYSTEM,
   buildProjectKickoffScreeningPrompt,
-  getOpenAIProvider,
 } from "@repo/ai-core";
 import { updateWorkflowJobProgress } from "@repo/db-tracker/workflow-jobs";
 import {
@@ -46,6 +46,14 @@ const screeningOutputSchema = z.object({
   analysis: z.string().max(500),
 });
 
+function resolveOpenAiKey(env: WorkflowWorkerEnv): string {
+  const key = env.OPENAI_API_KEY || env.AI_API_KEY;
+  if (!key) {
+    throw new Error("OPENAI_API_KEY (or AI_API_KEY) is not configured on the Worker");
+  }
+  return key;
+}
+
 export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
   WorkflowWorkerEnv,
   ProjectKickoffScreenParams
@@ -54,14 +62,15 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
     event: WorkflowEvent<ProjectKickoffScreenParams>,
     step: WorkflowStep,
   ): Promise<{ success: boolean; score?: number; analysis?: string; message?: string }> {
-    const instanceId = event.instanceId;
-    const { kickoffId, screeningId } = event.payload;
+    // Match the working frontend pattern: one D1 ALS scope for the whole run.
+    return withWorkflowDb(this.env, async () => {
+      const instanceId = event.instanceId;
+      const { kickoffId, screeningId } = event.payload;
 
-    try {
-      await withWorkflowDb(this.env, () => markWorkflowRunning(instanceId));
+      try {
+        await markWorkflowRunning(instanceId);
 
-      const fetchPack = await step.do("fetch-data", () =>
-        withWorkflowDb(this.env, async () => {
+        const fetchPack = await step.do("fetch-data", async () => {
           await updateWorkflowJobProgress(instanceId, {
             step: "Fetching project data",
             percentage: 10,
@@ -121,51 +130,58 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
           }
 
           return { project, screener };
-        }),
-      );
+        });
 
-      const aiResult = await step.do("generate-score", () =>
-        withWorkflowDb(this.env, async () => {
-          await updateWorkflowJobProgress(instanceId, {
-            step: "AI evaluating project",
-            percentage: 50,
-          });
+        const aiResult = await step.do(
+          "generate-score",
+          {
+            retries: { limit: 2, delay: "5 seconds", backoff: "linear" },
+            timeout: "2 minutes",
+          },
+          async () => {
+            await updateWorkflowJobProgress(instanceId, {
+              step: "AI evaluating project",
+              percentage: 50,
+            });
 
-          const prompt = buildProjectKickoffScreeningPrompt(
-            {
-              projectName: fetchPack.project.projectName,
-              department: fetchPack.project.department ?? null,
-              objectives: fetchPack.project.objectives,
-              projectOwners: fetchPack.project.projectOwners ?? null,
-              engineeringLead: fetchPack.project.engineeringLead ?? null,
-              productDirection: fetchPack.project.productDirection ?? null,
-              platformEnables: fetchPack.project.platformEnables ?? null,
-              keyDeliverables: fetchPack.project.keyDeliverables ?? null,
-              risksAndBlockers: fetchPack.project.risksAndBlockers ?? null,
-              timeline: fetchPack.project.timeline ?? null,
-              chosenTool: fetchPack.project.chosenTool ?? null,
-              techStack: fetchPack.project.techStack ?? null,
-              definitionOfDone: fetchPack.project.definitionOfDone ?? null,
-              additionalNotes: fetchPack.project.additionalNotes ?? null,
-            },
-            fetchPack.screener
-              ? { name: fetchPack.screener.name, content: fetchPack.screener.content }
-              : null,
-          );
+            const prompt = buildProjectKickoffScreeningPrompt(
+              {
+                projectName: fetchPack.project.projectName,
+                department: fetchPack.project.department ?? null,
+                objectives: fetchPack.project.objectives,
+                projectOwners: fetchPack.project.projectOwners ?? null,
+                engineeringLead: fetchPack.project.engineeringLead ?? null,
+                productDirection: fetchPack.project.productDirection ?? null,
+                platformEnables: fetchPack.project.platformEnables ?? null,
+                keyDeliverables: fetchPack.project.keyDeliverables ?? null,
+                risksAndBlockers: fetchPack.project.risksAndBlockers ?? null,
+                timeline: fetchPack.project.timeline ?? null,
+                chosenTool: fetchPack.project.chosenTool ?? null,
+                techStack: fetchPack.project.techStack ?? null,
+                definitionOfDone: fetchPack.project.definitionOfDone ?? null,
+                additionalNotes: fetchPack.project.additionalNotes ?? null,
+              },
+              fetchPack.screener
+                ? {
+                    name: fetchPack.screener.name,
+                    content: fetchPack.screener.content,
+                  }
+                : null,
+            );
 
-          const { object } = await generateObject({
-            model: getOpenAIProvider()("gpt-4o-mini"),
-            system: PROJECT_KICKOFF_SCREENING_SYSTEM,
-            prompt,
-            schema: screeningOutputSchema,
-          });
+            const openai = createOpenAI({ apiKey: resolveOpenAiKey(this.env) });
+            const { object } = await generateObject({
+              model: openai("gpt-4o-mini"),
+              system: PROJECT_KICKOFF_SCREENING_SYSTEM,
+              prompt,
+              schema: screeningOutputSchema,
+            });
 
-          return { score: object.score, analysis: object.analysis };
-        }),
-      );
+            return { score: object.score, analysis: object.analysis };
+          },
+        );
 
-      await step.do("save-result", () =>
-        withWorkflowDb(this.env, async () => {
+        await step.do("save-result", async () => {
           await updateWorkflowJobProgress(instanceId, {
             step: "Saving results",
             percentage: 90,
@@ -187,18 +203,16 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
             step: "Completed",
             percentage: 100,
           });
-        }),
-      );
+        });
 
-      const out = {
-        success: true,
-        score: aiResult.score,
-        analysis: aiResult.analysis,
-      };
-      await withWorkflowDb(this.env, () => markWorkflowCompleted(instanceId, out));
-      return out;
-    } catch (err) {
-      await withWorkflowDb(this.env, async () => {
+        const out = {
+          success: true,
+          score: aiResult.score,
+          analysis: aiResult.analysis,
+        };
+        await markWorkflowCompleted(instanceId, out);
+        return out;
+      } catch (err) {
         await db
           .update(projectKickoffScreenings)
           .set({ status: "failed", updatedAt: new Date() })
@@ -206,9 +220,8 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
           .catch(() => undefined);
 
         await markWorkflowFailed(instanceId, err);
-      }).catch(() => undefined);
-
-      throw err;
-    }
+        throw err;
+      }
+    });
   }
 }
