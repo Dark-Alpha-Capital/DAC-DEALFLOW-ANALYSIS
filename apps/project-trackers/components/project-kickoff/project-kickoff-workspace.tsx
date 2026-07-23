@@ -23,6 +23,7 @@ import {
   buildPlaneProjectIdentifier,
   usePlaneEmbed,
 } from "@/hooks/use-plane-embed";
+import { useProjectKickoffScreeningPoll } from "@/hooks/use-project-kickoff-screening-poll";
 import { ConfirmationSummary } from "./confirmation-summary";
 import {
   collectStep2ValidationMessages,
@@ -49,9 +50,11 @@ export function ProjectKickoffWorkspace({
 }: ProjectKickoffWorkspaceProps) {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const { ctx: planeCtx, createProject: createPlaneProject } = usePlaneEmbed(
-    initialWorkspaceSlug,
-  );
+  const {
+    ctx: planeCtx,
+    createProject: createPlaneProject,
+    upsertAiEvaluation,
+  } = usePlaneEmbed(initialWorkspaceSlug);
   const [rawText, setRawText] = useState("");
   const [draft, setDraft] = useState<ReviewDraft | null>(null);
   const [step, setStep] = useState<WorkflowStep>(1);
@@ -59,6 +62,14 @@ export function ProjectKickoffWorkspace({
   const [isCreatingInPlane, setIsCreatingInPlane] = useState(false);
   const [rawTextareaKey, setRawTextareaKey] = useState(0);
   const rawTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const [screeningJobId, setScreeningJobId] = useState<string | null>(null);
+  const [screeningId, setScreeningId] = useState<string | null>(null);
+  const [planeProjectId, setPlaneProjectId] = useState<string | null>(null);
+  const [syncPhase, setSyncPhase] = useState<
+    "idle" | "polling" | "pushing" | "done" | "failed"
+  >("idle");
+  const pushedRef = useRef(false);
 
   /** Plane iframes can desync controlled paste — always prefer live DOM value. */
   const readRawText = useCallback(() => {
@@ -70,9 +81,22 @@ export function ProjectKickoffWorkspace({
   const { mutateAsync: createKickoff, isPending: isSavingKickoff } = useMutation(
     trpc.projectKickoffs.create.mutationOptions(),
   );
+  const { mutateAsync: persistPlaneProjectId } = useMutation(
+    trpc.projectKickoffs.setPlaneProjectId.mutationOptions(),
+  );
   const isSaving = isSavingKickoff || isCreatingInPlane;
 
-  const { object, submit, isLoading, error, clear, stop } = useObject({
+  const {
+    progress,
+    result: screeningResult,
+    terminalState,
+    isPolling,
+  } = useProjectKickoffScreeningPoll(
+    screeningJobId,
+    publicEmbed && step === 4 && syncPhase === "polling",
+  );
+
+  const { submit, isLoading, error, clear, stop } = useObject({
     api: "/api/project-kickoff/extract",
     schema: projectKickoffExtractionSchema,
     // Public extract; omit cookies so sandboxed Plane iframes (Origin: null) work with CORS.
@@ -98,7 +122,7 @@ export function ProjectKickoffWorkspace({
   });
 
   useEffect(() => {
-    if (!draft && step !== 1) setStep(1);
+    if (!draft && step !== 1 && step !== 4) setStep(1);
   }, [draft, step]);
 
   useEffect(() => {
@@ -119,6 +143,11 @@ export function ProjectKickoffWorkspace({
     setRawTextareaKey((key) => key + 1);
     setStep(1);
     setStep2ContinueAttempted(false);
+    setScreeningJobId(null);
+    setScreeningId(null);
+    setPlaneProjectId(null);
+    setSyncPhase("idle");
+    pushedRef.current = false;
   }, [clear]);
 
   const onExtract = useCallback(() => {
@@ -145,6 +174,7 @@ export function ProjectKickoffWorkspace({
 
       if (publicEmbed) {
         setIsCreatingInPlane(true);
+        let createdPlaneId: string | null = null;
         try {
           const structured = draftToStructured(kickoffDraft);
           const planeResult = await createPlaneProject(structured, {
@@ -152,12 +182,24 @@ export function ProjectKickoffWorkspace({
             externalId: created.projectId,
           });
 
-          if (planeResult.success) {
+          if (planeResult.success && planeResult.project?.id) {
+            createdPlaneId = planeResult.project.id;
             toast.success(
-              planeResult.project?.name
+              planeResult.project.name
                 ? `Saved and created in Plane: ${planeResult.project.name}`
                 : "Saved and created in Plane",
             );
+            try {
+              await persistPlaneProjectId({
+                kickoffId: created.projectId,
+                planeProjectId: planeResult.project.id,
+              });
+            } catch (persistErr) {
+              console.error(persistErr);
+              toast.warning(
+                "Plane project created, but failed to store Plane project id",
+              );
+            }
           } else {
             toast.warning(
               `Kickoff saved, but Plane create failed: ${planeResult.error ?? "Unknown error"}`,
@@ -166,7 +208,13 @@ export function ProjectKickoffWorkspace({
         } finally {
           setIsCreatingInPlane(false);
         }
-        resetWorkspace();
+
+        setScreeningJobId(created.jobId);
+        setScreeningId(created.screeningId);
+        setPlaneProjectId(createdPlaneId);
+        pushedRef.current = false;
+        setSyncPhase(createdPlaneId ? "polling" : "failed");
+        setStep(4);
         return;
       }
 
@@ -188,9 +236,80 @@ export function ProjectKickoffWorkspace({
     createPlaneProject,
     draft,
     navigate,
+    persistPlaneProjectId,
     publicEmbed,
     readRawText,
     resetWorkspace,
+  ]);
+
+  useEffect(() => {
+    if (!publicEmbed || step !== 4 || syncPhase !== "polling") return;
+    if (!terminalState || pushedRef.current) return;
+
+    const run = async () => {
+      pushedRef.current = true;
+
+      if (!planeProjectId) {
+        setSyncPhase("failed");
+        toast.warning(
+          "Screening finished, but no Plane project id — evaluation was not synced",
+        );
+        return;
+      }
+
+      if (terminalState === "failed") {
+        setSyncPhase("pushing");
+        const upsertResult = await upsertAiEvaluation({
+          projectId: planeProjectId,
+          score: 0,
+          analysis: "AI screening failed",
+          status: "failed",
+          externalId: screeningId ?? undefined,
+          screenedAt: new Date().toISOString(),
+        });
+        if (upsertResult.success) {
+          setSyncPhase("done");
+          toast.warning("Screening failed — status synced to Plane");
+        } else {
+          setSyncPhase("failed");
+          toast.error(
+            upsertResult.error ?? "Failed to sync screening failure to Plane",
+          );
+        }
+        return;
+      }
+
+      setSyncPhase("pushing");
+      const upsertResult = await upsertAiEvaluation({
+        projectId: planeProjectId,
+        score: screeningResult?.score ?? 0,
+        analysis: screeningResult?.analysis ?? "",
+        status: "completed",
+        externalId: screeningId ?? undefined,
+        screenedAt: new Date().toISOString(),
+      });
+
+      if (upsertResult.success) {
+        setSyncPhase("done");
+        toast.success("AI evaluation synced to Plane");
+      } else {
+        setSyncPhase("failed");
+        toast.error(
+          upsertResult.error ?? "Failed to sync AI evaluation to Plane",
+        );
+      }
+    };
+
+    void run();
+  }, [
+    planeProjectId,
+    publicEmbed,
+    screeningId,
+    screeningResult,
+    step,
+    syncPhase,
+    terminalState,
+    upsertAiEvaluation,
   ]);
 
   const continueToConfirmation = () => {
@@ -218,7 +337,7 @@ export function ProjectKickoffWorkspace({
         </h1>
         <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
           {publicEmbed
-            ? "Paste kickoff notes or a document excerpt. We extract the fields, you review them, then save — creating the project in Plane and running AI screening."
+            ? "Paste kickoff notes or a document excerpt. We extract the fields, you review them, then save — creating the project in Plane and syncing AI screening."
             : "Paste kickoff notes or a document excerpt. We extract the fields, you review them, then save and run AI screening against firm criteria."}
         </p>
       </header>
@@ -227,6 +346,7 @@ export function ProjectKickoffWorkspace({
         current={step}
         hasDraft={!!draft}
         onStepChange={setStep}
+        showScreeningStep={publicEmbed}
       />
 
       <div className="mt-6 space-y-6">
@@ -249,33 +369,13 @@ export function ProjectKickoffWorkspace({
             {step === 1 ? (
               <>
                 <Textarea
-                  ref={rawTextareaRef}
                   key={rawTextareaKey}
+                  ref={rawTextareaRef}
                   defaultValue={rawText}
-                  onChange={(event) => setRawText(event.target.value)}
-                  onInput={(event) =>
-                    setRawText((event.target as HTMLTextAreaElement).value)
-                  }
-                  placeholder="Paste project kickoff text…"
-                  className="min-h-[200px] resize-y text-sm leading-relaxed"
-                  disabled={isLoading}
-                  aria-label="Raw project text"
+                  onChange={(e) => setRawText(e.target.value)}
+                  placeholder="Paste kickoff notes here…"
+                  className="min-h-[220px] resize-y font-mono text-sm"
                 />
-
-                {isLoading ? (
-                  <div
-                    className="text-muted-foreground flex items-center gap-2 text-sm"
-                    aria-live="polite"
-                  >
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                    Extracting project fields…
-                    {object?.projectName ? (
-                      <span className="text-foreground font-medium">
-                        {String(object.projectName)}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
 
                 {error ? (
                   <p className="text-destructive text-sm" role="alert">
@@ -424,6 +524,92 @@ export function ProjectKickoffWorkspace({
                   : "Save project kickoff"}
               </Button>
             </div>
+          </WorkspacePanel>
+        ) : null}
+
+        {step === 4 && publicEmbed ? (
+          <WorkspacePanel
+            title="AI screening"
+            description="Keep this sheet open until screening finishes and the score is pushed to Plane."
+            contentClassName="flex flex-col gap-5"
+          >
+            {(syncPhase === "polling" || isPolling) && (
+              <div className="flex items-start gap-3">
+                <Loader2 className="text-muted-foreground mt-0.5 size-5 shrink-0 animate-spin" />
+                <div className="space-y-1">
+                  <p className="text-foreground text-sm font-medium">
+                    Screening in progress…
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {progress
+                      ? `${progress.step} (${progress.percentage}%)`
+                      : "Waiting for AI screening workflow"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {syncPhase === "pushing" ? (
+              <div className="flex items-start gap-3">
+                <Loader2 className="text-muted-foreground mt-0.5 size-5 shrink-0 animate-spin" />
+                <div className="space-y-1">
+                  <p className="text-foreground text-sm font-medium">
+                    Syncing evaluation to Plane…
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Writing score and analysis to the project overview.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {syncPhase === "done" && screeningResult ? (
+              <div className="space-y-3">
+                <Alert>
+                  <AlertTitle className="text-sm">
+                    Score {screeningResult.score.toFixed(1)} / 5
+                  </AlertTitle>
+                  <AlertDescription className="text-sm whitespace-pre-wrap">
+                    {screeningResult.analysis}
+                  </AlertDescription>
+                </Alert>
+                <p className="text-muted-foreground text-xs">
+                  Evaluation saved on the Plane project overview.
+                </p>
+              </div>
+            ) : null}
+
+            {syncPhase === "done" && !screeningResult ? (
+              <Alert>
+                <AlertTitle className="text-sm">Synced to Plane</AlertTitle>
+                <AlertDescription className="text-sm">
+                  Screening status was written to the project overview.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            {syncPhase === "failed" ? (
+              <Alert variant="destructive">
+                <AlertTitle className="text-sm">
+                  Could not finish Plane sync
+                </AlertTitle>
+                <AlertDescription className="text-sm">
+                  Kickoff was saved
+                  {planeProjectId ? " and the Plane project was created" : ""}
+                  , but the AI evaluation may be missing on the overview. You
+                  can close this sheet or start another kickoff.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            {(syncPhase === "done" || syncPhase === "failed") && (
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" onClick={resetWorkspace} className="gap-2">
+                  <Check className="size-4" />
+                  Done
+                </Button>
+              </div>
+            )}
           </WorkspacePanel>
         ) : null}
       </div>

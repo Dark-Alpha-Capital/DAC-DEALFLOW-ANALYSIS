@@ -5,6 +5,7 @@ import {
   createProjectKickoff,
   createProjectKickoffRescreen,
   markProjectKickoffScreeningFailed,
+  setProjectKickoffPlaneProjectId,
   updateProjectKickoffById,
 } from "@repo/db-tracker/mutations";
 import {
@@ -135,6 +136,25 @@ export const projectKickoffsRouter = createTRPCRouter({
       };
     }),
 
+  setPlaneProjectId: publicProcedure
+    .input(
+      z.object({
+        kickoffId: z.string().min(1),
+        planeProjectId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const existing = await getProjectKickoffById(input.kickoffId);
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+      }
+      await setProjectKickoffPlaneProjectId(
+        input.kickoffId,
+        input.planeProjectId,
+      );
+      return { kickoffId: input.kickoffId, planeProjectId: input.planeProjectId };
+    }),
+
   update: protectedProcedure
     .input(
       editProjectKickoffSchema.extend({
@@ -216,7 +236,7 @@ export const projectKickoffsRouter = createTRPCRouter({
       return rescreen;
     }),
 
-  getScreeningStatus: protectedProcedure
+  getScreeningStatus: publicProcedure
     .input(z.object({ jobId: z.string().min(1) }))
     .query(async ({ input }) => {
       const status = await getJobStatus("project-kickoff-screen", input.jobId);

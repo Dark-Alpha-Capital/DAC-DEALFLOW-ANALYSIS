@@ -18,7 +18,7 @@ export type ReviewDraft = {
   additionalNotes: string;
 };
 
-export type WorkflowStep = 1 | 2 | 3;
+export type WorkflowStep = 1 | 2 | 3 | 4;
 
 function arrToLines(value: unknown): string {
   if (Array.isArray(value)) {

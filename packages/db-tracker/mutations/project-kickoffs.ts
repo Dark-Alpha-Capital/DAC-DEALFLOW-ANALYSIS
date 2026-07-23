@@ -148,6 +148,19 @@ export async function updateProjectKickoffById(
   ]);
 }
 
+export async function setProjectKickoffPlaneProjectId(
+  kickoffId: string,
+  planeProjectId: string,
+) {
+  await db
+    .update(projectKickoffs)
+    .set({
+      planeProjectId: planeProjectId.trim() || null,
+      updatedAt: new Date(),
+    })
+    .where(eq(projectKickoffs.id, kickoffId));
+}
+
 export async function deleteProjectKickoff(kickoffId: string) {
   await db.delete(projectKickoffs).where(eq(projectKickoffs.id, kickoffId));
 }

@@ -3,11 +3,12 @@ import {
   ClipboardPaste,
   PenLine,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WorkflowStep } from "./project-kickoff-draft-utils";
 
-const WORKFLOW_STEPS: {
+const BASE_STEPS: {
   step: WorkflowStep;
   label: string;
   description: string;
@@ -33,30 +34,45 @@ const WORKFLOW_STEPS: {
   },
 ];
 
+const SCREENING_STEP = {
+  step: 4 as const,
+  label: "AI screening",
+  description: "Score & sync to Plane",
+  icon: Sparkles,
+};
+
 type WorkflowStepperProps = {
   current: WorkflowStep;
   hasDraft: boolean;
   onStepChange: (step: WorkflowStep) => void;
+  /** Embed path keeps a 4th step open until screening sync finishes. */
+  showScreeningStep?: boolean;
 };
 
 export function WorkflowStepper({
   current,
   hasDraft,
   onStepChange,
+  showScreeningStep = false,
 }: WorkflowStepperProps) {
+  const steps = showScreeningStep
+    ? [...BASE_STEPS, SCREENING_STEP]
+    : BASE_STEPS;
+
   return (
     <nav
       aria-label="Workflow steps"
       className="border-border/60 rounded-lg border bg-[#FBFBFA] p-2"
     >
       <ol className="flex flex-col gap-1 sm:flex-row sm:items-stretch">
-        {WORKFLOW_STEPS.map(({ step, label, description, icon: Icon }, index) => {
+        {steps.map(({ step, label, description, icon: Icon }, index) => {
           const isActive = current === step;
           const isDone = current > step;
           const canClick =
             step === 1 ||
-            (step === 2 && hasDraft) ||
-            (step === 3 && current === 3);
+            (step === 2 && hasDraft && current < 4) ||
+            (step === 3 && current === 3) ||
+            (step === 4 && current === 4);
 
           return (
             <li key={step} className="relative min-w-0 flex-1">
@@ -66,7 +82,9 @@ export function WorkflowStepper({
                 title={
                   step === 3 && current !== 3
                     ? "Use Continue on Review fields to open this step"
-                    : undefined
+                    : step === 4 && current !== 4
+                      ? "Opens after save & Plane create"
+                      : undefined
                 }
                 onClick={() => canClick && onStepChange(step)}
                 className={cn(
@@ -81,8 +99,7 @@ export function WorkflowStepper({
                 <span
                   className={cn(
                     "flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-medium tabular-nums",
-                    (isDone || isActive) &&
-                      "bg-foreground text-background",
+                    (isDone || isActive) && "bg-foreground text-background",
                     !isActive &&
                       !isDone &&
                       "bg-muted text-muted-foreground border-border border",

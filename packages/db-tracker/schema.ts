@@ -195,6 +195,8 @@ export const projectKickoffs = sqliteTable(
     additionalNotes: text("additionalNotes"),
     rawText: text("rawText"),
     structuredData: text("structuredData"),
+    /** Plane project UUID when created via embed bridge */
+    planeProjectId: text("planeProjectId"),
     userId: text("userId").references(() => users.id, {
       onDelete: "set null",
     }),
