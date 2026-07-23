@@ -119,9 +119,9 @@ export async function getAllProjectTrackers() {
       name: t.name,
       sourceType: t.sourceType,
       stage: t.stage,
-      stageChangedAt: t.stageChangedAt,
+      stageChangedAt: coerceSqliteTimestamp(t.stageChangedAt) ?? t.stageChangedAt,
       kickoffId: t.kickoffId,
-      createdAt: t.createdAt,
+      createdAt: coerceSqliteTimestamp(t.createdAt) ?? t.createdAt,
       createdBy: t.createdBy,
       department: t.department ?? null,
       screeningStatus: screening?.status ?? null,
@@ -129,6 +129,15 @@ export async function getAllProjectTrackers() {
       latestScreening: screening ?? null,
     };
   });
+}
+
+/** Drizzle `timestamp` mode can inflate ms-stored SQLite defaults into year 50k+. */
+function coerceSqliteTimestamp(value: Date | null | undefined): Date | null {
+  if (value == null) return null;
+  if (value.getUTCFullYear() > 2100) {
+    return new Date(value.getTime() / 1000);
+  }
+  return value;
 }
 
 export async function getProjectTrackerById(trackerId: string) {

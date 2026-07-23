@@ -66,6 +66,7 @@ export function ProjectKickoffWorkspace({
   const [screeningJobId, setScreeningJobId] = useState<string | null>(null);
   const [screeningId, setScreeningId] = useState<string | null>(null);
   const [planeProjectId, setPlaneProjectId] = useState<string | null>(null);
+  const [planeCreateError, setPlaneCreateError] = useState<string | null>(null);
   const [syncPhase, setSyncPhase] = useState<
     "idle" | "polling" | "pushing" | "done" | "failed"
   >("idle");
@@ -146,6 +147,7 @@ export function ProjectKickoffWorkspace({
     setScreeningJobId(null);
     setScreeningId(null);
     setPlaneProjectId(null);
+    setPlaneCreateError(null);
     setSyncPhase("idle");
     pushedRef.current = false;
   }, [clear]);
@@ -175,6 +177,7 @@ export function ProjectKickoffWorkspace({
       if (publicEmbed) {
         setIsCreatingInPlane(true);
         let createdPlaneId: string | null = null;
+        let createError: string | null = null;
         try {
           const structured = draftToStructured(kickoffDraft);
           const planeResult = await createPlaneProject(structured, {
@@ -182,17 +185,19 @@ export function ProjectKickoffWorkspace({
             externalId: created.projectId,
           });
 
-          if (planeResult.success && planeResult.project?.id) {
-            createdPlaneId = planeResult.project.id;
+          const projectId = planeResult.project?.id ?? null;
+
+          if (planeResult.success && projectId) {
+            createdPlaneId = projectId;
             toast.success(
-              planeResult.project.name
+              planeResult.project?.name
                 ? `Saved and created in Plane: ${planeResult.project.name}`
                 : "Saved and created in Plane",
             );
             try {
               await persistPlaneProjectId({
                 kickoffId: created.projectId,
-                planeProjectId: planeResult.project.id,
+                planeProjectId: projectId,
               });
             } catch (persistErr) {
               console.error(persistErr);
@@ -201,9 +206,12 @@ export function ProjectKickoffWorkspace({
               );
             }
           } else {
-            toast.warning(
-              `Kickoff saved, but Plane create failed: ${planeResult.error ?? "Unknown error"}`,
-            );
+            createError =
+              planeResult.error ??
+              (!planeResult.success
+                ? "Plane did not return a project id"
+                : "Unknown Plane create error");
+            toast.warning(`Kickoff saved, but Plane create failed: ${createError}`);
           }
         } finally {
           setIsCreatingInPlane(false);
@@ -212,6 +220,7 @@ export function ProjectKickoffWorkspace({
         setScreeningJobId(created.jobId);
         setScreeningId(created.screeningId);
         setPlaneProjectId(createdPlaneId);
+        setPlaneCreateError(createError);
         pushedRef.current = false;
         setSyncPhase(createdPlaneId ? "polling" : "failed");
         setStep(4);
@@ -591,13 +600,31 @@ export function ProjectKickoffWorkspace({
             {syncPhase === "failed" ? (
               <Alert variant="destructive">
                 <AlertTitle className="text-sm">
-                  Could not finish Plane sync
+                  {planeProjectId
+                    ? "Could not finish Plane sync"
+                    : "Plane project was not created"}
                 </AlertTitle>
                 <AlertDescription className="text-sm">
-                  Kickoff was saved
-                  {planeProjectId ? " and the Plane project was created" : ""}
-                  , but the AI evaluation may be missing on the overview. You
-                  can close this sheet or start another kickoff.
+                  {planeCreateError ? (
+                    <>
+                      {planeCreateError}
+                      <br />
+                      Kickoff was still saved in project-trackers. Fix the issue
+                      above and try again, or start another kickoff.
+                    </>
+                  ) : planeProjectId ? (
+                    <>
+                      Kickoff and Plane project were created, but the AI
+                      evaluation may be missing on the overview. You can close
+                      this sheet or start another kickoff.
+                    </>
+                  ) : (
+                    <>
+                      Kickoff was saved in project-trackers, but Plane did not
+                      create the project. Keep this sheet open and try again, or
+                      start another kickoff.
+                    </>
+                  )}
                 </AlertDescription>
               </Alert>
             ) : null}

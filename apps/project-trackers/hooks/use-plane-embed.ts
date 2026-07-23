@@ -46,7 +46,7 @@ type PendingResult =
   | PlaneCreateResult
   | PlaneUpsertAiEvaluationResult;
 
-const CREATE_TIMEOUT_MS = 30_000;
+const CREATE_TIMEOUT_MS = 90_000;
 const UPSERT_TIMEOUT_MS = 30_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -84,8 +84,14 @@ function isPlaneUpsertAiEvaluationResult(
 
 /** Plane project identifier: max 5 uppercase chars, unique within the workspace. */
 export function buildPlaneProjectIdentifier(projectName: string): string {
-  const cleaned = projectName.replace(/\s/g, "").toUpperCase();
-  return cleaned.slice(0, 5) || "PROJ";
+  const cleaned = projectName.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  const base = cleaned.slice(0, 3) || "PRJ";
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let suffix = "";
+  for (let i = 0; i < 2; i++) {
+    suffix += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return `${base}${suffix}`.slice(0, 5);
 }
 
 function readWorkspaceSlugFromUrl(): string | null {

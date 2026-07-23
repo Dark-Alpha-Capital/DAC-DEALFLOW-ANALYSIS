@@ -14,6 +14,7 @@ import {
   stageLabel,
   statusBadgeVariant,
 } from "@/lib/project-tracker-display";
+import { formatDisplayDate } from "@/lib/format-display-date";
 import { cn } from "@/lib/utils";
 import { ArrowUpDown, Plus } from "lucide-react";
 import { DEPARTMENT_VALUES } from "@repo/enums";
@@ -233,7 +234,7 @@ function ProjectTrackersPage() {
                     )}
                   </td>
                   <td className="text-muted-foreground px-4 py-3">
-                    {new Date(t.createdAt).toLocaleDateString()}
+                    {formatDisplayDate(t.createdAt)}
                   </td>
                 </tr>
               ))}
