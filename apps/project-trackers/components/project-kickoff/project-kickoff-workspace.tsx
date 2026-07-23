@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { useMutation } from "@tanstack/react-query";
@@ -8,7 +8,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  ClipboardPaste,
   Loader2,
   Sparkles,
 } from "lucide-react";
@@ -58,6 +57,15 @@ export function ProjectKickoffWorkspace({
   const [step, setStep] = useState<WorkflowStep>(1);
   const [step2ContinueAttempted, setStep2ContinueAttempted] = useState(false);
   const [isCreatingInPlane, setIsCreatingInPlane] = useState(false);
+  const [rawTextareaKey, setRawTextareaKey] = useState(0);
+  const rawTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  /** Plane iframes can desync controlled paste — always prefer live DOM value. */
+  const readRawText = useCallback(() => {
+    const fromDom = rawTextareaRef.current?.value;
+    if (typeof fromDom === "string") return fromDom;
+    return rawText;
+  }, [rawText]);
 
   const { mutateAsync: createKickoff, isPending: isSavingKickoff } = useMutation(
     trpc.projectKickoffs.create.mutationOptions(),
@@ -97,7 +105,6 @@ export function ProjectKickoffWorkspace({
   }, [step]);
 
   const draftReady = draft != null && isDraftReady(draft);
-  const canExtract = rawText.trim().length > 0 && !isLoading;
   const highlightInvalidFields =
     step === 2 &&
     step2ContinueAttempted &&
@@ -108,17 +115,31 @@ export function ProjectKickoffWorkspace({
     clear();
     setDraft(null);
     setRawText("");
+    setRawTextareaKey((key) => key + 1);
     setStep(1);
     setStep2ContinueAttempted(false);
   }, [clear]);
+
+  const onExtract = useCallback(() => {
+    if (isLoading) return;
+    const text = readRawText();
+    const trimmed = text.trim();
+    if (!trimmed) {
+      toast.error("Paste or type source text first");
+      return;
+    }
+    if (text !== rawText) setRawText(text);
+    submit({ rawText: text });
+  }, [isLoading, rawText, readRawText, submit]);
 
   const onConfirm = useCallback(async () => {
     if (!draft || !isDraftReady(draft)) return;
     try {
       const kickoffDraft = toKickoffDraft(draft);
+      const sourceText = readRawText();
       const created = await createKickoff({
         draft: kickoffDraft,
-        rawText,
+        rawText: sourceText,
       });
 
       if (publicEmbed) {
@@ -167,7 +188,7 @@ export function ProjectKickoffWorkspace({
     draft,
     navigate,
     publicEmbed,
-    rawText,
+    readRawText,
     resetWorkspace,
   ]);
 
@@ -227,30 +248,18 @@ export function ProjectKickoffWorkspace({
             {step === 1 ? (
               <>
                 <Textarea
-                  value={rawText}
+                  ref={rawTextareaRef}
+                  key={rawTextareaKey}
+                  defaultValue={rawText}
                   onChange={(event) => setRawText(event.target.value)}
+                  onInput={(event) =>
+                    setRawText((event.target as HTMLTextAreaElement).value)
+                  }
                   placeholder="Paste project kickoff text…"
-                  className="min-h-[160px] resize-y text-sm leading-relaxed"
+                  className="min-h-[200px] resize-y text-sm leading-relaxed"
                   disabled={isLoading}
                   aria-label="Raw project text"
                 />
-
-                {!rawText.trim() && !isLoading ? (
-                  <div className="border-border/60 text-muted-foreground flex flex-col items-center gap-3 rounded-lg border border-dashed px-6 py-10 text-center text-sm">
-                    <ClipboardPaste
-                      className="size-8 opacity-30"
-                      aria-hidden
-                      strokeWidth={1.25}
-                    />
-                    <p className="max-w-xs leading-relaxed">
-                      Add source text, then run{" "}
-                      <span className="text-foreground font-medium">
-                        Extract
-                      </span>{" "}
-                      to populate the review form.
-                    </p>
-                  </div>
-                ) : null}
 
                 {isLoading ? (
                   <div
@@ -276,8 +285,8 @@ export function ProjectKickoffWorkspace({
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
-                    disabled={!canExtract}
-                    onClick={() => submit({ rawText })}
+                    disabled={isLoading}
+                    onClick={onExtract}
                     className="gap-2"
                   >
                     {isLoading ? (

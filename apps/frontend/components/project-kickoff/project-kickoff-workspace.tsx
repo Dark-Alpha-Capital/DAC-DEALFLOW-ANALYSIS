@@ -376,13 +376,21 @@ export function ProjectKickoffWorkspace() {
     },
   });
 
-  const canExtract = rawText.trim().length > 0 && !isLoading;
   const draftReady = draft != null && isDraftReady(draft);
   const step2HighlightInvalidFields =
     step === 2 &&
     step2ContinueAttempted &&
     draft != null &&
     !isDraftReady(draft);
+
+  const onExtract = useCallback(() => {
+    if (isLoading) return;
+    if (!rawText.trim()) {
+      toast.error("Paste or type source text first");
+      return;
+    }
+    submit({ rawText });
+  }, [isLoading, rawText, submit]);
 
   const onConfirm = useCallback(async () => {
     if (!draft || !isDraftReady(draft)) return;
@@ -466,8 +474,8 @@ export function ProjectKickoffWorkspace() {
                     <Button
                       type="button"
                       size="sm"
-                      disabled={!canExtract}
-                      onClick={() => submit({ rawText })}
+                      disabled={isLoading}
+                      onClick={onExtract}
                       className="gap-2"
                     >
                       {isLoading ? (
