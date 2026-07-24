@@ -211,13 +211,32 @@ export function ProjectKickoffWorkspace({
         setPlaneProjectId(createdPlaneId);
         setPlaneCreateError(createError);
         pushedRef.current = false;
-        setSyncPhase(createdPlaneId ? "polling" : "failed");
+        if (!createdPlaneId) {
+          setSyncPhase("failed");
+        } else if (created.screeningStarted === false) {
+          toast.warning(
+            created.screeningError
+              ? `Screening did not start: ${created.screeningError}`
+              : "Screening did not start",
+          );
+          setSyncPhase("failed");
+        } else {
+          setSyncPhase("polling");
+        }
         setStep(4);
         return;
       }
 
       resetWorkspace();
-      toast.success("Project saved — AI screening in progress");
+      if (created.screeningStarted === false) {
+        toast.warning(
+          created.screeningError
+            ? `Project saved, but screening did not start: ${created.screeningError}`
+            : "Project saved, but screening did not start — use re-run on the project page",
+        );
+      } else {
+        toast.success("Project saved — AI screening in progress");
+      }
       await navigate({
         to: "/project-trackers/$trackerId",
         params: { trackerId: created.trackerId },

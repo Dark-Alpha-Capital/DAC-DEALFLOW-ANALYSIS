@@ -190,10 +190,8 @@ function ScreeningPanel({
       ? latestScreening.workflowInstanceId
       : null;
 
-  const { progress, result, terminalState } = useProjectKickoffScreeningPoll(
-    pollJobId,
-    isActive,
-  );
+  const { progress, result, terminalState, failedReason } =
+    useProjectKickoffScreeningPoll(pollJobId, isActive);
 
   useEffect(() => {
     if (terminalState == null) return;
@@ -282,9 +280,12 @@ function ScreeningPanel({
           </div>
         </div>
       ) : status === "failed" ? (
-        <p className="text-destructive text-sm">
-          Screening failed. Use re-run to try again.
-        </p>
+        <div className="text-destructive flex flex-col gap-1 text-sm">
+          <p>Screening failed. Use re-run to try again.</p>
+          {failedReason ? (
+            <p className="text-muted-foreground text-xs">{failedReason}</p>
+          ) : null}
+        </div>
       ) : (
         <p className="text-muted-foreground text-sm">Not yet screened.</p>
       )}

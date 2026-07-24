@@ -11,6 +11,7 @@ export function useProjectKickoffScreeningPoll(
 ) {
   const trpc = useTRPC();
   const [result, setResult] = useState<ScreeningResult>(null);
+  const [failedReason, setFailedReason] = useState<string | null>(null);
   const [terminalState, setTerminalState] = useState<
     "completed" | "failed" | null
   >(null);
@@ -38,8 +39,10 @@ export function useProjectKickoffScreeningPoll(
         score: data.result.score ?? 0,
         analysis: data.result.analysis ?? "",
       });
+      setFailedReason(null);
       setTerminalState("completed");
     } else if (data.state === "failed") {
+      setFailedReason(data.failedReason ?? null);
       setTerminalState("failed");
     }
   }, [data]);
@@ -47,6 +50,7 @@ export function useProjectKickoffScreeningPoll(
   return {
     progress,
     result,
+    failedReason,
     terminalState,
     isPolling: enabled && !!jobId && terminalState == null,
     state: data?.state ?? null,

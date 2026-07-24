@@ -85,7 +85,7 @@ async function startScreeningWorkflow(input: {
   kickoffId: string;
   screeningId: string;
   userId: string | null;
-}) {
+}): Promise<{ started: boolean; error?: string }> {
   try {
     await startProjectKickoffScreenWorkflow(input.jobId, {
       jobId: input.jobId,
@@ -93,12 +93,13 @@ async function startScreeningWorkflow(input: {
       screeningId: input.screeningId,
       userId: input.userId,
     });
-  } catch {
+    return { started: true };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Failed to start screening workflow";
+    console.error("[projectKickoffs] startScreeningWorkflow failed:", message, err);
     await markProjectKickoffScreeningFailed(input.screeningId);
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Failed to start screening workflow",
-    });
+    return { started: false, error: message };
   }
 }
 
@@ -121,7 +122,7 @@ export const projectKickoffsRouter = createTRPCRouter({
         }),
       });
 
-      await startScreeningWorkflow({
+      const screening = await startScreeningWorkflow({
         jobId: created.jobId,
         kickoffId: created.kickoffId,
         screeningId: created.screeningId,
@@ -133,6 +134,8 @@ export const projectKickoffsRouter = createTRPCRouter({
         trackerId: created.trackerId,
         jobId: created.jobId,
         screeningId: created.screeningId,
+        screeningStarted: screening.started,
+        screeningError: screening.error,
       };
     }),
 
@@ -202,7 +205,7 @@ export const projectKickoffsRouter = createTRPCRouter({
           kickoffId,
           userId,
         });
-        await startScreeningWorkflow({
+        const screening = await startScreeningWorkflow({
           jobId: rescreen.jobId,
           kickoffId,
           screeningId: rescreen.screeningId,
@@ -213,6 +216,8 @@ export const projectKickoffsRouter = createTRPCRouter({
           rescreened: true as const,
           jobId: rescreen.jobId,
           screeningId: rescreen.screeningId,
+          screeningStarted: screening.started,
+          screeningError: screening.error,
         };
       }
 
@@ -227,12 +232,18 @@ export const projectKickoffsRouter = createTRPCRouter({
         kickoffId: input.kickoffId,
         userId,
       });
-      await startScreeningWorkflow({
+      const screening = await startScreeningWorkflow({
         jobId: rescreen.jobId,
         kickoffId: input.kickoffId,
         screeningId: rescreen.screeningId,
         userId,
       });
+      if (!screening.started) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: screening.error ?? "Failed to start screening workflow",
+        });
+      }
       return rescreen;
     }),
 
@@ -249,11 +260,12 @@ export const projectKickoffsRouter = createTRPCRouter({
         return {
           state: status.state,
           progress: status.progress ?? null,
+          failedReason: status.failedReason ?? null,
           result: screening
             ? {
-              score: screening.score,
-              analysis: screening.analysis,
-            }
+                score: screening.score,
+                analysis: screening.analysis,
+              }
             : null,
         };
       }
@@ -261,6 +273,7 @@ export const projectKickoffsRouter = createTRPCRouter({
       return {
         state: status.state,
         progress: status.progress ?? null,
+        failedReason: status.failedReason ?? null,
         result: null,
       };
     }),
