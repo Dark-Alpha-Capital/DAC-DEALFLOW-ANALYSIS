@@ -12,7 +12,7 @@ import {
 } from "@/lib/server/server-fn-input-schemas";
 
 export const loadInvestmentThemesPageData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) =>
+  .inputValidator((raw: unknown) =>
     investmentThemesListFilterSchema.parse(raw),
   )
   .handler(async ({ data }) => {
@@ -32,7 +32,7 @@ export const loadInvestmentThemesPageData = createServerFn({ method: "GET" })
   });
 
 export const loadInvestmentThemeDetailData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) => uidParamSchema.parse(raw))
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {
@@ -57,7 +57,7 @@ export const loadInvestmentThemeDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadInvestmentThemeForEditData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) => uidParamSchema.parse(raw))
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {

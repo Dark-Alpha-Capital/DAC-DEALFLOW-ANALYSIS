@@ -6,7 +6,7 @@ import { assertAuthenticated } from "@/lib/server/assert-session";
 import { screenersPageInputSchema } from "@/lib/server/server-fn-input-schemas";
 
 export const loadScreenersPageData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) => screenersPageInputSchema.parse(raw))
+  .inputValidator((raw: unknown) => screenersPageInputSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     const department =

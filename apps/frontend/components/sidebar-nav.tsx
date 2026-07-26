@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { usePathname } from "@/lib/navigation-shim";
+import { ChevronRight } from "lucide-react";
 import {
   FiUserPlus,
   FiTrendingUp,
@@ -17,6 +17,11 @@ import {
 } from "react-icons/fi";
 import { FaPalette, FaScrewdriver } from "react-icons/fa";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -24,6 +29,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { usePathname } from "@/lib/navigation-shim";
+
+export type SidebarSectionId = "dealflow" | "workspace" | "admin";
 
 type NavItem = {
   title: string;
@@ -59,9 +67,6 @@ const adminNavItems: NavItem[] = [
   { title: "Analytics", url: "/analytics", icon: FiBarChart2 },
 ];
 
-const groupLabelClass =
-  "text-muted-foreground px-2 text-xs font-semibold tracking-wider uppercase";
-
 function SimpleNavItems({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   return (
@@ -84,14 +89,60 @@ function SimpleNavItems({ items }: { items: NavItem[] }) {
   );
 }
 
-interface SidebarNavProps {
-  session: { user?: { role?: string } } | null;
+function NavGroup({
+  id,
+  label,
+  items,
+  open,
+  onOpenChange,
+}: {
+  id: SidebarSectionId;
+  label: string;
+  items: NavItem[];
+  open: boolean;
+  onOpenChange: (id: SidebarSectionId, open: boolean) => void;
+}) {
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={(next) => onOpenChange(id, next)}
+      className="group/collapsible"
+    >
+      <SidebarGroup>
+        <SidebarGroupLabel
+          asChild
+          className="text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground px-2 text-xs font-semibold tracking-wider uppercase"
+        >
+          <CollapsibleTrigger className="flex w-full items-center gap-2">
+            <span className="truncate">{label}</span>
+            <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+          </CollapsibleTrigger>
+        </SidebarGroupLabel>
+        <CollapsibleContent>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              <SimpleNavItems items={items} />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
+  );
 }
 
-export function SidebarNav({ session }: SidebarNavProps) {
+interface SidebarNavProps {
+  session: { user?: { role?: string } } | null;
+  openSections: Partial<Record<SidebarSectionId, boolean>>;
+  onSectionOpenChange: (id: SidebarSectionId, open: boolean) => void;
+}
+
+export function SidebarNav({
+  session,
+  openSections,
+  onSectionOpenChange,
+}: SidebarNavProps) {
   const pathname = usePathname();
   const isAdmin = session?.user?.role === "ADMIN";
-
   const dashboardActive = pathname === "/dashboard";
 
   return (
@@ -115,40 +166,31 @@ export function SidebarNav({ session }: SidebarNavProps) {
         </SidebarGroupContent>
       </SidebarGroup>
 
-      <SidebarGroup>
-        <SidebarGroupLabel className={groupLabelClass}>
-          Dealflow
-        </SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu className="gap-1">
-            <SimpleNavItems items={dealFlowItems} />
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
+      <NavGroup
+        id="dealflow"
+        label="Dealflow"
+        items={dealFlowItems}
+        open={openSections.dealflow ?? false}
+        onOpenChange={onSectionOpenChange}
+      />
 
-      <SidebarGroup>
-        <SidebarGroupLabel className={groupLabelClass}>
-          Workspace
-        </SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu className="gap-1">
-            <SimpleNavItems items={workspaceItems} />
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
+      <NavGroup
+        id="workspace"
+        label="Workspace"
+        items={workspaceItems}
+        open={openSections.workspace ?? false}
+        onOpenChange={onSectionOpenChange}
+      />
 
-      {isAdmin && (
-        <SidebarGroup>
-          <SidebarGroupLabel className={groupLabelClass}>
-            Admin
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-              <SimpleNavItems items={adminNavItems} />
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      )}
+      {isAdmin ? (
+        <NavGroup
+          id="admin"
+          label="Admin"
+          items={adminNavItems}
+          open={openSections.admin ?? false}
+          onOpenChange={onSectionOpenChange}
+        />
+      ) : null}
     </>
   );
 }

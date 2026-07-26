@@ -12,7 +12,7 @@ import {
 } from "@/lib/server/server-fn-input-schemas";
 
 export const loadInvestorLeadsPageData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) => offsetLimitSchema.parse(raw))
+  .inputValidator((raw: unknown) => offsetLimitSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     const { data: rows, totalPages, totalCount } = await GetAllInvestorLeads({
@@ -23,7 +23,7 @@ export const loadInvestorLeadsPageData = createServerFn({ method: "GET" })
   });
 
 export const loadInvestorLeadDetailData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) => uidParamSchema.parse(raw))
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {
@@ -46,7 +46,7 @@ export const loadInvestorLeadDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadInvestorLeadForEditData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) => uidParamSchema.parse(raw))
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {
@@ -64,7 +64,7 @@ export const loadInvestorLeadForEditData = createServerFn({ method: "GET" })
 export const loadConvertInvestorLeadPageData = createServerFn({
   method: "GET",
 })
-  .validator((raw: unknown) => uidParamSchema.parse(raw))
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {

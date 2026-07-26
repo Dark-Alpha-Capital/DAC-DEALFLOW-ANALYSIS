@@ -23,7 +23,7 @@ export type LeadDetailLoaderData = {
 };
 
 export const loadLeadsPageData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) => offsetLimitSchema.parse(raw))
+  .inputValidator((raw: unknown) => offsetLimitSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     const { data: rows, totalPages, totalCount } = await GetAllLeads({
@@ -34,7 +34,7 @@ export const loadLeadsPageData = createServerFn({ method: "GET" })
   });
 
 export const loadLeadDetailData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) => uidParamSchema.parse(raw))
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }): Promise<LeadDetailLoaderData> => {
     await assertAuthenticated();
     try {
@@ -76,7 +76,7 @@ export const loadLeadDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadLeadForEditData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) => uidParamSchema.parse(raw))
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {
@@ -92,7 +92,7 @@ export const loadLeadForEditData = createServerFn({ method: "GET" })
   });
 
 export const loadConvertLeadPageData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) => uidParamSchema.parse(raw))
+  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {

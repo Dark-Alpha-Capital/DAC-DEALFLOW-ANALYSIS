@@ -36,7 +36,7 @@ function sortProjectTrackers<
 }
 
 export const loadProjectTrackersPageData = createServerFn({ method: "GET" })
-  .validator((raw: unknown) => projectTrackersPageInputSchema.parse(raw))
+  .inputValidator((raw: unknown) => projectTrackersPageInputSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     const all = await getAllProjectTrackers();
