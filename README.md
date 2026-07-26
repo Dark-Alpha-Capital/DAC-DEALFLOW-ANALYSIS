@@ -8,7 +8,7 @@ This repo uses `bun` workspaces + Turborepo. The main web app lives in `apps/fro
 
 ### 1) Prerequisites
 
-- [Bun](https://bun.sh/docs/installation) `>= 1.1.13`
+- [Bun](https://bun.sh/docs/installation) `1.3.14` (see `packageManager` / `.bun-version`; upgrade with `bun upgrade`)
 - Node.js `>= 18` (required by engines)
 - Cloudflare account + `wrangler login` (default dev uses **remote D1** and Vectorize)
 

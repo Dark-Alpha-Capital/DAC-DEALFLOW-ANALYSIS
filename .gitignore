@@ -41,3 +41,6 @@ __pycache__
 # Misc
 .DS_Store
 *.pem
+
+# Bun binary lockfile (use text bun.lock only; Bun 1.2+)
+bun.lockb

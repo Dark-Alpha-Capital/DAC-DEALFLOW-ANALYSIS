@@ -2,7 +2,7 @@
 
 ## Stack
 
-- **Package manager:** `bun` 1.1.13 (workspaces). Never use `npm`/`pnpm`/`yarn` as the root install command.
+- **Package manager:** `bun` 1.3.14 (workspaces). Never use `npm`/`pnpm`/`yarn` as the root install command.
 - **Monorepo tool:** Turborepo 2 — `bun run dev` / `bun run build` / `bun run lint` / `bun run check-types`
 - **TypeScript** 5.9.2
 - **No root tsconfig or eslint config** — per-package only.
@@ -119,7 +119,7 @@ To run workspace-wide tasks: `bun run dev`, `bun run build`, `bun run lint`, `bu
 - **Two separate D1 databases** — frontend and project-trackers do NOT share a DB. Migrations must go to the correct database.
 - **Frontend deploy skips migrations** — run `db:migrate:remote` manually before deploying frontend. Project-trackers deploy includes migrations.
 - **Worker bundle size:** free tier 3 MiB gzip limit may block deploy.
-- **`packageManager` is set to `bun@1.1.13`** — running `npm install` at the root will fail.
+- **`packageManager` / `.bun-version` are `bun@1.3.14`** — Cloudflare Builds reads this and installs the same Bun as local. Keep on latest stable via `bun upgrade`. Use text `bun.lock` only (`bun.lockb` is gitignored).
 - **Telephony must be set up independently** (`cd apps/telephony && npm install`).
 - **Dev always hits remote D1, Vectorize, and Workflows** — no local emulators. All dev shares the same bindings as production.
 - **Frontend README is stale** (says Next.js + Prisma). Trust this file and `SETUP_LOCAL.md` instead.

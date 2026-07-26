@@ -6,7 +6,7 @@ There is no local database.
 
 ## Prerequisites
 
-- **[Bun](https://bun.sh/)** 1.1.13+
+- **[Bun](https://bun.sh/)** 1.3.14 (match `packageManager` / `.bun-version`; run `bun upgrade` if behind)
 - **Cloudflare account** (firm) + `wrangler login`
 - API keys for auth, AI, Nextcloud, Bitrix as needed
 
