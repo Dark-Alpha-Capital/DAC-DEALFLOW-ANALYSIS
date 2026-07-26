@@ -9,6 +9,9 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const wranglerConfigPath = path.join(appRoot, "wrangler.jsonc");
+const repoRoot = path.resolve(appRoot, "../..");
+const reactPath = path.resolve(repoRoot, "node_modules/react");
+const reactDomPath = path.resolve(repoRoot, "node_modules/react-dom");
 
 const repoPackages = [
   "@repo/db-tracker",
@@ -39,10 +42,21 @@ export default defineConfig({
     viteReact(),
     tsconfigPaths(),
   ],
+  resolve: {
+    dedupe: ["react", "react-dom"],
+    alias: {
+      react: reactPath,
+      "react-dom": reactDomPath,
+    },
+  },
   ssr: {
     noExternal: repoPackages,
+    optimizeDeps: {
+      include: ["react", "react-dom", "react-dom/server"],
+    },
   },
   optimizeDeps: {
     exclude: ["@repo/db-tracker"],
+    include: ["react", "react-dom"],
   },
 });

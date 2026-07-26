@@ -64,7 +64,17 @@ const EMAIL_AUTH_PATHS = new Set([
 
 function getAuthBaseUrl(): string {
   const fromEnv = getServerEnv().BETTER_AUTH_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  if (fromEnv) {
+    const normalized = fromEnv.replace(/\/+$/, "");
+    // Prefer localhost when developing locally even if wrangler vars point at prod.
+    if (
+      process.env.NODE_ENV !== "production" &&
+      normalized.includes("darkalphacapital.com")
+    ) {
+      return "http://localhost:3001";
+    }
+    return normalized;
+  }
   return "http://localhost:3001";
 }
 

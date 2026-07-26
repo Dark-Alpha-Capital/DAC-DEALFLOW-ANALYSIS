@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { authClient } from "@/lib/auth-client";
+import { startGoogleOAuth } from "@/lib/google-oauth";
 import { isAllowedWorkEmail } from "@/lib/utils";
 import { FaGoogle } from "react-icons/fa6";
 import { Loader2 } from "lucide-react";
@@ -83,15 +84,15 @@ function SignupPage() {
   }
 
   async function handleGoogleSignup() {
+    if (isGoogleLoading) return;
     setIsGoogleLoading(true);
     try {
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: "/",
-      });
+      await startGoogleOAuth("/");
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to sign up with Google");
+      console.error("[auth] google sign-up failed", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to sign up with Google",
+      );
       setIsGoogleLoading(false);
     }
   }
@@ -113,9 +114,10 @@ function SignupPage() {
 
       <section className="space-y-4">
         <Button
+          type="button"
           variant="outline"
           className="w-full justify-center gap-2"
-          onClick={handleGoogleSignup}
+          onClick={() => void handleGoogleSignup()}
           disabled={isGoogleLoading || isLoading}
         >
           {isGoogleLoading ? (

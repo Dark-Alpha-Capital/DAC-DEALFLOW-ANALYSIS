@@ -1,4 +1,5 @@
 import handler from "@tanstack/react-start/server-entry";
+import { runDbWithD1 } from "@repo/db-tracker";
 export { ProjectKickoffScreenWorkflow } from "./workflows/project-kickoff-screen.workflow";
 
 /**
@@ -16,11 +17,12 @@ function embedCorsHeaders(request: Request): Headers {
   });
 
   const origin = request.headers.get("Origin");
-  // Sandboxed iframe without allow-same-origin → Origin: null
   if (!origin || origin === "null") {
     headers.set("Access-Control-Allow-Origin", "null");
     headers.set("Access-Control-Allow-Credentials", "true");
   } else if (
+    origin === "http://localhost:3001" ||
+    origin === "http://127.0.0.1:3001" ||
     origin === "https://projects.darkalphacapital.com" ||
     origin === "https://tracker.darkalphacapital.com" ||
     origin === "https://plane.darkalphacapital.com" ||
@@ -53,13 +55,13 @@ function withEmbedHeaders(request: Request, response: Response): Response {
 const start = handler as {
   fetch: (
     request: Request,
-    env: unknown,
+    env: Env,
     ctx: ExecutionContext,
   ) => Response | Promise<Response>;
 };
 
 export default {
-  async fetch(request: Request, env: unknown, ctx: ExecutionContext) {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -67,7 +69,15 @@ export default {
       });
     }
 
-    const response = await start.fetch(request, env, ctx);
-    return withEmbedHeaders(request, response);
+    if (!env.DB) {
+      console.error("[server] env.DB missing — D1 binding not available");
+      return new Response("Database binding unavailable", { status: 500 });
+    }
+
+    // One D1 ALS scope for the whole request (auth, server fns, tRPC, SSR).
+    return runDbWithD1(env.DB, async () => {
+      const response = await start.fetch(request, env, ctx);
+      return withEmbedHeaders(request, response);
+    });
   },
 };

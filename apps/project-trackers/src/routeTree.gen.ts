@@ -9,129 +9,58 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PublicRouteRouteImport } from './routes/_public/route'
-import { Route as AuthenticationRouteRouteImport } from './routes/_authentication/route'
-import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppInitiativesRouteImport } from './routes/_app/initiatives'
+import { Route as AppRouteRouteImport } from './routes/_app/route'
+import { Route as AuthenticationRouteRouteImport } from './routes/_authentication/route'
+import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
-import { Route as PublicProjectKickoffIndexRouteImport } from './routes/_public/project-kickoff/index'
-import { Route as AppScreenersIndexRouteImport } from './routes/_app/screeners/index'
+import { Route as AppInitiativesRouteImport } from './routes/_app/initiatives'
 import { Route as AppProjectTrackersIndexRouteImport } from './routes/_app/project-trackers/index'
-import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
-import { Route as ApiProjectKickoffExtractRouteImport } from './routes/api/project-kickoff/extract'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as AuthenticationAuthVerifyEmailRouteImport } from './routes/_authentication/auth/verify-email'
-import { Route as AuthenticationAuthSignupRouteImport } from './routes/_authentication/auth/signup'
-import { Route as AuthenticationAuthResetPasswordRouteImport } from './routes/_authentication/auth/reset-password'
-import { Route as AuthenticationAuthLoginRouteImport } from './routes/_authentication/auth/login'
-import { Route as AuthenticationAuthForgotPasswordRouteImport } from './routes/_authentication/auth/forgot-password'
-import { Route as AuthenticationAuthErrorRouteImport } from './routes/_authentication/auth/error'
-import { Route as AppScreenersNewRouteImport } from './routes/_app/screeners/new'
-import { Route as AppScreenersScreenerIdRouteImport } from './routes/_app/screeners/$screenerId'
 import { Route as AppProjectTrackersTrackerIdRouteImport } from './routes/_app/project-trackers/$trackerId'
+import { Route as AppScreenersIndexRouteImport } from './routes/_app/screeners/index'
+import { Route as AppScreenersScreenerIdRouteImport } from './routes/_app/screeners/$screenerId'
+import { Route as AppScreenersNewRouteImport } from './routes/_app/screeners/new'
+import { Route as AuthenticationAuthErrorRouteImport } from './routes/_authentication/auth/error'
+import { Route as AuthenticationAuthForgotPasswordRouteImport } from './routes/_authentication/auth/forgot-password'
+import { Route as AuthenticationAuthLoginRouteImport } from './routes/_authentication/auth/login'
+import { Route as AuthenticationAuthResetPasswordRouteImport } from './routes/_authentication/auth/reset-password'
+import { Route as AuthenticationAuthSignupRouteImport } from './routes/_authentication/auth/signup'
+import { Route as AuthenticationAuthVerifyEmailRouteImport } from './routes/_authentication/auth/verify-email'
+import { Route as PublicProjectKickoffIndexRouteImport } from './routes/_public/project-kickoff/index'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiProjectKickoffExtractRouteImport } from './routes/api/project-kickoff/extract'
+import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 
-const PublicRouteRoute = PublicRouteRouteImport.update({
-  id: '/_public',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticationRouteRoute = AuthenticationRouteRouteImport.update({
-  id: '/_authentication',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRouteRoute = AppRouteRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthenticationRouteRoute = AuthenticationRouteRouteImport.update({
+  id: '/_authentication',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppInitiativesRoute = AppInitiativesRouteImport.update({
-  id: '/initiatives',
-  path: '/initiatives',
-  getParentRoute: () => AppRouteRoute,
+const PublicRouteRoute = PublicRouteRouteImport.update({
+  id: '/_public',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const PublicProjectKickoffIndexRoute =
-  PublicProjectKickoffIndexRouteImport.update({
-    id: '/project-kickoff/',
-    path: '/project-kickoff/',
-    getParentRoute: () => PublicRouteRoute,
-  } as any)
-const AppScreenersIndexRoute = AppScreenersIndexRouteImport.update({
-  id: '/screeners/',
-  path: '/screeners/',
+const AppInitiativesRoute = AppInitiativesRouteImport.update({
+  id: '/initiatives',
+  path: '/initiatives',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppProjectTrackersIndexRoute = AppProjectTrackersIndexRouteImport.update({
   id: '/project-trackers/',
   path: '/project-trackers/',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
-  id: '/api/trpc/$',
-  path: '/api/trpc/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiProjectKickoffExtractRoute =
-  ApiProjectKickoffExtractRouteImport.update({
-    id: '/api/project-kickoff/extract',
-    path: '/api/project-kickoff/extract',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticationAuthVerifyEmailRoute =
-  AuthenticationAuthVerifyEmailRouteImport.update({
-    id: '/auth/verify-email',
-    path: '/auth/verify-email',
-    getParentRoute: () => AuthenticationRouteRoute,
-  } as any)
-const AuthenticationAuthSignupRoute =
-  AuthenticationAuthSignupRouteImport.update({
-    id: '/auth/signup',
-    path: '/auth/signup',
-    getParentRoute: () => AuthenticationRouteRoute,
-  } as any)
-const AuthenticationAuthResetPasswordRoute =
-  AuthenticationAuthResetPasswordRouteImport.update({
-    id: '/auth/reset-password',
-    path: '/auth/reset-password',
-    getParentRoute: () => AuthenticationRouteRoute,
-  } as any)
-const AuthenticationAuthLoginRoute = AuthenticationAuthLoginRouteImport.update({
-  id: '/auth/login',
-  path: '/auth/login',
-  getParentRoute: () => AuthenticationRouteRoute,
-} as any)
-const AuthenticationAuthForgotPasswordRoute =
-  AuthenticationAuthForgotPasswordRouteImport.update({
-    id: '/auth/forgot-password',
-    path: '/auth/forgot-password',
-    getParentRoute: () => AuthenticationRouteRoute,
-  } as any)
-const AuthenticationAuthErrorRoute = AuthenticationAuthErrorRouteImport.update({
-  id: '/auth/error',
-  path: '/auth/error',
-  getParentRoute: () => AuthenticationRouteRoute,
-} as any)
-const AppScreenersNewRoute = AppScreenersNewRouteImport.update({
-  id: '/screeners/new',
-  path: '/screeners/new',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppScreenersScreenerIdRoute = AppScreenersScreenerIdRouteImport.update({
-  id: '/screeners/$screenerId',
-  path: '/screeners/$screenerId',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppProjectTrackersTrackerIdRoute =
@@ -140,6 +69,77 @@ const AppProjectTrackersTrackerIdRoute =
     path: '/project-trackers/$trackerId',
     getParentRoute: () => AppRouteRoute,
   } as any)
+const AppScreenersIndexRoute = AppScreenersIndexRouteImport.update({
+  id: '/screeners/',
+  path: '/screeners/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppScreenersScreenerIdRoute = AppScreenersScreenerIdRouteImport.update({
+  id: '/screeners/$screenerId',
+  path: '/screeners/$screenerId',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppScreenersNewRoute = AppScreenersNewRouteImport.update({
+  id: '/screeners/new',
+  path: '/screeners/new',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AuthenticationAuthErrorRoute = AuthenticationAuthErrorRouteImport.update({
+  id: '/auth/error',
+  path: '/auth/error',
+  getParentRoute: () => AuthenticationRouteRoute,
+} as any)
+const AuthenticationAuthForgotPasswordRoute =
+  AuthenticationAuthForgotPasswordRouteImport.update({
+    id: '/auth/forgot-password',
+    path: '/auth/forgot-password',
+    getParentRoute: () => AuthenticationRouteRoute,
+  } as any)
+const AuthenticationAuthLoginRoute = AuthenticationAuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => AuthenticationRouteRoute,
+} as any)
+const AuthenticationAuthResetPasswordRoute =
+  AuthenticationAuthResetPasswordRouteImport.update({
+    id: '/auth/reset-password',
+    path: '/auth/reset-password',
+    getParentRoute: () => AuthenticationRouteRoute,
+  } as any)
+const AuthenticationAuthSignupRoute =
+  AuthenticationAuthSignupRouteImport.update({
+    id: '/auth/signup',
+    path: '/auth/signup',
+    getParentRoute: () => AuthenticationRouteRoute,
+  } as any)
+const AuthenticationAuthVerifyEmailRoute =
+  AuthenticationAuthVerifyEmailRouteImport.update({
+    id: '/auth/verify-email',
+    path: '/auth/verify-email',
+    getParentRoute: () => AuthenticationRouteRoute,
+  } as any)
+const PublicProjectKickoffIndexRoute =
+  PublicProjectKickoffIndexRouteImport.update({
+    id: '/project-kickoff/',
+    path: '/project-kickoff/',
+    getParentRoute: () => PublicRouteRoute,
+  } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProjectKickoffExtractRoute =
+  ApiProjectKickoffExtractRouteImport.update({
+    id: '/api/project-kickoff/extract',
+    path: '/api/project-kickoff/extract',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
+  id: '/api/trpc/$',
+  path: '/api/trpc/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -283,18 +283,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_public': {
-      id: '/_public'
-      path: ''
+    '/': {
+      id: '/'
+      path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof PublicRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authentication': {
-      id: '/_authentication'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticationRouteRouteImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -304,19 +297,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
+    '/_authentication': {
+      id: '/_authentication'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof AuthenticationRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/initiatives': {
-      id: '/_app/initiatives'
-      path: '/initiatives'
-      fullPath: '/initiatives'
-      preLoaderRoute: typeof AppInitiativesRouteImport
-      parentRoute: typeof AppRouteRoute
+    '/_public': {
+      id: '/_public'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PublicRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/analytics': {
       id: '/_app/analytics'
@@ -325,18 +318,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/_public/project-kickoff/': {
-      id: '/_public/project-kickoff/'
-      path: '/project-kickoff'
-      fullPath: '/project-kickoff/'
-      preLoaderRoute: typeof PublicProjectKickoffIndexRouteImport
-      parentRoute: typeof PublicRouteRoute
-    }
-    '/_app/screeners/': {
-      id: '/_app/screeners/'
-      path: '/screeners'
-      fullPath: '/screeners/'
-      preLoaderRoute: typeof AppScreenersIndexRouteImport
+    '/_app/initiatives': {
+      id: '/_app/initiatives'
+      path: '/initiatives'
+      fullPath: '/initiatives'
+      preLoaderRoute: typeof AppInitiativesRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/project-trackers/': {
@@ -346,74 +332,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectTrackersIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/api/trpc/$': {
-      id: '/api/trpc/$'
-      path: '/api/trpc/$'
-      fullPath: '/api/trpc/$'
-      preLoaderRoute: typeof ApiTrpcSplatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_app/project-trackers/$trackerId': {
+      id: '/_app/project-trackers/$trackerId'
+      path: '/project-trackers/$trackerId'
+      fullPath: '/project-trackers/$trackerId'
+      preLoaderRoute: typeof AppProjectTrackersTrackerIdRouteImport
+      parentRoute: typeof AppRouteRoute
     }
-    '/api/project-kickoff/extract': {
-      id: '/api/project-kickoff/extract'
-      path: '/api/project-kickoff/extract'
-      fullPath: '/api/project-kickoff/extract'
-      preLoaderRoute: typeof ApiProjectKickoffExtractRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authentication/auth/verify-email': {
-      id: '/_authentication/auth/verify-email'
-      path: '/auth/verify-email'
-      fullPath: '/auth/verify-email'
-      preLoaderRoute: typeof AuthenticationAuthVerifyEmailRouteImport
-      parentRoute: typeof AuthenticationRouteRoute
-    }
-    '/_authentication/auth/signup': {
-      id: '/_authentication/auth/signup'
-      path: '/auth/signup'
-      fullPath: '/auth/signup'
-      preLoaderRoute: typeof AuthenticationAuthSignupRouteImport
-      parentRoute: typeof AuthenticationRouteRoute
-    }
-    '/_authentication/auth/reset-password': {
-      id: '/_authentication/auth/reset-password'
-      path: '/auth/reset-password'
-      fullPath: '/auth/reset-password'
-      preLoaderRoute: typeof AuthenticationAuthResetPasswordRouteImport
-      parentRoute: typeof AuthenticationRouteRoute
-    }
-    '/_authentication/auth/login': {
-      id: '/_authentication/auth/login'
-      path: '/auth/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthenticationAuthLoginRouteImport
-      parentRoute: typeof AuthenticationRouteRoute
-    }
-    '/_authentication/auth/forgot-password': {
-      id: '/_authentication/auth/forgot-password'
-      path: '/auth/forgot-password'
-      fullPath: '/auth/forgot-password'
-      preLoaderRoute: typeof AuthenticationAuthForgotPasswordRouteImport
-      parentRoute: typeof AuthenticationRouteRoute
-    }
-    '/_authentication/auth/error': {
-      id: '/_authentication/auth/error'
-      path: '/auth/error'
-      fullPath: '/auth/error'
-      preLoaderRoute: typeof AuthenticationAuthErrorRouteImport
-      parentRoute: typeof AuthenticationRouteRoute
-    }
-    '/_app/screeners/new': {
-      id: '/_app/screeners/new'
-      path: '/screeners/new'
-      fullPath: '/screeners/new'
-      preLoaderRoute: typeof AppScreenersNewRouteImport
+    '/_app/screeners/': {
+      id: '/_app/screeners/'
+      path: '/screeners'
+      fullPath: '/screeners/'
+      preLoaderRoute: typeof AppScreenersIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/screeners/$screenerId': {
@@ -423,12 +353,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppScreenersScreenerIdRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/_app/project-trackers/$trackerId': {
-      id: '/_app/project-trackers/$trackerId'
-      path: '/project-trackers/$trackerId'
-      fullPath: '/project-trackers/$trackerId'
-      preLoaderRoute: typeof AppProjectTrackersTrackerIdRouteImport
+    '/_app/screeners/new': {
+      id: '/_app/screeners/new'
+      path: '/screeners/new'
+      fullPath: '/screeners/new'
+      preLoaderRoute: typeof AppScreenersNewRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/_authentication/auth/error': {
+      id: '/_authentication/auth/error'
+      path: '/auth/error'
+      fullPath: '/auth/error'
+      preLoaderRoute: typeof AuthenticationAuthErrorRouteImport
+      parentRoute: typeof AuthenticationRouteRoute
+    }
+    '/_authentication/auth/forgot-password': {
+      id: '/_authentication/auth/forgot-password'
+      path: '/auth/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthenticationAuthForgotPasswordRouteImport
+      parentRoute: typeof AuthenticationRouteRoute
+    }
+    '/_authentication/auth/login': {
+      id: '/_authentication/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthenticationAuthLoginRouteImport
+      parentRoute: typeof AuthenticationRouteRoute
+    }
+    '/_authentication/auth/reset-password': {
+      id: '/_authentication/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthenticationAuthResetPasswordRouteImport
+      parentRoute: typeof AuthenticationRouteRoute
+    }
+    '/_authentication/auth/signup': {
+      id: '/_authentication/auth/signup'
+      path: '/auth/signup'
+      fullPath: '/auth/signup'
+      preLoaderRoute: typeof AuthenticationAuthSignupRouteImport
+      parentRoute: typeof AuthenticationRouteRoute
+    }
+    '/_authentication/auth/verify-email': {
+      id: '/_authentication/auth/verify-email'
+      path: '/auth/verify-email'
+      fullPath: '/auth/verify-email'
+      preLoaderRoute: typeof AuthenticationAuthVerifyEmailRouteImport
+      parentRoute: typeof AuthenticationRouteRoute
+    }
+    '/_public/project-kickoff/': {
+      id: '/_public/project-kickoff/'
+      path: '/project-kickoff'
+      fullPath: '/project-kickoff/'
+      preLoaderRoute: typeof PublicProjectKickoffIndexRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/project-kickoff/extract': {
+      id: '/api/project-kickoff/extract'
+      path: '/api/project-kickoff/extract'
+      fullPath: '/api/project-kickoff/extract'
+      preLoaderRoute: typeof ApiProjectKickoffExtractRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/trpc/$': {
+      id: '/api/trpc/$'
+      path: '/api/trpc/$'
+      fullPath: '/api/trpc/$'
+      preLoaderRoute: typeof ApiTrpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -502,3 +502,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

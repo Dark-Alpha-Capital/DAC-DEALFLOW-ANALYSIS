@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "@/lib/navigation-shim";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { authClient } from "@/lib/auth-client";
+import { startGoogleOAuth } from "@/lib/google-oauth";
 import { isAllowedWorkEmail } from "@/lib/utils";
 import { FaGoogle } from "react-icons/fa6";
 import { Loader2 } from "lucide-react";
@@ -37,6 +38,8 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 function LoginPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isGooglePending, setIsGooglePending] = useState(false);
+  const busy = isPending || isGooglePending;
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -76,18 +79,18 @@ function LoginPage() {
     });
   }
 
-  function handleGoogleSignIn() {
-    startTransition(async () => {
-      try {
-        await authClient.signIn.social({
-          provider: "google",
-          callbackURL: "/",
-        });
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to sign in with Google");
-      }
-    });
+  async function handleGoogleSignIn() {
+    if (isGooglePending) return;
+    setIsGooglePending(true);
+    try {
+      await startGoogleOAuth("/");
+    } catch (error) {
+      console.error("[auth] google sign-in failed", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to sign in with Google",
+      );
+      setIsGooglePending(false);
+    }
   }
 
   return (
@@ -109,12 +112,13 @@ function LoginPage() {
 
       <section className="space-y-4">
         <Button
+          type="button"
           variant="outline"
           className="w-full justify-center gap-2"
-          onClick={handleGoogleSignIn}
-          disabled={isPending}
+          onClick={() => void handleGoogleSignIn()}
+          disabled={busy}
         >
-          {isPending ? (
+          {isGooglePending ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <FaGoogle className="size-4" />
@@ -146,7 +150,7 @@ function LoginPage() {
                       type="email"
                       placeholder="you@darkalphacapital.com"
                       {...field}
-                      disabled={isPending}
+                      disabled={busy}
                     />
                   </FormControl>
                   <FormMessage />
@@ -171,14 +175,14 @@ function LoginPage() {
                     <PasswordInput
                       placeholder="Enter your password"
                       {...field}
-                      disabled={isPending}
+                      disabled={busy}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isPending}>
+            <Button type="submit" className="w-full" disabled={busy}>
               {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Sign in
             </Button>
