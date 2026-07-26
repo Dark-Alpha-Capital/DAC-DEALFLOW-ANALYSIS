@@ -58,7 +58,6 @@ const workspaceItems: NavItem[] = [
   { title: "Docs", url: "/docs", icon: FiBookOpen },
   { title: "Documents", url: "/documents", icon: FiFileText },
   { title: "Chat", url: "/chat", icon: FiMessageSquare },
-  { title: "Project Trackers", url: "/project-trackers", icon: FiLayers },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -147,25 +146,6 @@ export function SidebarNav({
 
   return (
     <>
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu className="gap-1">
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={dashboardActive}
-                tooltip="Dashboard"
-              >
-                <Link to="/dashboard">
-                  <FiHome className="size-4" />
-                  <span>Dashboard</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-
       <NavGroup
         id="dealflow"
         label="Dealflow"

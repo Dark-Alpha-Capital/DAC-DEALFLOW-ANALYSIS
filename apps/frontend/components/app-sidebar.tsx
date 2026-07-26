@@ -10,10 +10,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  SidebarNav,
-  type SidebarSectionId,
-} from "@/components/sidebar-nav";
+import { SidebarNav, type SidebarSectionId } from "@/components/sidebar-nav";
 
 const OPEN_SECTIONS_KEY = "app-sidebar-open-sections";
 const COLLAPSE_DELAY_MS = 300;
@@ -91,12 +88,6 @@ export function AppSidebar({ session }: { session: Session | null }) {
               <Link to="/dashboard">
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
                   <span className="text-sm font-bold">DAC</span>
-                </div>
-                <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">DealFlow</span>
-                  <span className="text-muted-foreground truncate text-xs">
-                    M&A Platform
-                  </span>
                 </div>
               </Link>
             </SidebarMenuButton>
