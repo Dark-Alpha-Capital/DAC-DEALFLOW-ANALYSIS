@@ -1539,7 +1539,7 @@ export const chatSessions = sqliteTable(
       () => dealOpportunities.id,
       { onDelete: "set null" },
     ),
-    messages: text("messages")
+    messages: text("messages", { mode: "json" })
       .$type<Record<string, unknown>[]>()
       .notNull()
       .default([]),

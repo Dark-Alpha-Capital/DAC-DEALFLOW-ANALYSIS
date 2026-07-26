@@ -48,9 +48,18 @@ function normalizeOne(raw: unknown, index: number): UIMessage {
 
 /** Ensures DB JSON matches current UIMessage shape (parts-based; legacy used `content`). */
 export function coerceStoredMessages(value: unknown): UIMessage[] {
-  if (!Array.isArray(value)) {
+  let parsed = value;
+  if (typeof value === "string") {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
+
+  if (!Array.isArray(parsed)) {
     return [];
   }
 
-  return value.map(normalizeOne);
+  return parsed.map(normalizeOne);
 }
