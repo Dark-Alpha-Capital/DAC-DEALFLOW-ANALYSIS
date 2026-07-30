@@ -27,7 +27,7 @@ export const icScorerBootstrapInputSchema = z.object({
  * Scoring runs via workflows + Postgres chunks (no attachment extraction here).
  */
 export const loadIcScorerBootstrapData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => icScorerBootstrapInputSchema.parse(raw))
+  .validator((raw: unknown) => icScorerBootstrapInputSchema.parse(raw))
   .handler(async ({ data }) => {
     const { runIcScorerBootstrapPayload } = await import(
       "@/lib/server/load-ic-scorer-bootstrap.run"

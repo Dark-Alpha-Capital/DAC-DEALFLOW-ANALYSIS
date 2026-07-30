@@ -11,7 +11,7 @@ import {
 } from "@/lib/server/server-fn-input-schemas";
 
 export const loadCompaniesPageData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => offsetLimitSchema.parse(raw))
+  .validator((raw: unknown) => offsetLimitSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     const { data: rows, totalPages, totalCount } = await GetAllCompanies({
@@ -22,7 +22,7 @@ export const loadCompaniesPageData = createServerFn({ method: "GET" })
   });
 
 export const loadCompanyDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
+  .validator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {
@@ -38,7 +38,7 @@ export const loadCompanyDetailData = createServerFn({ method: "GET" })
   });
 
 export const loadCompanyForEditData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
+  .validator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {

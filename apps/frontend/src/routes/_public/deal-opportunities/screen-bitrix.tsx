@@ -42,8 +42,7 @@ export const Route = createFileRoute(
     const postHasAuth =
       Boolean(postCtx.postAuth.authId && postCtx.postAuth.domain) ||
       Boolean(postCtx.postAuth.appSid && postCtx.postAuth.domain);
-    const dealId =
-      s.dealId?.trim() || postCtx.initialDealId?.trim() || "";
+    const dealId = s.dealId?.trim() || postCtx.initialDealId?.trim() || "";
 
     if (!dealId || (!urlHasAuth && !postHasAuth)) {
       return {
@@ -60,7 +59,9 @@ export const Route = createFileRoute(
 
     if (!urlHasAuth) {
       bootstrapPrefetchInput.memberId =
-        bootstrapPrefetchInput.memberId || postCtx.postAuth.memberId || undefined;
+        bootstrapPrefetchInput.memberId ||
+        postCtx.postAuth.memberId ||
+        undefined;
       bootstrapPrefetchInput.authId =
         bootstrapPrefetchInput.authId || postCtx.postAuth.authId || undefined;
       bootstrapPrefetchInput.appSid =

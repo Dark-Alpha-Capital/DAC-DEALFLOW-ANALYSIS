@@ -45,7 +45,7 @@ export const loadThemesForSelectData = createServerFn({ method: "GET" }).handler
 export const loadRankedDealOpportunitiesPageData = createServerFn({
   method: "GET",
 })
-  .inputValidator((raw: unknown) =>
+  .validator((raw: unknown) =>
     rankedDealOpportunitiesPageInputSchema.parse(raw),
   )
   .handler(async ({ data }) => {
@@ -67,7 +67,7 @@ export const loadRankedDealOpportunitiesPageData = createServerFn({
 export const loadDealOpportunitiesKanbanInitialData = createServerFn({
   method: "GET",
 })
-  .inputValidator((raw: unknown) =>
+  .validator((raw: unknown) =>
     dealOpportunitiesKanbanInitialInputSchema.parse(raw),
   )
   .handler(async ({ data }) => {
@@ -135,7 +135,7 @@ export const loadDealOpportunitiesKanbanInitialData = createServerFn({
 export const loadRankedDealOpportunitiesKanbanStagePage = createServerFn({
   method: "POST",
 })
-  .inputValidator((raw: unknown) =>
+  .validator((raw: unknown) =>
     dealOpportunitiesKanbanStagePageInputSchema.parse(raw),
   )
   .handler(async ({ data }) => {
@@ -153,7 +153,7 @@ export const loadRankedDealOpportunitiesKanbanStagePage = createServerFn({
   });
 
 export const loadDealOpportunityDetailData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
+  .validator((raw: unknown) => uidParamSchema.parse(raw))
   .handler((async ({ data }: { data: { uid: string } }) => {
     await assertAuthenticated();
     try {
@@ -199,7 +199,7 @@ export const loadDealOpportunityDetailData = createServerFn({ method: "GET" })
   }) as any);
 
 export const loadDealOpportunityForEditData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => uidParamSchema.parse(raw))
+  .validator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {
@@ -215,7 +215,7 @@ export const loadDealOpportunityForEditData = createServerFn({ method: "GET" })
   });
 
 export const loadBitrixSyncPreviewData = createServerFn({ method: "GET" })
-  .inputValidator((raw: unknown) => dealOpportunityIdSchema.parse(raw))
+  .validator((raw: unknown) => dealOpportunityIdSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();
     try {

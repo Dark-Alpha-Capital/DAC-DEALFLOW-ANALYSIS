@@ -61,7 +61,7 @@ const validateDeals = (deals: TransformedDeal[]): ValidationResult => {
 };
 
 export const bulkUploadDealsToDB = createServerFn({ method: "POST" })
-  .inputValidator((raw: unknown) => bulkUploadDealsInputSchema.parse(raw))
+  .validator((raw: unknown) => bulkUploadDealsInputSchema.parse(raw))
   .handler(async ({ data: deals }) => {
     const userSession = await assertAuthenticated();
 

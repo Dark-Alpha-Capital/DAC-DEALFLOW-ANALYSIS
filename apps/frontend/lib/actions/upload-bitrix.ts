@@ -69,5 +69,5 @@ async function exportDealToBitrixImpl(deal: ExportDealInput) {
 }
 
 export const exportDealToBitrix = createServerFn({ method: "POST" })
-  .inputValidator((raw: unknown) => exportDealToBitrixInputSchema.parse(raw))
+  .validator((raw: unknown) => exportDealToBitrixInputSchema.parse(raw))
   .handler(async ({ data: deal }) => exportDealToBitrixImpl(deal));
