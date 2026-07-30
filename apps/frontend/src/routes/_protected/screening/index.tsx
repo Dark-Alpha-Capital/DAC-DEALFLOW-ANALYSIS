@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 import CimScreeningIndexSkeleton from "@/components/skeletons/cim-screening-index-skeleton";
 import { loadCimScreeningIndexData } from "@/lib/server/cim-screening-route-data";
 

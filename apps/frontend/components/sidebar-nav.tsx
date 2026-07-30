@@ -29,7 +29,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { usePathname } from "@/lib/navigation-shim";
+import { usePathname } from "@/lib/routing/navigation-shim";
 
 export type SidebarSectionId = "dealflow" | "workspace" | "admin";
 

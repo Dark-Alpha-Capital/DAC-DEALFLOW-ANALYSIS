@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getAllUserJobs } from "@/src/lib/workflow-jobs-api";
+import { getAllUserJobs } from "@/lib/workflows/workflow-jobs-api";
 import { assertAuthenticated } from "@/lib/server/assert-session";
 import type { JobWithMetadata } from "@repo/redis-queue/types";
 

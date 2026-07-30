@@ -1,1 +1,0 @@
-ALTER TYPE "public"."DocumentCategory" ADD VALUE 'CIM';

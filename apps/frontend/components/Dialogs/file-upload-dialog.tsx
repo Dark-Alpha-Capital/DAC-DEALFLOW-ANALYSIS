@@ -21,11 +21,11 @@ import {
 } from "@/components/ui/select";
 import { FilesIcon, Loader2, Upload, X } from "lucide-react";
 import { cn, formatFileSize } from "@/lib/utils";
-import { DOCUMENT_CATEGORY_OPTIONS } from "@/lib/document-category-options";
+import { DOCUMENT_CATEGORY_OPTIONS } from "@/lib/documents/document-category-options";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import type { DocumentCategory } from "@repo/db/enums";
 
 type EntityType = "LEAD" | "COMPANY" | "DEAL_OPPORTUNITY";

@@ -1,6 +1,6 @@
 
 import { Link } from "@tanstack/react-router";
-import { usePathname } from "@/lib/navigation-shim";
+import { usePathname } from "@/lib/routing/navigation-shim";
 import {
   Sidebar,
   SidebarContent,

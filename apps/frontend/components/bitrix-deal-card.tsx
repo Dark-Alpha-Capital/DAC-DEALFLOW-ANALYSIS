@@ -1,6 +1,6 @@
 import { MapPin, DollarSign, ExternalLink } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { BitrixDealGET } from "@/lib/route-domain-types";
+import { BitrixDealGET } from "@/lib/routing/route-domain-types";
 import { cn } from "@/lib/utils";
 
 export default function BitrixDealCard({ deal }: { deal: BitrixDealGET }) {

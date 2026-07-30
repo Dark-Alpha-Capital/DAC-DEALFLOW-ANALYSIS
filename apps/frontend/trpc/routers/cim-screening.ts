@@ -38,7 +38,7 @@ import {
   startCimScreeningWorkflow,
   getJobByIdForUser,
   terminateWorkflowInstance,
-} from "@/src/lib/workflow-jobs-api";
+} from "@/lib/workflows/workflow-jobs-api";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 
 const SCREENING_LIBRARY_CATEGORIES = ["CIM", "CIM_SCREENING"] as const;

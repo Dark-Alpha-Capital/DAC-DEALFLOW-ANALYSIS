@@ -8,12 +8,12 @@ import { PullNewDealsFromBitrixButton } from "@/components/deal-opportunities/sy
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 
 import {
   dealOpportunitiesListLoaderDeps,
   looseValidateSearch,
-} from "@/lib/route-search";
+} from "@/lib/routing/route-search";
 
 export const Route = createFileRoute("/_protected/deal-opportunities/")({
   validateSearch: (input: Record<string, unknown>) =>

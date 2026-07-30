@@ -16,8 +16,8 @@ import {
   markWorkflowCompleted,
   markWorkflowFailed,
   markWorkflowRunning,
-} from "./progress";
-import type { FileUploadParams, WorkflowWorkerEnv } from "./workflow-env";
+} from "@/lib/workflows/progress";
+import type { FileUploadParams, WorkflowWorkerEnv } from "@/lib/workflows/workflow-env";
 import { getSsrAppBaseUrl } from "@/lib/env.server";
 
 const LOG = "[file-upload]";

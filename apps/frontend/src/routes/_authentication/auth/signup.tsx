@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/auth-client";
 import { isAllowedWorkEmail } from "@/lib/utils";
 import { FaGoogle } from "react-icons/fa6";
 import { Loader2 } from "lucide-react";

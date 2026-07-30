@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { CircleHelp, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { reloadPage } from "@/lib/bitrix-widget-shared";
+import { reloadPage } from "@/lib/bitrix/bitrix-widget-shared";
 
 export function NoDealLoadedCard({
   title = "No deal is loaded yet",

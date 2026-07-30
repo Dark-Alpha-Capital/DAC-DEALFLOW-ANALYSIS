@@ -9,7 +9,7 @@ export { getGoogleGenAI } from "./clients/google-genai";
 export { getOpenAIClient } from "./clients/openai-sdk";
 export {
   getOpenAIProvider,
-  getGoogleGenerativeAIProvider,
+  getGoogleProvider,
   getChatLanguageModel,
   type ChatProvider,
 } from "./clients/ai-sdk-providers";

@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 import { useTRPC } from "@/trpc/client";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 
 type JobStatus = JobWithMetadata["state"];
 

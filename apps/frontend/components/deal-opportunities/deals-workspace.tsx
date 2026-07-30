@@ -1,7 +1,7 @@
 import * as React from "react";
 import { getRouteApi, useRouterState } from "@tanstack/react-router";
 import { LayoutGrid, Table2 } from "lucide-react";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { DealsDataTable } from "./data-table";
 import { DealsKanbanBoard } from "./deals-kanban-board";
 import { columns } from "./columns";

@@ -198,7 +198,7 @@ export async function runCIMExtractionLLM(
   console.log(`[cim-extraction] runCIMExtractionLLM: calling generateText...`);
   const { output } = await generateText({
     model: getOpenAIProvider()("gpt-4o-mini"),
-    system: CIM_EXTRACTION_SYSTEM,
+    instructions: CIM_EXTRACTION_SYSTEM,
     prompt: `${CIM_EXTRACTION_USER}\n\n---\n\nDocument text:\n\n${truncated}`,
     output: Output.object({
       schema: cimExtractionOutputSchema,

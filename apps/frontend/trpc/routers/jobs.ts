@@ -9,7 +9,7 @@ import {
   deleteUserJob,
   getJobStatus,
   restartWorkflowInstance,
-} from "@/src/lib/workflow-jobs-api";
+} from "@/lib/workflows/workflow-jobs-api";
 import { getWorkflowJobRow } from "@repo/db/workflow-jobs";
 import { resetWorkflowJobRowAfterRestart } from "@repo/db/mutations";
 import type { WorkflowKind } from "@repo/db/workflow-jobs";

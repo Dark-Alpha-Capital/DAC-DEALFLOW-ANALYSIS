@@ -1,1 +1,0 @@
-ALTER TABLE "Investor" ADD COLUMN "firstSeenFromInvestorLeadId" text;

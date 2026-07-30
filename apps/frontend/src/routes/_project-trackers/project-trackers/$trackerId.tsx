@@ -31,7 +31,7 @@ import {
   type EditProjectKickoffValues,
 } from "@repo/schemas";
 import DeleteProjectTrackerButton from "@/components/project-trackers/delete-project-tracker-button";
-import { PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
+import { PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH } from "@/lib/routing/route-search";
 import { useProjectKickoffScreeningPoll } from "@/hooks/use-project-kickoff-screening-poll";
 import { useEffect, useState } from "react";
 

@@ -8,7 +8,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { requireAuthenticatedUser } from "@/lib/require-auth";
+import { requireAuthenticatedUser } from "@/lib/auth/require-auth";
 
 export const Route = createFileRoute("/_project-trackers")({
   beforeLoad: async () => {

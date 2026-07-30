@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { CloudUpload, Eye, Pencil, Trash2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
 import DeleteEntityDialog from "@/components/DeleteEntityDialog";

@@ -1,5 +1,5 @@
 
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";

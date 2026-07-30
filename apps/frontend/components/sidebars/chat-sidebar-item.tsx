@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { usePathname, useRouter } from "@/lib/navigation-shim";
+import { usePathname, useRouter } from "@/lib/routing/navigation-shim";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MoreVertical, Pencil, Trash2, ExternalLink } from "lucide-react";
 import {
@@ -35,7 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
-import { invalidateRecentChatsQuery } from "@/lib/chat-query-cache";
+import { invalidateRecentChatsQuery } from "@/lib/chat/chat-query-cache";
 
 type Chat = { id: string; title: string };
 

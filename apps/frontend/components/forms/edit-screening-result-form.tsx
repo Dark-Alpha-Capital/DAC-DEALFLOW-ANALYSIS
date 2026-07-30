@@ -25,7 +25,7 @@ import { DealType, Sentiment } from "@repo/db/enums";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 
 const EditScreeningResultForm = ({
   screeningId,

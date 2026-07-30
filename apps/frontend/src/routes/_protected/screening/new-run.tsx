@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useTRPC } from "@/trpc/client";
 import useCurrentUser from "@/hooks/use-current-user";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,7 @@ import { loadCimScreeningNewRunData } from "@/lib/server/cim-screening-route-dat
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 import BackButton from "@/components/Buttons/back-button";
 
 export const Route = createFileRoute("/_protected/screening/new-run")({

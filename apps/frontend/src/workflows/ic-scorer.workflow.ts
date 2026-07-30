@@ -15,11 +15,11 @@ import {
   markWorkflowCompleted,
   markWorkflowFailed,
   markWorkflowRunning,
-} from "./progress";
-import type { IcScorerWorkflowParams, WorkflowWorkerEnv } from "./workflow-env";
-import { loadIcScorerEvidence } from "./ic-scorer-evidence";
-import { generateIcScorerScoreCore } from "./ic-scorer-score-core";
-import { generateIcScorerMemoPass } from "./ic-scorer-memo-core";
+} from "@/lib/workflows/progress";
+import type { IcScorerWorkflowParams, WorkflowWorkerEnv } from "@/lib/workflows/workflow-env";
+import { loadIcScorerEvidence } from "@/lib/workflows/ic-scorer-evidence";
+import { generateIcScorerScoreCore } from "@/lib/workflows/ic-scorer-score-core";
+import { generateIcScorerMemoPass } from "@/lib/workflows/ic-scorer-memo-core";
 
 const LOG = "[IcScorerWorkflow]";
 

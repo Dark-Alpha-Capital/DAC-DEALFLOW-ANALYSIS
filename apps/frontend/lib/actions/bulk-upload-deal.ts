@@ -1,10 +1,10 @@
 import { DealType } from "@repo/db/enums";
-import { rateLimit } from "@/src/lib/rate-limit";
+import { rateLimit } from "@/lib/workflows/rate-limit";
 import { createServerFn } from "@tanstack/react-start";
 import { updateTag } from "@/lib/cache-invalidation";
 import { assertAuthenticated } from "@/lib/server/assert-session";
 import { bulkUploadDealsInputSchema } from "@/lib/server/server-fn-input-schemas";
-import type { TransformedDeal } from "@/lib/route-domain-types";
+import type { TransformedDeal } from "@/lib/routing/route-domain-types";
 
 type DealValidationError = {
   index: number;

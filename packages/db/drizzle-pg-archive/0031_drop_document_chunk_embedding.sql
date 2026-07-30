@@ -1,1 +1,0 @@
-ALTER TABLE "DocumentChunk" DROP COLUMN "embedding";

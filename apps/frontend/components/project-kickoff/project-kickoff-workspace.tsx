@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { experimental_useObject as useObject } from "@ai-sdk/react";
+import { useObject } from "@ai-sdk/react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTRPC } from "@/trpc/client";

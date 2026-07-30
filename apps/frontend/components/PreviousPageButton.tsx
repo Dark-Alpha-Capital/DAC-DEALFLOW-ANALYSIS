@@ -1,6 +1,6 @@
 
 import { ArrowLeft } from "lucide-react";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import React from "react";
 import { Button } from "./ui/button";
 

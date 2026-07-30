@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { XIcon } from "lucide-react";
-import { useRouter, useSearchParams } from "@/lib/navigation-shim";
+import { useRouter, useSearchParams } from "@/lib/routing/navigation-shim";
 import { useTransition } from "react";
 
 const THEME_FILTER_KEYS = [

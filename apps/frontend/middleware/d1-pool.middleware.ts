@@ -1,19 +1,18 @@
 import type { AnyFunctionMiddleware } from "@tanstack/start-client-core";
 import { createMiddleware } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
-import { runDbWithD1 } from "@repo/db";
-import { isCloudflareWorkersRuntime } from "@repo/db/d1-context";
+import { isCloudflareWorkersRuntime, withDb } from "@repo/db";
 
-/** Bind one D1-backed Drizzle instance per HTTP request; `@repo/db` `db` reads from ALS. */
+/** Per request: `const db = drizzle(env.DB)` via `withDb`. */
 export const d1RequestMiddleware = createMiddleware().server(async ({ next }) => {
   if (!isCloudflareWorkersRuntime()) {
     return next();
   }
-  return runDbWithD1(env.DB, async () => await next());
+  return withDb(env.DB, async () => await next());
 });
 
 /**
- * TanStack Start strips `requestMiddleware` from the server-fn chain; re-enter D1 ALS
+ * TanStack Start strips `requestMiddleware` from the server-fn chain; re-enter D1
  * for each server function (nested scopes are OK).
  */
 export const d1FunctionMiddleware = createMiddleware({
@@ -22,5 +21,5 @@ export const d1FunctionMiddleware = createMiddleware({
   if (!isCloudflareWorkersRuntime()) {
     return next();
   }
-  return runDbWithD1(env.DB, async () => await next());
+  return withDb(env.DB, async () => await next());
 }) as unknown as AnyFunctionMiddleware;

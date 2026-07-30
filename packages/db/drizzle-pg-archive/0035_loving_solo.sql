@@ -1,1 +1,0 @@
-ALTER TABLE "DealOpportunity" ALTER COLUMN "companyId" DROP NOT NULL;

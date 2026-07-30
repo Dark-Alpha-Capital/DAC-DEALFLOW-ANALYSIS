@@ -1,5 +1,5 @@
 
-import { useSearchParams } from "@/lib/navigation-shim";
+import { useSearchParams } from "@/lib/routing/navigation-shim";
 import React from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Lock } from "lucide-react";

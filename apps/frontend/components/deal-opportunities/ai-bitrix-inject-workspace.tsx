@@ -5,10 +5,10 @@ import {
   type ComponentProps,
   type ReactNode,
 } from "react";
-import { experimental_useObject as useObject } from "@ai-sdk/react";
+import { useObject } from "@ai-sdk/react";
 import { useMutation } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import type { AppRouter } from "@/trpc/routers/_app";
 import { bitrixDealOpportunityExtractionSchema } from "@repo/bitrix-sync";
 import { toast } from "sonner";

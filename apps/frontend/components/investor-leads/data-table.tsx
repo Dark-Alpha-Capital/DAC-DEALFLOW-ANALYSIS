@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { investorLeadStatusLabels } from "./columns";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 
 interface InvestorLeadsDataTableProps {
   columns: ColumnDef<InvestorLead>[];

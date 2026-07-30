@@ -26,19 +26,19 @@ import {
   markWorkflowCompleted,
   markWorkflowFailed,
   markWorkflowRunning,
-} from "./progress";
+} from "@/lib/workflows/progress";
 import type {
   CimMonographScreeningParams,
   CimScreeningDealListingContextSource,
   WorkflowWorkerEnv,
-} from "./workflow-env";
+} from "@/lib/workflows/workflow-env";
 import {
   buildBitrixTimelineCommentText,
   CIM_SCREENING_MODEL,
   getInterQuestionDelayMs,
   SCREENING_ANSWER_SCHEMA,
   sleep,
-} from "./cim-screening-core";
+} from "@/lib/workflows/cim-screening-core";
 
 const LOG = "[CimMonographScreeningWorkflow]";
 const QUESTION_PREVIEW_MAX = 120;

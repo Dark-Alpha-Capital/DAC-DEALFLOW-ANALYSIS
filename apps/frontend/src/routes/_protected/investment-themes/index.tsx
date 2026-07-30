@@ -22,14 +22,14 @@ import DeleteThemeFiltersButton from "@/components/Buttons/delete-theme-filters-
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 import {
   asNumber,
   asString,
   investmentThemesListLoaderDeps,
   looseValidateSearch,
   type LooseSearch,
-} from "@/lib/route-search";
+} from "@/lib/routing/route-search";
 
 const DEFAULT_OPEN_FILTER_SECTIONS = ["search", "scores"];
 

@@ -182,7 +182,7 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
           });
           const { object } = await generateObject({
             model: openai("gpt-4o-mini"),
-            system: PROJECT_KICKOFF_SCREENING_SYSTEM,
+            instructions: PROJECT_KICKOFF_SCREENING_SYSTEM,
             prompt,
             schema: screeningOutputSchema,
           });

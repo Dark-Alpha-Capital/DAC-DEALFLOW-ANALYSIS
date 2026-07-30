@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { entityTypeLabels, getEntityRoute } from "./columns";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 
 interface DocumentsDataTableProps {
   columns: ColumnDef<DocumentRow>[];

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { Link } from "@tanstack/react-router";
-import { useRouter, useSearchParams } from "@/lib/navigation-shim";
-import { authClient } from "@/lib/auth-client";
+import { useRouter, useSearchParams } from "@/lib/routing/navigation-shim";
+import { authClient } from "@/lib/auth/auth-client";
 import { Mail, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";

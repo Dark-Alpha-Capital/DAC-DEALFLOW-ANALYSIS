@@ -6,7 +6,7 @@ import {
   listRecentChatSessionsForUser,
   updateChatSessionContext,
   updateChatSessionTitle,
-} from "@/lib/chat-store";
+} from "@/lib/chat/chat-store";
 
 export const chatsRouter = createTRPCRouter({
   listRecent: protectedProcedure

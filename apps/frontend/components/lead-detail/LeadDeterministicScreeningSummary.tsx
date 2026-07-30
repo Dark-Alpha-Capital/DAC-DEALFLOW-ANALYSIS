@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScreenLeadButton } from "@/components/lead-detail/screen-lead-button";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";

@@ -12,8 +12,8 @@ import {
   markWorkflowCompleted,
   markWorkflowFailed,
   markWorkflowRunning,
-} from "./progress";
-import type { CimExtractionParams, WorkflowWorkerEnv } from "./workflow-env";
+} from "@/lib/workflows/progress";
+import type { CimExtractionParams, WorkflowWorkerEnv } from "@/lib/workflows/workflow-env";
 
 const LOG = "[CimExtractionWorkflow]";
 

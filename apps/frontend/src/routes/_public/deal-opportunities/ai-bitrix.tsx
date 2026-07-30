@@ -9,7 +9,7 @@ import {
   bitrixWidgetSearchSchema,
   mapBitrixWidgetSearch,
   type BitrixWidgetSearch,
-} from "@/lib/bitrix-widget-shared";
+} from "@/lib/bitrix/bitrix-widget-shared";
 import {
   loadBitrixScreenWidgetPostContext,
   type BitrixScreenWidgetPostContext,

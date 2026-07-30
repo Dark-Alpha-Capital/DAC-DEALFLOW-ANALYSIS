@@ -3,7 +3,7 @@ import { ChatClient } from "@/components/chat/chat-client";
 import {
   fetchChatRouteLoaderData,
   type ChatRouteLoaderData,
-} from "@/lib/fetch-chat-route-loader-data";
+} from "@/lib/chat/fetch-chat-route-loader-data";
 import ChatSessionPageSkeleton from "@/components/skeletons/chat-session-page-skeleton";
 
 export const Route = createFileRoute("/_chatbot/chat/$id")({

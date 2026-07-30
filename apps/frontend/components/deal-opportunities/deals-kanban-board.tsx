@@ -22,7 +22,7 @@ import {
   normalizeBitrixStageIdForPipeline,
 } from "@repo/bitrix-sync";
 import { loadRankedDealOpportunitiesKanbanStagePage } from "@/lib/server/deal-opportunities-route-data";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

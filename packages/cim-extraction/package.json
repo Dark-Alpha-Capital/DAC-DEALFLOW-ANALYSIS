@@ -9,7 +9,7 @@
   "dependencies": {
     "@repo/ai-core": "workspace:*",
     "@repo/db": "workspace:*",
-    "ai": "^6.0.124",
+    "ai": "^7.0.42",
     "mammoth": "^1.10.0",
     "unpdf": "^1.4.0",
     "xlsx": "^0.18.5",

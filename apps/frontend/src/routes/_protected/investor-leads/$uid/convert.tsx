@@ -7,7 +7,7 @@ import { loadConvertInvestorLeadPageData } from "@/lib/server/investor-leads-rou
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 
 export const Route = createFileRoute("/_protected/investor-leads/$uid/convert")(
   {

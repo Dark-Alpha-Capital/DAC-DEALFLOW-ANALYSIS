@@ -7,8 +7,8 @@ import EditPageSkeleton from "@/components/skeletons/edit-page-skeleton";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
-import { DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
+} from "@/lib/routing/route-loader-cache";
+import { DEAL_OPPORTUNITIES_INDEX_DEFAULT_SEARCH } from "@/lib/routing/route-search";
 
 export const Route = createFileRoute(
   "/_protected/deal-opportunities/$uid/edit",

@@ -15,14 +15,14 @@ import {
 import {
   deleteChunkVectorsForDocument,
   upsertDocumentChunkVectors,
-} from "@/lib/document-chunk-vectorize";
+} from "@/lib/documents/document-chunk-vectorize";
 import {
   markWorkflowCompleted,
   markWorkflowFailed,
   markWorkflowRunning,
   workflowProgressReporter,
-} from "./progress";
-import type { RagIngestionParams, WorkflowWorkerEnv } from "./workflow-env";
+} from "@/lib/workflows/progress";
+import type { RagIngestionParams, WorkflowWorkerEnv } from "@/lib/workflows/workflow-env";
 
 const LOG = "[rag-ingestion]";
 

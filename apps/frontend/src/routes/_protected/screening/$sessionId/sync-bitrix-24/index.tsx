@@ -5,7 +5,7 @@ import { loadCimScreeningBitrixSyncData } from "@/lib/server/cim-screening-route
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 
 function CimScreeningBitrixSyncRoute() {
   const { sessionId } = Route.useParams();

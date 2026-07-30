@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { usePathname } from "@/lib/navigation-shim";
+import { usePathname } from "@/lib/routing/navigation-shim";
 import {
   BookOpen,
   LayoutDashboard,
@@ -22,7 +22,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { SidebarUser } from "@/components/sidebar-user";
-import { PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
+import { PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH } from "@/lib/routing/route-search";
 
 const projectNavItems = [
   {

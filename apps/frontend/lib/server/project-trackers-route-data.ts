@@ -6,7 +6,7 @@ import { projectTrackersPageInputSchema } from "@/lib/server/server-fn-input-sch
 import type {
   ProjectTrackerSortBy,
   ProjectTrackerSortDir,
-} from "@/lib/route-search";
+} from "@/lib/routing/route-search";
 
 function sortProjectTrackers<
   T extends {

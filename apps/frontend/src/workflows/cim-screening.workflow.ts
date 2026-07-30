@@ -23,7 +23,7 @@ import {
   listDealOpportunityScreeningChunks,
   searchDocumentChunksVector,
   type SearchDocumentChunksVectorInput,
-} from "@/lib/document-chunk-vectorize";
+} from "@/lib/documents/document-chunk-vectorize";
 import {
   buildCimScreeningQuestionPrompt,
   getOpenAIProvider,
@@ -33,12 +33,12 @@ import {
   markWorkflowCompleted,
   markWorkflowFailed,
   markWorkflowRunning,
-} from "./progress";
+} from "@/lib/workflows/progress";
 import type {
   CimScreeningDealListingContextSource,
   CimScreeningParams,
   WorkflowWorkerEnv,
-} from "./workflow-env";
+} from "@/lib/workflows/workflow-env";
 import {
   buildBitrixTimelineCommentText,
   buildExcerptsFromHits,
@@ -46,7 +46,7 @@ import {
   getInterQuestionDelayMs,
   SCREENING_ANSWER_SCHEMA,
   sleep,
-} from "./cim-screening-core";
+} from "@/lib/workflows/cim-screening-core";
 
 /** Pause between questions to avoid Vectorize/OpenAI bursts (deal RAG scans many namespaces per query). */
 function cimScreeningInterQuestionDelayMs(): number {

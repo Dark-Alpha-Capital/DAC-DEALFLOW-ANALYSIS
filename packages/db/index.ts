@@ -1,5 +1,6 @@
-import { createDbFromD1 } from "./create-db";
-import { isCloudflareWorkersRuntime, workerD1DbAls } from "./d1-context";
+import { createDb } from "./create-db";
+import { dbAls, isCloudflareWorkersRuntime } from "./d1-context";
+import type { AppDb } from "./db-types";
 
 export type { AppDb } from "./db-types";
 export * from "./enums";
@@ -28,44 +29,43 @@ export {
 export { ilike, jsonArrayOverlaps } from "./sqlite-helpers";
 export type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
-export { createDbFromD1 } from "./create-db";
-export { isCloudflareWorkersRuntime, workerD1DbAls } from "./d1-context";
-
-import type { AppDb } from "./db-types";
-
-const workerDbProxy: AppDb = new Proxy({} as AppDb, {
-  get(_target, prop, receiver) {
-    const store = workerD1DbAls.getStore();
-    if (!store?.db) {
-      throw new Error(
-        "@repo/db: Drizzle `db` was used without an active D1 binding. Run the app with `bun run dev` (remote D1 via Wrangler), or call `runDbWithD1(env.DB, ...)`.",
-      );
-    }
-    return Reflect.get(store.db as object, prop, receiver);
-  },
-});
-
-const nodeDbProxy: AppDb = new Proxy({} as AppDb, {
-  get() {
-    throw new Error(
-      "@repo/db: No local database. Use `bun run dev` in apps/frontend — dev uses remote D1 on your Cloudflare account (see wrangler.jsonc `d1_databases` with `remote: true`). For CLI scripts, use `runDbWithD1` with a D1 binding or `wrangler d1` commands.",
-    );
-  },
-});
-
-export const db: AppDb = isCloudflareWorkersRuntime()
-  ? workerDbProxy
-  : nodeDbProxy;
+export { createDb, createDbFromD1 } from "./create-db";
+export { dbAls, isCloudflareWorkersRuntime, workerD1DbAls } from "./d1-context";
 
 /**
- * Run `fn` with a D1-backed Drizzle instance (Workers + Workflows).
+ * Run `fn` with Drizzle bound to a D1 database.
+ * Prefer this at Workers / workflow boundaries: `withDb(env.DB, ...)`.
  */
-export async function runDbWithD1<T>(
+export async function withDb<T>(
   d1: D1Database,
   fn: () => Promise<T>,
 ): Promise<T> {
-  const requestDb = createDbFromD1(d1);
-  return workerD1DbAls.run({ db: requestDb }, fn);
+  return dbAls.run(createDb(d1), fn);
 }
+
+/** @deprecated Prefer `withDb` */
+export const runDbWithD1 = withDb;
+
+function requireDb(): AppDb {
+  const instance = dbAls.getStore();
+  if (!instance) {
+    throw new Error(
+      isCloudflareWorkersRuntime()
+        ? "@repo/db: no D1 binding in scope. Wrap the request with withDb(env.DB, ...) (middleware / workflows)."
+        : "@repo/db: no local database. Use `bun run --cwd apps/frontend dev` (remote D1). For scripts, use withDb(d1, ...) or `wrangler d1`.",
+    );
+  }
+  return instance;
+}
+
+/**
+ * Request-scoped Drizzle client. Only valid inside `withDb(env.DB, ...)`.
+ * Equivalent to the guide's `const db = drizzle(env.DB)` once D1 is in scope.
+ */
+export const db: AppDb = new Proxy({} as AppDb, {
+  get(_target, prop, receiver) {
+    return Reflect.get(requireDb() as object, prop, receiver);
+  },
+});
 
 export default db;

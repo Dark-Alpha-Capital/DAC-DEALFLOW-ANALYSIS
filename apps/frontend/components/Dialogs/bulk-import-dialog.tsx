@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "../ui/scroll-area";
-import { TransformedDeal } from "@/lib/route-domain-types";
+import { TransformedDeal } from "@/lib/routing/route-domain-types";
 import { useToast } from "@/hooks/use-toast";
 import bulkUploadDealsToDB from "@/lib/actions/bulk-upload-deal";
 import {

@@ -1,6 +1,6 @@
 
 import { Link } from "@tanstack/react-router";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { User2, LogOut, ChevronUp, Lock } from "lucide-react";
 import {
   DropdownMenu,
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/auth-client";
 
 interface UserDropdownProps {
   session: any;

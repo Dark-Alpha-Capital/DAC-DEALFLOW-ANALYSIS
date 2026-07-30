@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, Suspense } from "react";
 import { Link } from "@tanstack/react-router";
-import { useRouter, useSearchParams } from "@/lib/navigation-shim";
+import { useRouter, useSearchParams } from "@/lib/routing/navigation-shim";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/auth-client";
 import { CheckCircle, XCircle, Loader2, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";

@@ -2,8 +2,8 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { useTRPC } from "@/trpc/client";
-import { useRouter } from "@/lib/navigation-shim";
-import { PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH } from "@/lib/route-search";
+import { useRouter } from "@/lib/routing/navigation-shim";
+import { PROJECT_TRACKERS_INDEX_DEFAULT_SEARCH } from "@/lib/routing/route-search";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,

@@ -8,7 +8,7 @@ import ThemeDetailTabs from "@/components/theme-detail/ThemeDetailTabs";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 
 function getStatusColor(status: string): string {
   switch (status) {

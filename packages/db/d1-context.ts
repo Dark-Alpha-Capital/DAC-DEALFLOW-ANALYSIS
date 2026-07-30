@@ -1,11 +1,19 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { AppDb } from "./index";
+import type { AppDb } from "./db-types";
 
-export type D1DbStore = {
-  db: AppDb;
+/** Request-scoped Drizzle client set by `withDb(env.DB, ...)`. */
+export const dbAls = new AsyncLocalStorage<AppDb>();
+
+/** @deprecated Prefer `dbAls`; kept for older `{ db }` store shape. */
+export const workerD1DbAls = {
+  getStore(): { db: AppDb } | undefined {
+    const db = dbAls.getStore();
+    return db ? { db } : undefined;
+  },
+  run<T>(store: { db: AppDb }, fn: () => T): T {
+    return dbAls.run(store.db, fn);
+  },
 };
-
-export const workerD1DbAls = new AsyncLocalStorage<D1DbStore>();
 
 export function isCloudflareWorkersRuntime(): boolean {
   return (

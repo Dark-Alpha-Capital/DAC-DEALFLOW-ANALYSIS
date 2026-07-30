@@ -1,7 +1,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { extractBitrixDealIdFromFormData } from "@/lib/bitrix-placement-form";
+import { extractBitrixDealIdFromFormData } from "@/lib/bitrix/bitrix-placement-form";
 import { getRequest } from "@tanstack/react-start/server";
 
 export type BitrixScreenWidgetPostContext = {

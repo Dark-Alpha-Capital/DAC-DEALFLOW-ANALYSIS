@@ -1,7 +1,7 @@
 
 import React, { useOptimistic, useTransition } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useRouter, useSearchParams } from "@/lib/navigation-shim";
+import { useRouter, useSearchParams } from "@/lib/routing/navigation-shim";
 import { Value } from "@radix-ui/react-select";
 import { UserRoundIcon } from "lucide-react";
 import useCurrentUser from "@/hooks/use-current-user";

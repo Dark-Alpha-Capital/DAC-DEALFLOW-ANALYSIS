@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { coverageStatusLabels } from "./columns";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 
 interface CompaniesDataTableProps {
   columns: ColumnDef<CompanyWithTheme>[];

@@ -15,8 +15,7 @@ interface SendEmailParams {
 export async function sendEmail({ to, subject, html }: SendEmailParams) {
   const env = getServerEnv();
   const resend = new Resend(env.RESEND_API_KEY ?? "");
-  const fromEmail =
-    env.RESEND_FROM_EMAIL || "dealflow@darkalphacapital.com";
+  const fromEmail = env.RESEND_FROM_EMAIL || "dealflow@darkalphacapital.com";
 
   const { data, error } = await resend.emails.send({
     from: `${APP_NAME} <${fromEmail}>`,

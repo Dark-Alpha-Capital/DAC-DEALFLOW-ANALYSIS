@@ -34,7 +34,7 @@ import { FieldGroup } from "@/components/ui/field";
 import { SearchableEntityPicker } from "@/components/linking/SearchableEntityPicker";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import type { Investor, InvestorCompanyLink } from "@repo/db";
 
 export type CompanyLinkedInvestorRow = {

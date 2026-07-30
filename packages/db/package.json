@@ -23,6 +23,7 @@
   "devDependencies": {
     "@faker-js/faker": "^9.4.0",
     "@types/bun": "latest",
+    "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.8"
   },
   "exports": {
@@ -32,7 +33,6 @@
     "./queries": "./queries/index.ts",
     "./mutations": "./mutations/index.ts",
     "./types": "./types.ts",
-    "./types-only": "./types-only.ts",
     "./workflow-jobs": "./workflow-jobs.ts",
     "./d1-context": "./d1-context.ts",
     "./create-db": "./create-db.ts"

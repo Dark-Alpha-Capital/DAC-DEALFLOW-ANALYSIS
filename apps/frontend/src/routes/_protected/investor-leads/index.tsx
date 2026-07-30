@@ -7,13 +7,13 @@ import { Plus } from "lucide-react";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 import {
   asNumber,
   looseValidateSearch,
   paginatedListLoaderDeps,
   type LooseSearch,
-} from "@/lib/route-search";
+} from "@/lib/routing/route-search";
 
 export const Route = createFileRoute("/_protected/investor-leads/")({
   validateSearch: (search: Record<string, unknown>): LooseSearch =>

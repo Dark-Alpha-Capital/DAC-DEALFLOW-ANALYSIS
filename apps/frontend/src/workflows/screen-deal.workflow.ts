@@ -28,9 +28,9 @@ import {
   markWorkflowCompleted,
   markWorkflowFailed,
   markWorkflowRunning,
-} from "./progress";
-import type { ScreenDealParams, WorkflowWorkerEnv } from "./workflow-env";
-import { withWorkflowDb } from "./with-workflow-db";
+} from "@/lib/workflows/progress";
+import type { ScreenDealParams, WorkflowWorkerEnv } from "@/lib/workflows/workflow-env";
+import { withWorkflowDb } from "@/lib/workflows/with-workflow-db";
 
 interface DealInfo {
   id: string;

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { usePathname, useSearchParams } from "@/lib/navigation-shim";
+import { usePathname, useSearchParams } from "@/lib/routing/navigation-shim";
 
 import { Button } from "@/components/ui/button";
 

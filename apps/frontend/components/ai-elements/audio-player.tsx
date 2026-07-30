@@ -1,5 +1,5 @@
 
-import type { Experimental_SpeechResult as SpeechResult } from "ai";
+import type { SpeechResult } from "ai";
 import type { ComponentProps, CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";

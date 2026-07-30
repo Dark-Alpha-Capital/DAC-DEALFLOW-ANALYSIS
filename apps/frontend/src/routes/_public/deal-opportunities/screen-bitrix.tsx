@@ -9,7 +9,7 @@ import {
   mapBitrixWidgetSearch,
   buildBootstrapInput,
   type BitrixWidgetSearch,
-} from "@/lib/bitrix-widget-shared";
+} from "@/lib/bitrix/bitrix-widget-shared";
 import {
   loadBitrixScreeningWidgetBootstrapData,
   type BitrixScreeningWidgetBootstrapInput,

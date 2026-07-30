@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 
 const GLOBAL_CATEGORIES = [
   {

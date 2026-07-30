@@ -1,7 +1,7 @@
 
 import type { Company } from "@repo/db";
 import type { CompanyNote } from "@repo/db/schema";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { useTRPC } from "@/trpc/client";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";

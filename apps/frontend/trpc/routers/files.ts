@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import {
   deleteChunkVectorsForDocument,
   getDocumentChunksVectorIndex,
-} from "@/lib/document-chunk-vectorize";
+} from "@/lib/documents/document-chunk-vectorize";
 import {
   checkDocumentDuplicateSchema,
   deleteDocumentInputSchema,
@@ -25,7 +25,7 @@ import { uploadBuffer, deleteFile } from "@repo/nextcloud";
 import {
   insertWorkflowJob,
   startRagIngestionWorkflow,
-} from "@/src/lib/workflow-jobs-api";
+} from "@/lib/workflows/workflow-jobs-api";
 import { setWorkflowJobState } from "@repo/db/workflow-jobs";
 import { createHash, randomUUID } from "crypto";
 

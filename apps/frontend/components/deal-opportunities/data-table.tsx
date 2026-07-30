@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { formatNumberWithCommas } from "@/lib/utils";
 
 function isInteractiveRowClickTarget(target: EventTarget | null) {

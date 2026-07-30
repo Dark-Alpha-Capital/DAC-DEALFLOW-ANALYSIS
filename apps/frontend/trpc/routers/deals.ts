@@ -90,7 +90,7 @@ import {
   startCimScreeningWorkflow,
   startIcScorerWorkflow,
   terminateWorkflowInstance,
-} from "@/src/lib/workflow-jobs-api";
+} from "@/lib/workflows/workflow-jobs-api";
 import {
   deleteWorkflowJobRow,
   getWorkflowJobRow,
@@ -143,7 +143,7 @@ import {
 import {
   deleteChunkVectorsForDocument,
   getDocumentChunksVectorIndex,
-} from "@/lib/document-chunk-vectorize";
+} from "@/lib/documents/document-chunk-vectorize";
 import { TRPCError } from "@trpc/server";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import { icScorerOutputLooseSchema } from "@repo/schemas";

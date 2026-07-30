@@ -1,7 +1,7 @@
 
 import clsx from "clsx";
 import { Link } from "@tanstack/react-router";
-import { usePathname, useRouter } from "@/lib/navigation-shim";
+import { usePathname, useRouter } from "@/lib/routing/navigation-shim";
 import React, { useEffect, useState } from "react";
 import { MdMenu, MdClose } from "react-icons/md";
 import {
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronDown, Lock, Loader2 } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/auth-client";
 import { Button } from "@/components/ui/button";
 import { FaScrewdriver } from "react-icons/fa";
 type NavLinkType = {

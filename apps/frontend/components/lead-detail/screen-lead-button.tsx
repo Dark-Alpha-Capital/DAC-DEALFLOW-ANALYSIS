@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Play } from "lucide-react";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useTRPC } from "@/trpc/client";

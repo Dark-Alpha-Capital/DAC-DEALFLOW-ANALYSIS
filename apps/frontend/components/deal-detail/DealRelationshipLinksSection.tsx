@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { FieldSet, FieldLegend } from "@/components/ui/field";
 import { useTRPC } from "@/trpc/client";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { SearchableEntityPicker } from "@/components/linking/SearchableEntityPicker";
 
 export function DealRelationshipLinksSection({

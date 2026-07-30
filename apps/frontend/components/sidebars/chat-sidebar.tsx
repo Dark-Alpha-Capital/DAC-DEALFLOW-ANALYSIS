@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { usePathname } from "@/lib/navigation-shim";
+import { usePathname } from "@/lib/routing/navigation-shim";
 import { NewChatSidebarButton } from "./new-chat-sidebar-button";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -23,11 +23,11 @@ import {
 import { ChatSidebarItem } from "./chat-sidebar-item";
 import { SidebarUser } from "@/components/sidebar-user";
 import { useTRPC } from "@/trpc/client";
-import { useSession } from "@/lib/auth-client";
+import { useSession } from "@/lib/auth/auth-client";
 import {
   RECENT_CHATS_CACHE_OPTIONS,
   RECENT_CHATS_INPUT,
-} from "@/lib/chat-query-cache";
+} from "@/lib/chat/chat-query-cache";
 
 const layoutLinks = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },

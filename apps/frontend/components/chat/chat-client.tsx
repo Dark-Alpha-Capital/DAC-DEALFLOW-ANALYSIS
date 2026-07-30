@@ -1,4 +1,4 @@
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { useEffect, useId, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
@@ -49,13 +49,13 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
-import { EMPTY_CHAT_CONTEXT, type ChatContext } from "@/lib/chat-context";
+import { EMPTY_CHAT_CONTEXT, type ChatContext } from "@/lib/chat/chat-context";
 import {
   DEFAULT_CHAT_SELECTION,
   type ChatSelection,
   type ChatProvider,
-} from "@/lib/chat-models";
-import { invalidateRecentChatsQuery } from "@/lib/chat-query-cache";
+} from "@/lib/chat/chat-models";
+import { invalidateRecentChatsQuery } from "@/lib/chat/chat-query-cache";
 import { useTRPC } from "@/trpc/client";
 
 type ToolPartLike = {

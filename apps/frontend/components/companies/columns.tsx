@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
 import DeleteEntityDialog from "@/components/DeleteEntityDialog";

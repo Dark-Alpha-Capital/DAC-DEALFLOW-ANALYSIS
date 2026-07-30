@@ -6,7 +6,7 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { postChat } = await import("@/lib/chat-post.server");
+        const { postChat } = await import("@/lib/chat/chat-post.server");
         return withWorkerDbIfNeeded(() => postChat(request));
       },
     },

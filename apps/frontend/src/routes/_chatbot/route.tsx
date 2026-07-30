@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { TRPCReactProvider } from "@/trpc/client";
-import { requireAuthenticatedUser } from "@/lib/require-auth";
+import { requireAuthenticatedUser } from "@/lib/auth/require-auth";
 
 export const Route = createFileRoute("/_chatbot")({
   beforeLoad: async () => {

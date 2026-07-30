@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import {
   extractDealIdFromPlacementInfo,
   extractDealIdFromReferrer,
-} from "@/lib/bitrix-widget-client";
+} from "@/lib/bitrix/bitrix-widget-client";
 import {
   mergeBitrixWidgetSearchWithSession,
   readBitrixWidgetSessionCache,
   writeBitrixWidgetSessionCache,
   type BitrixWidgetSearchFields,
   type BitrixWidgetSessionCacheV1,
-} from "@/lib/bitrix-widget-session-cache";
+} from "@/lib/bitrix/bitrix-widget-session-cache";
 
 export type BitrixWidgetLoaderPost = {
   initialDealId: string | null;

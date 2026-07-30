@@ -16,11 +16,11 @@ import ProjectTrackersPageSkeleton from "@/components/skeletons/ProjectTrackersP
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 import {
   looseValidateSearch,
   projectTrackersListLoaderDeps,
-} from "@/lib/route-search";
+} from "@/lib/routing/route-search";
 
 export const Route = createFileRoute("/_project-trackers/project-trackers/")({
   validateSearch: (input: Record<string, unknown>) =>

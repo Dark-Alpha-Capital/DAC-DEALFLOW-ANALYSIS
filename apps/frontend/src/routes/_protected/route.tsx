@@ -4,7 +4,7 @@ import { Providers } from "@/components/providers";
 import { Topbar } from "@/components/topbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { requireAuthenticatedUser } from "@/lib/require-auth";
+import { requireAuthenticatedUser } from "@/lib/auth/require-auth";
 
 export const Route = createFileRoute("/_protected")({
   beforeLoad: async () => {

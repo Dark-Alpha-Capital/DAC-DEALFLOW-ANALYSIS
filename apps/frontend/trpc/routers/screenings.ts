@@ -14,7 +14,7 @@ import { GetDealOpportunityById, GetDealOpportunityByLegacyDealId } from "@repo/
 import {
   insertWorkflowJob,
   startScreenDealWorkflow,
-} from "@/src/lib/workflow-jobs-api";
+} from "@/lib/workflows/workflow-jobs-api";
 
 const saveScreeningSchema = z.object({
   dealId: z.string(),

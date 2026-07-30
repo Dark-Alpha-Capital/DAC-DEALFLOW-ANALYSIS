@@ -1,5 +1,5 @@
 
-import { usePathname, useRouter, useSearchParams } from "@/lib/navigation-shim";
+import { usePathname, useRouter, useSearchParams } from "@/lib/routing/navigation-shim";
 import { useRef, useTransition } from "react";
 import { Loader2, SearchIcon, XCircleIcon } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";

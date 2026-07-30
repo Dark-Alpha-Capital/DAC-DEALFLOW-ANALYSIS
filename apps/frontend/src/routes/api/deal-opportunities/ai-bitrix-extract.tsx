@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Output, streamText } from "ai";
+import { createTextStreamResponse, Output, streamText, toTextStream } from "ai";
 import {
   BITRIX_DEAL_OPPORTUNITY_EXTRACTION_SYSTEM,
   getChatLanguageModel,
@@ -54,7 +54,7 @@ export const Route = createFileRoute(
 
         const result = streamText({
           model: getChatLanguageModel("openai", OPENAI_EXTRACT_MODEL),
-          system: BITRIX_DEAL_OPPORTUNITY_EXTRACTION_SYSTEM,
+          instructions: BITRIX_DEAL_OPPORTUNITY_EXTRACTION_SYSTEM,
           prompt: `Extract deal fields from the following text:\n\n---\n\n${trimmed}`,
           output: Output.object({
             name: "BitrixDealOpportunityExtraction",
@@ -68,7 +68,9 @@ export const Route = createFileRoute(
           },
         });
 
-        return result.toTextStreamResponse();
+        return createTextStreamResponse({
+          stream: toTextStream({ stream: result.stream }),
+        });
       },
     },
   },

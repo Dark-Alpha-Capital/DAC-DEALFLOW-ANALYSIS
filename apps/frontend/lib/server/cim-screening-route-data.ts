@@ -14,7 +14,7 @@ import {
 } from "@repo/db/queries";
 import { mapEvidenceChunkIdsToCitations } from "@/lib/map-cim-screening-evidence";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
-import { getJobByIdForUser } from "@/src/lib/workflow-jobs-api";
+import { getJobByIdForUser } from "@/lib/workflows/workflow-jobs-api";
 import { assertAuthenticated } from "@/lib/server/assert-session";
 import {
   cimScreeningSessionInputSchema,

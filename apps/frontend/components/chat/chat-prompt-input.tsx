@@ -31,8 +31,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { type ChatContext } from "@/lib/chat-context";
-import { CHAT_MODELS, type ChatSelection } from "@/lib/chat-models";
+import { type ChatContext } from "@/lib/chat/chat-context";
+import { CHAT_MODELS, type ChatSelection } from "@/lib/chat/chat-models";
 import { useTRPC } from "@/trpc/client";
 
 type SelectorOption = {

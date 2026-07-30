@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Output, streamText } from "ai";
+import { createTextStreamResponse, Output, streamText, toTextStream } from "ai";
 import {
   PROJECT_KICKOFF_EXTRACTION_SYSTEM,
   getChatLanguageModel,
@@ -54,7 +54,7 @@ export const Route = createFileRoute(
 
         const result = streamText({
           model: getChatLanguageModel("openai", OPENAI_EXTRACT_MODEL),
-          system: PROJECT_KICKOFF_EXTRACTION_SYSTEM,
+          instructions: PROJECT_KICKOFF_EXTRACTION_SYSTEM,
           prompt: `Extract project kickoff fields from the following text:\n\n---\n\n${trimmed}`,
           output: Output.object({
             name: "ProjectKickoffExtraction",
@@ -68,7 +68,9 @@ export const Route = createFileRoute(
           },
         });
 
-        return result.toTextStreamResponse();
+        return createTextStreamResponse({
+          stream: toTextStream({ stream: result.stream }),
+        });
       },
     },
   },

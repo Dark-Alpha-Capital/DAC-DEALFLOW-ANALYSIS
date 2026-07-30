@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { toast } from "sonner";
 import type { DocumentRow } from "./columns";
 

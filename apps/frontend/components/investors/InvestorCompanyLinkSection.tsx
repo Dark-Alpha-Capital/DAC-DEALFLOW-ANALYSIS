@@ -29,7 +29,7 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { Building2, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 
 export function InvestorCompanyLinkSection({

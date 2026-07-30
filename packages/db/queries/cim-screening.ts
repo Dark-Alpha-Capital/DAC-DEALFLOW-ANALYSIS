@@ -6,9 +6,10 @@ import {
   documents,
   dealOpportunities,
   screeners,
+  screenerQuestions,
 } from "../schema";
 import { db } from "../index";
-import { eq, and, desc, inArray, count } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, count } from "drizzle-orm";
 
 export async function getCimScreeningSessionByIdForUser(
   sessionId: string,
@@ -44,6 +45,26 @@ export async function getCimScreeningAnswersByRunId(runId: string) {
     .select()
     .from(cimScreeningAnswers)
     .where(eq(cimScreeningAnswers.runId, runId));
+}
+
+/** Answers for a run with screener question text, ordered like the screener. */
+export async function getCimScreeningAnswersWithQuestionsByRunId(runId: string) {
+  return db
+    .select({
+      questionId: cimScreeningAnswers.questionId,
+      questionText: screenerQuestions.question,
+      position: screenerQuestions.position,
+      score: cimScreeningAnswers.score,
+      rationale: cimScreeningAnswers.rationale,
+      evidenceChunkIds: cimScreeningAnswers.evidenceChunkIds,
+    })
+    .from(cimScreeningAnswers)
+    .innerJoin(
+      screenerQuestions,
+      eq(cimScreeningAnswers.questionId, screenerQuestions.id),
+    )
+    .where(eq(cimScreeningAnswers.runId, runId))
+    .orderBy(asc(screenerQuestions.position), asc(screenerQuestions.createdAt));
 }
 
 /** Load chunk excerpts for CIM template screening evidence IDs (RAG citations). */

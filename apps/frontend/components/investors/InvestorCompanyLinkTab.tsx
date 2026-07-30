@@ -28,7 +28,7 @@ import {
 } from "@/components/investors/InvestorCompanyLinkForm";
 import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 
 function LinkCard({
   row,

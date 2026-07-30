@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Lead } from "@repo/db";
 import { Link } from "@tanstack/react-router";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {

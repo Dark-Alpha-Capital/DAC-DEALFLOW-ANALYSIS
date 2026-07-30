@@ -22,9 +22,9 @@ import {
   markWorkflowCompleted,
   markWorkflowFailed,
   markWorkflowRunning,
-} from "./progress";
-import type { ProjectKickoffScreenParams, WorkflowWorkerEnv } from "./workflow-env";
-import { withWorkflowDb } from "./with-workflow-db";
+} from "@/lib/workflows/progress";
+import type { ProjectKickoffScreenParams, WorkflowWorkerEnv } from "@/lib/workflows/workflow-env";
+import { withWorkflowDb } from "@/lib/workflows/with-workflow-db";
 
 /** Allowed score values: 0 to 5 in 0.5 increments */
 const scoreSchema = z.union([
@@ -153,7 +153,7 @@ export class ProjectKickoffScreenWorkflow extends WorkflowEntrypoint<
 
           const { object } = await generateObject({
             model: getOpenAIProvider()("gpt-4o-mini"),
-            system: PROJECT_KICKOFF_SCREENING_SYSTEM,
+            instructions: PROJECT_KICKOFF_SCREENING_SYSTEM,
             prompt,
             schema: screeningOutputSchema,
           });

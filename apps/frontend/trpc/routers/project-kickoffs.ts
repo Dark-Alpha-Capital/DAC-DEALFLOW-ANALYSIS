@@ -24,7 +24,7 @@ import type { DepartmentValue } from "@repo/db";
 import {
   getJobStatus,
   startProjectKickoffScreenWorkflow,
-} from "../../src/lib/workflow-jobs-api";
+} from "@/lib/workflows/workflow-jobs-api";
 
 function draftToFieldValues(
   draft: ProjectKickoffDraft,

@@ -16,17 +16,13 @@ import ScreenersListPageSkeleton from "@/components/skeletons/screeners-list-pag
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 import {
   asString,
   looseValidateSearch,
   type LooseSearch,
-} from "@/lib/route-search";
-import {
-  usePathname,
-  useRouter,
-  useSearchParams,
-} from "@/lib/navigation-shim";
+} from "@/lib/routing/route-search";
+import { usePathname, useRouter, useSearchParams } from "@/lib/routing/navigation-shim";
 
 export const Route = createFileRoute("/_protected/screeners/")({
   validateSearch: (search: Record<string, unknown>): LooseSearch =>
@@ -112,10 +108,7 @@ function ScreenersRoute() {
             onChange={(e) => setQuery(e.target.value)}
             className="sm:max-w-xs"
           />
-          <Select
-            value={categoryFilter}
-            onValueChange={(v) => setCategory(v)}
-          >
+          <Select value={categoryFilter} onValueChange={(v) => setCategory(v)}>
             <SelectTrigger className="sm:w-48">
               <SelectValue />
             </SelectTrigger>

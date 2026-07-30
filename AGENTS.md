@@ -86,11 +86,10 @@ Key ones; the rest are mostly self-explanatory from their names:
 - **Outside Workers:** no DB binding available. Use `wrangler d1 execute <db-name> --remote` for ad-hoc SQL.
 - **Seed scripts:** `bun run --cwd packages/db db:seed:dummy-leads` and `db:seed:dummy-deal-pipeline`
 
-`@repo/db` exports: `"."`, `"./enums"`, `"./schema"`, `"./queries"`, `"./mutations"`, `"./types"`, `"./types-only"`, `"./workflow-jobs"`, `"./d1-context"`, `"./create-db"`
+`@repo/db` exports: `"."`, `"./enums"`, `"./schema"`, `"./queries"`, `"./mutations"`, `"./types"`, `"./workflow-jobs"`, `"./d1-context"`, `"./create-db"`
 
-`@repo/db-tracker` exports (note: **no** `./types` or `./types-only`): `"."`, `"./enums"`, `"./schema"`, `"./queries"`, `"./mutations"`, `"./workflow-jobs"`, `"./d1-context"`, `"./create-db"`
+`@repo/db-tracker` exports (note: **no** `./types`): `"."`, `"./enums"`, `"./schema"`, `"./queries"`, `"./mutations"`, `"./workflow-jobs"`, `"./d1-context"`, `"./create-db"`
 
-- Postgres migrations archived in `packages/db/drizzle-pg-archive/`. The `docker-compose.yml` (pgvector) is for this archived path only — not used by the current app.
 
 ## Dev workflow
 

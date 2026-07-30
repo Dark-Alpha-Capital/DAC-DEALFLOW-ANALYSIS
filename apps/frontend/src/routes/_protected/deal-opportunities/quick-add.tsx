@@ -4,7 +4,7 @@ import { loadThemesForSelectData } from "@/lib/server/deal-opportunities-route-d
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 import BackButton from "@/components/Buttons/back-button";
 
 export const Route = createFileRoute(

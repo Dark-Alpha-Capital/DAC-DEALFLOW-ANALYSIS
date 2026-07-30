@@ -1,5 +1,5 @@
 import type { LanguageModel } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGoogle } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import {
   requireGoogleGeminiApiKey,
@@ -7,7 +7,7 @@ import {
 } from "../env";
 
 let _openaiProvider: ReturnType<typeof createOpenAI> | null = null;
-let _googleProvider: ReturnType<typeof createGoogleGenerativeAI> | null = null;
+let _googleProvider: ReturnType<typeof createGoogle> | null = null;
 
 export function getOpenAIProvider(): ReturnType<typeof createOpenAI> {
   if (!_openaiProvider) {
@@ -16,11 +16,11 @@ export function getOpenAIProvider(): ReturnType<typeof createOpenAI> {
   return _openaiProvider;
 }
 
-export function getGoogleGenerativeAIProvider(): ReturnType<
-  typeof createGoogleGenerativeAI
+export function getGoogleProvider(): ReturnType<
+  typeof createGoogle
 > {
   if (!_googleProvider) {
-    _googleProvider = createGoogleGenerativeAI({
+    _googleProvider = createGoogle({
       apiKey: requireGoogleGeminiApiKey(),
     });
   }
@@ -36,7 +36,7 @@ export function getChatLanguageModel(
   if (provider === "openai") {
     return createOpenAI({ apiKey: requireOpenAIApiKey() })(model);
   }
-  return createGoogleGenerativeAI({ apiKey: requireGoogleGeminiApiKey() })(
+  return createGoogle({ apiKey: requireGoogleGeminiApiKey() })(
     model
   );
 }

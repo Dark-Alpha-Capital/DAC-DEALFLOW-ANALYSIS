@@ -42,13 +42,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import useCurrentUser from "@/hooks/use-current-user";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { QUEUE_NAMES } from "@repo/redis-queue/types";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
-} from "@/lib/route-loader-cache";
+} from "@/lib/routing/route-loader-cache";
 import { loadCimScreeningSessionData } from "@/lib/server/cim-screening-route-data";
 import CimScreeningSessionPending from "@/components/skeletons/cim-screening-ekeleton";
 import { cn, formatBytes } from "@/lib/utils";

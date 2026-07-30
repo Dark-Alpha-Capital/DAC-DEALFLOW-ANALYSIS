@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { useRouter } from "@/lib/navigation-shim";
+import { useRouter } from "@/lib/routing/navigation-shim";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

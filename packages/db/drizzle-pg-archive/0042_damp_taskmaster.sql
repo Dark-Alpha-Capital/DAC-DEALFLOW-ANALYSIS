@@ -1,1 +1,0 @@
-ALTER TABLE "CimScreeningRun" ADD COLUMN "dealDocumentsSnapshot" jsonb;
