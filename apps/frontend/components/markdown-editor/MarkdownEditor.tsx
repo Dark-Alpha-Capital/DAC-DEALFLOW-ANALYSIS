@@ -1,44 +1,12 @@
-import "@mdxeditor/editor/style.css";
+import "@uiw/react-md-editor/markdown-editor.css";
+import "@uiw/react-markdown-preview/markdown.css";
 
-import * as React from "react";
-import {
-  MDXEditor,
-  BlockTypeSelect,
-  BoldItalicUnderlineToggles,
-  CodeToggle,
-  ConditionalContents,
-  CreateLink,
-  DiffSourceToggleWrapper,
-  InsertCodeBlock,
-  InsertTable,
-  InsertThematicBreak,
-  ListsToggle,
-  Separator,
-  StrikeThroughSupSubToggles,
-  UndoRedo,
-  codeBlockPlugin,
-  codeMirrorPlugin,
-  diffSourcePlugin,
-  headingsPlugin,
-  linkDialogPlugin,
-  linkPlugin,
-  listsPlugin,
-  markdownShortcutPlugin,
-  quotePlugin,
-  tablePlugin,
-  thematicBreakPlugin,
-  toolbarPlugin,
-} from "@mdxeditor/editor";
+import MDEditor from "@uiw/react-md-editor";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import type { MarkdownEditorProps } from "./types";
 
-export interface MarkdownEditorProps {
-  value: string;
-  onChange?: (value: string) => void;
-  className?: string;
-  placeholder?: string;
-  rows?: number;
-  readOnly?: boolean;
-}
+export type { MarkdownEditorProps };
 
 export function MarkdownEditor({
   value,
@@ -47,75 +15,30 @@ export function MarkdownEditor({
   placeholder,
   rows,
   readOnly = false,
+  height,
 }: MarkdownEditorProps) {
+  const { resolvedTheme } = useTheme();
+  const colorMode = resolvedTheme === "dark" ? "dark" : "light";
+  const editorHeight = height ?? (rows ? Math.max(rows * 24, 200) : 280);
+
   return (
-    <div className={cn("flex h-full flex-col gap-2", className)}>
-      <MDXEditor
-        markdown={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        readOnly={readOnly}
-        className={cn("bg-background rounded-md border")}
-        style={{ minHeight: rows ? `${rows * 24}px` : "260px" }}
-        plugins={[
-          toolbarPlugin({
-            toolbarClassName:
-              "border-b bg-muted/40 px-2 py-1 flex flex-wrap items-center gap-1",
-            toolbarContents: () => (
-              <DiffSourceToggleWrapper>
-                <UndoRedo />
-                <Separator />
-                <BoldItalicUnderlineToggles />
-                <StrikeThroughSupSubToggles />
-                <CodeToggle />
-                <Separator />
-                <ListsToggle />
-                <BlockTypeSelect />
-                <Separator />
-                <CreateLink />
-                <InsertTable />
-                <InsertThematicBreak />
-                <Separator />
-                <ConditionalContents
-                  options={[
-                    {
-                      when: (editor) => editor?.editorType === "codeblock",
-                      contents: () => null,
-                    },
-                    { fallback: () => <InsertCodeBlock /> },
-                  ]}
-                />
-              </DiffSourceToggleWrapper>
-            ),
-          }),
-          headingsPlugin(),
-          listsPlugin(),
-          linkPlugin(),
-          linkDialogPlugin(),
-          quotePlugin(),
-          tablePlugin(),
-          thematicBreakPlugin(),
-          codeBlockPlugin({ defaultCodeBlockLanguage: "" }),
-          codeMirrorPlugin({
-            codeBlockLanguages: {
-              "": "Plain text",
-              js: "JavaScript",
-              ts: "TypeScript",
-              py: "Python",
-              sql: "SQL",
-              bash: "Bash",
-            },
-          }),
-          diffSourcePlugin({ viewMode: "rich-text" }),
-          markdownShortcutPlugin(),
-        ]}
+    <div
+      data-color-mode={colorMode}
+      className={cn("w-full overflow-hidden rounded-md border", className)}
+    >
+      <MDEditor
+        value={value}
+        onChange={(next) => onChange?.(next ?? "")}
+        height={editorHeight}
+        preview={readOnly ? "preview" : "live"}
+        hideToolbar={readOnly}
+        visibleDragbar={!readOnly}
+        textareaProps={{
+          placeholder:
+            placeholder ?? "Write markdown… (headings, lists, bold, links)",
+          readOnly,
+        }}
       />
-      {!readOnly && (
-        <p className="text-muted-foreground text-xs">
-          Supports rich text — headings, tables, code blocks, links, and more.
-          Toggle source view for raw Markdown.
-        </p>
-      )}
     </div>
   );
 }

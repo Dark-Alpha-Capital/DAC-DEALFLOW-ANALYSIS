@@ -36,6 +36,10 @@ import {
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { TRPCError } from "@trpc/server";
+import {
+  getActiveOrganizationId,
+  requireActiveOrganizationId,
+} from "../org-context";
 
 function scheduleRevalidateThemePaths(themeId: string) {
   after(async () => {
@@ -48,13 +52,14 @@ function scheduleRevalidateThemePaths(themeId: string) {
 }
 
 export const themesRouter = createTRPCRouter({
-  listForSelect: protectedProcedure.query(async () => {
-    return listThemesForSelect();
+  listForSelect: protectedProcedure.query(async ({ ctx }) => {
+    return listThemesForSelect(getActiveOrganizationId(ctx));
   }),
 
   create: protectedProcedure
     .input(createThemeSchema)
     .mutation(async ({ input, ctx }) => {
+      const organizationId = requireActiveOrganizationId(ctx);
       const added = await insertThemeRow({
         name: input.name,
         description: input.description,
@@ -63,6 +68,7 @@ export const themesRouter = createTRPCRouter({
         capitalPriorityScore: input.capitalPriorityScore ?? null,
         confidenceScore: input.confidenceScore ?? null,
         createdById: ctx.user.id,
+        organizationId,
       });
 
       if (added?.id) scheduleRevalidateThemePaths(added.id);

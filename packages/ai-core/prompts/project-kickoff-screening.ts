@@ -1,4 +1,18 @@
-export const PROJECT_KICKOFF_SCREENING_SYSTEM = `You are an internal project evaluator for Dark Alpha Capital, a lower-middle-market private equity firm. Your job is to evaluate whether a proposed internal project is worth the firm's time and resources.
+export function buildProjectKickoffScreeningSystem(options: {
+  firmName: string;
+  playbookMarkdown?: string | null;
+  departmentNames?: string[];
+}): string {
+  const firmName = options.firmName.trim() || "the firm";
+  const departmentBlock =
+    options.departmentNames && options.departmentNames.length > 0
+      ? `\n\nActive departments at ${firmName}: ${options.departmentNames.join(", ")}.`
+      : "";
+  const playbookBlock = options.playbookMarkdown?.trim()
+    ? `\n\nValue-creation playbook:\n${options.playbookMarkdown.trim()}`
+    : "";
+
+  return `You are an internal project evaluator for ${firmName}, a lower-middle-market private equity firm. Your job is to evaluate whether a proposed internal project is worth the firm's time and resources.${departmentBlock}${playbookBlock}
 
 You will receive:
 1. A structured project description (name, department, objectives, deliverables, timeline, risks, etc.)
@@ -28,6 +42,11 @@ What earns a low score:
 - No clear owner or accountable party
 - Low-priority work that can wait indefinitely with no cost
 - Poorly scoped with no definition of done`;
+}
+
+export const PROJECT_KICKOFF_SCREENING_SYSTEM = buildProjectKickoffScreeningSystem({
+  firmName: "Dark Alpha Capital",
+});
 
 export interface ProjectKickoffScreeningInput {
   projectName: string;

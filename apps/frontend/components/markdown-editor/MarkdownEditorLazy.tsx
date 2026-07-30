@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { ClientOnly } from "@tanstack/react-router";
-import type { MarkdownEditorProps } from "./MarkdownEditor";
+import type { MarkdownEditorProps } from "./types";
 
 const MarkdownEditorInner = lazy(() =>
   import("./MarkdownEditor").then((m) => ({ default: m.MarkdownEditor })),

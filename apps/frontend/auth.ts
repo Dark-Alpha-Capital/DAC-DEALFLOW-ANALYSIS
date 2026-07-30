@@ -3,9 +3,21 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@repo/db";
-import { users, accounts, sessions, verifications } from "@repo/db/schema";
+import {
+  users,
+  accounts,
+  sessions,
+  verifications,
+  organizationMembers,
+  organizations,
+} from "@repo/db/schema";
 import { eq } from "drizzle-orm";
 import { adminEmails } from "./lib/utils";
+import {
+  createOrganization,
+  insertOrganizationMember,
+} from "@repo/db/mutations";
+import { getOrganizationByEmailDomain } from "@repo/db/queries";
 import {
   sendEmail,
   getVerificationEmailHtml,
@@ -23,44 +35,48 @@ function determineRole(userEmail: string): string {
   return "USER";
 }
 
-const ALLOWED_EMAIL_DOMAIN = "darkalphacapital.com";
+async function ensureMembershipForSessionUser(user: {
+  id: string;
+  email?: string | null;
+  role?: string | null;
+}) {
+  const email = user.email?.toLowerCase().trim();
+  if (!email) return;
+  const domain = email.split("@")[1];
+  if (!domain) return;
 
-function assertAllowedDomain(email: string) {
-  const normalized = email.toLowerCase();
-  const domain = normalized.split("@")[1];
+  const [existingMembership] = await db
+    .select({ organizationId: organizationMembers.organizationId })
+    .from(organizationMembers)
+    .where(eq(organizationMembers.userId, user.id))
+    .limit(1);
 
-  if (!domain) {
-    throw new APIError("BAD_REQUEST", { message: "Invalid email address" });
+  if (existingMembership) {
+    return;
   }
 
-  if (domain !== ALLOWED_EMAIL_DOMAIN) {
-    throw new APIError("UNPROCESSABLE_ENTITY", {
-      message: "Only darkalphacapital.com emails are allowed.",
+  let organization = await getOrganizationByEmailDomain(domain);
+  if (!organization && domain === "darkalphacapital.com") {
+    organization = await createOrganization({
+      name: "Dark Alpha Capital",
+      slug: "dark-alpha-capital",
+      firmDisplayName: "Dark Alpha Capital",
+      primaryEmailDomain: domain,
+      allowedEmailDomains: [domain],
+      onboardingStatus: "COMPLETE",
     });
   }
-}
 
-function isAllowedEmail(email: string | null | undefined) {
-  if (!email) return false;
-  return email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
-}
-
-function assertAllowedEmailFromBody(body: Record<string, unknown> | undefined) {
-  const rawEmail = (body?.email as string | undefined) ?? "";
-  const email = rawEmail.toLowerCase();
-
-  if (!email.endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) {
-    throw new APIError("UNPROCESSABLE_ENTITY", {
-      message: "Only darkalphacapital.com emails are allowed.",
-    });
+  if (!organization) {
+    return;
   }
-}
 
-const EMAIL_AUTH_PATHS = new Set([
-  "/sign-in/email",
-  "/sign-up/email",
-  "/forget-password",
-]);
+  await insertOrganizationMember({
+    organizationId: organization.id,
+    userId: user.id,
+    role: user.role === "ADMIN" ? "OWNER" : "MEMBER",
+  });
+}
 
 function getAuthBaseUrl(): string {
   const fromEnv = getServerEnv().BETTER_AUTH_URL?.trim();
@@ -122,9 +138,10 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // Update session every 24 hours
+    // Cookie cache freezes session-callback fields (activeOrganizationId,
+    // onboardingStatus). Those change during onboarding, so keep it off.
     cookieCache: {
-      enabled: true,
-      maxAge: 60 * 5, // 5 minutes
+      enabled: false,
     },
   },
   user: {
@@ -144,11 +161,7 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
     },
   },
   hooks: {
-    before: createAuthMiddleware(async (ctx) => {
-      if (EMAIL_AUTH_PATHS.has(ctx.path)) {
-        assertAllowedEmailFromBody(ctx.body);
-      }
-    }),
+    before: createAuthMiddleware(async () => {}),
   },
   databaseHooks: {
     user: {
@@ -158,8 +171,6 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
           if (!email) {
             throw new APIError("BAD_REQUEST", { message: "Invalid email address" });
           }
-
-          assertAllowedDomain(email);
 
           // Determine role based on email (admin emails get ADMIN role)
           const role = determineRole(email.toLowerCase());
@@ -186,18 +197,49 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
         .from(users)
         .where(eq(users.id, user.id));
 
-      if (dbUser?.isBlocked || !isAllowedEmail(dbUser?.email)) {
+      await ensureMembershipForSessionUser({
+        id: user.id,
+        email: dbUser?.email ?? user.email,
+        role: dbUser?.role ?? user.role,
+      });
+
+      if (dbUser?.isBlocked) {
         // Return null to invalidate the session for blocked users
         return null;
       }
+
+      const memberships = await db
+        .select({
+          organizationId: organizations.id,
+          organizationName: organizations.name,
+          organizationSlug: organizations.slug,
+          onboardingStatus: organizations.onboardingStatus,
+          membershipRole: organizationMembers.role,
+          firmDisplayName: organizations.firmDisplayName,
+        })
+        .from(organizationMembers)
+        .innerJoin(
+          organizations,
+          eq(organizationMembers.organizationId, organizations.id),
+        )
+        .where(eq(organizationMembers.userId, user.id));
+
+      const primaryMembership = memberships[0] ?? null;
 
       // Add role and isBlocked to session
       return {
         ...session,
         user: {
           ...session.user,
+          email: dbUser?.email || session.user.email,
           role: dbUser?.role || "USER",
           isBlocked: dbUser?.isBlocked || false,
+          activeOrganizationId: primaryMembership?.organizationId ?? null,
+          activeOrganizationName: primaryMembership?.organizationName ?? null,
+          activeOrganizationSlug: primaryMembership?.organizationSlug ?? null,
+          organizationMembershipRole: primaryMembership?.membershipRole ?? null,
+          onboardingStatus: primaryMembership?.onboardingStatus ?? null,
+          firmDisplayName: primaryMembership?.firmDisplayName ?? null,
         },
       };
     },

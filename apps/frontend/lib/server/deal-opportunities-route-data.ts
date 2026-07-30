@@ -7,10 +7,10 @@ import {
   GetRankedDealOpportunitiesForKanbanColumnPaginated,
   getActiveCimForDeal,
   GetCIMExtractionByDealOpportunityId,
+  listThemesForSelect,
   type RankedDealOpportunityRow,
 } from "@repo/db/queries";
-import db, { themes, asc, isNull } from "@repo/db";
-import { assertAuthenticated } from "@/lib/server/assert-session";
+import { assertActiveOrganization } from "@/lib/server/assert-session";
 import {
   dealOpportunityIdSchema,
   dealOpportunitiesKanbanInitialInputSchema,
@@ -28,16 +28,8 @@ import {
 /** Same rows as `trpc.themes.listForSelect` — for quick-add theme picker + route loader. */
 export const loadThemesForSelectData = createServerFn({ method: "GET" }).handler(
   async () => {
-    await assertAuthenticated();
-    const rows = await db
-      .select({
-        id: themes.id,
-        name: themes.name,
-        status: themes.status,
-      })
-      .from(themes)
-      .where(isNull(themes.deletedAt))
-      .orderBy(asc(themes.name));
+    const { organizationId } = await assertActiveOrganization();
+    const rows = await listThemesForSelect(organizationId);
     return { themes: rows };
   },
 );
@@ -49,12 +41,13 @@ export const loadRankedDealOpportunitiesPageData = createServerFn({
     rankedDealOpportunitiesPageInputSchema.parse(raw),
   )
   .handler(async ({ data }) => {
-    await assertAuthenticated();
+    const { organizationId } = await assertActiveOrganization();
     const { data: rows, totalCount, totalPages } =
       await GetRankedDealOpportunitiesPaginated({
         offset: data.offset,
         limit: data.limit,
         query: data.query ?? "",
+        organizationId,
       });
     return {
       deals: rows,
@@ -71,7 +64,7 @@ export const loadDealOpportunitiesKanbanInitialData = createServerFn({
     dealOpportunitiesKanbanInitialInputSchema.parse(raw),
   )
   .handler(async ({ data }) => {
-    await assertAuthenticated();
+    const { organizationId } = await assertActiveOrganization();
     const pipelineStages = getBitrixDealStages();
     const pipelineCategoryId =
       data.pipelineCategoryId?.trim() || BITRIX_DEAL_PIPELINE_ID;
@@ -99,6 +92,7 @@ export const loadDealOpportunitiesKanbanInitialData = createServerFn({
         pipelineCategoryId,
         pipelineStageIds: allIds,
         fallbackStageId,
+        organizationId,
       });
 
     const pages = await Promise.all(
@@ -111,6 +105,7 @@ export const loadDealOpportunitiesKanbanInitialData = createServerFn({
           offset: 0,
           limit: limitPerStage,
           pipelineCategoryId,
+          organizationId,
         }),
       ),
     );
@@ -139,7 +134,7 @@ export const loadRankedDealOpportunitiesKanbanStagePage = createServerFn({
     dealOpportunitiesKanbanStagePageInputSchema.parse(raw),
   )
   .handler(async ({ data }) => {
-    await assertAuthenticated();
+    const { organizationId } = await assertActiveOrganization();
     const rows = await GetRankedDealOpportunitiesForKanbanColumnPaginated({
       columnStageId: data.columnStageId,
       fallbackStageId: data.fallbackStageId,
@@ -148,6 +143,7 @@ export const loadRankedDealOpportunitiesKanbanStagePage = createServerFn({
       offset: data.offset,
       limit: data.limit,
       pipelineCategoryId: data.pipelineCategoryId,
+      organizationId,
     });
     return { rows };
   });
@@ -155,7 +151,7 @@ export const loadRankedDealOpportunitiesKanbanStagePage = createServerFn({
 export const loadDealOpportunityDetailData = createServerFn({ method: "GET" })
   .validator((raw: unknown) => uidParamSchema.parse(raw))
   .handler((async ({ data }: { data: { uid: string } }) => {
-    await assertAuthenticated();
+    const { organizationId } = await assertActiveOrganization();
     try {
       const [dealData, activeCim, extraction] = await Promise.all([
         GetDealWithAllRelations(data.uid),
@@ -201,7 +197,7 @@ export const loadDealOpportunityDetailData = createServerFn({ method: "GET" })
 export const loadDealOpportunityForEditData = createServerFn({ method: "GET" })
   .validator((raw: unknown) => uidParamSchema.parse(raw))
   .handler(async ({ data }) => {
-    await assertAuthenticated();
+    const { organizationId } = await assertActiveOrganization();
     try {
       const opp = await GetDealOpportunityById(data.uid);
       return { opp, error: null as string | null };
@@ -217,7 +213,7 @@ export const loadDealOpportunityForEditData = createServerFn({ method: "GET" })
 export const loadBitrixSyncPreviewData = createServerFn({ method: "GET" })
   .validator((raw: unknown) => dealOpportunityIdSchema.parse(raw))
   .handler(async ({ data }) => {
-    await assertAuthenticated();
+    const { organizationId } = await assertActiveOrganization();
     try {
       const result = await getBitrixSyncPreviewData(data.dealOpportunityId);
       if (!result.success) {

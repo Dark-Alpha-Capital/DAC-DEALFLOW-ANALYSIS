@@ -5,6 +5,10 @@ import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { upsertLeadScreening } from "@repo/deal-screening";
 import {
+  getActiveOrganizationId,
+  requireActiveOrganizationId,
+} from "../org-context";
+import {
   createDealFinancialSnapshot,
   insertLeadRow,
   deleteLeadDeterministicScreening,
@@ -124,7 +128,8 @@ export const leadsRouter = createTRPCRouter({
    */
   create: protectedProcedure
     .input(createLeadSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const organizationId = requireActiveOrganizationId(ctx);
       const added = await insertLeadRow({
         sourceWebsite: input.sourceWebsite,
         externalListingId: input.externalListingId,
@@ -141,10 +146,11 @@ export const leadsRouter = createTRPCRouter({
         brokerPhone: input.brokerPhone,
         normalizedCompanyName: input.normalizedCompanyName,
         companyLocation: input.companyLocation,
+        organizationId,
       });
 
       if (added?.id) {
-        await upsertLeadScreening(added.id);
+        await upsertLeadScreening(added.id, undefined, organizationId);
       }
 
       after(async () => {
@@ -162,8 +168,13 @@ export const leadsRouter = createTRPCRouter({
 
   screenLead: protectedProcedure
     .input(z.object({ leadId: z.string() }))
-    .mutation(async ({ input }) => {
-      const screening = await upsertLeadScreening(input.leadId);
+    .mutation(async ({ input, ctx }) => {
+      const organizationId = getActiveOrganizationId(ctx);
+      const screening = await upsertLeadScreening(
+        input.leadId,
+        undefined,
+        organizationId,
+      );
       after(async () => {
         revalidatePath("/leads");
         revalidatePath(`/leads/${input.leadId}`);
@@ -192,10 +203,9 @@ export const leadsRouter = createTRPCRouter({
    */
   update: protectedProcedure
     .input(leadFormSchema.extend({ id: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
-      console.log("input", input);
-      console.log("data", data);
+      const organizationId = getActiveOrganizationId(ctx);
       await updateLeadById(id, {
         sourceWebsite: data.sourceWebsite,
         externalListingId: data.externalListingId || null,
@@ -214,7 +224,7 @@ export const leadsRouter = createTRPCRouter({
         companyLocation: data.companyLocation || null,
       });
 
-      await upsertLeadScreening(id);
+      await upsertLeadScreening(id, undefined, organizationId);
 
       after(async () => {
         revalidatePath("/leads");

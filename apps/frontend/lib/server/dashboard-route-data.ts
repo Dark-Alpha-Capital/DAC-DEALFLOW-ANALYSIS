@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import { assertAuthenticated } from "@/lib/server/assert-session";
+import {
+  assertActiveOrganization,
+} from "@/lib/server/assert-session";
 import db, {
   companies,
   dealOpportunities,
@@ -7,6 +9,7 @@ import db, {
   eq,
   leads,
   themes,
+  and,
   isNull,
 } from "@repo/db";
 import { GetTopRankedDeals } from "@repo/db/queries";
@@ -15,7 +18,7 @@ import {
   resolveBitrixStageLabel,
 } from "@repo/bitrix-sync";
 
-async function getPipelineData() {
+async function getPipelineData(organizationId: string) {
   const [stageRows, leadRows] = await Promise.all([
     db
       .select({
@@ -23,13 +26,20 @@ async function getPipelineData() {
       })
       .from(dealOpportunities)
       .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-      .where(isNull(companies.deletedAt)),
+      .where(
+        and(
+          eq(dealOpportunities.organizationId, organizationId),
+          isNull(companies.deletedAt),
+        ),
+      ),
     db
       .select({
         status: leads.status,
       })
       .from(leads)
-      .where(isNull(leads.deletedAt)),
+      .where(
+        and(eq(leads.organizationId, organizationId), isNull(leads.deletedAt)),
+      ),
   ]);
 
   const bitrixStages = getBitrixDealStages();
@@ -98,7 +108,7 @@ async function getPipelineData() {
   };
 }
 
-async function getThemesData() {
+async function getThemesData(organizationId: string) {
   const [themeRows, companyRows, dealRows] = await Promise.all([
     db
       .select({
@@ -106,7 +116,8 @@ async function getThemesData() {
         status: themes.status,
         deletedAt: themes.deletedAt,
       })
-      .from(themes),
+      .from(themes)
+      .where(eq(themes.organizationId, organizationId)),
     db
       .select({
         themeId: themes.id,
@@ -120,7 +131,12 @@ async function getThemesData() {
       )
       .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
       .leftJoin(themes, eq(dealOpportunityThemes.themeId, themes.id))
-      .where(isNull(companies.deletedAt)),
+      .where(
+        and(
+          eq(dealOpportunities.organizationId, organizationId),
+          isNull(companies.deletedAt),
+        ),
+      ),
     db
       .select({
         themeId: themes.id,
@@ -134,7 +150,12 @@ async function getThemesData() {
       )
       .leftJoin(themes, eq(dealOpportunityThemes.themeId, themes.id))
       .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-      .where(isNull(companies.deletedAt)),
+      .where(
+        and(
+          eq(dealOpportunities.organizationId, organizationId),
+          isNull(companies.deletedAt),
+        ),
+      ),
   ]);
 
   const activeThemes = themeRows.filter(
@@ -190,10 +211,10 @@ async function getThemesData() {
   };
 }
 
-async function getTopDealsData(limit = 10) {
+async function getTopDealsData(organizationId: string, limit = 10) {
   const bitrixStages = getBitrixDealStages();
   const [rows, companyThemeRows] = await Promise.all([
-    GetTopRankedDeals(limit),
+    GetTopRankedDeals(limit, organizationId),
     db
       .select({
         companyName: companies.name,
@@ -207,7 +228,12 @@ async function getTopDealsData(limit = 10) {
         eq(dealOpportunityThemes.dealOpportunityId, dealOpportunities.id),
       )
       .leftJoin(themes, eq(dealOpportunityThemes.themeId, themes.id))
-      .where(isNull(companies.deletedAt)),
+      .where(
+        and(
+          eq(dealOpportunities.organizationId, organizationId),
+          isNull(companies.deletedAt),
+        ),
+      ),
   ]);
 
   const themeByCompany = new Map(
@@ -230,11 +256,11 @@ async function getTopDealsData(limit = 10) {
 
 export const loadDashboardRouteData = createServerFn({ method: "GET" }).handler(
   async () => {
-    await assertAuthenticated();
+    const { organizationId } = await assertActiveOrganization();
     const [pipeline, themesData, topDeals] = await Promise.all([
-      getPipelineData(),
-      getThemesData(),
-      getTopDealsData(10),
+      getPipelineData(organizationId),
+      getThemesData(organizationId),
+      getTopDealsData(organizationId, 10),
     ]);
     return { pipeline, themesData, topDeals };
   },

@@ -18,6 +18,25 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { ilike } from "../sqlite-helpers";
+import { organizationFilter } from "./org-scope";
+
+function withDealOrgScope(
+  organizationId: string | null | undefined,
+  ...conditions: (SQL | undefined)[]
+): SQL {
+  const org = organizationFilter(
+    dealOpportunities.organizationId,
+    organizationId,
+  );
+  if (!org) {
+    return sql`false`;
+  }
+  const active = conditions.filter((c): c is SQL => c != null);
+  if (active.length === 0) {
+    return org;
+  }
+  return and(org, ...active)!;
+}
 
 /**
  * Get DealOpportunity by id
@@ -317,10 +336,12 @@ export const GetRankedDealOpportunitiesPaginated = async ({
   offset = 0,
   limit = 25,
   query = "",
+  organizationId,
 }: {
   offset?: number;
   limit?: number;
   query?: string;
+  organizationId?: string | null;
 }): Promise<GetRankedDealOpportunitiesPaginatedResult> => {
   const trimmed = query.trim().slice(0, 500);
   const pattern = `%${escapeIlikePattern(trimmed)}%`;
@@ -335,7 +356,7 @@ export const GetRankedDealOpportunitiesPaginated = async ({
       )
       : undefined;
 
-  const whereClause = searchFilter ?? sql`true`;
+  const whereClause = withDealOrgScope(organizationId, searchFilter);
 
   try {
     const baseFrom = () =>
@@ -474,14 +495,16 @@ export const GetRankedDealOpportunityKanbanSummary = async ({
   pipelineCategoryId = "0",
   pipelineStageIds,
   fallbackStageId,
+  organizationId,
 }: {
   query?: string;
   pipelineCategoryId?: string;
   pipelineStageIds: readonly string[];
   fallbackStageId: string;
+  organizationId?: string | null;
 }): Promise<GetRankedDealOpportunityKanbanSummaryResult> => {
   const search = rankedDealTextSearchFilter(query);
-  const whereClause = search ?? sql`true`;
+  const whereClause = withDealOrgScope(organizationId, search);
   const idSet = new Set(pipelineStageIds.map((s) => s.trim()));
   const fb = fallbackStageId.trim();
   const cat = pipelineCategoryId.trim();
@@ -518,6 +541,7 @@ export const GetRankedDealOpportunitiesForKanbanColumnPaginated = async ({
   offset = 0,
   limit = 40,
   pipelineCategoryId = "0",
+  organizationId,
 }: {
   columnStageId: string;
   fallbackStageId: string;
@@ -526,6 +550,7 @@ export const GetRankedDealOpportunitiesForKanbanColumnPaginated = async ({
   offset?: number;
   limit?: number;
   pipelineCategoryId?: string;
+  organizationId?: string | null;
 }): Promise<RankedDealOpportunityRow[]> => {
   const search = rankedDealTextSearchFilter(query);
   const stageSql = kanbanColumnStageWhere({
@@ -534,7 +559,7 @@ export const GetRankedDealOpportunitiesForKanbanColumnPaginated = async ({
     allPipelineStageIds,
     pipelineCategoryId,
   });
-  const whereClause = search ? and(search, stageSql) : stageSql;
+  const whereClause = withDealOrgScope(organizationId, search, stageSql);
 
   try {
     return await db
@@ -573,6 +598,7 @@ export type TopRankedDeal = {
 
 export const GetTopRankedDeals = async (
   limit = 10,
+  organizationId?: string | null,
 ): Promise<TopRankedDeal[]> => {
   try {
     const rows = await db
@@ -590,7 +616,8 @@ export const GetTopRankedDeals = async (
       )
       .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
       .where(
-        and(
+        withDealOrgScope(
+          organizationId,
           eq(dealOpportunityScreenings.status, "PASS"),
           isNull(companies.deletedAt),
         ),

@@ -10,7 +10,7 @@ import {
   screenerTemplateSchema,
   type ScreenerTemplateFormValues,
 } from "@repo/schemas";
-import { DEPARTMENT_VALUES, SCREENER_CATEGORY_VALUES } from "@repo/db/enums";
+import { SCREENER_CATEGORY_VALUES } from "@repo/db/enums";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,7 +42,6 @@ function NewScreenerPage() {
   const router = useRouter();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-
   const form = useForm<ScreenerTemplateFormValues>({
     resolver: zodResolver(screenerTemplateSchema),
     defaultValues: {
@@ -53,8 +52,6 @@ function NewScreenerPage() {
       department: null,
     },
   });
-
-  const watchedCategory = form.watch("category");
 
   const { mutate: createTemplate, isPending } = useMutation(
     trpc.screeners.createTemplate.mutationOptions({
@@ -106,7 +103,7 @@ function NewScreenerPage() {
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Capital Markets Project Screener" {...field} />
+                    <Input placeholder="Lower Mid-Market Deal Screener" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -127,7 +124,9 @@ function NewScreenerPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {SCREENER_CATEGORY_VALUES.map((cat) => (
+                        {SCREENER_CATEGORY_VALUES.filter(
+                          (cat) => cat !== "Project Screener",
+                        ).map((cat) => (
                           <SelectItem key={cat} value={cat}>
                             {cat}
                           </SelectItem>
@@ -139,35 +138,6 @@ function NewScreenerPage() {
                 )}
               />
 
-              {watchedCategory === "Project Screener" && (
-                <FormField
-                  control={form.control}
-                  name="department"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Department</FormLabel>
-                      <Select
-                        value={field.value ?? ""}
-                        onValueChange={(v) => field.onChange(v === "" ? null : v)}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select department…" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {DEPARTMENT_VALUES.map((dept) => (
-                            <SelectItem key={dept} value={dept}>
-                              {dept}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
             </div>
 
             <FormField

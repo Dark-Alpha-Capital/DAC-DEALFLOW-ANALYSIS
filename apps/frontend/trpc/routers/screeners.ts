@@ -13,10 +13,11 @@ import {
 } from "@repo/db";
 import {
   getAllScreeners,
-  getScreenerById,
+  getAllScreenersForOrganization,
+  getScreenerByIdForOrganization,
   getScreenerQuestions,
   getScreenerResponsesByDealOpportunityId,
-  getScreenerWithQuestions,
+  getScreenerWithQuestionsForOrganization,
 } from "@repo/db/queries";
 import {
   DeleteScreenerById,
@@ -60,22 +61,33 @@ function scheduleRevalidateScreenerPaths(screenerId?: string) {
 }
 
 export const screenersRouter = createTRPCRouter({
-  getAll: protectedProcedure.query(async () => {
-    const result = await getAllScreeners();
+  getAll: protectedProcedure.query(async ({ ctx }) => {
+    const organizationId = (ctx.user as { activeOrganizationId?: string | null })
+      .activeOrganizationId;
+    const result = organizationId
+      ? await getAllScreenersForOrganization(organizationId)
+      : await getAllScreeners();
     return result || [];
   }),
 
   getById: protectedProcedure
     .input(z.object({ screenerId: z.string().min(1) }))
-    .query(async ({ input }) => {
-      return await getScreenerWithQuestions(input.screenerId);
+    .query(async ({ ctx, input }) => {
+      const organizationId = (ctx.user as { activeOrganizationId?: string | null })
+        .activeOrganizationId;
+      return await getScreenerWithQuestionsForOrganization(
+        input.screenerId,
+        organizationId ?? null,
+      );
     }),
 
   createTemplate: protectedProcedure
     .input(screenerTemplateSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       console.log("createTemplate", input);
       const created = await insertScreenerTemplate({
+        organizationId: (ctx.user as { activeOrganizationId?: string | null })
+          .activeOrganizationId,
         name: input.name,
         category: input.category,
         description: input.description || null,
@@ -218,7 +230,9 @@ export const screenersRouter = createTRPCRouter({
         screenerId: z.string().min(1),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const organizationId = (ctx.user as { activeOrganizationId?: string | null })
+        .activeOrganizationId;
       return await getScreenerResponsesByDealOpportunityId(
         input.dealOpportunityId,
         input.screenerId,
@@ -234,8 +248,13 @@ export const screenersRouter = createTRPCRouter({
         responses: z.array(screenerResponseInputSchema).min(1),
       }),
     )
-    .mutation(async ({ input }) => {
-      const screener = await getScreenerById(input.screenerId);
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = (ctx.user as { activeOrganizationId?: string | null })
+        .activeOrganizationId;
+      const screener = await getScreenerByIdForOrganization(
+        input.screenerId,
+        organizationId ?? null,
+      );
       if (!screener) {
         throw new TRPCError({
           code: "NOT_FOUND",

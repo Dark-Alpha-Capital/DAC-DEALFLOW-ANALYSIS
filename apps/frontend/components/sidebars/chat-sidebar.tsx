@@ -6,7 +6,6 @@ import {
   MessageSquarePlus,
   LayoutDashboard,
   BookOpen,
-  Layers,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,7 +32,6 @@ const layoutLinks = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Chat", url: "/chat", icon: MessageSquarePlus },
   { title: "Docs", url: "/docs", icon: BookOpen },
-  { title: "Project Trackers", url: "/project-trackers", icon: Layers },
 ];
 
 export default function ChatSidebar() {

@@ -20,6 +20,7 @@ export { PROJECT_KICKOFF_EXTRACTION_SYSTEM } from "./project-kickoff-extraction"
 export {
   PROJECT_KICKOFF_SCREENING_SYSTEM,
   buildProjectKickoffScreeningPrompt,
+  buildProjectKickoffScreeningSystem,
   type ProjectKickoffScreeningInput,
   type DepartmentScreenerInput,
 } from "./project-kickoff-screening";
@@ -31,6 +32,7 @@ export {
   IC_SCORER_SCORE_SYSTEM,
   IC_SCORER_MEMO_SYSTEM,
   IC_SCORER_PROMPT_VERSION,
+  buildIcScorerScoreSystem,
   buildIcScorerUserPrompt,
   buildIcScorerMemoUserPrompt,
   type IcScorerPromptInput,

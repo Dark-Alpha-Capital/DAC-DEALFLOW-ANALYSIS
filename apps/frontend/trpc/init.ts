@@ -2,6 +2,60 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import superjson from "superjson";
 import { auth } from "@/auth";
+import { getUserOrganizationMemberships } from "@repo/db/queries";
+
+async function enrichSessionUserWithOrganization<T extends { id: string }>(
+  user: T,
+): Promise<
+  T & {
+    activeOrganizationId: string | null;
+    activeOrganizationName: string | null;
+    activeOrganizationSlug: string | null;
+    organizationMembershipRole: string | null;
+    onboardingStatus: string | null;
+    firmDisplayName: string | null;
+  }
+> {
+  let activeOrganizationId =
+    (user as { activeOrganizationId?: string | null }).activeOrganizationId ??
+    null;
+  let activeOrganizationName =
+    (user as { activeOrganizationName?: string | null })
+      .activeOrganizationName ?? null;
+  let activeOrganizationSlug =
+    (user as { activeOrganizationSlug?: string | null })
+      .activeOrganizationSlug ?? null;
+  let organizationMembershipRole =
+    (user as { organizationMembershipRole?: string | null })
+      .organizationMembershipRole ?? null;
+  let onboardingStatus =
+    (user as { onboardingStatus?: string | null }).onboardingStatus ?? null;
+  let firmDisplayName =
+    (user as { firmDisplayName?: string | null }).firmDisplayName ?? null;
+
+  if (!activeOrganizationId) {
+    const memberships = await getUserOrganizationMemberships(user.id);
+    const primary = memberships[0] ?? null;
+    if (primary) {
+      activeOrganizationId = primary.organizationId;
+      activeOrganizationName = primary.organizationName;
+      activeOrganizationSlug = primary.organizationSlug;
+      organizationMembershipRole = primary.role;
+      onboardingStatus = primary.onboardingStatus;
+      firmDisplayName = primary.firmDisplayName;
+    }
+  }
+
+  return {
+    ...user,
+    activeOrganizationId,
+    activeOrganizationName,
+    activeOrganizationSlug,
+    organizationMembershipRole,
+    onboardingStatus,
+    firmDisplayName,
+  };
+}
 
 export async function createTRPCContext() {
   const { getRequest } = await import("@tanstack/react-start/server");
@@ -10,9 +64,18 @@ export async function createTRPCContext() {
     headers: request.headers,
   });
 
+  const user = session?.user
+    ? await enrichSessionUserWithOrganization(session.user)
+    : null;
+
   return {
-    session,
-    user: session?.user ?? null,
+    session: session
+      ? {
+          ...session,
+          user: user ?? session.user,
+        }
+      : null,
+    user,
   };
 }
 

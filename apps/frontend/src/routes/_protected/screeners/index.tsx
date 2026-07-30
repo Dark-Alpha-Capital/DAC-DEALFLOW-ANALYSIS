@@ -46,8 +46,7 @@ function ScreenersRoute() {
   const query = searchParams.get("q") ?? "";
   const categoryFilter = (searchParams.get("category") ?? "all") as
     | "all"
-    | "Deal Screener"
-    | "Project Screener";
+    | "Deal Screener";
 
   function setQuery(value: string) {
     const params = new URLSearchParams(searchParams);
@@ -115,7 +114,6 @@ function ScreenersRoute() {
             <SelectContent>
               <SelectItem value="all">All categories</SelectItem>
               <SelectItem value="Deal Screener">Deal Screener</SelectItem>
-              <SelectItem value="Project Screener">Project Screener</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -179,11 +177,6 @@ function ScreenersRoute() {
                       </span>
                       <Badge variant="secondary">{screener.category}</Badge>
                     </div>
-                    {screener.department && (
-                      <Badge variant="outline" className="mt-1 text-xs">
-                        {screener.department}
-                      </Badge>
-                    )}
                   </div>
 
                   <InlineMeta

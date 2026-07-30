@@ -5,9 +5,18 @@ import {
 } from "cloudflare:workers";
 import { buildIcScorerUserPrompt } from "@repo/ai-core";
 import { getBitrixSyncEnv } from "@repo/bitrix-sync";
-import db, { runDbWithD1 } from "@repo/db";
+import db, {
+  dealOpportunities,
+  organizationPlaybookLevers,
+  organizationPlaybooks,
+  eq,
+  runDbWithD1,
+} from "@repo/db";
 import { updateWorkflowJobProgress } from "@repo/db/workflow-jobs";
-import { getIcScorerRunById } from "@repo/db/queries";
+import {
+  getActiveInvestmentCriteriaProfile,
+  getIcScorerRunById,
+} from "@repo/db/queries";
 import { updateIcScorerRun } from "@repo/db/mutations";
 import { mergeIcScorerOutput, type IcScorerScoreCore } from "@repo/schemas";
 import { fetchBitrixWidgetDealSnapshot } from "@/lib/server/bitrix-widget-deal-snapshot";
@@ -22,6 +31,29 @@ import { generateIcScorerScoreCore } from "@/lib/workflows/ic-scorer-score-core"
 import { generateIcScorerMemoPass } from "@/lib/workflows/ic-scorer-memo-core";
 
 const LOG = "[IcScorerWorkflow]";
+
+function buildPlaybookMarkdown(input: {
+  title: string;
+  summaryMd: string | null;
+  levers: { name: string; descriptionMd: string | null }[];
+}) {
+  const sections = [`## ${input.title}`];
+  if (input.summaryMd?.trim()) {
+    sections.push(input.summaryMd.trim());
+  }
+  if (input.levers.length > 0) {
+    sections.push(
+      input.levers
+        .map((lever) =>
+          lever.descriptionMd?.trim()
+            ? `- **${lever.name}:** ${lever.descriptionMd.trim()}`
+            : `- **${lever.name}**`,
+        )
+        .join("\n"),
+    );
+  }
+  return sections.join("\n\n");
+}
 
 function icScorerActorMatches(
   runUserId: string | null | undefined,
@@ -91,12 +123,60 @@ export class IcScorerWorkflow extends WorkflowEntrypoint<
             dealListingContext: p.bitrixLiveDealListingContext,
           });
 
+          const [dealOpportunity] = await db
+            .select({ organizationId: dealOpportunities.organizationId })
+            .from(dealOpportunities)
+            .where(eq(dealOpportunities.id, p.dealOpportunityId))
+            .limit(1);
+
+          const criteriaProfile = await getActiveInvestmentCriteriaProfile(
+            "default",
+            dealOpportunity?.organizationId ?? null,
+          );
+          const [playbook] =
+            dealOpportunity?.organizationId
+              ? await db
+                  .select()
+                  .from(organizationPlaybooks)
+                  .where(
+                    eq(
+                      organizationPlaybooks.organizationId,
+                      dealOpportunity.organizationId,
+                    ),
+                  )
+                  .limit(1)
+              : [];
+          const playbookLevers = playbook
+            ? await db
+                .select({
+                  name: organizationPlaybookLevers.name,
+                  descriptionMd: organizationPlaybookLevers.descriptionMd,
+                })
+                .from(organizationPlaybookLevers)
+                .where(eq(organizationPlaybookLevers.playbookId, playbook.id))
+            : [];
+          const criteriaMarkdown = [
+            criteriaProfile?.criteriaNarrativeMd?.trim() || null,
+            playbook
+              ? buildPlaybookMarkdown({
+                  title: playbook.title,
+                  summaryMd: playbook.summaryMd,
+                  levers: playbookLevers,
+                })
+              : null,
+          ]
+            .filter(Boolean)
+            .join("\n\n");
+
           await updateWorkflowJobProgress(instanceId, {
             step: "Scoring (LLM)",
             percentage: 50,
           });
 
-          const core = await generateIcScorerScoreCore(userPrompt);
+          const core = await generateIcScorerScoreCore(userPrompt, {
+            firmName: criteriaProfile?.firmName,
+            criteriaMarkdown,
+          });
 
           await updateIcScorerRun(p.runId, {
             scorePayload: core,

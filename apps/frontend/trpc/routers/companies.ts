@@ -23,18 +23,26 @@ import {
 } from "@repo/db/mutations";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
+import {
+  getActiveOrganizationId,
+  requireActiveOrganizationId,
+} from "../org-context";
 
 export const companiesRouter = createTRPCRouter({
-  listForSelect: protectedProcedure.query(async () => {
-    return listCompaniesForSelect();
+  listForSelect: protectedProcedure.query(async ({ ctx }) => {
+    return listCompaniesForSelect(getActiveOrganizationId(ctx));
   }),
 
   searchForChat: protectedProcedure
     .input(searchForChatCompaniesInputSchema)
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const query = input?.query?.trim();
       const limit = input?.limit ?? 20;
-      return searchCompaniesForChat({ query, limit });
+      return searchCompaniesForChat({
+        query,
+        limit,
+        organizationId: getActiveOrganizationId(ctx),
+      });
     }),
 
   getWithRelations: protectedProcedure
@@ -49,7 +57,8 @@ export const companiesRouter = createTRPCRouter({
 
   create: protectedProcedure
     .input(createCompanySchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const organizationId = requireActiveOrganizationId(ctx);
       const added = await insertCompanyRow({
         name: input.name,
         normalizedName: input.normalizedName,
@@ -78,6 +87,7 @@ export const companiesRouter = createTRPCRouter({
         marginLow: input.marginLow ?? null,
         vendorDependency: input.vendorDependency ?? null,
         growthLevers: input.growthLevers ?? null,
+        organizationId,
       });
 
       after(async () => {

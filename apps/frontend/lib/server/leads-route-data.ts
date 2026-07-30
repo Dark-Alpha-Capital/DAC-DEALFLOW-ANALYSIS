@@ -7,7 +7,10 @@ import {
 } from "@repo/db/queries";
 import { getDeterministicScreeningByLeadId } from "@repo/deal-screening";
 import type { Company, Lead, LeadScreening } from "@repo/db/schema";
-import { assertAuthenticated } from "@/lib/server/assert-session";
+import {
+  assertActiveOrganization,
+  assertAuthenticated,
+} from "@/lib/server/assert-session";
 import {
   offsetLimitSchema,
   uidParamSchema,
@@ -25,10 +28,11 @@ export type LeadDetailLoaderData = {
 export const loadLeadsPageData = createServerFn({ method: "GET" })
   .validator((raw: unknown) => offsetLimitSchema.parse(raw))
   .handler(async ({ data }) => {
-    await assertAuthenticated();
+    const { organizationId } = await assertActiveOrganization();
     const { data: rows, totalPages, totalCount } = await GetAllLeads({
       offset: data.offset,
       limit: data.limit,
+      organizationId,
     });
     return { data: rows, totalPages, totalCount };
   });

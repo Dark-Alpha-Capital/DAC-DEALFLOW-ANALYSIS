@@ -65,6 +65,15 @@ export {
   type IcScorerScoreCore,
 } from "./ic-scorer";
 export {
+  investmentCriteriaProfileSchema,
+  updateInvestmentCriteriaProfileSchema,
+  preferredIndustrySchema,
+  revenueScoreBandSchema,
+  type PreferredIndustryInput,
+  type RevenueScoreBandInput,
+  type InvestmentCriteriaProfileInput,
+} from "./investment-criteria";
+export {
   createEpicSchema,
   updateEpicSchema,
   type CreateEpicInput,

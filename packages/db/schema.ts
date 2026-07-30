@@ -33,6 +33,77 @@ export const users = sqliteTable("User", {
   isBlocked: integer("isBlocked", { mode: "boolean" }).default(false).notNull(),
 });
 
+export const organizations = sqliteTable(
+  "Organization",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    logoUrl: text("logoUrl"),
+    primaryEmailDomain: text("primaryEmailDomain"),
+    allowedEmailDomains: text("allowedEmailDomains", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    firmDisplayName: text("firmDisplayName").notNull(),
+    onboardingStatus: text("onboardingStatus", {
+      enum: ["NOT_STARTED", "INCOMPLETE", "COMPLETE"] as const,
+    })
+      .notNull()
+      .default("NOT_STARTED"),
+    onboardingCompletedAt: integer("onboardingCompletedAt", {
+      mode: "timestamp",
+    }),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    organizationSlugUniqueIdx: uniqueIndex("organization_slug_unique_idx").on(
+      table.slug,
+    ),
+    organizationDomainIdx: index("organization_domain_idx").on(
+      table.primaryEmailDomain,
+    ),
+  }),
+);
+
+export const organizationMembers = sqliteTable(
+  "OrganizationMember",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    organizationId: text("organizationId")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["OWNER", "ADMIN", "MEMBER"] as const })
+      .notNull()
+      .default("MEMBER"),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    organizationMemberUniqueIdx: uniqueIndex("organization_member_unique_idx").on(
+      table.organizationId,
+      table.userId,
+    ),
+    organizationMemberUserIdx: index("organization_member_user_idx").on(
+      table.userId,
+    ),
+  }),
+);
+
 // Account table (for OAuth)
 export const accounts = sqliteTable("Account", {
   id: text("id")
@@ -95,6 +166,9 @@ export const themes = sqliteTable("Theme", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
+  organizationId: text("organizationId").references(() => organizations.id, {
+    onDelete: "cascade",
+  }),
   name: text("name").notNull(),
   description: text("description").notNull(),
   sector: text("sector").notNull(), // Healthcare, Manufacturing, etc.
@@ -182,6 +256,9 @@ export const companies = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
+    organizationId: text("organizationId").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
 
     name: text("name").notNull(),
     normalizedName: text("normalizedName").notNull(), // dedup via (normalizedName, location) index
@@ -344,6 +421,9 @@ export const leads = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
+    organizationId: text("organizationId").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
 
     // Raw scraped metadata
     sourceWebsite: text("sourceWebsite").notNull(),
@@ -433,6 +513,9 @@ export const dealOpportunities = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
+    organizationId: text("organizationId").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
 
     // Relationships (optional: attach company later or link multiple opps to one company)
     companyId: text("companyId").references(() => companies.id, {
@@ -732,11 +815,14 @@ export const screenerTemplates = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
+    organizationId: text("organizationId").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
     name: text("name").notNull(),
     category: text("category", { enum: ["Deal Screener", "Project Screener"] as const }).notNull().default("Deal Screener"),
     description: text("description"),
     content: text("content"),
-    department: text("department", { enum: ["Capital Markets", "Deal Team", "Legal and Compliance", "Operations", "M&A Origination", "Technology", "Investor Relations", "Public Markets/Hedge Fund", "Investment Team", "Due Diligence", "Talent Acquisition", "Operating Partner"] as const }),
+    department: text("department"),
     createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
     updatedAt: integer("updatedAt", { mode: "timestamp" })
       .defaultNow()
@@ -923,6 +1009,157 @@ export const leadScreenings = sqliteTable(
   }),
 );
 
+export type InvestmentCriteriaPreferredIndustry = {
+  label: string;
+  aliases: string[];
+};
+
+export type InvestmentCriteriaRevenueBand = {
+  min: number | null;
+  max: number | null;
+  score: number;
+};
+
+export const organizationDepartments = sqliteTable(
+  "OrganizationDepartment",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    organizationId: text("organizationId")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    isActive: integer("isActive", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    organizationDepartmentUniqueIdx: uniqueIndex(
+      "organization_department_unique_idx",
+    ).on(table.organizationId, table.name),
+    organizationDepartmentSortIdx: index("organization_department_sort_idx").on(
+      table.organizationId,
+      table.sortOrder,
+    ),
+  }),
+);
+
+export const organizationPlaybooks = sqliteTable(
+  "OrganizationPlaybook",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    organizationId: text("organizationId")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    summaryMd: text("summaryMd"),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    organizationPlaybookOrganizationUniqueIdx: uniqueIndex(
+      "organization_playbook_organization_unique_idx",
+    ).on(table.organizationId),
+  }),
+);
+
+export const organizationPlaybookLevers = sqliteTable(
+  "OrganizationPlaybookLever",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    playbookId: text("playbookId")
+      .notNull()
+      .references(() => organizationPlaybooks.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    descriptionMd: text("descriptionMd"),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    organizationPlaybookLeverUniqueIdx: uniqueIndex(
+      "organization_playbook_lever_unique_idx",
+    ).on(table.playbookId, table.name),
+    organizationPlaybookLeverSortIdx: index(
+      "organization_playbook_lever_sort_idx",
+    ).on(table.playbookId, table.sortOrder),
+  }),
+);
+
+export const investmentCriteriaProfiles = sqliteTable(
+  "InvestmentCriteriaProfile",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    organizationId: text("organizationId").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
+    key: text("key").notNull().default("default"),
+    version: text("version").notNull().default("1"),
+    firmName: text("firmName").notNull().default("Dark Alpha Capital"),
+    ebitdaMin: real("ebitdaMin").notNull(),
+    ebitdaMax: real("ebitdaMax").notNull(),
+    revenueMin: real("revenueMin"),
+    revenueMax: real("revenueMax"),
+    ebitdaMarginMin: real("ebitdaMarginMin"),
+    preferredIndustries: text("preferredIndustries", { mode: "json" })
+      .$type<InvestmentCriteriaPreferredIndustry[]>()
+      .notNull(),
+    excludedIndustries: text("excludedIndustries", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    geographies: text("geographies", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    ownershipNotes: text("ownershipNotes"),
+    customerConcentrationIdealMax: real("customerConcentrationIdealMax"),
+    customerConcentrationWarnAbove: real("customerConcentrationWarnAbove"),
+    positiveScreensMd: text("positiveScreensMd"),
+    negativeScreensMd: text("negativeScreensMd"),
+    weightEbitdaFit: real("weightEbitdaFit").notNull().default(0.5),
+    weightRevenue: real("weightRevenue").notNull().default(0.2),
+    weightIndustry: real("weightIndustry").notNull().default(0.3),
+    revenueScoreWhenMissing: integer("revenueScoreWhenMissing").notNull().default(50),
+    revenueScoreBands: text("revenueScoreBands", { mode: "json" })
+      .$type<InvestmentCriteriaRevenueBand[]>()
+      .notNull(),
+    criteriaNarrativeMd: text("criteriaNarrativeMd").notNull(),
+    icRubricMd: text("icRubricMd"),
+    isActive: integer("isActive", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    investmentCriteriaProfileKeyIdx: index(
+      "investment_criteria_profile_key_idx",
+    ).on(table.key),
+    investmentCriteriaProfileActiveIdx: index(
+      "investment_criteria_profile_active_idx",
+    ).on(table.isActive),
+  }),
+);
+
 // UserActionLog table
 export const userActionLogs = sqliteTable("UserActionLog", {
   id: text("id")
@@ -946,6 +1183,9 @@ export const documents = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
+    organizationId: text("organizationId").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
 
     entityType: text("entityType", { enum: ["LEAD", "COMPANY", "DEAL_OPPORTUNITY", "THEME", "GLOBAL"] as const }).notNull(),
     entityId: text("entityId"), // Nullable for GLOBAL documents
@@ -1523,6 +1763,9 @@ export const chatSessions = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
+    organizationId: text("organizationId").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
     userId: text("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -1566,6 +1809,9 @@ export const investors = sqliteTable("Investor", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
+  organizationId: text("organizationId").references(() => organizations.id, {
+    onDelete: "cascade",
+  }),
   name: text("name").notNull(),
   type: text("type", { enum: ["HNWI", "FAMILY_OFFICE", "INSTITUTION"] as const }).notNull(),
   primaryContactName: text("primaryContactName"),
@@ -1592,6 +1838,9 @@ export const investorLeads = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
+    organizationId: text("organizationId").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
     name: text("name"),
     source: text("source"),
     email: text("email"),
@@ -1712,6 +1961,22 @@ export const investorDealOpportunityLinks = sqliteTable(
 // RELATIONS
 // ============================================================================
 
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  members: many(organizationMembers),
+  themes: many(themes),
+  companies: many(companies),
+  leads: many(leads),
+  dealOpportunities: many(dealOpportunities),
+  screeners: many(screeners),
+  documents: many(documents),
+  chatSessions: many(chatSessions),
+  investors: many(investors),
+  investorLeads: many(investorLeads),
+  departments: many(organizationDepartments),
+  playbooks: many(organizationPlaybooks),
+  investmentCriteriaProfiles: many(investmentCriteriaProfiles),
+}));
+
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
@@ -1726,9 +1991,59 @@ export const usersRelations = relations(users, ({ many }) => ({
   chatSessions: many(chatSessions),
   investorLeads: many(investorLeads),
   cimScreeningSessions: many(cimScreeningSessions),
+  organizationMemberships: many(organizationMembers),
 }));
 
+export const organizationMembersRelations = relations(
+  organizationMembers,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationMembers.organizationId],
+      references: [organizations.id],
+    }),
+    user: one(users, {
+      fields: [organizationMembers.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const organizationDepartmentsRelations = relations(
+  organizationDepartments,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationDepartments.organizationId],
+      references: [organizations.id],
+    }),
+  }),
+);
+
+export const organizationPlaybooksRelations = relations(
+  organizationPlaybooks,
+  ({ one, many }) => ({
+    organization: one(organizations, {
+      fields: [organizationPlaybooks.organizationId],
+      references: [organizations.id],
+    }),
+    levers: many(organizationPlaybookLevers),
+  }),
+);
+
+export const organizationPlaybookLeversRelations = relations(
+  organizationPlaybookLevers,
+  ({ one }) => ({
+    playbook: one(organizationPlaybooks, {
+      fields: [organizationPlaybookLevers.playbookId],
+      references: [organizationPlaybooks.id],
+    }),
+  }),
+);
+
 export const themesRelations = relations(themes, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [themes.organizationId],
+    references: [organizations.id],
+  }),
   createdBy: one(users, {
     fields: [themes.createdById],
     references: [users.id],
@@ -1784,6 +2099,10 @@ export const themeCompanyCoverageRelations = relations(
 );
 
 export const leadsRelations = relations(leads, ({ many, one }) => ({
+  organization: one(organizations, {
+    fields: [leads.organizationId],
+    references: [organizations.id],
+  }),
   dealOpportunities: many(dealOpportunities),
   companiesFirstSeen: many(companies, { relationName: "firstSeenFromLead" }),
   duplicateCompany: one(companies, {
@@ -1832,6 +2151,10 @@ export const dealsRelations = relations(deals, ({ one }) => ({
 export const dealOpportunitiesRelations = relations(
   dealOpportunities,
   ({ one, many }) => ({
+    organization: one(organizations, {
+      fields: [dealOpportunities.organizationId],
+      references: [organizations.id],
+    }),
     company: one(companies, {
       fields: [dealOpportunities.companyId],
       references: [companies.id],
@@ -1870,6 +2193,10 @@ export const dealOpportunitiesRelations = relations(
 );
 
 export const companiesRelations = relations(companies, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [companies.organizationId],
+    references: [organizations.id],
+  }),
   theme: one(themes, {
     fields: [companies.themeId],
     references: [themes.id],
@@ -1967,7 +2294,11 @@ export const companyNotesRelations = relations(companyNotes, ({ one }) => ({
   }),
 }));
 
-export const screenersRelations = relations(screeners, ({ many }) => ({
+export const screenersRelations = relations(screeners, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [screeners.organizationId],
+    references: [organizations.id],
+  }),
   questions: many(screenerQuestions),
   aiScreenings: many(aiScreenings),
   cimScreeningRuns: many(cimScreeningRuns),
@@ -2126,6 +2457,16 @@ export const dealOpportunityScreeningsRelations = relations(
   }),
 );
 
+export const investmentCriteriaProfilesRelations = relations(
+  investmentCriteriaProfiles,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [investmentCriteriaProfiles.organizationId],
+      references: [organizations.id],
+    }),
+  }),
+);
+
 export const userActionLogsRelations = relations(userActionLogs, ({ one }) => ({
   user: one(users, {
     fields: [userActionLogs.userId],
@@ -2134,6 +2475,10 @@ export const userActionLogsRelations = relations(userActionLogs, ({ one }) => ({
 }));
 
 export const documentsRelations = relations(documents, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [documents.organizationId],
+    references: [organizations.id],
+  }),
   uploadedBy: one(users, {
     fields: [documents.uploadedById],
     references: [users.id],
@@ -2204,6 +2549,10 @@ export const outreachRelations = relations(outreach, ({ one }) => ({
 }));
 
 export const chatSessionsRelations = relations(chatSessions, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [chatSessions.organizationId],
+    references: [organizations.id],
+  }),
   user: one(users, {
     fields: [chatSessions.userId],
     references: [users.id],
@@ -2223,6 +2572,10 @@ export const chatSessionsRelations = relations(chatSessions, ({ one }) => ({
 }));
 
 export const investorsRelations = relations(investors, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [investors.organizationId],
+    references: [organizations.id],
+  }),
   interactions: many(investorInteractions),
   companyLinks: many(investorCompanyLinks),
   dealOpportunityLinks: many(investorDealOpportunityLinks),
@@ -2236,6 +2589,10 @@ export const investorsRelations = relations(investors, ({ one, many }) => ({
 export const investorLeadsRelations = relations(
   investorLeads,
   ({ one, many }) => ({
+    organization: one(organizations, {
+      fields: [investorLeads.organizationId],
+      references: [organizations.id],
+    }),
     owner: one(users, {
       fields: [investorLeads.ownerUserId],
       references: [users.id],
@@ -2355,6 +2712,10 @@ export type NewCompanyNote = typeof companyNotes.$inferInsert;
 
 export type Theme = typeof themes.$inferSelect;
 export type NewTheme = typeof themes.$inferInsert;
+export type Organization = typeof organizations.$inferSelect;
+export type NewOrganization = typeof organizations.$inferInsert;
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
+export type NewOrganizationMember = typeof organizationMembers.$inferInsert;
 export type Thesis = typeof theses.$inferSelect;
 export type NewThesis = typeof theses.$inferInsert;
 export type IndustryIntelligence = typeof industryIntelligence.$inferSelect;
@@ -2372,6 +2733,18 @@ export type NewDealOpportunityScreening =
   typeof dealOpportunityScreenings.$inferInsert;
 export type LeadScreening = typeof leadScreenings.$inferSelect;
 export type NewLeadScreening = typeof leadScreenings.$inferInsert;
+export type InvestmentCriteriaProfile =
+  typeof investmentCriteriaProfiles.$inferSelect;
+export type NewInvestmentCriteriaProfile =
+  typeof investmentCriteriaProfiles.$inferInsert;
+export type OrganizationDepartment = typeof organizationDepartments.$inferSelect;
+export type NewOrganizationDepartment = typeof organizationDepartments.$inferInsert;
+export type OrganizationPlaybook = typeof organizationPlaybooks.$inferSelect;
+export type NewOrganizationPlaybook = typeof organizationPlaybooks.$inferInsert;
+export type OrganizationPlaybookLever =
+  typeof organizationPlaybookLevers.$inferSelect;
+export type NewOrganizationPlaybookLever =
+  typeof organizationPlaybookLevers.$inferInsert;
 
 export type UserActionLog = typeof userActionLogs.$inferSelect;
 export type NewUserActionLog = typeof userActionLogs.$inferInsert;

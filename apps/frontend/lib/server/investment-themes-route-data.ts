@@ -5,7 +5,10 @@ import {
   GetThemeById,
   GetThemeWorkspaceById,
 } from "@repo/db/queries";
-import { assertAuthenticated } from "@/lib/server/assert-session";
+import {
+  assertActiveOrganization,
+  assertAuthenticated,
+} from "@/lib/server/assert-session";
 import {
   investmentThemesListFilterSchema,
   uidParamSchema,
@@ -16,7 +19,7 @@ export const loadInvestmentThemesPageData = createServerFn({ method: "GET" })
     investmentThemesListFilterSchema.parse(raw),
   )
   .handler(async ({ data }) => {
-    await assertAuthenticated();
+    const { organizationId } = await assertActiveOrganization();
     const { data: rows, totalPages, totalCount } = await GetAllThemes({
       offset: data.offset,
       limit: data.limit,
@@ -27,6 +30,7 @@ export const loadInvestmentThemesPageData = createServerFn({ method: "GET" })
       maxCapitalPriorityScore: data.maxCapitalPriorityScore,
       minConfidenceScore: data.minConfidenceScore,
       maxConfidenceScore: data.maxConfidenceScore,
+      organizationId,
     });
     return { data: rows, totalPages, totalCount };
   });

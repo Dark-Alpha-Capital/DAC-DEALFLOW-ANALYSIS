@@ -47,6 +47,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ["@repo/db"],
-    include: ["buffer"],
+    include: [
+      "buffer",
+      "@uiw/react-md-editor",
+      "@uiw/react-markdown-preview",
+    ],
   },
 });

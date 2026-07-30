@@ -20,6 +20,7 @@ import {
   isNull,
 } from "drizzle-orm";
 import { ilike } from "../sqlite-helpers";
+import { withOrganizationScope } from "./org-scope";
 
 /**
  * Get a theme by id
@@ -58,6 +59,7 @@ export const GetAllThemes = async ({
   maxCapitalPriorityScore,
   minConfidenceScore,
   maxConfidenceScore,
+  organizationId,
 }: {
   offset?: number;
   limit?: number;
@@ -68,9 +70,12 @@ export const GetAllThemes = async ({
   maxCapitalPriorityScore?: number;
   minConfidenceScore?: number;
   maxConfidenceScore?: number;
+  organizationId?: string | null;
 }): Promise<GetThemesResult> => {
   try {
-    const conditions = [isNull(themes.deletedAt)];
+    const conditions = [
+      withOrganizationScope(themes.organizationId, organizationId, isNull(themes.deletedAt)),
+    ];
 
     if (search.trim()) {
       const term = `%${search.trim()}%`;

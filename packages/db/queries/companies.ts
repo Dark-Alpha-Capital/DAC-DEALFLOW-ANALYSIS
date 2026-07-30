@@ -24,6 +24,7 @@ import {
   count,
   isNull,
 } from "drizzle-orm";
+import { withOrganizationScope } from "./org-scope";
 
 /**
  * Get a company by id
@@ -217,11 +218,18 @@ interface GetCompaniesResult {
 export const GetAllCompanies = async ({
   offset = 0,
   limit = 50,
+  organizationId,
 }: {
   offset?: number;
   limit?: number;
+  organizationId?: string | null;
 }): Promise<GetCompaniesResult> => {
   try {
+    const whereClause = withOrganizationScope(
+      companies.organizationId,
+      organizationId,
+      isNull(companies.deletedAt),
+    );
     const [rows, countResult] = await Promise.all([
       db
         .select({
@@ -233,14 +241,11 @@ export const GetAllCompanies = async ({
           themes,
           and(eq(companies.themeId, themes.id), isNull(themes.deletedAt)),
         )
-        .where(isNull(companies.deletedAt))
+        .where(whereClause)
         .orderBy(desc(companies.createdAt), desc(companies.id))
         .limit(limit)
         .offset(offset),
-      db
-        .select({ count: count() })
-        .from(companies)
-        .where(isNull(companies.deletedAt)),
+      db.select({ count: count() }).from(companies).where(whereClause),
     ]);
 
     const data = rows.map((row) => ({

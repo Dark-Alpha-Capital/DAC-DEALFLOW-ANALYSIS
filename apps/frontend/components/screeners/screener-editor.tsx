@@ -9,7 +9,6 @@ import {
   type ScreenerTemplateFormValues,
 } from "@repo/schemas";
 import {
-  DEPARTMENT_VALUES,
   SCREENER_CATEGORY_VALUES,
 } from "@repo/db/enums";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -350,7 +349,9 @@ export default function ScreenerEditor({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {SCREENER_CATEGORY_VALUES.map((cat) => (
+                        {SCREENER_CATEGORY_VALUES.filter(
+                          (cat) => cat !== "Project Screener",
+                        ).map((cat) => (
                           <SelectItem key={cat} value={cat}>
                             {cat}
                           </SelectItem>
@@ -361,38 +362,6 @@ export default function ScreenerEditor({
                   </FormItem>
                 )}
               />
-
-              {templateForm.watch("category") === "Project Screener" && (
-                <FormField
-                  control={templateForm.control}
-                  name="department"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Department</FormLabel>
-                      <Select
-                        value={field.value ?? ""}
-                        onValueChange={(v) =>
-                          field.onChange(v === "" ? null : v)
-                        }
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select department…" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {DEPARTMENT_VALUES.map((dept) => (
-                            <SelectItem key={dept} value={dept}>
-                              {dept}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
 
               <div className="md:col-span-2">
                 <FormField

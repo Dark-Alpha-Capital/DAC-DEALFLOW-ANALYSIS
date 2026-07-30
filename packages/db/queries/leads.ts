@@ -2,6 +2,7 @@ import { leads, companies } from "../schema";
 import type { Lead } from "../schema";
 import { db } from "../index";
 import { eq, and, desc, count, isNull } from "drizzle-orm";
+import { withOrganizationScope } from "./org-scope";
 
 /**
  * Get a lead by id
@@ -49,20 +50,27 @@ interface GetLeadsResult {
 export const GetAllLeads = async ({
   offset = 0,
   limit = 50,
+  organizationId,
 }: {
   offset?: number;
   limit?: number;
+  organizationId?: string | null;
 }): Promise<GetLeadsResult> => {
   try {
+    const whereClause = withOrganizationScope(
+      leads.organizationId,
+      organizationId,
+      isNull(leads.deletedAt),
+    );
     const [data, countResult] = await Promise.all([
       db
         .select()
         .from(leads)
-        .where(isNull(leads.deletedAt))
+        .where(whereClause)
         .orderBy(desc(leads.createdAt), desc(leads.id))
         .limit(limit)
         .offset(offset),
-      db.select({ count: count() }).from(leads).where(isNull(leads.deletedAt)),
+      db.select({ count: count() }).from(leads).where(whereClause),
     ]);
 
     const totalCount = countResult[0]?.count ?? 0;

@@ -6,17 +6,20 @@ import {
 } from "../schema";
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import { ilike } from "../sqlite-helpers";
+import { withOrganizationScope } from "../queries/org-scope";
 
-export async function listInvestorsForSelect() {
+export async function listInvestorsForSelect(organizationId?: string | null) {
   return db
     .select({ id: investors.id, name: investors.name })
     .from(investors)
+    .where(withOrganizationScope(investors.organizationId, organizationId))
     .orderBy(asc(investors.name));
 }
 
 export async function searchInvestorsForLink(input: {
   pattern: string;
   limit: number;
+  organizationId?: string | null;
 }) {
   return db
     .select({
@@ -26,7 +29,10 @@ export async function searchInvestorsForLink(input: {
     })
     .from(investors)
     .where(
-      or(ilike(investors.name, input.pattern), ilike(investors.email, input.pattern)),
+      and(
+        withOrganizationScope(investors.organizationId, input.organizationId),
+        or(ilike(investors.name, input.pattern), ilike(investors.email, input.pattern)),
+      ),
     )
     .orderBy(asc(investors.name))
     .limit(input.limit);

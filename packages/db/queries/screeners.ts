@@ -57,6 +57,49 @@ export async function getAllScreeners() {
   }
 }
 
+export async function getAllScreenersForOrganization(organizationId: string | null) {
+  if (!organizationId) {
+    return [];
+  }
+  try {
+    return await db
+      .select({
+        id: screeners.id,
+        name: screeners.name,
+        category: screeners.category,
+        description: screeners.description,
+        department: screeners.department,
+        createdAt: screeners.createdAt,
+        updatedAt: screeners.updatedAt,
+        questionCount: sql<number>`count(${screenerQuestions.id})`
+          .mapWith(Number)
+          .as("questionCount"),
+        totalWeight: sql<number>`coalesce(sum(${screenerQuestions.weight}), 0)`
+          .mapWith(Number)
+          .as("totalWeight"),
+      })
+      .from(screeners)
+      .leftJoin(
+        screenerQuestions,
+        eq(screenerQuestions.screenerId, screeners.id),
+      )
+      .where(eq(screeners.organizationId, organizationId))
+      .groupBy(
+        screeners.id,
+        screeners.name,
+        screeners.category,
+        screeners.description,
+        screeners.department,
+        screeners.createdAt,
+        screeners.updatedAt,
+      )
+      .orderBy(asc(screeners.name));
+  } catch (error) {
+    console.error("Error fetching org screeners", error);
+    return null;
+  }
+}
+
 /**
  * Get all screeners
  * @returns all screeners
@@ -89,6 +132,41 @@ export async function getScreenerById(screenerId: string) {
   }
 }
 
+export async function getScreenerByIdForOrganization(
+  screenerId: string,
+  organizationId: string | null,
+) {
+  if (!organizationId) {
+    return null;
+  }
+  try {
+    const [row] = await db
+      .select({
+        id: screeners.id,
+        name: screeners.name,
+        category: screeners.category,
+        description: screeners.description,
+        content: screeners.content,
+        department: screeners.department,
+        createdAt: screeners.createdAt,
+        updatedAt: screeners.updatedAt,
+      })
+      .from(screeners)
+      .where(
+        and(
+          eq(screeners.id, screenerId),
+          eq(screeners.organizationId, organizationId),
+        ),
+      )
+      .limit(1);
+
+    return row ?? null;
+  } catch (error) {
+    console.error("Error fetching org screener by id", error);
+    return null;
+  }
+}
+
 export async function getScreenerQuestions(screenerId: string) {
   try {
     return await db
@@ -117,6 +195,25 @@ export async function getScreenerQuestions(screenerId: string) {
 export async function getScreenerWithQuestions(screenerId: string) {
   const [screener, questions] = await Promise.all([
     getScreenerById(screenerId),
+    getScreenerQuestions(screenerId),
+  ]);
+
+  if (!screener) {
+    return null;
+  }
+
+  return {
+    ...screener,
+    questions,
+  };
+}
+
+export async function getScreenerWithQuestionsForOrganization(
+  screenerId: string,
+  organizationId: string | null,
+) {
+  const [screener, questions] = await Promise.all([
+    getScreenerByIdForOrganization(screenerId, organizationId),
     getScreenerQuestions(screenerId),
   ]);
 

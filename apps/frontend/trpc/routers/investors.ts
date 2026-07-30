@@ -4,6 +4,10 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import { after } from "@/lib/after";
 import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import {
+  getActiveOrganizationId,
+  requireActiveOrganizationId,
+} from "../org-context";
+import {
   listInvestorsForSelect,
   searchInvestorsForLink,
   insertInvestor,
@@ -58,8 +62,8 @@ const investorSchema = z.object({
 });
 
 export const investorsRouter = createTRPCRouter({
-  listForSelect: protectedProcedure.query(async () => {
-    return listInvestorsForSelect();
+  listForSelect: protectedProcedure.query(async ({ ctx }) => {
+    return listInvestorsForSelect(getActiveOrganizationId(ctx));
   }),
 
   searchForLink: protectedProcedure
@@ -69,14 +73,19 @@ export const investorsRouter = createTRPCRouter({
         limit: z.number().int().min(1).max(50).optional().default(20),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const pattern = `%${input.query}%`;
-      return searchInvestorsForLink({ pattern, limit: input.limit });
+      return searchInvestorsForLink({
+        pattern,
+        limit: input.limit,
+        organizationId: getActiveOrganizationId(ctx),
+      });
     }),
 
   create: protectedProcedure
     .input(investorSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const organizationId = requireActiveOrganizationId(ctx);
       const added = await insertInvestor({
         name: input.name,
         type: input.type,
@@ -90,6 +99,7 @@ export const investorsRouter = createTRPCRouter({
         stagePreference: input.stagePreference || null,
         riskProfile: input.riskProfile || null,
         status: input.status ?? "PROSPECT",
+        organizationId,
       });
 
       after(async () => {

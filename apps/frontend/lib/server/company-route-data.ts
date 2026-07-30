@@ -4,7 +4,10 @@ import {
   GetCompanyById,
   GetCompanyWithAllRelations,
 } from "@repo/db/queries";
-import { assertAuthenticated } from "@/lib/server/assert-session";
+import {
+  assertActiveOrganization,
+  assertAuthenticated,
+} from "@/lib/server/assert-session";
 import {
   offsetLimitSchema,
   uidParamSchema,
@@ -13,10 +16,11 @@ import {
 export const loadCompaniesPageData = createServerFn({ method: "GET" })
   .validator((raw: unknown) => offsetLimitSchema.parse(raw))
   .handler(async ({ data }) => {
-    await assertAuthenticated();
+    const { organizationId } = await assertActiveOrganization();
     const { data: rows, totalPages, totalCount } = await GetAllCompanies({
       offset: data.offset,
       limit: data.limit,
+      organizationId,
     });
     return { data: rows, totalPages, totalCount };
   });

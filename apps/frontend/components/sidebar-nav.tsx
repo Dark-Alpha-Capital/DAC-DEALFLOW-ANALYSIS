@@ -6,7 +6,6 @@ import {
   FiUsers,
   FiFileText,
   FiBarChart2,
-  FiHome,
   FiBriefcase,
   FiBookOpen,
   FiDollarSign,
@@ -14,6 +13,7 @@ import {
   FiClipboard,
   FiShield,
   FiLayers,
+  FiSettings,
 } from "react-icons/fi";
 import { FaPalette, FaScrewdriver } from "react-icons/fa";
 import {
@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/sidebar";
 import { usePathname } from "@/lib/routing/navigation-shim";
 
-export type SidebarSectionId = "dealflow" | "workspace" | "admin";
+export type SidebarSectionId = "dealflow" | "workspace" | "settings" | "admin";
 
 type NavItem = {
   title: string;
@@ -60,6 +60,13 @@ const workspaceItems: NavItem[] = [
   { title: "Chat", url: "/chat", icon: FiMessageSquare },
 ];
 
+const settingsItems: NavItem[] = [
+  { title: "Organization", url: "/settings", icon: FiSettings },
+  { title: "Members", url: "/settings/members", icon: FiUsers },
+  { title: "Criteria", url: "/settings/investment-criteria", icon: FiLayers },
+  { title: "Playbook", url: "/settings/playbook", icon: FiBookOpen },
+];
+
 const adminNavItems: NavItem[] = [
   { title: "Admin", url: "/admin", icon: FiShield },
   { title: "Jobs", url: "/jobs", icon: FiBriefcase },
@@ -72,7 +79,9 @@ function SimpleNavItems({ items }: { items: NavItem[] }) {
     <>
       {items.map((item) => {
         const isActive =
-          pathname === item.url || pathname.startsWith(item.url + "/");
+          item.url === "/settings"
+            ? pathname === "/settings" || pathname === "/settings/"
+            : pathname === item.url || pathname.startsWith(item.url + "/");
         return (
           <SidebarMenuItem key={item.title}>
             <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
@@ -142,7 +151,6 @@ export function SidebarNav({
 }: SidebarNavProps) {
   const pathname = usePathname();
   const isAdmin = session?.user?.role === "ADMIN";
-  const dashboardActive = pathname === "/dashboard";
 
   return (
     <>
@@ -159,6 +167,17 @@ export function SidebarNav({
         label="Workspace"
         items={workspaceItems}
         open={openSections.workspace ?? false}
+        onOpenChange={onSectionOpenChange}
+      />
+
+      <NavGroup
+        id="settings"
+        label="Settings"
+        items={settingsItems}
+        open={
+          openSections.settings ??
+          pathname.startsWith("/settings")
+        }
         onOpenChange={onSectionOpenChange}
       />
 

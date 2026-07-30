@@ -8,8 +8,9 @@ import {
   companies,
 } from "../schema";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { withOrganizationScope } from "./org-scope";
 
-export async function listThemesForSelect() {
+export async function listThemesForSelect(organizationId?: string | null) {
   return db
     .select({
       id: themes.id,
@@ -17,7 +18,9 @@ export async function listThemesForSelect() {
       status: themes.status,
     })
     .from(themes)
-    .where(isNull(themes.deletedAt))
+    .where(
+      withOrganizationScope(themes.organizationId, organizationId, isNull(themes.deletedAt)),
+    )
     .orderBy(asc(themes.name));
 }
 

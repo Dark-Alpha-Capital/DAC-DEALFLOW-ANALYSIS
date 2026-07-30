@@ -5,13 +5,12 @@ import {
   projectKickoffs,
   projectTrackers,
   projectKickoffScreenings,
-  type DepartmentValue,
 } from "../schema";
 import { insertWorkflowJobTx } from "../workflow-jobs";
 
 export type ProjectKickoffFieldValues = {
   projectName: string;
-  department: DepartmentValue | null;
+  department: string | null;
   projectOwners: string | null;
   productDirection: string | null;
   engineeringLead: string | null;

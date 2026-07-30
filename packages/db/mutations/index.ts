@@ -7,6 +7,8 @@ export * from "./misc-trpc";
 export * from "./investors-trpc";
 export * from "./workflow-jobs-trpc";
 export * from "./documents-trpc";
+export * from "./investment-criteria";
+export * from "./organizations";
 export * from "./ai-screenings-trpc";
 export * from "./screeners-trpc";
 export * from "./leads-trpc";

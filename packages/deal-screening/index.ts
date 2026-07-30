@@ -1,6 +1,8 @@
 export {
-  DARK_ALPHA_CRITERIA_PROFILE,
+  DEFAULT_CRITERIA_SEED,
   buildDealScreeningInput,
+  ensureDefaultCriteriaProfile,
+  getDefaultCriteriaProfile,
   getDeterministicScreeningByDealOpportunityId,
   getDeterministicScreeningByLeadId,
   rescreenAllDealOpportunities,
@@ -9,6 +11,7 @@ export {
   upsertLeadScreening,
 } from "./screening";
 export type {
+  DealScreeningCriteriaProfile,
   DarkAlphaCriteriaProfile,
   DealScreeningInput,
   DealScreeningResult,

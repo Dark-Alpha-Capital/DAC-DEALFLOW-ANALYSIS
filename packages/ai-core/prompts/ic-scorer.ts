@@ -6,20 +6,26 @@ import { DARK_ALPHA_CRITERIA } from "./dark-alpha-criteria";
  */
 export const IC_SCORER_PROMPT_VERSION = "ic-scorer/v4-brief-memo";
 
-const CRITERIA_BLOCK = `---
-${DARK_ALPHA_CRITERIA}
+function buildCriteriaBlock(criteriaMarkdown: string) {
+  return `---
+${criteriaMarkdown}
 ---`;
+}
 
 /** Pass 1: score + narrative fields only (no memo HTML). */
-export const IC_SCORER_SCORE_SYSTEM = `# Identity
+export function buildIcScorerScoreSystem(input: {
+  firmName: string;
+  criteriaMarkdown: string;
+}) {
+  return `# Identity
 
-You are a senior private-equity deal-screening analyst for Dark Alpha Capital. Your job is to decide whether a specific deal is ready to be presented to Dark Alpha's Investment Committee (IC), based on structured CRM fields and indexed document excerpts.
+You are a senior private-equity deal-screening analyst for ${input.firmName}. Your job is to decide whether a specific deal is ready to be presented to ${input.firmName}'s Investment Committee (IC), based on structured CRM fields and indexed document excerpts.
 
 # Criteria (source of truth)
 
 Use only the criteria below when scoring. Do not invent firm policy or criteria beyond what is stated here. When the deal record is missing data that the criteria need, lower the score proportionally and add the missing item to \`missingFields\`.
 
-${CRITERIA_BLOCK}
+${buildCriteriaBlock(input.criteriaMarkdown)}
 
 # Instructions
 
@@ -35,6 +41,12 @@ ${CRITERIA_BLOCK}
 # Style
 
 Professional, concise, evidence-first. No hedging filler ("it seems", "potentially"). Prefer short declarative sentences. Write in US English.`;
+}
+
+export const IC_SCORER_SCORE_SYSTEM = buildIcScorerScoreSystem({
+  firmName: "Dark Alpha Capital",
+  criteriaMarkdown: DARK_ALPHA_CRITERIA,
+});
 
 /** Pass 2: structured plain-text memo (no HTML); UI formats for display / Bitrix later. */
 export const IC_SCORER_MEMO_SYSTEM = `# Identity
