@@ -16,6 +16,7 @@ import {
 import { createWorkItemCommentSchema } from "@repo/schemas";
 import { Loader2, Reply, Trash2, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
+import { useSession } from "@/lib/auth-client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -124,8 +125,8 @@ export function CommentsPanel({ workItemId }: { workItemId: string }) {
     }),
   );
 
-  const session = null;
-  const userId = session ?? "current";
+  const session = useSession();
+  const userId = session.data?.user?.id ?? null;
 
   function onSubmit(values: { workItemId: string; content: string; parentCommentId: string | null }) {
     create({

@@ -1,7 +1,7 @@
+import { createServerFn } from "@tanstack/react-start";
 import { auth } from "@/auth";
-import { createDbServerFn } from "@/lib/server/create-db-server-fn";
 
-export const fetchSession = createDbServerFn({ method: "GET" }).handler(
+export const fetchSession = createServerFn({ method: "GET" }).handler(
   async () => {
     const { getRequest } = await import("@tanstack/react-start/server");
     const request = getRequest();

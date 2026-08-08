@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getAllUserJobs } from "@/lib/workflows/workflow-jobs-api";
 import { assertAuthenticated } from "@/lib/server/assert-session";
-import type { JobWithMetadata } from "@repo/redis-queue/types";
+import type { JobWithMetadata } from "@repo/job-types/types";
 
 export type JobsPageLoaderData = {
   jobs: JobWithMetadata[];

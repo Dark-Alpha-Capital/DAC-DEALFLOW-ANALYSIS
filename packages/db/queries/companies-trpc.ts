@@ -1,5 +1,5 @@
 import { db } from "../index";
-import { companies, dealOpportunities } from "../schema";
+import { companies } from "../schema";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { ilike } from "../sqlite-helpers";
 import { withOrganizationScope } from "./org-scope";
@@ -46,9 +46,3 @@ export async function searchCompaniesForChat(input: {
     .limit(input.limit);
 }
 
-export async function listDealOpportunityIdsForCompany(companyId: string) {
-  return db
-    .select({ id: dealOpportunities.id })
-    .from(dealOpportunities)
-    .where(eq(dealOpportunities.companyId, companyId));
-}

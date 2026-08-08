@@ -19,7 +19,7 @@ const repoPackages = [
   "@repo/rag-engine",
   "@repo/cim-extraction",
   "@repo/ai-core",
-  "@repo/redis-queue",
+  "@repo/job-types",
   "@repo/schemas",
 ];
 

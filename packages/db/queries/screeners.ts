@@ -100,14 +100,6 @@ export async function getAllScreenersForOrganization(organizationId: string | nu
   }
 }
 
-/**
- * Get all screeners
- * @returns all screeners
- */
-export async function getAllScreenersWithContent() {
-  return getAllScreeners();
-}
-
 export async function getScreenerById(screenerId: string) {
   try {
     const [row] = await db
@@ -361,20 +353,4 @@ export async function getCompleteAiReasoningById(reasoningId: string) {
     return null;
   }
 }
-
-export const getFirstThreeDealAIScreenings = async (dealId: string) => {
-  const opp = await GetDealOpportunityByLegacyDealId(dealId);
-  if (!opp) return [];
-  try {
-    return await db
-      .select()
-      .from(aiScreenings)
-      .where(eq(aiScreenings.dealOpportunityId, opp.id))
-      .orderBy(desc(aiScreenings.createdAt))
-      .limit(3);
-  } catch (error) {
-    console.error("Error fetching deal ai screenings", error);
-    throw error;
-  }
-};
 

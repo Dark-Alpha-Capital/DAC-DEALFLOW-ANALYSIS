@@ -1,7 +1,7 @@
 
 import { useEffect, useRef } from "react";
 import { useJob } from "./use-jobs";
-import type { JobWithMetadata } from "@repo/redis-queue/types";
+import type { JobWithMetadata } from "@repo/job-types/types";
 
 interface UseJobPollingOptions {
   enabled?: boolean;

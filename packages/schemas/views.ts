@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { VIEW_TYPE_VALUES } from "@repo/enums";
 
-export const viewTypeSchema = z.enum(["list", "board", "timeline", "calendar"] as const);
+export const viewTypeSchema = z.enum(VIEW_TYPE_VALUES);
 
 export const createViewSchema = z.object({
   trackerId: z.string().min(1),

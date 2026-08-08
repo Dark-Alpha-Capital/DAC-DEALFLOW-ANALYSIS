@@ -30,7 +30,7 @@ import {
   getJobTypeLabel,
   type JobWithMetadata,
   type JobType,
-} from "@repo/redis-queue/types";
+} from "@repo/job-types/types";
 import {
   Loader2,
   RefreshCw,

@@ -21,24 +21,6 @@ export const GetThemeDocuments = async (themeId: string) => {
   }
 };
 
-/**
- * Get firm-level (global) documents
- */
-export const GetGlobalDocuments = async () => {
-  try {
-    const docs = await db
-      .select()
-      .from(documents)
-      .where(eq(documents.entityType, "GLOBAL"))
-      .orderBy(desc(documents.createdAt));
-
-    return docs;
-  } catch (error) {
-    console.error("Failed query: select global documents", error);
-    throw error;
-  }
-};
-
 interface GetAllDocumentsResult {
   data: (typeof documents.$inferSelect)[];
   totalCount: number;

@@ -35,6 +35,7 @@ export async function createWorkItemComment(input: CreateWorkItemCommentInput) {
 export type UpdateWorkItemCommentInput = {
   commentId: string;
   content: string;
+  userId: string;
 };
 
 export async function updateWorkItemComment(input: UpdateWorkItemCommentInput) {
@@ -44,6 +45,7 @@ export async function updateWorkItemComment(input: UpdateWorkItemCommentInput) {
     .where(eq(workItemComments.id, input.commentId))
     .limit(1);
   if (!existing) return null;
+  if (existing.userId !== input.userId) return null;
 
   const patch: Partial<typeof workItemComments.$inferInsert> = {
     content: input.content,
@@ -63,13 +65,17 @@ export async function updateWorkItemComment(input: UpdateWorkItemCommentInput) {
   return row ?? null;
 }
 
-export async function deleteWorkItemComment(commentId: string) {
+export async function deleteWorkItemComment(
+  commentId: string,
+  userId: string,
+) {
   const [existing] = await db
     .select()
     .from(workItemComments)
     .where(eq(workItemComments.id, commentId))
     .limit(1);
   if (!existing) return false;
+  if (existing.userId !== userId) return false;
   await db.delete(workItemComments).where(eq(workItemComments.id, commentId));
   return true;
 }

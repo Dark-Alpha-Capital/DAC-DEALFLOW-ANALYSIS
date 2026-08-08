@@ -36,10 +36,11 @@ export const workItemCommentsRouter = createTRPCRouter({
 
   update: protectedProcedure
     .input(updateWorkItemCommentSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const updated = await updateWorkItemComment({
         commentId: input.commentId,
         content: input.content,
+        userId: ctx.user.id,
       });
       if (!updated) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found" });
@@ -49,8 +50,8 @@ export const workItemCommentsRouter = createTRPCRouter({
 
   delete: protectedProcedure
     .input(z.object({ commentId: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const deleted = await deleteWorkItemComment(input.commentId);
+    .mutation(async ({ ctx, input }) => {
+      const deleted = await deleteWorkItemComment(input.commentId, ctx.user.id);
       if (!deleted) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found" });
       }

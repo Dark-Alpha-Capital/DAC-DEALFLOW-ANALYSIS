@@ -24,7 +24,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { useRouter } from "@/lib/routing/navigation-shim";
 import useCurrentUser from "@/hooks/use-current-user";
-import { QUEUE_NAMES } from "@repo/redis-queue/types";
+import { QUEUE_NAMES } from "@repo/job-types/types";
 import { DOCUMENT_CATEGORY_OPTIONS } from "@/lib/documents/document-category-options";
 import type { DocumentCategory } from "@repo/db/enums";
 

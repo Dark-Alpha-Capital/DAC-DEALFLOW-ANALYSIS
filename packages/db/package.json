@@ -6,9 +6,11 @@
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:migrate:remote": "bun run --cwd ../../apps/frontend db:migrate:remote",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
+    "db:migrate:local": "cd ../../apps/frontend && wrangler d1 migrations apply dealflow-db --local",
+    "db:migrate:remote": "cd ../../apps/frontend && wrangler d1 migrations apply dealflow-db --remote",
+    "db:push": "bun run scripts/with-local-d1.ts push",
+    "db:studio": "bun run scripts/with-local-d1.ts studio",
+    "db:setup:local": "bun run db:migrate:local",
     "db:introspect": "drizzle-kit introspect",
     "db:seed:dummy-leads": "bun run ./scripts/seed-dummy-leads.ts",
     "db:seed:dummy-deal-pipeline": "bun run ./scripts/seed-dummy-deal-pipeline.ts",
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@faker-js/faker": "^9.4.0",
     "@types/bun": "latest",
+    "better-sqlite3": "^11.10.0",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.8"
   },

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useTRPC } from "@/trpc/client";
 import useCurrentUser from "@/hooks/use-current-user";
 import { useRouter } from "@/lib/routing/navigation-shim";
-import { QUEUE_NAMES } from "@repo/redis-queue/types";
+import { QUEUE_NAMES } from "@repo/job-types/types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {

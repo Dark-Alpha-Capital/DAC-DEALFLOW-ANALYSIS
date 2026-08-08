@@ -14,17 +14,6 @@ export async function getCommentsByWorkItemId(
     .orderBy(asc(workItemComments.createdAt));
 }
 
-export async function getCommentById(
-  commentId: string,
-): Promise<WorkItemCommentRecord | null> {
-  const [row] = await db
-    .select()
-    .from(workItemComments)
-    .where(eq(workItemComments.id, commentId))
-    .limit(1);
-  return row ?? null;
-}
-
 export type ThreadedComment = WorkItemCommentRecord & {
   replies: ThreadedComment[];
 };

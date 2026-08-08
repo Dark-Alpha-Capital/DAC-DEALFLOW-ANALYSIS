@@ -1,7 +1,7 @@
 import { getAllProjectTrackers } from "@repo/db-tracker/queries";
 import { DEPARTMENT_VALUES } from "@repo/enums";
 import { assertAuthenticated } from "@/lib/server/assert-session";
-import { createDbServerFn } from "@/lib/server/create-db-server-fn";
+import { createServerFn } from "@tanstack/react-start";
 import { projectTrackersPageInputSchema } from "@/lib/server/server-fn-input-schemas";
 import type {
   ProjectTrackerSortBy,
@@ -35,7 +35,7 @@ function sortProjectTrackers<
   });
 }
 
-export const loadProjectTrackersPageData = createDbServerFn({ method: "GET" })
+export const loadProjectTrackersPageData = createServerFn({ method: "GET" })
   .validator((raw: unknown) => projectTrackersPageInputSchema.parse(raw))
   .handler(async ({ data }) => {
     await assertAuthenticated();

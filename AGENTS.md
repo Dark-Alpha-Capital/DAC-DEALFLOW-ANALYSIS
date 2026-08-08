@@ -43,8 +43,8 @@
 - **TanStack React Start**, not Next.js. `vite dev`, file-based routes in `src/routes/`.
 - **tRPC** API: routers in `trpc/routers/`. Uses `@trpc/tanstack-react-query`.
 - **Auth:** `better-auth` with Drizzle adapter (`provider: "sqlite"`), restricted to `@darkalphacapital.com` emails. Admin emails hardcoded in `lib/utils.ts`.
-- **DB:** Cloudflare **D1** (`dealflow-db`) + Drizzle ORM via `@repo/db`. **No local DB** — dev hits remote D1 (`remote: true`). Dev also uses `@cloudflare/vite-plugin` for remote bindings.
-- **Vectorize:** `document-chunks` (768d, cosine) — live index in dev via `remoteBindings: true`.
+- **DB:** Cloudflare **D1** (`dealflow-db`) + Drizzle ORM via `@repo/db`. **Local dev uses a LOCAL D1** (persisted in `.wrangler/state`, no `"remote": true`). Apply migrations locally with `bun run --cwd packages/db db:migrate:local`. Production still uses the remote DB via `db:migrate:remote` + `wrangler deploy`.
+- **Vectorize:** `document-chunks` (768d, cosine) — live index in dev via `remoteBindings: true` (kept `remote: true`; there is no local Vectorize emulator).
 - **Workflows:** 7 Cloudflare Workflows exported from `src/server.ts` (screen-deal, file-upload, cim-extraction, rag-ingestion, cim-screening, cim-monograph-screening, ic-scorer).
 - **Files:** Nextcloud (not R2).
 - **Compat flag:** `nodejs_compat` only.
@@ -86,8 +86,9 @@
 | `@repo/db-tracker` | `project-trackers-db` | `apps/project-trackers` |
 
 - Both use Drizzle ORM with SQLite dialect. Migrations in `drizzle/` subdirs.
-- **Migrations apply remote:** `bun run --cwd apps/<app> db:migrate:remote`
-- **Outside Workers:** no DB binding available. Use `wrangler d1 execute <db-name> --remote` for ad-hoc SQL.
+- **Migrations:** local dev `bun run --cwd packages/db db:migrate:local`; production `bun run --cwd packages/db db:migrate:remote` (same for db-tracker).
+- **Drizzle Studio / push hit the LOCAL D1** via `bun run --cwd packages/db db:studio` / `db:push` (they resolve the sqlite file under `apps/frontend/.wrangler/state/` — see `packages/db/scripts/with-local-d1.ts`, same pattern as investor-portal).
+- **Outside Workers:** no DB binding available. Use `wrangler d1 execute <db-name> --local` (dev) / `--remote` (prod) for ad-hoc SQL.
 - **Seed scripts:** `bun run --cwd packages/db db:seed:dummy-leads` and `db:seed:dummy-deal-pipeline`
 
 `@repo/db` exports: `"."`, `"./enums"`, `"./schema"`, `"./queries"`, `"./mutations"`, `"./types"`, `"./workflow-jobs"`, `"./d1-context"`, `"./create-db"`
@@ -124,7 +125,7 @@ To run workspace-wide tasks: `bun run dev`, `bun run build`, `bun run lint`.
 - **Worker bundle size:** free tier 3 MiB gzip limit may block deploy.
 - **`packageManager` / `.bun-version` are `bun@1.3.14`** — Cloudflare Builds reads this and installs the same Bun as local. Keep on latest stable via `bun upgrade`. Use text `bun.lock` only (`bun.lockb` is gitignored).
 - **Telephony must be set up independently** (`cd apps/telephony && npm install`).
-- **Dev always hits remote D1, Vectorize, and Workflows** — no local emulators. All dev shares the same bindings as production.
+- **Frontend dev uses a LOCAL D1** (`apps/frontend`). Vectorize stays remote (no local emulator); Workflows run locally via Miniflare. Project-trackers still uses remote bindings — don't assume both apps share the same dev DB behavior.
 - **Frontend README is stale** (says Next.js + Prisma). Trust this file and `SETUP_LOCAL.md` instead.
 - **Stale `.eslintrc.json`** in frontend — the real config is `eslint.config.mjs`.
-- Seed scripts need a D1 binding (not available outside the Worker). Use the running app or `wrangler d1 execute` for ad-hoc SQL.
+- Seed scripts need a D1 binding (not available outside the Worker). Use the running app or `wrangler d1 execute dealflow-db --local` (dev) / `--remote` (prod) for ad-hoc SQL.

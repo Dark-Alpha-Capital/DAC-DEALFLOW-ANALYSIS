@@ -251,7 +251,6 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
             ragDebug("processContent.start", {
               documentId,
               bufferLength: buf.length,
-              forcePdfTextChunks: true,
             });
             const processResult: ProcessResult = await processContent(
               buf,
@@ -259,7 +258,6 @@ export class RagIngestionWorkflow extends WorkflowEntrypoint<
               docContext,
               metadataBase,
               reporter,
-              { forcePdfTextChunks: true },
             );
             ragDebug("processContent.done", {
               documentId,

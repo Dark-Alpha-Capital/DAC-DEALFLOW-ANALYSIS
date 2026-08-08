@@ -21,7 +21,6 @@
   "exports": {
     ".": "./index.ts",
     "./screening": "./screening.ts",
-    "./ai-screening": "./ai-screening.ts",
-    "./prompts": "./prompts/index.ts"
+    "./ai-screening": "./ai-screening.ts"
   }
 }

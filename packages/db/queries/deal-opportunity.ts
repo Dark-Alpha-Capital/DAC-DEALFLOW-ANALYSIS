@@ -100,67 +100,6 @@ export const GetDealRiskFlagsByDealOpportunityId = async (
     .orderBy(desc(dealRiskFlags.createdAt), desc(dealRiskFlags.id));
 };
 
-/**
- * Get DealOpportunities linked to a lead, with company joined for display.
- */
-export const GetDealOpportunitiesByLeadId = async (leadId: string) => {
-  const rows = await db
-    .select({
-      opp: {
-        id: dealOpportunities.id,
-        stage: dealOpportunities.stage,
-        status: dealOpportunities.status,
-        dealTeaser: dealOpportunities.dealTeaser,
-        brokerage: dealOpportunities.brokerage,
-        sourceWebsite: dealOpportunities.sourceWebsite,
-        dealType: dealOpportunities.dealType,
-        createdAt: dealOpportunities.createdAt,
-        revenue: dealOpportunities.revenue,
-        ebitda: dealOpportunities.ebitda,
-        askingPrice: dealOpportunities.askingPrice,
-      },
-      company: {
-        name: companies.name,
-        industry: companies.industry,
-        location: companies.location,
-      },
-    })
-    .from(dealOpportunities)
-    .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-    .where(
-      and(eq(dealOpportunities.leadId, leadId), isNull(companies.deletedAt)),
-    )
-    .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id));
-  return rows.map(({ opp, company }) => ({
-    ...opp,
-    company:
-      company && company.name
-        ? {
-          name: company.name,
-          industry: company.industry,
-          location: company.location,
-        }
-        : null,
-  }));
-};
-
-export type DealOpportunityWithCompany = Awaited<
-  ReturnType<typeof GetDealOpportunitiesByLeadId>
->[number];
-
-interface GetDealOpportunitiesResult {
-  data: Array<{
-    opp: typeof dealOpportunities.$inferSelect;
-    company: {
-      name: string;
-      industry: string | null;
-      location: string | null;
-    } | null;
-  }>;
-  totalCount: number;
-  totalPages: number;
-}
-
 /** Columns loaded for deal opportunities list / kanban (no `Company` join). */
 export type DealOpportunityListOpp = Pick<
   typeof dealOpportunities.$inferSelect,
@@ -188,80 +127,6 @@ export interface RankedDealOpportunityRow {
   opp: DealOpportunityListOpp;
   screening: typeof dealOpportunityScreenings.$inferSelect | null;
 }
-
-/**
- * Get all deal opportunities with company, paginated
- */
-export const GetAllDealOpportunities = async ({
-  offset = 0,
-  limit = 50,
-}: {
-  offset?: number;
-  limit?: number;
-}): Promise<GetDealOpportunitiesResult> => {
-  try {
-    const baseQuery = db
-      .select({
-        opp: dealOpportunities,
-        company: {
-          name: companies.name,
-          industry: companies.industry,
-          location: companies.location,
-        },
-      })
-      .from(dealOpportunities)
-      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-      .where(isNull(companies.deletedAt))
-      .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id));
-
-    const [data, countResult] = await Promise.all([
-      baseQuery.limit(limit).offset(offset),
-      db
-        .select({ count: count() })
-        .from(dealOpportunities)
-        .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-        .where(isNull(companies.deletedAt)),
-    ]);
-
-    const totalCount = countResult[0]?.count ?? 0;
-    const totalPages = Math.ceil(totalCount / limit);
-
-    return { data, totalCount, totalPages };
-  } catch (error) {
-    console.error("Failed query: select from DealOpportunity", error);
-    throw error;
-  }
-};
-
-/**
- * Get all deal opportunities with company, ordered by pipeline stage
- */
-export const GetDealOpportunitiesByStages = async () => {
-  try {
-    const data: GetDealOpportunitiesResult["data"] = await db
-      .select({
-        opp: dealOpportunities,
-        company: {
-          name: companies.name,
-          industry: companies.industry,
-          location: companies.location,
-        },
-      })
-      .from(dealOpportunities)
-      .leftJoin(companies, eq(dealOpportunities.companyId, companies.id))
-      .where(isNull(companies.deletedAt))
-      .orderBy(
-        dealOpportunities.stage,
-        desc(dealOpportunities.createdAt),
-        desc(dealOpportunities.id),
-      );
-
-    return data;
-  } catch (error) {
-    console.error("Failed query: select from DealOpportunity by stages", error);
-    throw error;
-  }
-};
 
 const dealOpportunityListOpp = {
   id: dealOpportunities.id,
@@ -304,34 +169,12 @@ function escapeIlikePattern(value: string): string {
     .replace(/_/g, "\\_");
 }
 
-export const GetRankedDealOpportunities = async (): Promise<
-  RankedDealOpportunityRow[]
-> => {
-  try {
-    return await db
-      .select({
-        opp: dealOpportunityListOpp,
-        screening: dealOpportunityScreenings,
-      })
-      .from(dealOpportunities)
-      .leftJoin(
-        dealOpportunityScreenings,
-        eq(dealOpportunityScreenings.dealOpportunityId, dealOpportunities.id),
-      )
-      .orderBy(...rankedDealOpportunitiesOrderBy);
-  } catch (error) {
-    console.error("Failed query: ranked deal opportunities", error);
-    throw error;
-  }
-};
-
 export type GetRankedDealOpportunitiesPaginatedResult = {
   data: RankedDealOpportunityRow[];
   totalCount: number;
   totalPages: number;
 };
 
-/** Ranked deal opportunities with optional text search on listing fields (no `Company` join). */
 export const GetRankedDealOpportunitiesPaginated = async ({
   offset = 0,
   limit = 25,
@@ -407,7 +250,7 @@ export const GetRankedDealOpportunitiesPaginated = async ({
  * Aligns with Bitrix `normalizeBitrixStageIdForPipeline` (see `@repo/bitrix-sync`) so DB
  * queries bucket the same way as the Kanban UI.
  */
-export function normalizeStoredDealStageForPipeline(
+function normalizeStoredDealStageForPipeline(
   stageId: string,
   pipelineCategoryId: string,
 ): string {
@@ -652,27 +495,6 @@ export const GetTopRankedDeals = async (
       }));
   } catch (error) {
     console.error("Failed query: top ranked deals", error);
-    throw error;
-  }
-};
-
-/**
- * Get deal opportunities for a single company
- */
-export const GetDealOpportunitiesByCompanyId = async (companyId: string) => {
-  try {
-    const data = await db
-      .select()
-      .from(dealOpportunities)
-      .where(eq(dealOpportunities.companyId, companyId))
-      .orderBy(desc(dealOpportunities.createdAt), desc(dealOpportunities.id));
-
-    return data;
-  } catch (error) {
-    console.error(
-      "Failed query: select from DealOpportunity by companyId",
-      error,
-    );
     throw error;
   }
 };

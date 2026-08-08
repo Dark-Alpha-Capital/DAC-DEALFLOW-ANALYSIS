@@ -77,7 +77,7 @@ import {
   getDocumentFileMetaForDelete,
   deleteDocumentById,
 } from "@repo/db/mutations";
-import type { FileUploadJobData, EntityMetadata } from "@repo/redis-queue/types";
+import type { FileUploadJobData, EntityMetadata } from "@repo/job-types/types";
 import {
   insertWorkflowJob,
   startCimExtractionWorkflow,
@@ -141,7 +141,7 @@ import {
   getDocumentChunksVectorIndex,
 } from "@/lib/documents/document-chunk-vectorize";
 import { TRPCError } from "@trpc/server";
-import { QUEUE_NAMES } from "@repo/redis-queue/types";
+import { QUEUE_NAMES } from "@repo/job-types/types";
 import { icScorerOutputLooseSchema } from "@repo/schemas";
 import { resolveMimeType } from "@repo/rag-engine";
 import {

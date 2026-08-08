@@ -211,48 +211,6 @@ export const DeleteQuestionnaireById = async (questionnaireId: string) => {
 };
 
 /**
- * Archive the current active CIM upload for a deal opportunity.
- */
-export const archiveActiveDealCim = async (dealOpportunityId: string) => {
-  await db
-    .update(dealCims)
-    .set({ status: "ARCHIVED" })
-    .where(
-      and(
-        eq(dealCims.dealOpportunityId, dealOpportunityId),
-        eq(dealCims.status, "ACTIVE"),
-      ),
-    );
-};
-
-/**
- * Create a new DealCim (active). Call archiveActiveDealCim first if replacing.
- */
-export const createDealCim = async ({
-  dealOpportunityId,
-  documentId,
-  storageKey,
-  uploadedById,
-}: {
-  dealOpportunityId: string;
-  documentId: string;
-  storageKey: string;
-  uploadedById?: string;
-}) => {
-  const [row] = await db
-    .insert(dealCims)
-    .values({
-      dealOpportunityId,
-      documentId,
-      storageKey,
-      status: "ACTIVE",
-      uploadedById: uploadedById ?? null,
-    })
-    .returning();
-  return row!;
-};
-
-/**
  * Replace CIM: archive current active, create new active. Returns new row.
  * Runs in a transaction to prevent race conditions.
  */
@@ -486,7 +444,7 @@ export const createDealRiskFlag = async ({
   return flag ?? null;
 };
 
-export const upsertCustomerConcentrationSystemRiskFlag = async ({
+const upsertCustomerConcentrationSystemRiskFlag = async ({
   dealOpportunityId,
   customerConcentration,
   threshold = 40,

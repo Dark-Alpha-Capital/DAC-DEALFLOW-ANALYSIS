@@ -70,7 +70,7 @@
         "@repo/deal-screening": "workspace:*",
         "@repo/nextcloud": "workspace:*",
         "@repo/rag-engine": "workspace:*",
-        "@repo/redis-queue": "workspace:*",
+        "@repo/job-types": "workspace:*",
         "@repo/schemas": "workspace:*",
         "@rive-app/react-webgl2": "^4.27.1",
         "@streamdown/cjk": "^1.0.2",
@@ -393,8 +393,8 @@
         "typescript": "^5",
       },
     },
-    "packages/redis-queue": {
-      "name": "@repo/redis-queue",
+    "packages/job-types": {
+      "name": "@repo/job-types",
       "version": "0.0.1",
       "peerDependencies": {
         "typescript": "^5",
@@ -1294,7 +1294,7 @@
 
     "@repo/rag-engine": ["@repo/rag-engine@workspace:packages/rag-engine"],
 
-    "@repo/redis-queue": ["@repo/redis-queue@workspace:packages/redis-queue"],
+    "@repo/job-types": ["@repo/job-types@workspace:packages/job-types"],
 
     "@repo/schemas": ["@repo/schemas@workspace:packages/schemas"],
 

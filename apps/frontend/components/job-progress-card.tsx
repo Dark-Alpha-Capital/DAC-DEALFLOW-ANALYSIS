@@ -10,7 +10,7 @@ import {
   FileText,
   Search,
 } from "lucide-react";
-import { getJobTypeLabel, type JobWithMetadata } from "@repo/redis-queue/types";
+import { getJobTypeLabel, type JobWithMetadata } from "@repo/job-types/types";
 import { cn } from "@/lib/utils";
 
 interface JobProgressCardProps {

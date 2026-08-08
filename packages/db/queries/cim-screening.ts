@@ -28,18 +28,6 @@ export async function getCimScreeningSessionByIdForUser(
   return row ?? null;
 }
 
-export async function listCimScreeningSessionsForUser(
-  userId: string,
-  limit = 50,
-) {
-  return db
-    .select()
-    .from(cimScreeningSessions)
-    .where(eq(cimScreeningSessions.userId, userId))
-    .orderBy(desc(cimScreeningSessions.createdAt))
-    .limit(limit);
-}
-
 export async function getCimScreeningAnswersByRunId(runId: string) {
   return db
     .select()

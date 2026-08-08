@@ -17,14 +17,6 @@ export async function listContactsByEntity(input: {
     );
 }
 
-export async function getContactById(id: string) {
-  const [row] = await db
-    .select()
-    .from(contacts)
-    .where(eq(contacts.id, id));
-  return row ?? null;
-}
-
 export async function insertContact(values: {
   entityType: (typeof contacts.$inferSelect)["entityType"];
   entityId: string;

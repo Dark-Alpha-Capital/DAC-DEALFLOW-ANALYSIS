@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/card";
 import useCurrentUser from "@/hooks/use-current-user";
 import { useRouter } from "@/lib/routing/navigation-shim";
-import { QUEUE_NAMES } from "@repo/redis-queue/types";
+import { QUEUE_NAMES } from "@repo/job-types/types";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ROUTE_DATA_GC_TIME_MS,

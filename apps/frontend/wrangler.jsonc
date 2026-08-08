@@ -26,16 +26,17 @@
   //   wrangler vectorize create-metadata-index document-chunks --property-name=themeId --type=string
   //
   // One index `document-chunks`: namespaces = per-document isolation; metadata = entity scope (deal / lead / company / theme / global).
-  // "remote": true + vite remoteBindings: local `vite dev` uses live D1 on the logged-in account.
+  // Local `vite dev` uses a LOCAL D1 instance persisted in `.wrangler/state` (no "remote": true).
+  // Vectorize below keeps "remote": true because there is no local Vectorize emulator.
   // Migrations: `bun run --cwd packages/db db:generate` then
-  // `wrangler d1 migrations apply dealflow-db --remote` from apps/frontend.
+  // `wrangler d1 migrations apply dealflow-db --local` from apps/frontend (or `bun run db:migrate:local`).
+  // Production migrations: `wrangler d1 migrations apply dealflow-db --remote`.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "dealflow-db",
       "database_id": "ceeb42af-f9f3-4868-89ee-bf08dc6352a2",
-      "migrations_dir": "../../packages/db/drizzle",
-      "remote": true
+      "migrations_dir": "../../packages/db/drizzle"
     }
   ],
   "vectorize": [

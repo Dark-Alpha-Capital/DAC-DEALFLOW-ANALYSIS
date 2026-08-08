@@ -12,6 +12,7 @@
     "cf:setup": "bash scripts/setup-cloudflare.sh",
     "cf:typegen": "wrangler types",
     "db:migrate:remote": "wrangler d1 migrations apply dealflow-db --remote",
+    "db:migrate:local": "wrangler d1 migrations apply dealflow-db --local",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -69,7 +70,7 @@
     "@repo/deal-screening": "workspace:*",
     "@repo/nextcloud": "workspace:*",
     "@repo/rag-engine": "workspace:*",
-    "@repo/redis-queue": "workspace:*",
+    "@repo/job-types": "workspace:*",
     "@repo/schemas": "workspace:*",
     "@rive-app/react-webgl2": "^4.27.1",
     "@streamdown/cjk": "^1.0.2",

@@ -46,20 +46,6 @@ export async function getCyclesByTrackerId(
   });
 }
 
-export async function getActiveCycleByTrackerId(
-  trackerId: string,
-): Promise<CycleWithStats | null> {
-  const [row] = await db
-    .select()
-    .from(cycles)
-    .where(eq(cycles.trackerId, trackerId))
-    .limit(1)
-    .orderBy(asc(cycles.startDate));
-
-  const all = await getCyclesByTrackerId(trackerId);
-  return all.find((c) => c.status === "ACTIVE") ?? null;
-}
-
 export async function getCycleById(
   cycleId: string,
 ): Promise<CycleWithStats | null> {

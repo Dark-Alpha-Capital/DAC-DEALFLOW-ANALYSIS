@@ -31,8 +31,8 @@
       "@repo/nextcloud": ["../../packages/nextcloud"],
       "@repo/ai-core": ["../../packages/ai-core/index.ts"],
       "@repo/schemas": ["../../packages/schemas/index.ts"],
-      "@repo/redis-queue": ["../../packages/redis-queue/src/index.ts"],
-      "@repo/redis-queue/*": ["../../packages/redis-queue/src/*"],
+      "@repo/job-types": ["../../packages/job-types/src/index.ts"],
+      "@repo/job-types/*": ["../../packages/job-types/src/*"],
       "@repo/bitrix-sync": ["../../packages/bitrix-sync/src/index.ts"]
     },
     "types": ["vite/client"]

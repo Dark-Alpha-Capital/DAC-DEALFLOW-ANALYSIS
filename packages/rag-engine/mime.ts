@@ -103,13 +103,3 @@ export function resolveMimeType(fileName: string, mimeType: string | null): stri
   if (declared) return declared;
   return extMime ?? "application/octet-stream";
 }
-
-export function isMedia(mime: string): boolean {
-  return isMediaMime(mime);
-}
-
-export function getMediaModality(mime: string): "IMAGE" | "AUDIO" | "VIDEO" {
-  if (mime.startsWith("image/")) return "IMAGE";
-  if (mime.startsWith("audio/")) return "AUDIO";
-  return "VIDEO";
-}

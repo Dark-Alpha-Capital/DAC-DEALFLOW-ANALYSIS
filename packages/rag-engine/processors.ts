@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import { getEmbedding, isValidEmbeddingDimension } from "./embedding";
+import { getEmbedding } from "./embedding";
 import { extractPdfContent, extractTextFromDocx, extractTextFromExcel } from "@repo/cim-extraction";
 import { splitContentIntoChunks } from "./chunking";
 import type {
@@ -10,7 +10,7 @@ import type {
   ProcessResult,
   ProgressReporter,
 } from "./ingestion-types";
-import { EXCEL, MIME, TEXT_LIKE, getMediaModality, isMedia } from "./mime";
+import { EXCEL, MIME, TEXT_LIKE } from "./mime";
 
 const CHUNK_SIZE = 1800;
 const CHUNK_OVERLAP = 200;
@@ -20,7 +20,7 @@ function buildProcessedChunk(
   metadata: MetadataBase,
   opts: {
     chunkText: string | null;
-    modality: "TEXT" | "PDF" | "IMAGE" | "AUDIO" | "VIDEO";
+    modality: "TEXT" | "PDF";
     embedding: number[];
     chunkIndex?: number;
     totalChunks?: number;
@@ -59,7 +59,7 @@ async function processTextChunks(
   for (const [index, chunkText] of chunks.entries()) {
     if (!chunkText.trim()) continue;
     const embedding = await getEmbedding(chunkText);
-    if (!isValidEmbeddingDimension(embedding)) continue;
+    if (!embedding?.length) continue;
     rows.push(
       buildProcessedChunk(doc, metadata, {
         chunkText,
@@ -73,71 +73,26 @@ async function processTextChunks(
   return rows;
 }
 
-async function processInlineBinary(
-  fileBuffer: Buffer,
-  mimeType: string,
-  modality: "PDF" | "IMAGE" | "AUDIO" | "VIDEO",
-  doc: DocumentContext,
-  metadata: MetadataBase,
-  job: ProgressReporter,
-  stepLabel: string,
-): Promise<ProcessedChunk[]> {
-  await job.updateProgress({ step: stepLabel, percentage: 40 });
-  const embedding = await getEmbedding([
-    { inlineData: { data: fileBuffer.toString("base64"), mimeType } },
-  ]);
-  if (!isValidEmbeddingDimension(embedding)) {
-    console.log(`[rag-ingestion] ${modality} embedding invalid dimension`);
-    return [];
-  }
-  console.log(`[rag-ingestion] ${modality} embedding OK`);
-  return [
-    buildProcessedChunk(doc, metadata, { chunkText: null, modality, embedding }),
-  ];
-}
-
-export type ProcessContentOptions = {
-  /** Use text chunking for all PDFs (needed when chunk text must be retrieved for RAG Q&A). */
-  forcePdfTextChunks?: boolean;
-};
-
 export async function processContent(
   fileBuffer: Buffer,
   mimeType: string,
   doc: DocumentContext,
   metadata: MetadataBase,
   job: ProgressReporter,
-  options?: ProcessContentOptions,
 ): Promise<ProcessResult> {
   if (mimeType === MIME.PDF) {
     const { text, numpages } = await extractPdfContent(fileBuffer);
-    if (options?.forcePdfTextChunks || numpages > 6) {
-      if (options?.forcePdfTextChunks && numpages <= 6) {
-        console.log("[rag-ingestion] PDF text chunks forced (SIM/RAG Q&A path)", {
-          numpages,
-        });
-      } else {
-        console.log("[rag-ingestion] PDF >6 pages, using text extraction path", {
-          numpages,
-        });
-      }
-      const chunks = await processTextChunks(
-        text,
-        doc,
-        metadata,
-        job,
-        "Embedding PDF (text-extracted)",
-      );
-      return { chunks };
+    if (numpages > 6) {
+      console.log("[rag-ingestion] PDF >6 pages, using text extraction path", {
+        numpages,
+      });
     }
-    const chunks = await processInlineBinary(
-      fileBuffer,
-      MIME.PDF,
-      "PDF",
+    const chunks = await processTextChunks(
+      text,
       doc,
       metadata,
       job,
-      "Embedding PDF",
+      "Embedding PDF (text-extracted)",
     );
     return { chunks };
   }
@@ -159,21 +114,6 @@ export async function processContent(
   if (TEXT_LIKE.has(mimeType as "text/plain" | "text/csv" | "application/json")) {
     const text = fileBuffer.toString("utf-8");
     const chunks = await processTextChunks(text, doc, metadata, job, "Chunking text content");
-    return { chunks };
-  }
-
-  if (isMedia(mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "audio/mpeg" | "audio/wav" | "audio/ogg" | "video/mp4" | "video/webm")) {
-    const modality = getMediaModality(mimeType);
-    console.log("[rag-ingestion] Embedding media", { mimeType });
-    const chunks = await processInlineBinary(
-      fileBuffer,
-      mimeType,
-      modality,
-      doc,
-      metadata,
-      job,
-      "Embedding media content",
-    );
     return { chunks };
   }
 

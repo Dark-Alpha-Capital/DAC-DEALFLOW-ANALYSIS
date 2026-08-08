@@ -225,23 +225,6 @@ export async function getCompanyRowByIdForDealUpload(companyId: string) {
   return company ?? null;
 }
 
-export async function findDealUploadDocumentByHash(
-  dealOpportunityId: string,
-  contentHash: string,
-) {
-  const [row] = await db
-    .select({ id: documents.id })
-    .from(documents)
-    .where(
-      and(
-        eq(documents.dealOpportunityId, dealOpportunityId),
-        eq(documents.contentHash, contentHash),
-      ),
-    )
-    .limit(1);
-  return row ?? null;
-}
-
 export async function getLeadRowById(leadId: string) {
   const [row] = await db
     .select()

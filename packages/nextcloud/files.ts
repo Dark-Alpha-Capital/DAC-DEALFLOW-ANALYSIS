@@ -1,18 +1,9 @@
-import type { FileStat } from "webdav";
 import { getClient } from "./client";
 import {
   buildNextcloudFileUrl,
   extractFilePathFromUrl,
   sanitizeFilename,
 } from "./utils";
-
-export interface NextcloudFile {
-  name: string;
-  size: number;
-  lastModified: string;
-  mimeType: string;
-  downloadUrl: string;
-}
 
 const ensureLeadingSlash = (folderPath: string): string => {
   if (!folderPath) return "/";
@@ -109,26 +100,6 @@ export const uploadBuffer = async (
 };
 
 /**
- * List all non-directory files in a folder.
- */
-export const listFiles = async (
-  folderPath: string,
-): Promise<NextcloudFile[]> => {
-  const client = getClient();
-  const contents = await client.getDirectoryContents(folderPath);
-
-  const files = (contents as FileStat[]).map((item) => ({
-    name: item.basename,
-    size: item.size,
-    lastModified: item.lastmod,
-    mimeType: item.mime ?? "",
-    downloadUrl: buildNextcloudFileUrl(item.filename),
-  }));
-
-  return files.filter((f) => f.mimeType !== "httpd/unix-directory");
-};
-
-/**
  * Delete a file by its full Nextcloud URL.
  */
 export const deleteFile = async (fileUrl: string): Promise<boolean> => {
@@ -168,15 +139,4 @@ export const getFileContents = async (
 export const fileExists = async (filePath: string): Promise<boolean> => {
   const client = getClient();
   return client.exists(filePath);
-};
-
-export const createDirectory = async (
-  folderPath: string,
-  options?: { recursive?: boolean },
-): Promise<void> => {
-  const client = getClient();
-  await client.createDirectory(folderPath, {
-    recursive: true,
-    ...options,
-  });
 };

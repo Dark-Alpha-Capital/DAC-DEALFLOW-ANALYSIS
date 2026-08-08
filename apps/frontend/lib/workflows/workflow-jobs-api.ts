@@ -24,8 +24,8 @@ import type {
   ScreenDealParams,
   CimScreeningParams,
 } from "@/lib/workflows/workflow-env";
-import type { JobProgressData, JobStatus, JobWithMetadata } from "@repo/redis-queue/types";
-import { QUEUE_NAMES } from "@repo/redis-queue/types";
+import type { JobProgressData, JobStatus, JobWithMetadata } from "@repo/job-types/types";
+import { QUEUE_NAMES } from "@repo/job-types/types";
 
 function getWorkflowByKind(kind: WorkflowKind): WorkflowBinding {
   switch (kind) {

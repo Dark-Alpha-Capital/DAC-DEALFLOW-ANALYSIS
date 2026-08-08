@@ -13,7 +13,7 @@ import {
   getDocumentChunksByIds,
 } from "@repo/db/queries";
 import { mapEvidenceChunkIdsToCitations } from "@/lib/map-cim-screening-evidence";
-import { QUEUE_NAMES } from "@repo/redis-queue/types";
+import { QUEUE_NAMES } from "@repo/job-types/types";
 import { getJobByIdForUser } from "@/lib/workflows/workflow-jobs-api";
 import { assertAuthenticated } from "@/lib/server/assert-session";
 import {
