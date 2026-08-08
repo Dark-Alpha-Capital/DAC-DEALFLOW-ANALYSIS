@@ -1,47 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { timingSafeEqual } from "crypto";
 import db, { leads } from "@repo/db";
 import { upsertLeadScreening } from "@repo/deal-screening";
 import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { leadFormSchema } from "@/lib/schemas";
 import { getServerEnv } from "@/lib/env.server";
-
-function validateApiKey(provided: string): boolean {
-  const expected = getServerEnv().GTM_LEADS_API_KEY;
-  if (!expected || !provided) return false;
-  if (provided.length !== expected.length) return false;
-  try {
-    return timingSafeEqual(
-      Buffer.from(provided, "utf8"),
-      Buffer.from(expected, "utf8"),
-    );
-  } catch {
-    return false;
-  }
-}
-
-function getApiKeyFromRequest(
-  request: Request,
-  body: Record<string, unknown>,
-): string | null {
-  const header = request.headers.get("x-gtm-api-key");
-  if (header) return header;
-
-  const auth = request.headers.get("authorization");
-  if (auth?.startsWith("Bearer ")) return auth.slice(7);
-
-  if (body && typeof body.apiKey === "string") return body.apiKey;
-
-  return null;
-}
+import { isAuthorizedByApiKey } from "@/lib/server/api-key-auth";
 
 async function postLeadsIngest(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const apiKey = getApiKeyFromRequest(request, body as Record<string, unknown>);
 
-    if (!apiKey || !validateApiKey(apiKey)) {
+    if (
+      !isAuthorizedByApiKey(
+        request,
+        body as Record<string, unknown>,
+        "x-gtm-api-key",
+        getServerEnv().GTM_LEADS_API_KEY,
+      )
+    ) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -76,9 +52,6 @@ async function postLeadsIngest(request: Request) {
         companyLocation: input.companyLocation,
       })
       .returning();
-
-    revalidatePath("/leads");
-    revalidateTag("leads", "max");
 
     if (!added) {
       return Response.json(

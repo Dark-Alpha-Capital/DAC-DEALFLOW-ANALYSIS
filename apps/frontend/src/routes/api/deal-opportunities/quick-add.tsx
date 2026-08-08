@@ -1,15 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createId } from "@paralleldrive/cuid2";
-import { timingSafeEqual } from "crypto";
 import db, { companies, dealOpportunities } from "@repo/db";
 import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { dealQuickAddApiSchema } from "@/lib/zod-schemas/deal-quick-add-api";
 import { getServerEnv } from "@/lib/env.server";
-import {
-  getBitrixDealStages,
-  getDefaultBitrixStageId,
-} from "@repo/bitrix-sync";
+import { isAuthorizedByApiKey } from "@/lib/server/api-key-auth";
+import { defaultBitrixStageId } from "@repo/bitrix-sync";
 
 function normalizeCompanyNameKey(value?: string | null): string {
   return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -26,41 +22,18 @@ function buildNormalizedNameForQuickAdd(
   return parts.join("_").slice(0, 240);
 }
 
-function validateApiKey(provided: string): boolean {
-  const expected = getServerEnv().DEAL_QUICK_ADD_API_KEY;
-  if (!expected || !provided) return false;
-  if (provided.length !== expected.length) return false;
-  try {
-    return timingSafeEqual(
-      Buffer.from(provided, "utf8"),
-      Buffer.from(expected, "utf8"),
-    );
-  } catch {
-    return false;
-  }
-}
-
-function getApiKeyFromRequest(
-  request: Request,
-  body: Record<string, unknown>,
-): string | null {
-  const header = request.headers.get("x-deal-quick-add-api-key");
-  if (header) return header;
-
-  const auth = request.headers.get("authorization");
-  if (auth?.startsWith("Bearer ")) return auth.slice(7);
-
-  if (body && typeof body.apiKey === "string") return body.apiKey;
-
-  return null;
-}
-
 async function postDealOpportunitiesQuickAdd(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const apiKey = getApiKeyFromRequest(request, body as Record<string, unknown>);
 
-    if (!apiKey || !validateApiKey(apiKey)) {
+    if (
+      !isAuthorizedByApiKey(
+        request,
+        body as Record<string, unknown>,
+        "x-deal-quick-add-api-key",
+        getServerEnv().DEAL_QUICK_ADD_API_KEY,
+      )
+    ) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -123,7 +96,7 @@ async function postDealOpportunitiesQuickAdd(request: Request) {
           brokerPhone: input.brokerPhone || null,
           brokerLinkedIn: input.brokerLinkedIn || null,
           userId: null,
-          stage: getDefaultBitrixStageId(getBitrixDealStages()),
+          stage: defaultBitrixStageId(),
         })
         .returning();
 
@@ -133,12 +106,6 @@ async function postDealOpportunitiesQuickAdd(request: Request) {
 
       return { company, opp };
     });
-
-    revalidatePath("/deal-opportunities");
-    revalidatePath(`/deal-opportunities/${result.opp.id}`);
-    revalidatePath(`/companies/${result.company.id}`);
-    revalidateTag("deals", "max");
-    revalidateTag("companies", "max");
 
     return Response.json(
       {

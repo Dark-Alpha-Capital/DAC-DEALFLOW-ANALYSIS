@@ -8,9 +8,7 @@ import type { AppDb } from "@repo/db";
 import db, { count, eq, runDbWithD1 } from "@repo/db";
 import { documents, documentChunks } from "@repo/db/schema";
 import {
-  formatDealOpportunityScreeningContext,
   getCimScreeningAnswersWithQuestionsByRunId,
-  getDealOpportunityScreeningContextRow,
   getScreenerQuestions,
 } from "@repo/db/queries";
 import {
@@ -35,7 +33,6 @@ import {
   markWorkflowRunning,
 } from "@/lib/workflows/progress";
 import type {
-  CimScreeningDealListingContextSource,
   CimScreeningParams,
   WorkflowWorkerEnv,
 } from "@/lib/workflows/workflow-env";
@@ -44,6 +41,8 @@ import {
   buildExcerptsFromHits,
   CIM_SCREENING_MODEL,
   getInterQuestionDelayMs,
+  loadDealListingForScreeningPrompt,
+  makeWorkflowLogger,
   SCREENING_ANSWER_SCHEMA,
   sleep,
 } from "@/lib/workflows/cim-screening-core";
@@ -62,26 +61,7 @@ const RETRIEVAL_TOP_K_DEAL = 14;
 const QUESTION_PREVIEW_MAX = 120;
 
 const LOG = "[CimScreeningWorkflow]";
-
-function logDetail(
-  phase: string,
-  data: Record<string, unknown> = {},
-): void {
-  console.log(`${LOG} ${phase}`, { ts: new Date().toISOString(), ...data });
-}
-
-function logError(
-  phase: string,
-  err: unknown,
-  extra: Record<string, unknown> = {},
-): void {
-  console.error(`${LOG} ${phase}`, {
-    ts: new Date().toISOString(),
-    message: err instanceof Error ? err.message : String(err),
-    stack: err instanceof Error ? err.stack : undefined,
-    ...extra,
-  });
-}
+const { logDetail, logError } = makeWorkflowLogger(LOG);
 
 type LibraryScreeningDocMeta = {
   entityType: (typeof documents.$inferSelect)["entityType"];
@@ -90,34 +70,6 @@ type LibraryScreeningDocMeta = {
   companyId: (typeof documents.$inferSelect)["companyId"];
   themeId: (typeof documents.$inferSelect)["themeId"];
 };
-
-type DealListingLoadResult =
-  | { kind: "bitrix_live_snapshot"; text: string | null }
-  | {
-    kind: "deal_opportunity_db";
-    text: string | null;
-    bitrixId: string | null;
-  };
-
-async function loadDealListingForScreeningPrompt(input: {
-  dealOppId: string;
-  effectiveListingSource: CimScreeningDealListingContextSource | undefined;
-  bitrixLiveDealListingContext: string | undefined;
-}): Promise<DealListingLoadResult> {
-  if (input.effectiveListingSource === "bitrix_live_snapshot") {
-    const raw = input.bitrixLiveDealListingContext?.trim();
-    return { kind: "bitrix_live_snapshot", text: raw || null };
-  }
-  const dealRow = await getDealOpportunityScreeningContextRow(input.dealOppId);
-  if (!dealRow) {
-    return { kind: "deal_opportunity_db", text: null, bitrixId: null };
-  }
-  return {
-    kind: "deal_opportunity_db",
-    text: formatDealOpportunityScreeningContext(dealRow),
-    bitrixId: dealRow.bitrixId ?? null,
-  };
-}
 
 async function searchChunksForQuestion(input: {
   db: AppDb;

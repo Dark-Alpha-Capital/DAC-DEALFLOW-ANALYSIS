@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { getRequest } from "@tanstack/react-start/server";
-import { getUserOrganizationMemberships } from "@repo/db/queries";
+import { resolveOrganizationContext } from "@/lib/server/session-organization";
 
 /** Thrown when a server function requires auth the caller does not have. */
 export class ServerFnAuthError extends Error {
@@ -50,11 +50,10 @@ export function getActiveOrganizationIdFromSession(
 export async function resolveActiveOrganizationIdFromSession(
   session: Awaited<ReturnType<typeof assertAuthenticated>>,
 ): Promise<string | null> {
-  const fromSession = getActiveOrganizationIdFromSession(session);
-  if (fromSession) return fromSession;
-
-  const memberships = await getUserOrganizationMemberships(session.user.id);
-  return memberships[0]?.organizationId ?? null;
+  const org = await resolveOrganizationContext(
+    session.user as Parameters<typeof resolveOrganizationContext>[0],
+  );
+  return org.activeOrganizationId;
 }
 
 export async function assertActiveOrganization() {

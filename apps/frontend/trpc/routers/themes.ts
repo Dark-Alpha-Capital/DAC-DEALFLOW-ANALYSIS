@@ -33,23 +33,11 @@ import {
   insertThemeCoverageRow,
   deleteThemeCoverageRow,
 } from "@repo/db/mutations";
-import { after } from "@/lib/after";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { TRPCError } from "@trpc/server";
 import {
   getActiveOrganizationId,
   requireActiveOrganizationId,
 } from "../org-context";
-
-function scheduleRevalidateThemePaths(themeId: string) {
-  after(async () => {
-    revalidatePath("/investment-themes");
-    revalidatePath(`/investment-themes/${themeId}`);
-    revalidatePath(`/investment-themes/${themeId}/edit`);
-    revalidateTag("themes", "max");
-    revalidateTag(`theme-${themeId}`, "max");
-  });
-}
 
 export const themesRouter = createTRPCRouter({
   listForSelect: protectedProcedure.query(async ({ ctx }) => {
@@ -71,7 +59,6 @@ export const themesRouter = createTRPCRouter({
         organizationId,
       });
 
-      if (added?.id) scheduleRevalidateThemePaths(added.id);
       return { themeId: added?.id };
     }),
 
@@ -88,7 +75,6 @@ export const themesRouter = createTRPCRouter({
         confidenceScore: data.confidenceScore ?? null,
       });
 
-      scheduleRevalidateThemePaths(id);
       return { themeId: id };
     }),
 
@@ -97,7 +83,6 @@ export const themesRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await softDeleteThemeById(input.id);
 
-      scheduleRevalidateThemePaths(input.id);
       return { success: true };
     }),
 
@@ -129,7 +114,6 @@ export const themesRouter = createTRPCRouter({
         version: input.version,
       });
 
-      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };
     }),
 
@@ -164,7 +148,6 @@ export const themesRouter = createTRPCRouter({
         isActive: true,
       });
 
-      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };
     }),
 
@@ -188,7 +171,6 @@ export const themesRouter = createTRPCRouter({
         averageIRR: input.averageIRR ?? null,
       });
 
-      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };
     }),
 
@@ -197,7 +179,6 @@ export const themesRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await deleteThemePerformanceSnapshot(input.themeId, input.id);
 
-      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };
     }),
 
@@ -251,7 +232,6 @@ export const themesRouter = createTRPCRouter({
         });
       }
 
-      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId, companyId: input.companyId };
     }),
 
@@ -260,7 +240,6 @@ export const themesRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await deleteThemeCoverageRow(input.themeId, input.id);
 
-      scheduleRevalidateThemePaths(input.themeId);
       return { themeId: input.themeId };
     }),
 });

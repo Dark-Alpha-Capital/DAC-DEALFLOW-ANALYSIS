@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import { convertLeadToCompanySchema, leadFormSchema } from "@/lib/schemas";
-import { after } from "@/lib/after";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { upsertLeadScreening } from "@repo/deal-screening";
 import {
   getActiveOrganizationId,
@@ -153,16 +151,6 @@ export const leadsRouter = createTRPCRouter({
         await upsertLeadScreening(added.id, undefined, organizationId);
       }
 
-      after(async () => {
-        revalidatePath("/leads");
-        if (added?.id) {
-          revalidatePath(`/leads/${added.id}`);
-        }
-        revalidateTag("leads", "max");
-        if (added?.id) {
-          revalidateTag(`lead-${added.id}`, "max");
-        }
-      });
       return { leadId: added?.id };
     }),
 
@@ -175,12 +163,6 @@ export const leadsRouter = createTRPCRouter({
         undefined,
         organizationId,
       );
-      after(async () => {
-        revalidatePath("/leads");
-        revalidatePath(`/leads/${input.leadId}`);
-        revalidateTag("leads", "max");
-        revalidateTag(`lead-${input.leadId}`, "max");
-      });
       return { screening };
     }),
 
@@ -189,12 +171,6 @@ export const leadsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await deleteLeadDeterministicScreening(input.leadId);
 
-      after(async () => {
-        revalidatePath("/leads");
-        revalidatePath(`/leads/${input.leadId}`);
-        revalidateTag("leads", "max");
-        revalidateTag(`lead-${input.leadId}`, "max");
-      });
       return { success: true };
     }),
 
@@ -226,13 +202,6 @@ export const leadsRouter = createTRPCRouter({
 
       await upsertLeadScreening(id, undefined, organizationId);
 
-      after(async () => {
-        revalidatePath("/leads");
-        revalidatePath(`/leads/${id}`);
-        revalidatePath(`/leads/${id}/edit`);
-        revalidateTag("leads", "max");
-        revalidateTag(`lead-${id}`, "max");
-      });
       return { leadId: id };
     }),
 
@@ -243,11 +212,6 @@ export const leadsRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       await softDeleteLeadById(input.id);
-      after(async () => {
-        revalidatePath("/leads");
-        revalidateTag("leads", "max");
-        revalidateTag(`lead-${input.id}`, "max");
-      });
       return { success: true };
     }),
 
@@ -312,16 +276,6 @@ export const leadsRouter = createTRPCRouter({
 
       await updateLeadRowById(lead.id, payload);
 
-      after(async () => {
-        revalidatePath("/leads");
-        revalidatePath(`/leads/${input.leadId}`);
-        revalidateTag("leads", "max");
-        revalidateTag(`lead-${input.leadId}`, "max");
-        if (payload.duplicateCompanyId) {
-          revalidatePath(`/companies/${payload.duplicateCompanyId}`);
-          revalidateTag(`company-${payload.duplicateCompanyId}`, "max");
-        }
-      });
       return { leadId: input.leadId };
     }),
 
@@ -333,12 +287,6 @@ export const leadsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await rejectLeadById(input.id);
 
-      after(async () => {
-        revalidatePath("/leads");
-        revalidatePath(`/leads/${input.id}`);
-        revalidateTag("leads", "max");
-        revalidateTag(`lead-${input.id}`, "max");
-      });
       return { leadId: input.id };
     }),
 
@@ -399,15 +347,6 @@ export const leadsRouter = createTRPCRouter({
         companyId: input.companyId,
       });
 
-      after(async () => {
-        revalidatePath("/leads");
-        revalidatePath(`/leads/${result.leadId}`);
-        revalidateTag("leads", "max");
-        revalidateTag(`lead-${result.leadId}`, "max");
-        revalidatePath(`/companies/${result.companyId}`);
-        revalidateTag("companies", "max");
-        revalidateTag(`company-${result.companyId}`, "max");
-      });
       return result;
     }),
 
@@ -438,13 +377,6 @@ export const leadsRouter = createTRPCRouter({
 
       await updateLeadRowById(lead.id, updatePayload);
 
-      after(async () => {
-        revalidatePath("/leads");
-        revalidatePath(`/leads/${lead.id}`);
-        revalidateTag("leads", "max");
-        revalidateTag(`lead-${lead.id}`, "max");
-        revalidateTag("companies", "max");
-      });
       return { leadId: lead.id };
     }),
 
@@ -459,18 +391,6 @@ export const leadsRouter = createTRPCRouter({
       const result = await convertLeadToDealOpportunityTx({
         leadId,
         defaultStage,
-      });
-
-      after(async () => {
-        revalidatePath("/leads");
-        revalidatePath("/deal-opportunities");
-        if (result.dealOpportunityId) {
-          revalidatePath(`/deal-opportunities/${result.dealOpportunityId}`);
-          revalidateTag(`deal-${result.dealOpportunityId}`, "max");
-        }
-        revalidateTag("leads", "max");
-        revalidateTag(`lead-${result.leadId}`, "max");
-        revalidateTag("deals", "max");
       });
 
       if (result.dealOpportunityId) {

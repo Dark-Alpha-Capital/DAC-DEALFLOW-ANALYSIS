@@ -30,6 +30,7 @@ export {
   type BitrixOpportunityUfDefaults,
 } from "./deal-fields";
 export {
+  defaultBitrixStageId,
   getBitrixDealStages,
   getDefaultBitrixStageId,
   normalizeBitrixStageIdForPipeline,

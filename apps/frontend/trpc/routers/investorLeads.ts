@@ -1,7 +1,5 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { after } from "@/lib/after";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { convertInvestorLeadToInvestorSchema } from "@/lib/schemas";
 import {
   insertInvestorLeadRow,
@@ -56,10 +54,6 @@ export const investorLeadsRouter = createTRPCRouter({
         ownerUserId: input.ownerUserId || ctx.session?.user?.id || null,
       });
 
-      after(async () => {
-        revalidatePath("/investor-leads");
-        revalidateTag("investor-leads", "max");
-      });
       return { investorLeadId: added?.id };
     }),
 
@@ -85,11 +79,6 @@ export const investorLeadsRouter = createTRPCRouter({
         type: input.type,
         notes: input.notes || null,
         outcome: input.outcome || null,
-      });
-
-      after(async () => {
-        revalidatePath(`/investor-leads/${input.investorLeadId}`);
-        revalidateTag(`investor-lead-${input.investorLeadId}`, "max");
       });
 
       return { investorInteractionId: added?.id };
@@ -122,11 +111,6 @@ export const investorLeadsRouter = createTRPCRouter({
 
       await updateInvestorLeadInteractionById(id, updates);
 
-      after(async () => {
-        revalidatePath(`/investor-leads/${investorLeadId}`);
-        revalidateTag(`investor-lead-${investorLeadId}`, "max");
-      });
-
       return { investorInteractionId: id };
     }),
 
@@ -134,11 +118,6 @@ export const investorLeadsRouter = createTRPCRouter({
     .input(z.object({ investorLeadId: z.string(), id: z.string() }))
     .mutation(async ({ input }) => {
       await deleteInvestorLeadInteractionById(input.id);
-
-      after(async () => {
-        revalidatePath(`/investor-leads/${input.investorLeadId}`);
-        revalidateTag(`investor-lead-${input.investorLeadId}`, "max");
-      });
 
       return { success: true };
     }),
@@ -171,13 +150,6 @@ export const investorLeadsRouter = createTRPCRouter({
       if (Object.keys(updates).length === 0) return { investorLeadId: id };
       await updateInvestorLeadById(id, updates);
 
-      after(async () => {
-        revalidatePath("/investor-leads");
-        revalidatePath(`/investor-leads/${id}`);
-        revalidatePath(`/investor-leads/${id}/edit`);
-        revalidateTag("investor-leads", "max");
-        revalidateTag(`investor-lead-${id}`, "max");
-      });
       return { investorLeadId: id };
     }),
 
@@ -185,11 +157,6 @@ export const investorLeadsRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       await deleteInvestorLeadById(input.id);
-      after(async () => {
-        revalidatePath("/investor-leads");
-        revalidateTag("investor-leads", "max");
-        revalidateTag(`investor-lead-${input.id}`, "max");
-      });
       return { success: true };
     }),
 
@@ -225,17 +192,6 @@ export const investorLeadsRouter = createTRPCRouter({
           status: investorData.status ?? "PROSPECT",
           firstSeenFromInvestorLeadId: investorLeadId,
         },
-      });
-
-      after(async () => {
-        revalidatePath("/investor-leads");
-        revalidatePath(`/investor-leads/${investorLeadId}`);
-        revalidatePath("/investors");
-        revalidatePath(`/investors/${result.investorId}`);
-        revalidateTag("investor-leads", "max");
-        revalidateTag(`investor-lead-${investorLeadId}`, "max");
-        revalidateTag("investors", "max");
-        revalidateTag(`investor-${result.investorId}`, "max");
       });
 
       return { investorId: result.investorId };

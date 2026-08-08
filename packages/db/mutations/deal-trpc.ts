@@ -224,13 +224,3 @@ export async function updateDealOpportunityBitrixFields(
     .set(fields)
     .where(eq(dealOpportunities.id, dealOpportunityId));
 }
-
-export async function insertDealOpportunityFromBitrixImport(
-  values: typeof dealOpportunities.$inferInsert,
-) {
-  const [added] = await db
-    .insert(dealOpportunities)
-    .values(values)
-    .returning();
-  return added ?? null;
-}

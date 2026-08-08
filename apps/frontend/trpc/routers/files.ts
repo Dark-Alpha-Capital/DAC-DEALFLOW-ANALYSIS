@@ -11,7 +11,7 @@ import {
   uploadGlobalDocumentSchema,
 } from "@/lib/zod-schemas/files-router";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import db from "@repo/db";
+import db, { isUniqueViolationError } from "@repo/db";
 import {
   findDocumentDuplicateForCheck,
   findDocumentByContentHashForEntity,
@@ -28,15 +28,6 @@ import {
 } from "@/lib/workflows/workflow-jobs-api";
 import { setWorkflowJobState } from "@repo/db/workflow-jobs";
 import { createHash, randomUUID } from "crypto";
-
-function isUniqueViolationError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "23505"
-  );
-}
 
 const getEntityPathSegment = (
   entityType: "LEAD" | "COMPANY" | "DEAL_OPPORTUNITY" | "THEME",

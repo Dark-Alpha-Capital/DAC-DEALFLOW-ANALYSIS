@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { auth } from "@/auth";
-import { getUserOrganizationMemberships } from "@repo/db/queries";
+import { resolveOrganizationContext } from "@/lib/server/session-organization";
 
 /**
  * Session for routes/components that must not statically import
@@ -32,48 +32,15 @@ export const fetchSessionWithOrganization = createServerFn({
 
   if (!session?.user) return null;
 
-  let activeOrganizationId = (
-    session.user as { activeOrganizationId?: string | null }
-  ).activeOrganizationId;
-  let onboardingStatus = (
-    session.user as { onboardingStatus?: string | null }
-  ).onboardingStatus;
-  let organizationMembershipRole = (
-    session.user as { organizationMembershipRole?: string | null }
-  ).organizationMembershipRole;
-  let activeOrganizationName = (
-    session.user as { activeOrganizationName?: string | null }
-  ).activeOrganizationName;
-  let activeOrganizationSlug = (
-    session.user as { activeOrganizationSlug?: string | null }
-  ).activeOrganizationSlug;
-  let firmDisplayName = (
-    session.user as { firmDisplayName?: string | null }
-  ).firmDisplayName;
-
-  if (!activeOrganizationId) {
-    const memberships = await getUserOrganizationMemberships(session.user.id);
-    const primary = memberships[0] ?? null;
-    if (primary) {
-      activeOrganizationId = primary.organizationId;
-      onboardingStatus = primary.onboardingStatus;
-      organizationMembershipRole = primary.role;
-      activeOrganizationName = primary.organizationName;
-      activeOrganizationSlug = primary.organizationSlug;
-      firmDisplayName = primary.firmDisplayName;
-    }
-  }
+  const org = await resolveOrganizationContext(
+    session.user as Parameters<typeof resolveOrganizationContext>[0],
+  );
 
   return {
     ...session,
     user: {
       ...session.user,
-      activeOrganizationId,
-      onboardingStatus,
-      organizationMembershipRole,
-      activeOrganizationName,
-      activeOrganizationSlug,
-      firmDisplayName,
+      ...org,
     },
   };
 });

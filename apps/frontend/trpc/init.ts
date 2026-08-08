@@ -2,7 +2,8 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import superjson from "superjson";
 import { auth } from "@/auth";
-import { getUserOrganizationMemberships } from "@repo/db/queries";
+import { resolveOrganizationContext } from "@/lib/server/session-organization";
+import { assertOrgAdmin, requireResolvedOrganizationId } from "./org-context";
 
 async function enrichSessionUserWithOrganization<T extends { id: string }>(
   user: T,
@@ -16,45 +17,8 @@ async function enrichSessionUserWithOrganization<T extends { id: string }>(
     firmDisplayName: string | null;
   }
 > {
-  let activeOrganizationId =
-    (user as { activeOrganizationId?: string | null }).activeOrganizationId ??
-    null;
-  let activeOrganizationName =
-    (user as { activeOrganizationName?: string | null })
-      .activeOrganizationName ?? null;
-  let activeOrganizationSlug =
-    (user as { activeOrganizationSlug?: string | null })
-      .activeOrganizationSlug ?? null;
-  let organizationMembershipRole =
-    (user as { organizationMembershipRole?: string | null })
-      .organizationMembershipRole ?? null;
-  let onboardingStatus =
-    (user as { onboardingStatus?: string | null }).onboardingStatus ?? null;
-  let firmDisplayName =
-    (user as { firmDisplayName?: string | null }).firmDisplayName ?? null;
-
-  if (!activeOrganizationId) {
-    const memberships = await getUserOrganizationMemberships(user.id);
-    const primary = memberships[0] ?? null;
-    if (primary) {
-      activeOrganizationId = primary.organizationId;
-      activeOrganizationName = primary.organizationName;
-      activeOrganizationSlug = primary.organizationSlug;
-      organizationMembershipRole = primary.role;
-      onboardingStatus = primary.onboardingStatus;
-      firmDisplayName = primary.firmDisplayName;
-    }
-  }
-
-  return {
-    ...user,
-    activeOrganizationId,
-    activeOrganizationName,
-    activeOrganizationSlug,
-    organizationMembershipRole,
-    onboardingStatus,
-    firmDisplayName,
-  };
+  const org = await resolveOrganizationContext(user);
+  return { ...user, ...org };
 }
 
 export async function createTRPCContext() {
@@ -128,3 +92,26 @@ export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 
   return next({ ctx });
 });
+
+/**
+ * Resolves the caller's active organization (session field, then membership
+ * fallback) and injects it into the context. Throws PRECONDITION_FAILED when
+ * the caller has no active organization.
+ */
+export const organizationProcedure = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    const organizationId = await requireResolvedOrganizationId(ctx);
+    return next({ ctx: { ...ctx, organizationId } });
+  },
+);
+
+/**
+ * Like organizationProcedure, but also requires the caller to be an
+ * organization admin (OWNER/ADMIN role, or a global ADMIN).
+ */
+export const organizationAdminProcedure = organizationProcedure.use(
+  async ({ ctx, next }) => {
+    await assertOrgAdmin(ctx, ctx.organizationId);
+    return next({ ctx });
+  },
+);

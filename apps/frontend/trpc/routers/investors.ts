@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { after } from "@/lib/after";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import {
   getActiveOrganizationId,
   requireActiveOrganizationId,
@@ -102,10 +100,6 @@ export const investorsRouter = createTRPCRouter({
         organizationId,
       });
 
-      after(async () => {
-        revalidatePath("/investors");
-        revalidateTag("investors", "max");
-      });
       return { investorId: added?.id };
     }),
 
@@ -128,13 +122,6 @@ export const investorsRouter = createTRPCRouter({
         status: data.status ?? "PROSPECT",
       });
 
-      after(async () => {
-        revalidatePath("/investors");
-        revalidatePath(`/investors/${id}`);
-        revalidatePath(`/investors/${id}/edit`);
-        revalidateTag("investors", "max");
-        revalidateTag(`investor-${id}`, "max");
-      });
       return { investorId: id };
     }),
 
@@ -142,11 +129,6 @@ export const investorsRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       await deleteInvestorById(input.id);
-      after(async () => {
-        revalidatePath("/investors");
-        revalidateTag("investors", "max");
-        revalidateTag(`investor-${input.id}`, "max");
-      });
       return { success: true };
     }),
 
@@ -177,15 +159,6 @@ export const investorsRouter = createTRPCRouter({
         companyId: input.companyId,
         notes: input.notes?.trim() ? input.notes.trim() : null,
         status: input.status ?? "ACTIVE",
-      });
-
-      after(async () => {
-        revalidatePath(`/investors/${input.investorId}`);
-        revalidatePath(`/investors/${input.investorId}/edit`);
-        revalidatePath(`/companies/${input.companyId}`);
-        revalidateTag(`investor-${input.investorId}`, "max");
-        revalidateTag(`company-${input.companyId}`, "max");
-        revalidateTag("investors", "max");
       });
 
       return { success: true };
@@ -222,15 +195,6 @@ export const investorsRouter = createTRPCRouter({
         });
       }
 
-      after(async () => {
-        revalidatePath(`/investors/${row.investorId}`);
-        revalidatePath(`/investors/${row.investorId}/edit`);
-        revalidatePath(`/companies/${row.companyId}`);
-        revalidateTag(`investor-${row.investorId}`, "max");
-        revalidateTag(`company-${row.companyId}`, "max");
-        revalidateTag("investors", "max");
-      });
-
       return { success: true };
     }),
 
@@ -245,15 +209,6 @@ export const investorsRouter = createTRPCRouter({
           message: "Link not found.",
         });
       }
-
-      after(async () => {
-        revalidatePath(`/investors/${row.investorId}`);
-        revalidatePath(`/investors/${row.investorId}/edit`);
-        revalidatePath(`/companies/${row.companyId}`);
-        revalidateTag(`investor-${row.investorId}`, "max");
-        revalidateTag(`company-${row.companyId}`, "max");
-        revalidateTag("investors", "max");
-      });
 
       return { success: true };
     }),
@@ -280,11 +235,6 @@ export const investorsRouter = createTRPCRouter({
         type: input.type,
         notes: input.notes || null,
         outcome: input.outcome || null,
-      });
-
-      after(async () => {
-        revalidatePath(`/investors/${input.investorId}`);
-        revalidateTag(`investor-${input.investorId}`, "max");
       });
 
       return { investorInteractionId: added?.id };
@@ -317,11 +267,6 @@ export const investorsRouter = createTRPCRouter({
 
       await updateInvestorInteractionById(id, updates);
 
-      after(async () => {
-        revalidatePath(`/investors/${investorId}`);
-        revalidateTag(`investor-${investorId}`, "max");
-      });
-
       return { investorInteractionId: id };
     }),
 
@@ -329,11 +274,6 @@ export const investorsRouter = createTRPCRouter({
     .input(z.object({ investorId: z.string(), id: z.string() }))
     .mutation(async ({ input }) => {
       await deleteInvestorInteractionById(input.id);
-
-      after(async () => {
-        revalidatePath(`/investors/${input.investorId}`);
-        revalidateTag(`investor-${input.investorId}`, "max");
-      });
 
       return { success: true };
     }),

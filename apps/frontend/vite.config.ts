@@ -21,7 +21,6 @@ const repoPackages = [
   "@repo/ai-core",
   "@repo/redis-queue",
   "@repo/schemas",
-  "types",
 ];
 
 export default defineConfig({

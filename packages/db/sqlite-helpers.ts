@@ -18,3 +18,16 @@ export function jsonArrayOverlaps(
     ),
   )!;
 }
+
+/**
+ * True when a D1 / SQLite error is a UNIQUE constraint violation.
+ * Used to treat concurrent inserts as idempotent no-ops.
+ */
+export function isUniqueViolationError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
+}

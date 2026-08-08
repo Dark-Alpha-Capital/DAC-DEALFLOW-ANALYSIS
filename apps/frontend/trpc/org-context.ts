@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { getUserOrganizationMemberships } from "@repo/db/queries";
 import { promoteSoleMemberToOwner } from "@repo/db/mutations";
+import { resolveOrganizationContext } from "@/lib/server/session-organization";
 import type { Context } from "./init";
 
 type SessionUser = {
@@ -19,14 +20,10 @@ export function getActiveOrganizationId(
 export async function resolveActiveOrganizationId(
   ctx: Pick<Context, "user">,
 ): Promise<string | null> {
-  const fromSession = getActiveOrganizationId(ctx);
-  if (fromSession) return fromSession;
-
-  const userId = (ctx.user as SessionUser | null)?.id;
-  if (!userId) return null;
-
-  const memberships = await getUserOrganizationMemberships(userId);
-  return memberships[0]?.organizationId ?? null;
+  const user = ctx.user as SessionUser | null;
+  if (!user?.id) return null;
+  return (await resolveOrganizationContext(user as { id: string }))
+    .activeOrganizationId;
 }
 
 export function requireActiveOrganizationId(

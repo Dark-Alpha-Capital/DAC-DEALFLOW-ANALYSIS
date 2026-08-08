@@ -1,9 +1,6 @@
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { after } from "@/lib/after";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import {
   listContactsByEntity,
-  getContactById,
   insertContact,
   updateContactById,
   deleteContactById,
@@ -47,7 +44,6 @@ export const contactsRouter = createTRPCRouter({
         role: input.role || null,
       });
 
-      scheduleRevalidateForEntity(input.entityType, input.entityId);
       return { contactId: added?.id };
     }),
 
@@ -73,49 +69,15 @@ export const contactsRouter = createTRPCRouter({
         role: data.role || null,
       });
 
-      scheduleRevalidateForEntity(data.entityType, data.entityId);
       return { contactId: id };
     }),
 
   delete: protectedProcedure
     .input(contactByIdInputSchema)
     .mutation(async ({ input }) => {
-      const existing = await getContactById(input.id);
-
       await deleteContactById(input.id);
-
-      if (existing) {
-        scheduleRevalidateForEntity(existing.entityType, existing.entityId);
-      }
 
       return { success: true };
     }),
 });
 
-function scheduleRevalidateForEntity(entityType: string, entityId: string) {
-  after(async () => {
-    switch (entityType) {
-      case "COMPANY": {
-        revalidatePath("/companies");
-        revalidatePath(`/companies/${entityId}`);
-        revalidateTag("companies", "max");
-        revalidateTag(`company-${entityId}`, "max");
-        break;
-      }
-      case "LEAD": {
-        revalidatePath("/leads");
-        revalidatePath(`/leads/${entityId}`);
-        revalidateTag("leads", "max");
-        revalidateTag(`lead-${entityId}`, "max");
-        break;
-      }
-      case "DEAL_OPPORTUNITY": {
-        revalidateTag("deals", "max");
-        revalidateTag(`deal-${entityId}`, "max");
-        break;
-      }
-      default:
-        break;
-    }
-  });
-}

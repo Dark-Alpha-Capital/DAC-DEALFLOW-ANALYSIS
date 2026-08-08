@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure } from "../init";
+import {
+  createTRPCRouter,
+  organizationAdminProcedure,
+  organizationProcedure,
+  protectedProcedure,
+} from "../init";
 import {
   createOrganization,
   ensureOrganizationMemberRole,
@@ -22,7 +27,6 @@ import { ensureDefaultCriteriaProfile } from "@repo/deal-screening";
 import {
   assertOrgAdmin,
   isOrgAdmin,
-  requireResolvedOrganizationId,
   resolveActiveOrganizationId,
 } from "../org-context";
 
@@ -103,9 +107,8 @@ export const organizationsRouter = createTRPCRouter({
     };
   }),
 
-  listMembers: protectedProcedure.query(async ({ ctx }) => {
-    const organizationId = await requireResolvedOrganizationId(ctx);
-    const members = await getOrganizationMembers(organizationId);
+  listMembers: organizationProcedure.query(async ({ ctx }) => {
+    const members = await getOrganizationMembers(ctx.organizationId);
     return {
       members,
       canManage: isOrgAdmin(ctx),
@@ -113,11 +116,10 @@ export const organizationsRouter = createTRPCRouter({
     };
   }),
 
-  inviteMember: protectedProcedure
+  inviteMember: organizationAdminProcedure
     .input(inviteMemberSchema)
     .mutation(async ({ ctx, input }) => {
-      const organizationId = await requireResolvedOrganizationId(ctx);
-      await assertOrgAdmin(ctx, organizationId);
+      const { organizationId } = ctx;
 
       const email = input.email.trim().toLowerCase();
       const user = await getUserByEmail(email);
@@ -156,11 +158,10 @@ export const organizationsRouter = createTRPCRouter({
       return member;
     }),
 
-  updateMemberRole: protectedProcedure
+  updateMemberRole: organizationAdminProcedure
     .input(updateMemberRoleSchema)
     .mutation(async ({ ctx, input }) => {
-      const organizationId = await requireResolvedOrganizationId(ctx);
-      await assertOrgAdmin(ctx, organizationId);
+      const { organizationId } = ctx;
 
       if (input.userId === ctx.user.id) {
         throw new TRPCError({
@@ -203,11 +204,10 @@ export const organizationsRouter = createTRPCRouter({
       return updated;
     }),
 
-  removeMember: protectedProcedure
+  removeMember: organizationAdminProcedure
     .input(removeMemberSchema)
     .mutation(async ({ ctx, input }) => {
-      const organizationId = await requireResolvedOrganizationId(ctx);
-      await assertOrgAdmin(ctx, organizationId);
+      const { organizationId } = ctx;
 
       if (input.userId === ctx.user.id) {
         throw new TRPCError({

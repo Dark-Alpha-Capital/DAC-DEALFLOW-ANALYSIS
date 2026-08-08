@@ -66,7 +66,6 @@ import {
   updateDealOpportunityReviewAndStatus,
   updateLegacyDealReviewAndStatus,
   updateDealOpportunityBitrixFields,
-  insertDealOpportunityFromBitrixImport,
   replaceDealCim,
   upsertCIMExtraction,
   deleteFinancialsForDealCim,
@@ -78,8 +77,6 @@ import {
   getDocumentFileMetaForDelete,
   deleteDocumentById,
 } from "@repo/db/mutations";
-import { after } from "@/lib/after";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import type { FileUploadJobData, EntityMetadata } from "@repo/redis-queue/types";
 import {
   insertWorkflowJob,
@@ -126,7 +123,6 @@ import {
   getCompanyRowByIdForDealUpload,
   getCompanyRowByIdForAiScreening,
   getLeadRowById,
-  selectDealOpportunityBitrixIds,
   listCimScreeningRunsForDealOpportunity,
   listDealOpportunityDocumentsSummary,
   getCimScreeningAnswersWithQuestionsByRunId,
@@ -153,24 +149,15 @@ import {
   runAiQualitativeScreening,
 } from "@repo/deal-screening";
 import {
-  BITRIX_DEAL_PIPELINE_ID,
   buildBitrixDealDetailUrl,
   buildCrmDealFieldsFromOpportunitySync,
   callBitrix,
-  type BitrixContactBrokerFields,
-  extractBitrixDealCompanyId,
-  extractBitrixDealContactIds,
-  extractBitrixDealListStageIdRaw,
-  fetchBitrixCompanyTitleMap,
-  fetchBitrixContactBrokerMap,
-  fetchDealsForSyncPipeline,
-  getBitrixDealStages,
-  getDefaultBitrixStageId,
+  defaultBitrixStageId,
   getAiBitrixFormFieldMeta,
   getBitrixDealFieldsCatalog,
+  getBitrixDealStages,
   getBitrixSyncEnv,
   inferPortalBaseFromWebhook,
-  normalizeBitrixListRow,
   resolveBitrixDealTeaserFieldCode,
 } from "@repo/bitrix-sync";
 import { getBitrixSyncPreviewData } from "@/lib/server/bitrix-sync-preview-data";
@@ -194,6 +181,7 @@ import db, {
   and as drizzleAnd,
   inArray,
   eq,
+  isUniqueViolationError,
 } from "@repo/db";
 
 const INGESTION_ACTIVE_STATES = ["waiting", "active", "delayed"] as const;
@@ -355,10 +343,6 @@ async function removeBitrixWidgetIngestingDocumentsByFileName(
   }
 }
 
-function defaultDealOpportunityStage(): string {
-  return getDefaultBitrixStageId(getBitrixDealStages());
-}
-
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -367,15 +351,6 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 });
 
 const formatUsd = (value: number) => currencyFormatter.format(value);
-
-function isUniqueViolationError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "23505"
-  );
-}
 
 export const dealsRouter = createTRPCRouter({
   searchForChat: protectedProcedure
@@ -519,11 +494,6 @@ export const dealsRouter = createTRPCRouter({
         userId,
       });
 
-      after(async () => {
-        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-        revalidateTag("deals", "max");
-        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-      });
       return {
         success: true,
         jobId,
@@ -619,10 +589,6 @@ export const dealsRouter = createTRPCRouter({
         source: "USER",
         updatedByUserId: ctx.session.user.id,
       });
-      after(async () => {
-        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-      });
       return { success: true };
     }),
 
@@ -637,10 +603,6 @@ export const dealsRouter = createTRPCRouter({
         });
       }
       await deleteFinancialsForDealCim(cim.id);
-      after(async () => {
-        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-      });
       return { success: true, canReExtract: true };
     }),
 
@@ -668,10 +630,6 @@ export const dealsRouter = createTRPCRouter({
         userId: ctx.user.id,
       });
 
-      after(async () => {
-        revalidatePath("/manual-deals");
-        revalidateTag("deals", "max");
-      });
       return { dealId: addedDeal?.id };
     }),
 
@@ -704,7 +662,7 @@ export const dealsRouter = createTRPCRouter({
         brokerPhone: input.brokerPhone || null,
         brokerLinkedIn: input.brokerLinkedIn || null,
         userId,
-        stage: defaultDealOpportunityStage(),
+            stage: defaultBitrixStageId(),
       });
 
       if (added?.id) {
@@ -721,10 +679,6 @@ export const dealsRouter = createTRPCRouter({
         }
       }
 
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidateTag("deals", "max");
-      });
       return { dealOpportunityId: added?.id };
     }),
 
@@ -777,14 +731,6 @@ export const dealsRouter = createTRPCRouter({
         );
       }
 
-      after(async () => {
-        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-        revalidatePath(`/companies/${input.companyId}`);
-        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-        revalidateTag(`company-${input.companyId}`, "max");
-        revalidateTag("deals", "max");
-        revalidateTag("companies", "max");
-      });
       return { success: true };
     }),
 
@@ -810,14 +756,6 @@ export const dealsRouter = createTRPCRouter({
         );
       }
 
-      after(async () => {
-        revalidatePath(`/deal-opportunities/${removed.dealOpportunityId}`);
-        revalidatePath(`/companies/${removed.companyId}`);
-        revalidateTag(`deal-${removed.dealOpportunityId}`, "max");
-        revalidateTag(`company-${removed.companyId}`, "max");
-        revalidateTag("deals", "max");
-        revalidateTag("companies", "max");
-      });
       return { success: true };
     }),
 
@@ -860,14 +798,6 @@ export const dealsRouter = createTRPCRouter({
         notes: input.notes?.trim() || null,
       });
 
-      after(async () => {
-        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-        revalidatePath(`/investors/${input.investorId}`);
-        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-        revalidateTag(`investor-${input.investorId}`, "max");
-        revalidateTag("deals", "max");
-        revalidateTag("investors", "max");
-      });
       return { success: true };
     }),
 
@@ -879,14 +809,6 @@ export const dealsRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
       }
 
-      after(async () => {
-        revalidatePath(`/deal-opportunities/${removed.dealOpportunityId}`);
-        revalidatePath(`/investors/${removed.investorId}`);
-        revalidateTag(`deal-${removed.dealOpportunityId}`, "max");
-        revalidateTag(`investor-${removed.investorId}`, "max");
-        revalidateTag("deals", "max");
-        revalidateTag("investors", "max");
-      });
       return { success: true };
     }),
 
@@ -922,7 +844,7 @@ export const dealsRouter = createTRPCRouter({
             brokerPhone: input.brokerPhone || null,
             brokerLinkedIn: input.brokerLinkedIn || null,
             userId: ctx.user.id,
-            stage: defaultDealOpportunityStage(),
+        stage: defaultBitrixStageId(),
           },
         });
       } catch (e) {
@@ -947,11 +869,6 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidatePath(`/deal-opportunities/${result.opp.id}`);
-        revalidateTag("deals", "max");
-      });
       return {
         dealOpportunityId: result.opp.id,
       };
@@ -962,11 +879,6 @@ export const dealsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await updateDealOpportunityStageById(input.id, input.stage);
 
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidateTag("deals", "max");
-        revalidateTag(`deal-${input.id}`, "max");
-      });
       return { dealOpportunityId: input.id, stage: input.stage };
     }),
 
@@ -985,12 +897,6 @@ export const dealsRouter = createTRPCRouter({
         createdById: ctx.user.id,
       });
 
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-        revalidateTag("deals", "max");
-        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-      });
       return { snapshot };
     }),
 
@@ -1012,10 +918,6 @@ export const dealsRouter = createTRPCRouter({
         createdById: ctx.user.id,
       });
 
-      after(async () => {
-        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-      });
       return { riskFlag };
     }),
 
@@ -1030,13 +932,6 @@ export const dealsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const screening = await upsertDealOpportunityScreening(input.id);
 
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidatePath(`/deal-opportunities/${input.id}`);
-        revalidatePath("/dashboard");
-        revalidateTag("deals", "max");
-        revalidateTag(`deal-${input.id}`, "max");
-      });
       return { screening };
     }),
 
@@ -1047,12 +942,6 @@ export const dealsRouter = createTRPCRouter({
         input.dealOpportunityId,
       );
 
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidatePath(`/deal-opportunities/${input.dealOpportunityId}`);
-        revalidateTag("deals", "max");
-        revalidateTag(`deal-${input.dealOpportunityId}`, "max");
-      });
       return { success: true };
     }),
 
@@ -1222,12 +1111,6 @@ export const dealsRouter = createTRPCRouter({
         screenerId: null,
       });
 
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidatePath(`/deal-opportunities/${opp.id}`);
-        revalidateTag("deals", "max");
-        revalidateTag(`deal-${opp.id}`, "max");
-      });
       return { success: true };
     }),
 
@@ -1407,13 +1290,6 @@ export const dealsRouter = createTRPCRouter({
         });
       }
 
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidatePath(`/deal-opportunities/${id}`);
-        revalidatePath(`/deal-opportunities/${id}/edit`);
-        revalidateTag("deals", "max");
-        revalidateTag(`deal-${id}`, "max");
-      });
       return { dealOpportunityId: id };
     }),
 
@@ -1421,11 +1297,6 @@ export const dealsRouter = createTRPCRouter({
     .input(deleteOpportunityInputSchema)
     .mutation(async ({ input }) => {
       await deleteDealOpportunityRow(input.id);
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidateTag("deals", "max");
-        revalidateTag(`deal-${input.id}`, "max");
-      });
       return { success: true };
     }),
 
@@ -1453,9 +1324,6 @@ export const dealsRouter = createTRPCRouter({
         askingPrice: data.asking_price ?? 0,
       });
 
-      after(async () => {
-        revalidatePath(`/raw-deals/${id}`);
-      });
       return { dealId: id };
     }),
 
@@ -1464,9 +1332,6 @@ export const dealsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await DeleteDealById(input.id);
 
-      after(async () => {
-        revalidatePath("/raw-deals");
-      });
       return { success: true };
     }),
 
@@ -1475,9 +1340,6 @@ export const dealsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await BulkDeleteDeals(input.dealIds);
 
-      after(async () => {
-        revalidatePath("/raw-deals");
-      });
       return { success: true };
     }),
 
@@ -1486,10 +1348,6 @@ export const dealsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await updateLegacyDealTags(input.dealId, input.tags);
 
-      after(async () => {
-        revalidatePath(`/raw-deals/${input.dealId}`);
-        revalidatePath("/raw-deals");
-      });
       return { success: true };
     }),
 
@@ -1516,13 +1374,6 @@ export const dealsRouter = createTRPCRouter({
         );
       }
 
-      after(async () => {
-        revalidatePath(opp ? `/deal-opportunities/${dealId}` : `/raw-deals/${dealId}`);
-        revalidateTag(`deal-${dealId}`, "max");
-        revalidateTag("deals", "max");
-        revalidatePath("/raw-deals");
-        revalidatePath("/deal-opportunities");
-      });
       return { success: true, dealId };
     }),
 
@@ -1702,10 +1553,6 @@ export const dealsRouter = createTRPCRouter({
         fileName: input.fileName,
       });
 
-      after(async () => {
-        revalidateTag(`deal-${input.dealId}`, "max");
-        revalidatePath(`/raw-deals/${input.dealId}`);
-      });
       return {
         success: true,
         message: "File upload queued",
@@ -2588,14 +2435,6 @@ export const dealsRouter = createTRPCRouter({
         bitrixCreatedAt: opp.bitrixCreatedAt ?? new Date(),
       });
 
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidatePath(`/deal-opportunities/${opp.id}`);
-        revalidatePath(`/deal-opportunities/${opp.id}/sync-bitrix-24`);
-        revalidateTag(`deal-${opp.id}`, "max");
-        revalidateTag("deals", "max");
-      });
-
       return { bitrixId, bitrixLink };
     }),
 
@@ -2695,288 +2534,6 @@ export const dealsRouter = createTRPCRouter({
         bitrixCreatedAt: opp.bitrixCreatedAt ?? new Date(),
       });
 
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidatePath(`/deal-opportunities/${opp.id}`);
-        revalidatePath(`/deal-opportunities/${opp.id}/sync-bitrix-24`);
-        revalidatePath(`/screening/${session.id}`);
-        revalidateTag(`deal-${opp.id}`, "max");
-        revalidateTag("deals", "max");
-      });
-
       return { bitrixId, bitrixLink };
     }),
-
-  syncDealOpportunitiesFromBitrix: protectedProcedure.mutation(
-    async ({ ctx }) => {
-      const log = "[bitrix-pull-deals]";
-      const env = getBitrixSyncEnv();
-      if (!env?.webhookBaseUrl) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "BITRIX24_WEBHOOK is not configured.",
-        });
-      }
-
-      const rawRows = await fetchDealsForSyncPipeline();
-
-      console.log(rawRows.slice(12, 20))
-      const bitrixStages = getBitrixDealStages();
-
-      const firstRow = rawRows[0];
-      const firstRowFieldKeys =
-        firstRow && typeof firstRow === "object"
-          ? Object.keys(firstRow as object).sort()
-          : [];
-      let missingRawStageId = 0;
-      for (const r of rawRows) {
-        if (!extractBitrixDealListStageIdRaw(r as Record<string, unknown>)) {
-          missingRawStageId += 1;
-        }
-      }
-      const stageFieldSample = rawRows.slice(0, 5).map((r) => {
-        const row = r as Record<string, unknown>;
-        return { id: row.ID, STAGE_ID: row.STAGE_ID, stage_id: row.stage_id };
-      });
-      console.info(log, "crm.deal.list", {
-        pipelineCategoryId: BITRIX_DEAL_PIPELINE_ID,
-        rawRowCount: rawRows.length,
-        configuredStageCount: bitrixStages.length,
-        missingRawStageIdCount: missingRawStageId,
-        firstRowFieldKeys,
-        stageFieldSample,
-      });
-
-      const contactIds = rawRows.flatMap((r) =>
-        extractBitrixDealContactIds(r as Record<string, unknown>),
-      );
-
-      let contactById = new Map<string, BitrixContactBrokerFields>();
-      try {
-        contactById = await fetchBitrixContactBrokerMap(contactIds, {
-          webhookBaseUrl: env.webhookBaseUrl,
-        });
-      } catch (e) {
-        console.warn(
-          log,
-          "crm.contact.list failed; broker UFs only",
-          e instanceof Error ? e.message : e,
-        );
-      }
-      console.info(log, "contacts resolved", {
-        contactIdRefs: contactIds.length,
-        distinctContactIds: new Set(contactIds).size,
-        contactMapSize: contactById.size,
-      });
-
-      const companyIds = rawRows
-        .map((r) => extractBitrixDealCompanyId(r as Record<string, unknown>))
-        .filter((id): id is string => Boolean(id));
-
-      let companyTitleById = new Map<string, string>();
-      try {
-        companyTitleById = await fetchBitrixCompanyTitleMap(companyIds, {
-          webhookBaseUrl: env.webhookBaseUrl,
-        });
-      } catch (e) {
-        console.warn(
-          log,
-          "crm.company.list failed; brokerage names omitted",
-          e instanceof Error ? e.message : e,
-        );
-      }
-      console.info(log, "companies resolved", {
-        companyIdRefs: companyIds.length,
-        distinctCompanyIds: new Set(companyIds).size,
-        companyMapSize: companyTitleById.size,
-      });
-
-      const normalized = rawRows
-        .map((r) =>
-          normalizeBitrixListRow(r as Record<string, unknown>, bitrixStages, {
-            contactById,
-            companyTitleById,
-          }),
-        )
-        .filter((n): n is NonNullable<typeof n> => n != null);
-
-      const stageHistogram: Record<string, number> = {};
-      for (const n of normalized) {
-        stageHistogram[n.stage] = (stageHistogram[n.stage] ?? 0) + 1;
-      }
-      console.info(log, "rows normalized", {
-        normalizedCount: normalized.length,
-        droppedNoBitrixId: rawRows.length - normalized.length,
-        distinctStages: Object.keys(stageHistogram).length,
-        stageHistogram,
-      });
-
-      const impliedEbitdaRows = normalized.filter((n) =>
-        (n.ebitdaParseDebug?.notes ?? []).some((x) =>
-          x.startsWith("ebitda:implied"),
-        ),
-      ).length;
-      console.info(log, "ebitda / margin (normalized, pre-insert)", {
-        totalRows: normalized.length,
-        withRevenue: normalized.filter((n) => n.revenue != null).length,
-        withEbitda: normalized.filter((n) => n.ebitda != null).length,
-        withEbitdaMargin: normalized.filter((n) => n.ebitdaMargin != null)
-          .length,
-        withNeither: normalized.filter(
-          (n) => n.ebitda == null && n.ebitdaMargin == null,
-        ).length,
-        impliedEbitdaFromRevenueMargin: impliedEbitdaRows,
-      });
-      console.info(
-        log,
-        "ebitda parse sample (first 10 bitrixIds)",
-        normalized.slice(0, 10).map((n) => ({
-          bitrixId: n.bitrixId,
-          title: n.title,
-          revenue: n.revenue,
-          ebitda: n.ebitda,
-          ebitdaMargin: n.ebitdaMargin,
-          notes: n.ebitdaParseDebug?.notes ?? [],
-        })),
-      );
-
-      const totalFromBitrix = normalized.length;
-      if (totalFromBitrix === 0) {
-        console.info(log, "early exit: nothing to import");
-        return { imported: 0, skipped: 0, totalFromBitrix: 0 };
-      }
-
-      const existingRows = await selectDealOpportunityBitrixIds(
-        normalized.map((n) => n.bitrixId),
-      );
-      const existing = new Set(
-        existingRows
-          .map((r) => r.bitrixId)
-          .filter((id): id is string => Boolean(id?.trim())),
-      );
-      console.info(log, "existing deal opportunities", {
-        existingBitrixIdCount: existing.size,
-        candidateCount: totalFromBitrix,
-      });
-
-      const portalBase =
-        env.portalBaseUrl?.trim() ||
-        inferPortalBaseFromWebhook(env.webhookBaseUrl);
-
-      let imported = 0;
-      let skipped = 0;
-      let financialDetailLogsRemaining = 20;
-
-      for (const row of normalized) {
-        if (existing.has(row.bitrixId)) {
-          skipped += 1;
-          continue;
-        }
-
-        const bitrixLink = portalBase
-          ? buildBitrixDealDetailUrl(portalBase, row.bitrixId)
-          : null;
-
-        try {
-          if (financialDetailLogsRemaining > 0) {
-            financialDetailLogsRemaining -= 1;
-            console.info(log, "row financials (detail sample)", {
-              bitrixId: row.bitrixId,
-              title: row.title,
-              revenue: row.revenue,
-              ebitda: row.ebitda,
-              ebitdaMargin: row.ebitdaMargin,
-              askingPrice: row.askingPrice,
-              ebitdaParseNotes: row.ebitdaParseDebug?.notes ?? [],
-            });
-          }
-          const added = await insertDealOpportunityFromBitrixImport({
-            stage: row.stage,
-            brokerage: row.brokerage,
-            sourceWebsite: row.sourceWebsite,
-            companyLocation: row.companyLocation,
-            cimLink: row.cimLink,
-            dataRoomLink: row.dataRoomLink,
-            revenue: row.revenue,
-            ebitda: row.ebitda,
-            ebitdaMargin: row.ebitdaMargin,
-            askingPrice: row.askingPrice,
-            title: row.title,
-            dealTeaser: row.dealTeaser,
-            description: row.description,
-            brokerFirstName: row.brokerFirstName,
-            brokerLastName: row.brokerLastName,
-            brokerEmail: row.brokerEmail,
-            brokerPhone: row.brokerPhone,
-            brokerLinkedIn: row.brokerLinkedIn,
-            bitrixId: row.bitrixId,
-            bitrixLink: bitrixLink || null,
-            bitrixCreatedAt: row.bitrixCreatedAt ?? new Date(),
-            userId: ctx.user.id,
-            dealType: DealType.MANUAL,
-          });
-
-          if (!added?.id) {
-            console.warn(log, "insert returned no row id", {
-              bitrixId: row.bitrixId,
-            });
-            continue;
-          }
-
-          if (
-            row.revenue != null ||
-            row.ebitda != null ||
-            row.ebitdaMargin != null ||
-            row.askingPrice != null
-          ) {
-            await createDealFinancialSnapshot({
-              dealOpportunityId: added.id,
-              revenue: row.revenue ?? null,
-              ebitda: row.ebitda ?? null,
-              ebitdaMargin: row.ebitdaMargin ?? null,
-              askingPrice: row.askingPrice ?? null,
-              source: "LISTING",
-              createdById: ctx.user.id,
-            });
-          }
-          imported += 1;
-          existing.add(row.bitrixId);
-          console.debug(log, "imported", {
-            bitrixId: row.bitrixId,
-            dealOpportunityId: added.id,
-            title: row.title,
-            stage: row.stage,
-          });
-        } catch (e) {
-          if (isUniqueViolationError(e)) {
-            skipped += 1;
-            existing.add(row.bitrixId);
-            console.debug(log, "skip unique violation (concurrent import?)", {
-              bitrixId: row.bitrixId,
-            });
-            continue;
-          }
-          console.error(log, "import failed", {
-            bitrixId: row.bitrixId,
-            error: e instanceof Error ? e.message : e,
-          });
-          throw e;
-        }
-      }
-
-      after(async () => {
-        revalidatePath("/deal-opportunities");
-        revalidateTag("deals", "max");
-      });
-
-      console.info(log, "sync complete", {
-        rawRowCount: rawRows.length,
-        normalizedCount: totalFromBitrix,
-        imported,
-        skipped,
-      });
-
-      return { imported, skipped, totalFromBitrix };
-    },
-  ),
 });

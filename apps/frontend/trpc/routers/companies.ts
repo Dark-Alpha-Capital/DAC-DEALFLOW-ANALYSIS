@@ -21,8 +21,6 @@ import {
   updateCompanyById,
   softDeleteCompanyById,
 } from "@repo/db/mutations";
-import { after } from "@/lib/after";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import {
   getActiveOrganizationId,
   requireActiveOrganizationId,
@@ -90,10 +88,6 @@ export const companiesRouter = createTRPCRouter({
         organizationId,
       });
 
-      after(async () => {
-        revalidatePath("/companies");
-        revalidateTag("companies", "max");
-      });
       return { companyId: added?.id };
     }),
 
@@ -131,13 +125,6 @@ export const companiesRouter = createTRPCRouter({
         growthLevers: data.growthLevers ?? null,
       });
 
-      after(async () => {
-        revalidatePath("/companies");
-        revalidatePath(`/companies/${id}`);
-        revalidatePath(`/companies/${id}/edit`);
-        revalidateTag("companies", "max");
-        revalidateTag(`company-${id}`, "max");
-      });
       return { companyId: id };
     }),
 
@@ -145,11 +132,6 @@ export const companiesRouter = createTRPCRouter({
     .input(deleteCompanyInputSchema)
     .mutation(async ({ input }) => {
       await softDeleteCompanyById(input.id);
-      after(async () => {
-        revalidatePath("/companies");
-        revalidateTag("companies", "max");
-        revalidateTag(`company-${input.id}`, "max");
-      });
       return { success: true };
     }),
 
@@ -177,12 +159,6 @@ export const companiesRouter = createTRPCRouter({
           source: input.source,
           notes: input.notes ?? null,
           createdById: ctx.session.user.id,
-        });
-        after(async () => {
-          revalidatePath("/companies");
-          revalidatePath(`/companies/${input.companyId}`);
-          revalidateTag("companies", "max");
-          revalidateTag(`company-${input.companyId}`, "max");
         });
         return { snapshot };
       }),

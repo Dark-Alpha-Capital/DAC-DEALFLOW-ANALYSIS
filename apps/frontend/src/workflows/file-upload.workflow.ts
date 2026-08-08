@@ -3,7 +3,7 @@ import {
   type WorkflowEvent,
   type WorkflowStep,
 } from "cloudflare:workers";
-import { db, runDbWithD1 } from "@repo/db";
+import { db, isUniqueViolationError, runDbWithD1 } from "@repo/db";
 import type { DocumentCategory } from "@repo/db/enums";
 import { documents } from "@repo/db/schema";
 import { buildNextcloudFileUrl, fileExists } from "@repo/nextcloud";
@@ -24,15 +24,6 @@ const LOG = "[file-upload]";
 
 function logInfo(phase: string, data: Record<string, unknown> = {}): void {
   console.info(`${LOG} ${phase}`, { ts: new Date().toISOString(), ...data });
-}
-
-function isUniqueViolationError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "23505"
-  );
 }
 
 async function revalidateCacheTags(tags: string[]): Promise<void> {

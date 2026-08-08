@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { revalidateTag } from "@/lib/cache-invalidation";
 
 export const Route = createFileRoute("/api/revalidate")({
   server: {
@@ -18,7 +17,6 @@ export const Route = createFileRoute("/api/revalidate")({
 
           for (const tag of tags) {
             if (typeof tag === "string") {
-              revalidateTag(tag, "max");
               console.log(`[revalidate] Revalidated cache tag: ${tag}`);
             }
           }

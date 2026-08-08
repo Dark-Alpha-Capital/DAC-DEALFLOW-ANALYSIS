@@ -1,6 +1,68 @@
 import { z } from "zod";
+import {
+  formatDealOpportunityScreeningContext,
+  getDealOpportunityScreeningContextRow,
+} from "@repo/db/queries";
+import type { CimScreeningDealListingContextSource } from "./workflow-env";
 
 const BITRIX_SCREENING_COMMENT_MAX_CHARS = 62_000;
+
+/**
+ * Namespaced workflow logger. Both screening workflows share the identical
+ * logDetail/logError implementation; only the prefix differs.
+ */
+export function makeWorkflowLogger(logPrefix: string) {
+  const logDetail = (
+    phase: string,
+    data: Record<string, unknown> = {},
+  ): void => {
+    console.log(`${logPrefix} ${phase}`, { ts: new Date().toISOString(), ...data });
+  };
+
+  const logError = (
+    phase: string,
+    err: unknown,
+    extra: Record<string, unknown> = {},
+  ): void => {
+    console.error(`${logPrefix} ${phase}`, {
+      ts: new Date().toISOString(),
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      ...extra,
+    });
+  };
+
+  return { logDetail, logError };
+}
+
+export type DealListingLoadResult =
+  | { kind: "bitrix_live_snapshot"; text: string | null }
+  | {
+      kind: "deal_opportunity_db";
+      text: string | null;
+      bitrixId: string | null;
+    };
+
+/** Loads the deal listing context used in the screening prompt. */
+export async function loadDealListingForScreeningPrompt(input: {
+  dealOppId: string;
+  effectiveListingSource: CimScreeningDealListingContextSource | undefined;
+  bitrixLiveDealListingContext: string | undefined;
+}): Promise<DealListingLoadResult> {
+  if (input.effectiveListingSource === "bitrix_live_snapshot") {
+    const raw = input.bitrixLiveDealListingContext?.trim();
+    return { kind: "bitrix_live_snapshot", text: raw || null };
+  }
+  const dealRow = await getDealOpportunityScreeningContextRow(input.dealOppId);
+  if (!dealRow) {
+    return { kind: "deal_opportunity_db", text: null, bitrixId: null };
+  }
+  return {
+    kind: "deal_opportunity_db",
+    text: formatDealOpportunityScreeningContext(dealRow),
+    bitrixId: dealRow.bitrixId ?? null,
+  };
+}
 
 export const CIM_SCREENING_MODEL =
   process.env.CIM_SCREENING_MODEL?.trim() || "gpt-5.1";

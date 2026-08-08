@@ -1,14 +1,9 @@
 import {
   createTRPCRouter,
-  protectedProcedure,
+  organizationAdminProcedure,
+  organizationProcedure,
 } from "../init";
-import { after } from "@/lib/after";
-import { revalidatePath } from "@/lib/cache-invalidation";
 import { ensureDefaultCriteriaProfile, rescreenAllDealOpportunities } from "@repo/deal-screening";
-import {
-  assertOrgAdmin,
-  requireResolvedOrganizationId,
-} from "../org-context";
 import db, { asc, eq } from "@repo/db";
 import { getActiveInvestmentCriteriaProfile } from "@repo/db/queries";
 import { upsertActiveInvestmentCriteriaProfile } from "@repo/db/mutations";
@@ -45,23 +40,15 @@ const DEFAULT_PLAYBOOK = {
   ],
 } as const;
 
-function scheduleCriteriaRevalidation() {
-  after(async () => {
-    revalidatePath("/settings/investment-criteria");
-  });
-}
-
 export const organizationSettingsRouter = createTRPCRouter({
-  getInvestmentCriteria: protectedProcedure.query(async ({ ctx }) => {
-    const organizationId = await requireResolvedOrganizationId(ctx);
-    return await ensureDefaultCriteriaProfile(organizationId);
+  getInvestmentCriteria: organizationProcedure.query(async ({ ctx }) => {
+    return await ensureDefaultCriteriaProfile(ctx.organizationId);
   }),
 
-  updateInvestmentCriteria: protectedProcedure
+  updateInvestmentCriteria: organizationAdminProcedure
     .input(updateInvestmentCriteriaProfileSchema)
     .mutation(async ({ ctx, input }) => {
-      const organizationId = await requireResolvedOrganizationId(ctx);
-      await assertOrgAdmin(ctx, organizationId);
+      const { organizationId } = ctx;
 
       const current = await getActiveInvestmentCriteriaProfile(
         input.key,
@@ -98,19 +85,16 @@ export const organizationSettingsRouter = createTRPCRouter({
         },
       );
 
-      scheduleCriteriaRevalidation();
       return saved;
     }),
 
-  rescreenAllDeals: protectedProcedure.mutation(async ({ ctx }) => {
-    const organizationId = await requireResolvedOrganizationId(ctx);
-    await assertOrgAdmin(ctx, organizationId);
-    const results = await rescreenAllDealOpportunities(organizationId);
+  rescreenAllDeals: organizationAdminProcedure.mutation(async ({ ctx }) => {
+    const results = await rescreenAllDealOpportunities(ctx.organizationId);
     return { rescoredCount: results.length };
   }),
 
-  getPlaybook: protectedProcedure.query(async ({ ctx }) => {
-    const organizationId = await requireResolvedOrganizationId(ctx);
+  getPlaybook: organizationProcedure.query(async ({ ctx }) => {
+    const { organizationId } = ctx;
 
     const [playbook] = await db
       .select()
@@ -157,11 +141,10 @@ export const organizationSettingsRouter = createTRPCRouter({
     return { ...playbook, levers };
   }),
 
-  updatePlaybook: protectedProcedure
+  updatePlaybook: organizationAdminProcedure
     .input(playbookInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const organizationId = await requireResolvedOrganizationId(ctx);
-      await assertOrgAdmin(ctx, organizationId);
+      const { organizationId } = ctx;
 
       const [existing] = await db
         .select()

@@ -1,8 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import {
-  getBitrixDealStages,
-  getDefaultBitrixStageId,
-} from "@repo/bitrix-sync";
+import { defaultBitrixStageId } from "@repo/bitrix-sync";
 import db, { eq } from "@repo/db";
 import { dealOpportunities } from "@repo/db/schema";
 import {
@@ -11,10 +8,6 @@ import {
 } from "@repo/db/mutations";
 import { verifyBitrixAuthId } from "@/lib/server/bitrix-ai-widget-gate";
 import { verifyBitrixWidgetSignature } from "@/lib/server/bitrix-widget-signature";
-
-function defaultDealOpportunityStage(): string {
-  return getDefaultBitrixStageId(getBitrixDealStages());
-}
 
 export async function assertValidBitrixWidgetContext(input: {
   dealId: string;
@@ -83,7 +76,7 @@ export async function resolveDealOpportunityForBitrixDeal(bitrixDealId: string) 
     brokerPhone: null,
     brokerLinkedIn: null,
     userId: null,
-    stage: defaultDealOpportunityStage(),
+    stage: defaultBitrixStageId(),
   });
   if (!created?.id) {
     throw new TRPCError({

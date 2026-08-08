@@ -4,7 +4,6 @@ import { loadRankedDealOpportunitiesPageData } from "@/lib/server/deal-opportuni
 import { Button } from "@/components/ui/button";
 import { Sparkles, ClipboardCheck } from "lucide-react";
 import { DealsWorkspace } from "@/components/deal-opportunities/deals-workspace";
-import { PullNewDealsFromBitrixButton } from "@/components/deal-opportunities/sync-bitrix-deals-button";
 import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
@@ -82,7 +81,6 @@ function DealOpportunitiesRoute() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <PullNewDealsFromBitrixButton />
           <Button asChild size="sm" variant="outline">
             <Link to="/deal-opportunities/quick-add" className="gap-2">
               Quick add

@@ -6,8 +6,6 @@ import {
   updateCompanyNoteById,
   deleteCompanyNoteById,
 } from "@repo/db/mutations";
-import { after } from "@/lib/after";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 
 export const companyNotesRouter = createTRPCRouter({
   listByCompany: protectedProcedure
@@ -37,12 +35,6 @@ export const companyNotesRouter = createTRPCRouter({
         createdById: ctx.user.id,
       });
 
-      after(async () => {
-        revalidatePath(`/companies/${input.companyId}`);
-        revalidateTag("companies", "max");
-        revalidateTag(`company-${input.companyId}`, "max");
-        if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
-      });
       return note;
     }),
 
@@ -62,14 +54,6 @@ export const companyNotesRouter = createTRPCRouter({
         content: input.content,
       });
 
-      if (updated) {
-        after(async () => {
-          revalidatePath(`/companies/${updated.companyId}`);
-          revalidateTag("companies", "max");
-          revalidateTag(`company-${updated.companyId}`, "max");
-          if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
-        });
-      }
       return updated;
     }),
 
@@ -83,14 +67,6 @@ export const companyNotesRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const deleted = await deleteCompanyNoteById(input.id);
 
-      if (deleted) {
-        after(async () => {
-          revalidatePath(`/companies/${deleted.companyId}`);
-          revalidateTag("companies", "max");
-          revalidateTag(`company-${deleted.companyId}`, "max");
-          if (input.dealUid) revalidateTag(`deal-${input.dealUid}`, "max");
-        });
-      }
       return { success: true };
     }),
 });

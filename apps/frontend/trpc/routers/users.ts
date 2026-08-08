@@ -6,8 +6,6 @@ import {
   getUserRoleById,
   setUserBlocked,
 } from "@repo/db/mutations";
-import { after } from "@/lib/after";
-import { revalidatePath } from "@/lib/cache-invalidation";
 import { TRPCError } from "@trpc/server";
 
 export const usersRouter = createTRPCRouter({
@@ -36,9 +34,6 @@ export const usersRouter = createTRPCRouter({
 
       await setUserBlocked(input.userId, true);
 
-      after(async () => {
-        revalidatePath("/admin");
-      });
       return { success: true };
     }),
 
@@ -47,9 +42,6 @@ export const usersRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await setUserBlocked(input.userId, false);
 
-      after(async () => {
-        revalidatePath("/admin");
-      });
       return { success: true };
     }),
 });

@@ -71,6 +71,11 @@ export function getDefaultBitrixStageId(stages: BitrixDealStageRow[]): string {
   return "NEW";
 }
 
+/** The default deal stage for the configured pipeline. */
+export function defaultBitrixStageId(): string {
+  return getDefaultBitrixStageId(getBitrixDealStages());
+}
+
 /** Human label for a `STAGE_ID` using the configured pipeline snapshot. */
 export function resolveBitrixStageLabel(
   statusId: string,

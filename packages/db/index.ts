@@ -26,7 +26,7 @@ export {
   between,
   notInArray,
 } from "drizzle-orm";
-export { ilike, jsonArrayOverlaps } from "./sqlite-helpers";
+export { ilike, isUniqueViolationError, jsonArrayOverlaps } from "./sqlite-helpers";
 export type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
 export { createDb, createDbFromD1 } from "./create-db";

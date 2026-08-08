@@ -1,7 +1,6 @@
 import { DealType } from "@repo/db/enums";
 import { rateLimit } from "@/lib/workflows/rate-limit";
 import { createServerFn } from "@tanstack/react-start";
-import { updateTag } from "@/lib/cache-invalidation";
 import { assertAuthenticated } from "@/lib/server/assert-session";
 import { bulkUploadDealsInputSchema } from "@/lib/server/server-fn-input-schemas";
 import type { TransformedDeal } from "@/lib/routing/route-domain-types";
@@ -121,8 +120,6 @@ export const bulkUploadDealsToDB = createServerFn({ method: "POST" })
           })),
         );
       });
-
-      updateTag("deals");
 
       return {
         success: `${deals.length} deal(s) uploaded successfully.`,

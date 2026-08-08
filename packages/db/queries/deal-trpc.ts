@@ -8,7 +8,7 @@ import {
   leads,
   documents,
 } from "../schema";
-import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { ilike } from "../sqlite-helpers";
 
 export async function searchDealOpportunitiesForChat(input: {
@@ -258,12 +258,4 @@ export async function getCompanyRowByIdForAiScreening(companyId: string) {
     .where(and(eq(companies.id, companyId), isNull(companies.deletedAt)))
     .limit(1);
   return company ?? null;
-}
-
-export async function selectDealOpportunityBitrixIds(bitrixIds: string[]) {
-  if (bitrixIds.length === 0) return [];
-  return db
-    .select({ bitrixId: dealOpportunities.bitrixId })
-    .from(dealOpportunities)
-    .where(inArray(dealOpportunities.bitrixId, bitrixIds));
 }

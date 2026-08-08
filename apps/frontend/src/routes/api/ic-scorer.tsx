@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { revalidateTag } from "@/lib/cache-invalidation";
 import { auth } from "@/auth";
 import {
   isAiBitrixExtractRequestAllowed,
@@ -74,7 +73,7 @@ export const Route = createFileRoute("/api/ic-scorer")({
             dealId,
             webhookBaseUrl: env?.webhookBaseUrl,
           });
-          revalidateTag("deals", "max");
+
           return Response.json({
             dealId,
             ok: true,

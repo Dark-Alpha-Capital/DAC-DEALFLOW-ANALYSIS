@@ -3,8 +3,6 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import { DealType } from "@repo/db";
 import { DeleteQuestionnaireById, DeleteReasoningById, insertAiInferredDeal } from "@repo/db/mutations";
 import { del } from "@vercel/blob";
-import { after } from "@/lib/after";
-import { revalidatePath } from "@/lib/cache-invalidation";
 
 const inferDealSchema = z.object({
   sourceWebsite: z.string().optional().nullable(),
@@ -32,9 +30,6 @@ export const miscRouter = createTRPCRouter({
         DeleteQuestionnaireById(input.questionnaireId),
       ]);
 
-      after(async () => {
-        revalidatePath("/questionnaires");
-      });
       return { success: true };
     }),
 
@@ -43,9 +38,6 @@ export const miscRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await DeleteReasoningById(input.reasoningId);
 
-      after(async () => {
-        revalidatePath(`/raw-deals/${input.dealId}/reasonings`);
-      });
       return { success: true };
     }),
 

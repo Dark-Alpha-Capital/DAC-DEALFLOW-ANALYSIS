@@ -5,8 +5,6 @@ import {
   getDealOpportunityIdAndCompanyId,
   insertOutreachRow,
 } from "@repo/db/mutations";
-import { after } from "@/lib/after";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 
 const outreachTypes = ["EMAIL", "CALL", "LINKEDIN", "MEETING"] as const;
 
@@ -67,20 +65,6 @@ export const outreachRouter = createTRPCRouter({
         createdById: ctx.user.id,
       });
 
-      after(async () => {
-        if (companyId) {
-          revalidatePath("/companies");
-          revalidatePath(`/companies/${companyId}`);
-          revalidateTag("companies", "max");
-          revalidateTag(`company-${companyId}`, "max");
-        }
-        if (dealOpportunityId) {
-          revalidatePath("/deal-opportunities");
-          revalidatePath(`/deal-opportunities/${dealOpportunityId}`);
-          revalidateTag("deals", "max");
-          revalidateTag(`deal-${dealOpportunityId}`, "max");
-        }
-      });
       return { outreachId: added?.id };
     }),
 });

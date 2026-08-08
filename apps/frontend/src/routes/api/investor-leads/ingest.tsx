@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { timingSafeEqual } from "crypto";
 import db, { investorLeads } from "@repo/db";
 import { withWorkerDbIfNeeded } from "@/lib/with-worker-db";
 import { z } from "zod";
-import { revalidatePath, revalidateTag } from "@/lib/cache-invalidation";
 import { getServerEnv } from "@/lib/env.server";
+import { isAuthorizedByApiKey } from "@/lib/server/api-key-auth";
 
 const investorLeadStatusEnum = z.enum([
   "RAW",
@@ -24,41 +23,18 @@ const investorLeadIngestSchema = z.object({
   status: investorLeadStatusEnum.optional(),
 });
 
-function validateApiKey(provided: string): boolean {
-  const expected = getServerEnv().INVESTOR_LEADS_API_KEY;
-  if (!expected || !provided) return false;
-  if (provided.length !== expected.length) return false;
-  try {
-    return timingSafeEqual(
-      Buffer.from(provided, "utf8"),
-      Buffer.from(expected, "utf8"),
-    );
-  } catch {
-    return false;
-  }
-}
-
-function getApiKeyFromRequest(
-  request: Request,
-  body: Record<string, unknown>,
-): string | null {
-  const header = request.headers.get("x-investor-leads-api-key");
-  if (header) return header;
-
-  const auth = request.headers.get("authorization");
-  if (auth?.startsWith("Bearer ")) return auth.slice(7);
-
-  if (body && typeof body.apiKey === "string") return body.apiKey;
-
-  return null;
-}
-
 async function postInvestorLeadsIngest(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const apiKey = getApiKeyFromRequest(request, body as Record<string, unknown>);
 
-    if (!apiKey || !validateApiKey(apiKey)) {
+    if (
+      !isAuthorizedByApiKey(
+        request,
+        body as Record<string, unknown>,
+        "x-investor-leads-api-key",
+        getServerEnv().INVESTOR_LEADS_API_KEY,
+      )
+    ) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -85,9 +61,6 @@ async function postInvestorLeadsIngest(request: Request) {
         status: input.status ?? "RAW",
       })
       .returning();
-
-    revalidatePath("/investor-leads");
-    revalidateTag("investor-leads", "max");
 
     if (!added) {
       return Response.json(

@@ -1,7 +1,5 @@
 import crypto from "crypto";
 import { z } from "zod";
-import { after } from "@/lib/after";
-import { revalidatePath } from "@/lib/cache-invalidation";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import { DealType, Sentiment } from "@repo/db";
 import {
@@ -125,9 +123,6 @@ export const screeningsRouter = createTRPCRouter({
         sentiment: toSentiment(input.sentiment),
       });
 
-      after(async () => {
-        revalidatePath(`/raw-deals/${input.dealId}`);
-      });
       return { screeningId: addedScreenResult?.id };
     }),
 
@@ -149,9 +144,6 @@ export const screeningsRouter = createTRPCRouter({
         sentiment: Sentiment.NEUTRAL,
       });
 
-      after(async () => {
-        revalidatePath(`/raw-deals/${input.dealId}`);
-      });
       return { screeningId: addedScreenResult?.id };
     }),
 
@@ -164,9 +156,6 @@ export const screeningsRouter = createTRPCRouter({
         sentiment: toSentiment(input.sentiment),
       });
 
-      after(async () => {
-        revalidatePath(`/raw-deals/${input.dealId}`);
-      });
       return { success: true };
     }),
 
@@ -174,9 +163,6 @@ export const screeningsRouter = createTRPCRouter({
     .input(z.object({ screeningId: z.string(), dealId: z.string() }))
     .mutation(async ({ input }) => {
       await DeleteReasoningById(input.screeningId);
-      after(async () => {
-        revalidatePath(`/raw-deals/${input.dealId}`);
-      });
       return { success: true };
     }),
 
@@ -217,10 +203,6 @@ export const screeningsRouter = createTRPCRouter({
         ),
       );
 
-      after(async () => {
-        revalidatePath(`/raw-deals/${input.dealId}`);
-        revalidatePath(`/raw-deals/${dealOpportunityId}/screen`);
-      });
       return { evaluationId: savedEvaluation?.id, data: savedEvaluation };
     }),
 

@@ -13,8 +13,6 @@ import {
 import { getWorkflowJobRow } from "@repo/db/workflow-jobs";
 import { resetWorkflowJobRowAfterRestart } from "@repo/db/mutations";
 import type { WorkflowKind } from "@repo/db/workflow-jobs";
-import { after } from "@/lib/after";
-import { revalidatePath } from "@/lib/cache-invalidation";
 
 const queueNameSchema = z.enum([
   QUEUE_NAMES.SCREEN_DEAL,
@@ -109,9 +107,6 @@ export const jobsRouter = createTRPCRouter({
 
       await deleteUserJob(userId, jobId, queueName);
 
-      after(async () => {
-        revalidatePath("/jobs");
-      });
       return { success: true };
     }),
 
@@ -134,9 +129,6 @@ export const jobsRouter = createTRPCRouter({
         jobs.map((job) => deleteUserJob(userId, job.jobId, job.queueName)),
       );
 
-      after(async () => {
-        revalidatePath("/jobs");
-      });
       return { success: true, deletedCount: jobs.length };
     }),
 
@@ -168,9 +160,6 @@ export const jobsRouter = createTRPCRouter({
         });
       }
       await resetWorkflowJobRowAfterRestart(input.jobId);
-      after(async () => {
-        revalidatePath("/jobs");
-      });
       return { success: true };
     }),
 
@@ -205,9 +194,6 @@ export const jobsRouter = createTRPCRouter({
         }
         await resetWorkflowJobRowAfterRestart(job.jobId);
       }
-      after(async () => {
-        revalidatePath("/jobs");
-      });
       return { success: true, restartedCount: input.jobs.length };
     }),
 });

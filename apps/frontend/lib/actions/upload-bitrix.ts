@@ -5,7 +5,6 @@ import {
   callBitrix,
 } from "@repo/bitrix-sync";
 import { createServerFn } from "@tanstack/react-start";
-import { revalidatePath } from "@/lib/cache-invalidation";
 import { getServerEnv } from "@/lib/env.server";
 import { assertAuthenticated } from "@/lib/server/assert-session";
 import { exportDealToBitrixInputSchema } from "@/lib/server/server-fn-input-schemas";
@@ -56,9 +55,6 @@ async function exportDealToBitrixImpl(deal: ExportDealInput) {
         })
         .where(eq(deals.id, deal.id));
     }
-
-    revalidatePath(`/raw-deals/${deal.id}`);
-    revalidatePath(`/raw-deals`);
 
     return responseData;
   } catch (error: unknown) {

@@ -1,4 +1,3 @@
-import type { ComponentType } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Mail, Phone, Tag, FileText, Pencil } from "lucide-react";
@@ -13,6 +12,11 @@ import {
   ROUTE_DATA_GC_TIME_MS,
   ROUTE_DATA_STALE_TIME_MS,
 } from "@/lib/routing/route-loader-cache";
+import {
+  DetailPageError,
+  DetailPageNotFound,
+  InfoRow,
+} from "@/components/entity-detail/detail-page-state";
 
 export const Route = createFileRoute("/_protected/investor-leads/$uid/")({
   staleTime: ROUTE_DATA_STALE_TIME_MS,
@@ -26,63 +30,27 @@ export const Route = createFileRoute("/_protected/investor-leads/$uid/")({
   component: InvestorLeadDetailRoute,
 });
 
-function InfoRow({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string | null | undefined;
-  icon?: ComponentType<{ className?: string }>;
-}) {
-  if (!value) return null;
-  return (
-    <div className="flex items-start gap-3 py-2">
-      {Icon && (
-        <Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
-      )}
-      <div className="min-w-0 flex-1">
-        <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-          {label}
-        </span>
-        <p className="mt-0.5 truncate text-sm">{value}</p>
-      </div>
-    </div>
-  );
-}
-
 function InvestorLeadDetailRoute() {
   const { data, existingInvestor, error } = Route.useLoaderData();
 
   if (error) {
     return (
-      <section className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="w-full max-w-sm space-y-6 text-center">
-          <h1 className="text-lg font-medium">Error loading</h1>
-          <p className="text-muted-foreground text-sm">
-            There was an error loading the investor lead.
-          </p>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/investor-leads">Back to Investor Leads</Link>
-          </Button>
-        </div>
-      </section>
+      <DetailPageError
+        title="Error loading"
+        message="There was an error loading the investor lead."
+        backTo="/investor-leads"
+        backLabel="Back to Investor Leads"
+      />
     );
   }
 
   if (!data || !data.lead) {
     return (
-      <section className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="w-full max-w-sm space-y-6 text-center">
-          <h1 className="text-lg font-medium">Not found</h1>
-          <p className="text-muted-foreground text-sm">
-            This investor lead does not exist or has been removed.
-          </p>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/investor-leads">Back to Investor Leads</Link>
-          </Button>
-        </div>
-      </section>
+      <DetailPageNotFound
+        message="This investor lead does not exist or has been removed."
+        backTo="/investor-leads"
+        backLabel="Back to Investor Leads"
+      />
     );
   }
 
